@@ -711,5 +711,6 @@
 .pl-root .pl-tools { flex-wrap: wrap; }
 
 .pl-diagram-options { position: relative; }
+.pl-top.pl-top--tools-open { z-index: var(--z-drawer); }
 .pl-diagram-options-body { position: absolute; right: 0; top: 100%; display: grid; gap: 6px; padding: 10px; width: 210px; background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius-2); }
 .pl-diagram-options-body [aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); }

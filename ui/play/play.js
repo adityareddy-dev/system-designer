@@ -963,6 +963,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   if (!isLesson) {
     const inspection = h('details', { class: 'pl-diagram-options' }, h('summary', { class: 'pl-btn pl-btn--small' }, 'Diagram tools'));
     const options = h('div', { class: 'pl-diagram-options-body' });
+    inspection.addEventListener('toggle', () => top.classList.toggle('pl-top--tools-open', inspection.open));
+    for (const event of ['pointerdown', 'pointerup', 'click', 'dblclick', 'wheel']) options.addEventListener(event, e => e.stopPropagation());
     inspection.append(options); tools.append(inspection);
     const toggle = (label, action) => {
       let on = false;
@@ -978,8 +980,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     toggle('Region boundaries', on => { scene.setRegionGroups(on); if (on) showCaption('Cross-region labels show approximate round-trip latency. Arrange by region separates overlapping groups.', 6000); });
     options.append(h('button', { class: 'pl-btn pl-btn--small', type: 'button', title: 'Arrange parts in region groups. Undo restores their positions.', onClick: () => {
       if (structureBlocked()) return;
-      for (const n of regionLayout(graph())) S.sim.moveNode(n.id, n.x, n.y);
-      commit(); fitView();
+      inspection.open = false;
+      top.classList.remove('pl-top--tools-open');
+      const a = freeArea();
+      for (const n of regionLayout(graph(), { width: Math.max(40, a.w - a.l - a.r - 92), height: Math.max(40, a.h - a.t - a.b - 94) })) S.sim.moveNode(n.id, n.x, n.y);
+      commit(); fitView(true, 0.2);
     } }, 'Arrange by region'));
   }
   if (stepped) tools.append(hintBtn, edBtn);

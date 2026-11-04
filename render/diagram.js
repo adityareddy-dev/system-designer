@@ -17,17 +17,29 @@ export function pathsThrough(graph, id) {
   return { nodes, edges };
 }
 
-export function regionLayout(graph) {
+export function regionLayout(graph, area = null) {
   const groups = new Map();
   for (const node of graph.nodes) {
     const region = node.region || 'us';
     if (!groups.has(region)) groups.set(region, []);
     groups.get(region).push(node);
   }
+  // Reserve room for names that stay readable as the diagram zooms out.
+  const dx = 260, dy = 240;
+  let columns = 5;
+  if (area && groups.size) {
+    let best = -Infinity;
+    const largest = Math.max(...[...groups.values()].map(nodes => nodes.length));
+    for (let count = 1; count <= largest; count++) {
+      const rows = [...groups.values()].reduce((sum, nodes) => sum + Math.ceil(nodes.length / count), 0) + groups.size - 1;
+      const scale = Math.min(area.width / (count * dx), area.height / (rows * dy));
+      if (scale > best) { best = scale; columns = count; }
+    }
+  }
   let y = 0;
   return [...groups.values()].flatMap(nodes => {
-    const positions = nodes.map((node, i) => ({ id: node.id, x: (i % 5) * 220, y: y + Math.floor(i / 5) * 180 }));
-    y += Math.ceil(nodes.length / 5) * 180 + 180;
+    const positions = nodes.map((node, i) => ({ id: node.id, x: (i % columns) * dx, y: y + Math.floor(i / columns) * dy }));
+    y += (Math.ceil(nodes.length / columns) + 1) * dy;
     return positions;
   });
 }
