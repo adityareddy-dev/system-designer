@@ -18,6 +18,7 @@ import { createRouteTrace } from './route-trace.js';
 import { renderCheckpointForm } from './correctness.js';
 import { introPathHolds } from './intro-path.js';
 import { goalPassed } from './goal-feedback.js';
+import { replicaReadsActive, replicaWiringAdvice } from './lesson-replica.js';
 
 const GRID = 20;
 let connectTipShown = false; // the how-to-connect line shows once per visit outside lessons
@@ -362,6 +363,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (structureBlocked()) return null;
     const el = catalog.elementById.get(type);
     if (!el) { toast('Unknown component.', 'warn'); return null; }
+    if (opts.lesson?.id === 'replication-lag' && type === 'sql-replica' && edgeId && !canSplice(type, edgeId)) {
+      showCaption(replicaWiringAdvice);
+      toast(replicaWiringAdvice, 'info', 7000);
+      return null;
+    }
     try {
       let pos = null;
       if (edgeId && canSplice(type, edgeId)) pos = makeRoomOnEdge(edgeId);
@@ -408,6 +414,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   // A part placed on its own gets one line on how to connect it: the first time in a session, and every time in a lesson.
   function connectCoach(id, el) {
+    if (opts.lesson?.id === 'replication-lag' && el.id === 'sql-replica') { showCaption(replicaWiringAdvice); return; }
     if (waiters.some(w => w.spec.path && w.spec.type === el.id)) { S.insertionRetry?.(); return; }
     const g = graph();
     if (g.edges.some((e) => e.from === id || e.to === id)) return;
@@ -871,6 +878,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     return seen;
   }
   function placedOk(goal) {
+    if (opts.lesson?.id === 'replication-lag' && !replicaReadsActive(graph(), S.sim.flows())) return false;
     const w = goal?.between;
     if (!w) return true;
     const g = graph();
@@ -898,6 +906,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   // What is still missing when the goal is not met, in plain words.
   function goalGap(goal, st, v) {
+    if (opts.lesson?.id === 'replication-lag' && !replicaReadsActive(graph(), S.sim.flows())) return replicaWiringAdvice;
     const g = graph();
     if (goal?.drain && !queuesHaveReaders()) return 'A queue has no workers wired after it, so nothing reads the line. Connect Background workers after the queue.';
     if (!drained(goal, st)) return queueDrainAdvice(g, st, catalog, S.problem.requirements.mix);
@@ -943,6 +952,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const dt = Math.max(0, (st.clockMs || 0) - Math.max(S.lastClock, from));
     S.lastClock = st.clockMs || 0;
     const ok = v != null && placedOk(goal) && drained(goal, st) && { '<=': v <= goal.value, '>=': v >= goal.value, '<': v < goal.value, '>': v > goal.value, '==': v === goal.value }[goal.op];
+    if (opts.lesson?.id === 'replication-lag' && replicaReadsActive(graph(), S.sim.flows())) hideCaption();
     S.goalMs = ok ? S.goalMs + dt : 0;
     const need = (goal.holdSec || 0) * 1000;
     goalChip.hidden = false;
@@ -954,6 +964,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       ...(need ? [h('span', { class: 'pl-goal-bar' }, h('i', { style: { width: clamp(S.goalMs / need, 0, 1) * 100 + '%' } }))] : []));
     if (ok && S.goalMs >= need) {
       S.goalMet = true;
+      if (opts.lesson?.id === 'replication-lag') hideCaption();
       goalChip.classList.add('pl-goal--done');
       goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: mode === 'lesson' ? `${goalPassed(goal, v, nameOf(goal.node) || 'The part')} Day meters include earlier minutes.` : 'Goal reached. Nicely done.' }));
       snd('pass');

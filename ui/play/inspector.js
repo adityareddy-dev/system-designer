@@ -171,6 +171,7 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
 
     const knobs = h('div', { class: 'pl-knobs' });
     for (const k of el.knobs || []) { const r = knobRow(el, node, k); if (r) knobs.append(r); }
+    const replicaCount = el.id === 'sql-replica' ? knobs.querySelector('.pl-knob[data-knob="units"]') : null;
 
     const focusRow = lesson && focusKnob ? knobs.querySelector(`.pl-knob[data-knob="${focusKnob}"]`) : null;
     if (focusRow) {
@@ -199,12 +200,13 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
         section('What it can do', facts),
         section('Cost a month', costLines(el, node)),
         el.failureModes?.length ? section('How it breaks', h('ul', { class: 'pl-list' }, el.failureModes.map((f) => h('li', { text: f.text })))) : null);
-      root.append(head, h('div', { class: 'pl-insp-scroll' }, section('Settings', knobs), h('p', { class: 'pl-desc', text: el.description }), actions, liveBox, more));
+      root.append(head, h('div', { class: 'pl-insp-scroll' }, replicaCount, section('Settings', knobs), h('p', { class: 'pl-desc', text: el.description }), actions, liveBox, more));
       const sc = root.querySelector('.pl-insp-scroll'); if (sc) sc.scrollTop = 0;
       paintLive();
       return;
     }
     root.append(head, h('div', { class: 'pl-insp-scroll' },
+      replicaCount,
       h('p', { class: 'pl-desc', text: el.description }),
       actions, liveBox,
       section('Good at', h('ul', { class: 'pl-list' }, (el.goodAt || []).map((g) => h('li', { text: g })))),
