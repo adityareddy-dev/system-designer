@@ -1115,7 +1115,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       for (let u = 0; u < N; u++) {
         if (X.failedNow[u] > 0) st.nodeFail[u] += X.failedNow[u] * X.dt;
         st.nodeIn[u] += X.realIn[u] * X.dt;
-        if (X.rho[u] > 1 || X.cap[u] <= 0 && X.realIn[u] > 0 || X.qOver[u] > 0 || X.lateNow[u] > 0) st.nodeOver[u] += 1;
+        if (X.rho[u] > 1 || nodes[u].hasCap && nodes[u].k !== KIND.source && X.cap[u] <= 0 && X.realIn[u] > 0 || X.qOver[u] > 0 || X.lateNow[u] > 0) st.nodeOver[u] += 1;
         if (X.cap[u] > 0 && X.rho[u] > st.maxRho[u]) st.maxRho[u] = X.rho[u];
         if (X.realIn[u] > st.maxLoad[u]) st.maxLoad[u] = X.realIn[u];
         if (X.llLoss[u] > st.capLost) st.capLost = X.llLoss[u];

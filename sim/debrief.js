@@ -1020,6 +1020,8 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
     if (firstTarget == null) firstTarget = S.latTarget[t];
     if (S.typeOff[t] > headOff) { headOff = S.typeOff[t]; headTarget = S.latTarget[t]; }
     byType[id] = {
+      measured: S.typeSucc[t] > 0 && S.typeLatW[t] > 0,
+      servedCount: Math.round(S.typeSucc[t]),
       p99Ms: S.typeLatW[t] > 0 ? Math.round(S.typeP99Sum[t] / S.typeLatW[t]) : 0,
       worstP99Ms: Math.round(S.typeWorst[t]),
       targetMs: S.latTarget[t],
