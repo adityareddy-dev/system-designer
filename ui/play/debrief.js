@@ -145,7 +145,7 @@ export function verdictLine(result, catalog, problem) {
   return `Over budget: about ${fmtUsd(result.slo.cost.perMonth)} a month against ${fmtUsd(result.slo.cost.budget)}.`;
 }
 
-function dial(total, reduced) {
+export function dial(total) {
   const r = 54, C = 2 * Math.PI * r;
   const arc = svg('circle', { cx: 70, cy: 70, r, fill: 'none', 'stroke-width': 10, 'stroke-linecap': 'round', class: 'pl-dial-arc', transform: 'rotate(-90 70 70)', 'stroke-dasharray': `0 ${C}` });
   const num = h('div', { class: 'pl-dial-n pl-display' + (total >= 1000 ? ' pl-dial-n--4' : ''), text: '0' });
@@ -153,17 +153,7 @@ function dial(total, reduced) {
     svg('svg', { viewBox: '0 0 140 140', width: 140, height: 140 }, svg('circle', { cx: 70, cy: 70, r, fill: 'none', 'stroke-width': 10, class: 'pl-dial-track' }), arc),
     h('div', { class: 'pl-dial-c' }, num, h('div', { class: 'pl-dial-of' }, 'points', h('br'), 'out of 1,000')));
   const set = (v) => { num.textContent = Math.round(v).toLocaleString('en-US'); arc.setAttribute('stroke-dasharray', `${(v / 1000) * C} ${C}`); };
-  if (reduced) set(total);
-  else {
-    const t0 = performance.now(), dur = 900;
-    const step = (t) => {
-      const k = Math.min(1, (t - t0) / dur);
-      set(total * (1 - (1 - k) ** 3));
-      if (k < 1 && root.isConnected) requestAnimationFrame(step);
-      else set(total);
-    };
-    requestAnimationFrame(step);
-  }
+  set(total);
   return root;
 }
 
@@ -324,7 +314,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   root.append(h('section', { class: 'pl-verdict-sec' + (near ? ' pl-verdict-sec--near' : '') },
     h('div', { class: 'pl-kicker', text: 'Step 5 · Debrief' }),
     h('h2', { class: 'pl-verdict-line', text: `${result.passed ? 'Passed' : 'Not passed'}: ${verdictLine(result, catalog, problem)}` }),
-    h('div', { class: 'pl-score-row' }, dial(Math.round(sc.total), reduced),
+    h('div', { class: 'pl-score-row' }, dial(Math.round(sc.total)),
       h('div', { class: 'pl-score-side' }, stars,
         passBadge,
         bestBadge,

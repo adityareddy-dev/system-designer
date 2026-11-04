@@ -334,6 +334,12 @@
 .pl-overlay { position: absolute; inset: 0; z-index: var(--z-modal); overflow-y: auto; background: var(--bg); padding: 72px 16px 48px; animation: pl-fade var(--dur-3) var(--ease-out); }
 .pl-root[data-step="debrief"] .pl-top { z-index: calc(var(--z-modal) + 1); }
 .pl-overlay--editorial { z-index: calc(var(--z-modal) + 1); }
+.pl-root .pl-overlay--debrief { bottom: calc(var(--pl-hud-h, 126px) + 24px); background: var(--bg); animation: none; }
+.pl-overlay--debrief .pl-footnote .pl-approx { white-space: normal; }
+.pl-root[data-step="debrief"] .pl-stage, .pl-root[data-step="debrief"] .pl-left, .pl-root[data-step="debrief"] .pl-right { visibility: hidden; }
+@media (max-width: 719px) {
+  .pl-root[data-step="debrief"] .pl-hud { top: auto; bottom: 8px; }
+}
 @keyframes pl-fade { from { opacity: 0; } to { opacity: 1; } }
 .pl-debrief, .pl-editorial { max-width: 900px; margin: 0 auto; }
 .pl-verdict-line { font: 700 26px var(--font-display); line-height: 1.2; margin: 0 0 18px; }
