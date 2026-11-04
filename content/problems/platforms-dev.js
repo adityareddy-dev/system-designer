@@ -276,7 +276,7 @@ const problems = [
   ],
   editorial: {
     summary: 'Accept the request, store it in a queue and answer quickly. Workers pull from the queue at a speed the providers allow, check that the message was not already sent and that the person agreed, then send. The queue absorbs bursts and outages.',
-    designs: [ { name: 'Queue, idempotent workers, three channels', why: 'The queue soaks up a campaign blast. An idempotency check makes retries safe. Three providers share the load, so one provider slowing or failing does not stop the rest.',
+    designs: [ { name: 'Queue, idempotent workers, three channels', why: 'The queue soaks up a campaign blast. An idempotency check makes retries safe. The reference uses two providers: push at about 10,000 sends/s and email at about 1,000 sends/s. One slowing or failing does not stop the other. Text delivery would need a separate SMS provider capped at about 100 sends/s, with its own queue and cost budget (approx.).',
       graph: { nodes: [S('apps', 'mobile-app', -60), S('schedule', 'cron-scheduler', 60), N('gw', 'api-gateway', X[1], 0, { units: 1 }),
         N('api', 'container-cluster', X[2], 0, { units: 8, zones: 2 }), N('q', 'queue', X[3], 0, { knobs: { retentionDays: 4 } }),
         N('dlq', 'dead-letter-queue', X[3], 130), N('wp', 'worker-pool', X[4], 0, { units: 40, zones: 2, knobs: { retries: 3, backoff: 'exponential-jitter', autoscale: { on: true, min: 30, max: 60, targetUtil: 0.6 } } }),

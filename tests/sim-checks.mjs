@@ -207,5 +207,21 @@ section('Reference designs');
   check('at least 90 percent of first reference designs pass their own day', ok / total >= 0.9, `${ok}/${total}`);
 }
 
+section('Backup credit requires a database association');
+{
+  const base = problemById.get('bank-ledger');
+  const p = { ...base, events: [{ id: 'data-corruption', at: '13:00' }, { id: 'compliance-audit', at: '18:00' }] };
+  const reference = base.editorial.designs[1].graph;
+  for (const linked of [false, true]) {
+    const graph = { ...reference, edges: reference.edges.filter((e) => linked || ((e.from ?? e[0]) !== 'backup' && (e.to ?? e[1]) !== 'backup')) };
+    const { r } = runDay(p, graph);
+    const corruption = r.events.find((e) => e.id === 'data-corruption');
+    const audit = r.events.find((e) => e.id === 'compliance-audit');
+    check(`backup association ${linked}: recovery credit matches configuration`, corruption.helpers.includes('backups') === linked);
+    check(`backup association ${linked}: audit credit matches configuration`, audit.helpers.includes('backups') === linked);
+    if (!linked) check('missing backup explains the database association before damage', corruption.story.hurt.startsWith('Backups is not associated with') && audit.story.hurt.startsWith('Backups is not associated with'));
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

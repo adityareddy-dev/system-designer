@@ -147,7 +147,13 @@ function helpersFor(S, inst, hurtIdx) {
     }
   }
   for (const id of inst.helperIds || []) add(id, (inst.def.counters || []).find((c) => c.element === id)?.how || '');
-  return list;
+  return list.filter((h) => h.id !== 'backups' || backupGaps(S, inst).length === 0);
+}
+
+function backupGaps(S, inst) {
+  const targets = inst.effects.filter((e) => e.op === 'corrupt').flatMap((e) => e.targets || []);
+  const data = targets.length ? targets.map((u) => S.model.nodes[u]) : S.model.nodes.filter((n) => n.customerData);
+  return data.filter((n) => !n.backedUp);
 }
 
 // Counters this design lacks for the event (an element not present, or a knob setting found nowhere useful).
@@ -620,7 +626,12 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
     if (mr) for (const n of model.nodes) { if (n.kind === 'source' || !n.hasCap) continue; if (mr[n.i] > tr) { tr = mr[n.i]; top = n.i; } }
     helped = top >= 0 && tr > 0 ? (tr <= 0.8 ? `Room to spare: ${nodeLabel(model.nodes[top])} peaked near ${busyPct(tr)} percent busy while this happened.` : `Sized for it: ${nodeLabel(model.nodes[top])} carried it, peaking near ${busyPct(tr)} percent busy.`) : 'Nothing in your design came close to a limit while this happened.';
   }
-  const offPath = (def.counters || []).filter((c) => c.element && counterApplies(inst, c) && model.present.has(c.element) && !helpers.some((h) => h.id === c.element));
+  const backupMissing = backupGaps(S, inst);
+  if ((inst.id === 'data-corruption' || inst.id === 'compliance-audit') && backupMissing.length) {
+    const association = `Backups is not associated with ${joinNames(backupMissing.map(nodeLabel))}. Connect Backups to each database to enable its point-in-time recovery.`;
+    hurt = `${association} ${hurt || ''}`.trim();
+  }
+  const offPath = (def.counters || []).filter((c) => c.element !== 'backups' && c.element && counterApplies(inst, c) && model.present.has(c.element) && !helpers.some((h) => h.id === c.element));
   if (offPath.length) helped = `${helped ? helped + ' ' : ''}${joinNames(offPath.map((c) => catalog.elementById.get(c.element)?.name || c.element))}: present but not on this request path.`;
   if (helpers.some((h) => h.id === 'queue') && (inst.stats?.maxBacklog || 0) > 0) helped = `${helped || ''} The queue held up to about ${fmtCount(inst.stats.maxBacklog)} requests waiting during this event; that measures buffering, not how many failures it prevented.`.trim();
   if (inst.id === 'slow-dependency' && inst.stats) {
