@@ -682,7 +682,7 @@
 .pl-trace summary { cursor: pointer; font-weight: 600; }
 .pl-trace label { display: block; margin-top: 10px; }
 .pl-trace p { margin: 8px 0 0; }
-@media (max-width: 719px) { .pl-trace { top: 64px; left: 8px; width: calc(100% - 16px); max-height: 30%; } }
+@media (max-width: 719px) { .pl-trace { top: calc(var(--pl-hud-end, 150px) + 8px); left: 8px; width: calc(100% - 16px); max-height: 30%; } }
 
 /* round 4: phone debrief and intro polish */
 @media (max-width: 480px) {

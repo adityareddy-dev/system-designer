@@ -111,7 +111,8 @@ export default {
           "highlight": "regional-lb",
           "waitFor": {
             "action": "place",
-            "type": "regional-lb"
+            "type": "regional-lb",
+            "path": ["users", "app"]
           }
         },
         {
@@ -125,7 +126,8 @@ export default {
           "highlight": "cache",
           "waitFor": {
             "action": "place",
-            "type": "cache"
+            "type": "cache",
+            "path": ["app", "db"]
           }
         },
         {

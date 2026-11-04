@@ -15,6 +15,7 @@ import { renderEditorial } from './editorial.js';
 import { createTrafficPanel, DEFAULT_TRAFFIC } from './traffic-panel.js';
 import { createRouteTrace } from './route-trace.js';
 import { renderCheckpointForm } from './correctness.js';
+import { introPathHolds } from './intro-path.js';
 
 const GRID = 20;
 let connectTipShown = false; // the how-to-connect line shows once per visit outside lessons
@@ -262,6 +263,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const hb = box(hud.el), tb = box(top);
     if (isPhone()) {
       if (hb) t = Math.max(t, hb.bottom - r.top);
+      const traceBox = box(root.querySelector('.pl-trace'));
+      if (traceBox) t = Math.max(t, traceBox.bottom - r.top);
       if (tb) t = Math.max(t, tb.bottom - r.top);
       b = 72;
       // an open parts drawer, and the Add component button riding on its edge, are not free canvas either
@@ -286,7 +289,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     return { l, t, r: rr, b, w: r.width, h: r.height };
   }
   function fitView(animate = true, minZoom = null) {
-    if (S.connectFrom && isPhone()) return;
+    if (S.connectFrom) return;
     const a = freeArea();
     const pad = isPhone() ? 20 : 36;
     // a big build zooms out far enough to sit between the panels instead of running underneath them
@@ -403,6 +406,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   // A part placed on its own gets one line on how to connect it: the first time in a session, and every time in a lesson.
   function connectCoach(id, el) {
+    if (waiters.some(w => w.spec.path && w.spec.type === el.id)) { S.insertionRetry?.(); return; }
     const g = graph();
     if (g.edges.some((e) => e.from === id || e.to === id)) return;
     if (connectTipShown && !isLesson) return;
@@ -460,6 +464,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (structureBlocked()) return;
     try { S.sim.disconnect(id); } catch (e) { toast(e.message, 'warn'); return; }
     commit(); snd('remove');
+    note('connect', {});
   }
   function duplicate(id) {
     if (structureBlocked()) return;
@@ -536,8 +541,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function startConnect(from) {
     S.connectFrom = from;
-    // Keep the phone sheet's space reserved while the player chooses a target.
-    if (isPhone()) scene.stopCamera();
+    // Clear the target area and stop any fit already moving the phone diagram.
+    if (isPhone()) { scene.stopCamera(); inspector.hide(); }
     else inspector.fold(true);
     root.classList.add('pl-connecting');
     showCaption('Now tap the part it should send requests to. Esc cancels.', 0);
@@ -700,6 +705,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function note(action, detail) {
     for (let i = waiters.length - 1; i >= 0; i--) {
       const w = waiters[i];
+      if (w.spec.path) {
+        if (alreadyHolds(w.spec)) { waiters.splice(i, 1); w.resolve(); }
+        continue;
+      }
       const okType = !w.spec.type || w.spec.type === detail || w.spec.type === detail?.type;
       const okKnob = !w.spec.knob || w.spec.knob === detail?.knob;
       const okMin = w.spec.min == null || Number(detail?.value) >= w.spec.min;
@@ -710,7 +719,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function alreadyHolds(spec) {
     try {
       const g = graph();
-      if (spec.action === 'place') return g.nodes.some((n) => n.type === spec.type && !n.locked);
+      if (spec.action === 'place') return introPathHolds(g, spec);
       if (spec.action === 'connect') return false;
       if (spec.action === 'knob') {
         return g.nodes.some((n) => {
@@ -764,9 +773,21 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         const paused = (held || S.sim.phase === 'running') && b.pause !== false;
         if (paused) pause();
         held = false;
-        showCaption(text, 0);
+        const showInstruction = () => showCaption(text, 0, b.waitFor.path ? [{ label: 'Retry insertion', onClick: () => {
+          const spec = b.waitFor, g = graph();
+          const edge = g.edges.find(e => e.from === spec.path[0] && e.to === spec.path[1] && e.kind === 'flow');
+          const loose = g.nodes.find(n => n.type === spec.type && !n.locked && !g.edges.some(e => e.from === n.id || e.to === n.id));
+          if (!edge || !loose) { toast('Drop the part onto the line, or connect both sides and remove the original line.', 'info'); return; }
+          const pos = makeRoomOnEdge(edge.id);
+          S.sim.moveNode(loose.id, pos.x, pos.y);
+          spliceInto(loose.id, loose.type, edge.id);
+          commit(); note('place', loose.type); fitView();
+        } }] : []);
+        S.insertionRetry = b.waitFor.path ? showInstruction : null;
+        showInstruction();
         const stopKnob = b.waitFor.action === 'knob' ? pointAtKnob(b.waitFor.knob) : null;
         await waitFor(b.waitFor);
+        S.insertionRetry = null;
         stopKnob?.();
         if (mode === 'intro' && S.speed === 0.5) { try { setSpeed(1); } catch { /* keep going */ } }
         if (paused && !S.destroyed) resume();
@@ -1617,7 +1638,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const refitSoon = () => {
     clearTimeout(refitT);
     refitT = setTimeout(() => {
-      if (S.destroyed || !(S.sim.phase !== 'build' || isLesson) || !nodesHidden()) return;
+      if (S.destroyed || S.connectFrom || !(S.sim.phase !== 'build' || isLesson) || !nodesHidden()) return;
       fitView(true);
       // a big diagram that still does not fit between the panels gets the room the open traffic panel was using, and then
       // zooms out a little further than usual so the whole of it shows
@@ -1632,6 +1653,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   try {
     hudObs = new ResizeObserver(() => { syncHud(); refitSoon(); });
     hudObs.observe(hud.el); hudObs.observe(root); hudObs.observe(top);
+    const traceEl = root.querySelector('.pl-trace');
+    if (traceEl) hudObs.observe(traceEl);
     // on phones the diagram is fitted above the parts drawer whenever it opens or closes
     let drawerWas = toolbar.el.classList.contains('pl-toolbar--open');
     toolbarObs = new MutationObserver(() => {
