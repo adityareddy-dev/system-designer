@@ -60,6 +60,13 @@ function unservedMessage(S, t) {
   const stop = stops.find((u) => nodes[u].kind === 'compute') ?? stops[0];
   const blocker = stop != null ? outAll[stop].filter((e) => e.kind === 'flow').map((e) => e.ti).find((v) => !H(v, t)) : undefined;
   const handled = (u) => joinNames(catalog.requests.filter((rt, i) => i !== model.attackT && H(u, i)).map((rt) => rt.plural)) || 'nothing';
+  const required = (S.problem.requires || {})[type.id] || [];
+  if (required.length) {
+    const path = required.map((group) => group.map((id) => lowerName(catalog.elementById.get(id)?.name || id)).join(' or ')).join(' and ');
+    const from = stop != null ? label(stop) : 'your servers';
+    const elsewhere = nodes.some((n) => required.some((g) => g.includes(n.el.id)) && !seen[n.i]);
+    return { msg: `${cap1(plural)} stop at ${from}. Complete their path from ${from} through ${path}.${elsewhere ? ' The required part on another branch does not receive these requests.' : ''}`, nodeId: stop != null ? nodes[stop].id : undefined, elementId: required[0][0] };
+  }
   if (finishersHere.length && stop != null) {
     const f = finishersHere[0];
     if (blocker != null) {

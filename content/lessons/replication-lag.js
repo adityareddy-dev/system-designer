@@ -9,12 +9,12 @@ export default {
     {
       "kind": "read",
       "title": "Many readers, one writer",
-      "text": "A busy database can keep copies called replicas. All changes go to the primary, which sends them on. Replicas answer reads, so one database becomes many. The copies arrive a moment later, so a replica can be slightly out of date.",
+      "text": "A busy database can keep copies called replicas. All changes go to the primary, which sends them on. Replicas answer reads, so one database becomes many. With asynchronous replication, changes arrive later, so a replica can be slightly out of date.",
       "icon": "el.sql-replica"
     },
     {
       "kind": "demo",
-      "prompt": "Reads are too much for the primary. Add a read replica and send reads to it.",
+      "prompt": "First, place a Read replica beside the SQL database. Connect SQL database to Read replica to copy changes. Next, connect App servers to Read replica to route reads, keeping App servers connected to SQL database for writes. Finally, select Read replica and increase its replica count to 4. Keep SQL database at or below 70 percent busy for a simulated minute. Open Hint for the sizing calculation.",
       "setup": {
         "palette": [
           "sql-replica"
@@ -90,12 +90,12 @@ export default {
         "op": "<=",
         "value": 0.7
       },
-      "hint": "Place a Read replica, connect the primary to it, then connect the servers to it as well."
+      "hint": "A dropped replica needs two links: SQL database → Read replica copies changes; App servers → Read replica carries reads. Keep App servers → SQL database. At peak, 9,000 × 92% = 8,280 reads/s and 9,000 × 8% = 720 writes/s. At size M, the primary handles ≈ 8,000 reads/s or ≈ 2,000 writes/s. Writes alone use 720 ÷ 2,000 = 36%. This model shares reads by capacity across the primary and replicas. With 4 replicas, the primary gets about one fifth of reads: 8,280 ÷ 5 ÷ 8,000 ≈ 21%. Total primary load is ≈ 36% + 21% = 57%, leaving room below 70%. Select Read replica and set its replica count to 4, keeping both databases at size M."
     },
     {
       "kind": "read",
       "title": "Stale on purpose",
-      "text": "Replication is usually asynchronous: the primary says \"done\" and sends the change later. That is fast, but a read right after your own write can show the old value. Normal lag is about 100 ms (approx.); in trouble it can reach many seconds."
+      "text": "Replication is usually asynchronous: the primary says \"done\" without waiting for replicas to acknowledge the change. That is fast, but a read right after your own write can show the old value. Normal lag is about 100 ms (approx.); in trouble it can reach many seconds. Synchronous replication waits for the required replicas to acknowledge before confirming a write, adding latency. Whether a replica can serve that write immediately depends on whether its acknowledgement means received, durably stored or applied."
     },
     {
       "kind": "numbers",
@@ -154,5 +154,5 @@ export default {
       "why": "Every write still has to be applied by the primary."
     }
   ],
-  "takeaway": "Replicas scale reads; remember they are always slightly behind."
+  "takeaway": "Replicas scale reads. Asynchronous replicas can lag; synchronous replication waits for the required acknowledgements before confirming a write, trading latency for stronger guarantees."
 };

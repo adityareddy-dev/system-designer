@@ -10,8 +10,10 @@ import { createFx } from './fx.js';
 import { createInput, PORT_R, DND_TYPE, DND_PREFIX } from './input.js';
 import { makeLut, edgeCurve, HALF, niceCeil } from './geom.js';
 import { createGrid } from './grid.js';
+import { pathsThrough } from './diagram.js';
 
 export { DND_TYPE, DND_PREFIX };
+export { regionLayout } from './diagram.js';
 // how near a line a dropped part must land to be inserted into it: at least about a part's width in world units, and at
 // least 40 screen px so it stays easy to hit when the diagram is zoomed out
 const EDGE_DROP_MIN = 64, EDGE_DROP_PX = 40, EDGE_DROP_MAX = 150;
@@ -85,6 +87,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     kit: () => kit,
     reduced: () => reduced,
     highContrast: () => highContrast,
+    pathEdge: id => !!pathFocus?.edges.has(id),
     element: type => cat.elementById.get(type),
     shapeOf: catId => cat.shapeByCat.get(catId) || 'rounded-square',
     regionShort: id => (id ? cat.regionShort.get(id) || String(id).toUpperCase() : ''),
@@ -115,6 +118,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   // layers
   const world = new PIXI.Container();
   const gridLayer = new PIXI.Container();
+  const regionLayer = new PIXI.Container();
+  let isolatePaths = false, regionGroups = false, pathFocus = null;
   const overlayLayer = new PIXI.Container(); overlayLayer.alpha = 0.42;
   const glowLayer = new PIXI.Container();
   const edgeLayer = new PIXI.Container();
@@ -122,7 +127,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const nodeLayer = new PIXI.Container();
   const fxLayer = new PIXI.Container();
   const uiLayer = new PIXI.Container();
-  world.addChild(gridLayer, overlayLayer, glowLayer, edgeLayer, particleLayer, nodeLayer, fxLayer, uiLayer);
+  world.addChild(gridLayer, regionLayer, overlayLayer, glowLayer, edgeLayer, particleLayer, nodeLayer, fxLayer, uiLayer);
   app.stage.addChild(world);
 
   const camera = createCamera(world);
@@ -133,6 +138,34 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const particles = createParticles(PIXI, particleLayer, env);
   const fx = createFx(PIXI, fxLayer, env);
   const grid = createGrid(PIXI, gridLayer, env);
+
+  function drawRegions() {
+    for (const child of regionLayer.removeChildren()) child.destroy({ children: true });
+    if (!regionGroups || !graph) return;
+    const groups = new Map();
+    const byId = new Map(graph.nodes.map(n => [n.id, n]));
+    for (const n of graph.nodes) {
+      const region = n.region || 'us';
+      if (!groups.has(region)) groups.set(region, []);
+      groups.get(region).push(n);
+    }
+    const label = (text, x, y) => {
+      const t = new PIXI.Text({ text, style: { fontFamily: 'Inter', fontSize: 14, fill: P.text } });
+      t.position.set(x, y); regionLayer.addChild(t);
+    };
+    for (const [region, ns] of groups) {
+      const x = Math.min(...ns.map(n => n.x)) - 90, y = Math.min(...ns.map(n => n.y)) - 100;
+      const w = Math.max(...ns.map(n => n.x)) - x + 90, h = Math.max(...ns.map(n => n.y)) - y + 90;
+      regionLayer.addChild(new PIXI.Graphics().roundRect(x, y, w, h, 16).fill({ color: P.accent, alpha: 0.04 }).stroke({ color: P.accent, alpha: 0.4, width: 2 }));
+      label(catalog.world.regions.find(r => r.id === region)?.name || region, x + 12, y + 10);
+    }
+    for (const e of graph.edges) {
+      const a = byId.get(e.from), b = byId.get(e.to);
+      if (!a || !b || (a.region || 'us') === (b.region || 'us')) continue;
+      const ms = catalog.world.rttMs[a.region || 'us']?.[b.region || 'us'];
+      if (ms != null) label(`${env.regionShort(a.region || 'us')} → ${env.regionShort(b.region || 'us')}: ≈${ms} ms RTT`, (a.x + b.x) / 2, (a.y + b.y) / 2 - 24);
+    }
+  }
 
   // ---- interaction drawings: port ring, rubber band, guides, ghost ----
   const portRing = new PIXI.Graphics(); portRing.visible = false;
@@ -521,6 +554,11 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     if (viewChanged || geo) cull();
     const m = applyFlows(dt, now);
     edges.update(dt);
+    for (const v of nodes.list) v.c.alpha = pathFocus && !pathFocus.nodes.has(v.id) ? 0.16 : 1;
+    for (const v of edges.list) v.g.alpha = pathFocus && !pathFocus.edges.has(v.id) ? 0.1 : 1;
+    particleLayer.visible = !pathFocus;
+    glowLayer.visible = !pathFocus;
+    fxLayer.visible = !pathFocus;
     if (reduced) {
       if (particles.count) particles.clear();
     } else {
@@ -601,6 +639,12 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   raf = requestAnimationFrame(frame);
 
   const api = {
+    setPathIsolation(on) {
+      isolatePaths = !!on;
+      pathFocus = isolatePaths && selected && graph ? pathsThrough(graph, selected) : null;
+      edges.redrawAll();
+    },
+    setRegionGroups(on) { regionGroups = !!on; drawRegions(); },
     sync(g, fv) {
       graph = g || null;
       if (fv !== undefined && fv !== flowVersion) { flowVersion = fv; map = null; }
@@ -610,6 +654,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       nodes.setValidation(validation);
       nodes.setSelection(selected && nodes.views.has(selected) ? selected : null);
       edges.updateGeometry(nodes.views);
+      pathFocus = isolatePaths && selected ? pathsThrough(graph, selected) : null;
+      drawRegions();
       if (autoFit && graph?.nodes?.length) { autoFit = false; api.fit(80, false); }
     },
     setFlows(frameData, opts = {}) {
@@ -628,10 +674,12 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     },
     setSelection(id) {
       selected = id || null;
+      pathFocus = isolatePaths && selected && graph ? pathsThrough(graph, selected) : null;
       nodes.setSelection(selected);
       if (!selected && !nodes.hovered) ui.setPortRing(null);
       else if (selected && editable) ui.setPortRing(nodes.views.get(selected) || null, false);
     },
+    setTrace(edgeIds) { edges.setTrace(edgeIds); },
     // type, then world x, y (snapped). Leave x, y out to have the ghost follow the pointer.
     setGhost(type, x, y) {
       if (!type) { ghostClear(); return; }
@@ -683,6 +731,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         fx.applyKit(kit);
         if (ghost.view) { const t = ghost.type, f = ghost.follow, gx = ghost.x, gy = ghost.y; ghostView(null); ghostView(t); ghost.follow = f; ghostMove(gx, gy); }
         buildOverlay();
+        drawRegions();
         for (const [, f] of flashes) f.color = severityColor(P, f.severity);
         for (const v of nodes.list) if (v.event) nodes.setEvent(v, null);
         flashDirty = true;
@@ -722,6 +771,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     },
     zoomBy(factor, cx, cy) { const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); },
     panBy(dx, dy) { camera.panBy(dx, dy); },
+    stopCamera() { camera.stop(); },
     screenToWorld(x, y) { return camera.screenToWorld(x, y); },
     worldToScreen(x, y) { return camera.worldToScreen(x, y); },
     // Extra: the connection whose middle part lies under a world point, for drop-to-insert.

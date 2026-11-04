@@ -1,0 +1,25 @@
+// Named loads and event durations remain distinct from grading thresholds.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { createCatalog } from '../sim/catalog.js';
+import { createSim } from '../sim/engine.js';
+import { problemById } from '../content/problems/index.js';
+import { loadSummary, gradingContract } from '../ui/play/load-labels.js';
+const short = problemById.get('url-shortener');
+assert.match(loadSummary({ ...short, warmUp: true, normalPeakRps: 5000, requirements: { ...short.requirements, peakRps: 1250 } }), /Warm-up peak:.*Normal peak:.*5k/);
+assert.match(gradingContract(short), /85%.*216 slow minutes.*80%/);
+const ticket = problemById.get('concert-ticket-drop');
+assert.match(loadSummary(ticket), /600 req\/s.*15k req\/s/);
+assert.match(gradingContract(ticket), /95%.*72 slow minutes.*80%/);
+const read = name => JSON.parse(fs.readFileSync(new URL('../catalog/' + name + '.json', import.meta.url)));
+const catalog = createCatalog({ elements: read('elements'), requests: read('requests'), events: read('events'), world: read('world') });
+const sim = createSim({ catalog, problem: ticket });
+sim.loadGraph(ticket.editorial.designs[0].graph);
+sim.start(); sim.advance(86400000);
+const ev = sim.result().events.find(e => e.id === 'flash-crowd');
+assert.equal(ev.durations.spikeSec, 900);
+assert.equal(ev.durations.recoverySec, 1800);
+assert.equal(ev.durations.rampSec, 30);
+assert.ok(ev.durations.overloadSec >= 0 && ev.durations.overloadSec <= ev.durations.observedSec);
+assert.ok(ev.durations.observedSec > ev.durations.spikeSec + ev.durations.recoverySec);
+console.log('Named load, grading and duration checks passed.');

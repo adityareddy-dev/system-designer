@@ -1,0 +1,26 @@
+// Regression checks for mandatory speed gates and request-path advice.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { createCatalog } from '../sim/catalog.js';
+import { createSim } from '../sim/engine.js';
+import { problemById } from '../content/problems/index.js';
+import { missedConcepts } from '../ui/play/debrief.js';
+const read = (name) => JSON.parse(fs.readFileSync(new URL('../catalog/' + name + '.json', import.meta.url)));
+const catalog = createCatalog({ elements: read('elements'), requests: read('requests'), events: read('events'), world: read('world') });
+const base = problemById.get('url-shortener');
+const problem = { ...base, events: [], requirements: { ...base.requirements, peakRps: 10, mix: { read: 0.999, write: 0.001 }, latencyP99Ms: { read: 1000, write: 1 }, budgetPerMonth: 1000000 } };
+const sim = createSim({ catalog, problem, seed: 'speed-gate' });
+sim.loadGraph(base.editorial.designs[0].graph);
+sim.start(); sim.advance(86400000);
+const result = sim.result();
+assert.equal(result.checks.latency, false);
+assert.equal(result.nextStep.kind, 'latency');
+assert.match(result.nextStep.text, /writes/i);
+assert.match(result.nextStep.text, /costliest processing hop/);
+assert.doesNotMatch(result.nextStep.text, /cache hot reads/i);
+assert.ok(result.nextStep.nodeId);
+assert.ok(result.slo.latency.byType.write.costlyHop.p99Ms > 0);
+assert.notEqual(result.nextStep.lesson, 'caching');
+const lessons = ['caching', 'requests-and-latency', 'sharding', 'autoscaling'].map((id) => ({ id, title: id }));
+assert.ok(missedConcepts(result, catalog, problem, lessons).some((x) => x.check === 'latency' && x.lessonId === result.nextStep.lesson));
+console.log('Debrief speed gate and request-path advice passed.');

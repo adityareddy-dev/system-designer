@@ -14,7 +14,7 @@ export default {
     },
     {
       "kind": "demo",
-      "prompt": "A burst of writes is more than the database can take. Put a queue and workers in front of it.",
+      "prompt": "A burst of writes is more than the database can take. Put a queue and workers in front of it. Acceptance means the queue took the job, not that it finished. Completion lag shows the oldest waiting job; expiry risk compares its age with the job deadline. The model tracks traffic as rates rather than individual jobs.",
       "setup": {
         "palette": [
           "queue",
@@ -115,7 +115,12 @@ export default {
         {
           "label": "Backlog of 1 million at 2,000 a second",
           "value": "≈ 8 minutes to clear",
-          "how": "1,000,000 / 2,000 / 60"
+          "how": "With no new arrivals: 1,000,000 / 2,000 / 60 ≈ 8.3 minutes."
+        },
+        {
+          "label": "1,500 arrivals and 2,000 completed a second",
+          "value": "≈ 33 minutes to clear 1 million",
+          "how": "Arrivals minus service: 1,500 - 2,000 = -500 jobs a second. Net drain is 500/s, so 1,000,000 / 500 / 60 ≈ 33.3 minutes. At equal rates the backlog stays; with more arrivals it grows."
         }
       ]
     },

@@ -249,6 +249,8 @@
 .pl-goal--done { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 18%, var(--surface-strong)); }
 .pl-goal-bar { width: 80px; height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .pl-goal-bar i { display: block; height: 100%; background: var(--ok); }
+.pl-root[data-mode="lesson"] .pl-goal > .pl-ic, .pl-root[data-mode="lesson"] .pl-goal-bar { flex-shrink: 0; }
+.pl-root[data-mode="lesson"] .pl-hud.pl-hud--queues .pl-m-sub { display: block; white-space: normal; overflow: visible; }
 .pl-caption { position: absolute; bottom: calc(var(--pl-hud-h, 126px) + 24px); left: 50%; transform: translateX(-50%); z-index: var(--z-drawer); max-width: min(520px, calc(100% - 32px)); padding: 10px 18px; font-size: 15px; text-align: center; }
 .pl-slow { position: absolute; top: calc(var(--pl-hud-end, 150px) + 8px); left: 50%; transform: translateX(-50%); z-index: var(--z-drawer); max-width: min(480px, calc(100% - 32px)); padding: 6px 14px; font-size: 13px; text-align: center; border-radius: 999px; background: var(--surface-solid); border: 1px solid var(--line, currentColor); pointer-events: none; }
 .pl-slow[hidden] { display: none; }
@@ -283,6 +285,10 @@
 .pl-ncard { padding: 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-2); background: var(--surface-solid); }
 .pl-nlabel { font-weight: 600; margin-bottom: 4px; }
 .pl-nout { font: 600 22px var(--font-display); margin-bottom: 4px; }
+.pl-ncontrols { display: flex; align-items: center; gap: 12px; }
+.pl-ncontrols .pl-range { flex: 1; min-width: 0; }
+.pl-nentry { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.pl-ninput { width: 110px; min-width: 0; }
 .pl-nscale { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-3); font-family: var(--font-mono); }
 .pl-nresult { margin-top: 8px; }
 .pl-nworked { font-size: 14px; }
@@ -423,7 +429,7 @@
 @media (min-width: 720px) {
   .pl-root[data-mode="lesson"] .pl-left { width: 196px; top: 12px; bottom: auto; max-height: calc(100% - var(--pl-hud-h, 126px) - 40px); display: flex; }
   .pl-root[data-mode="lesson"] .pl-toolbar { height: auto; max-height: 100%; }
-  .pl-root[data-mode="lesson"] .pl-goal > span:not(.pl-goal-bar) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .pl-root[data-mode="lesson"] .pl-goal > span:not(.pl-goal-bar) { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
   .pl-root[data-mode="lesson"] .pl-right { width: 260px; top: 56px; }
   .pl-root[data-mode="lesson"] .pl-hud { grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; padding: 8px 10px; }
   .pl-root[data-mode="lesson"] .pl-legend, .pl-root[data-mode="lesson"] .pl-sparks, .pl-root[data-mode="lesson"] .pl-m-bar { display: none; }
@@ -672,6 +678,12 @@
   .pl-toolbar--slim .pl-cattabs { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; overflow: hidden; pointer-events: none; opacity: 0.75; }
 }
 
+.pl-trace { position: absolute; top: 64px; left: 304px; width: min(340px, calc(100% - 620px)); max-height: 35%; overflow: auto; z-index: var(--z-panel); padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-solid); font-size: 12px; }
+.pl-trace summary { cursor: pointer; font-weight: 600; }
+.pl-trace label { display: block; margin-top: 10px; }
+.pl-trace p { margin: 8px 0 0; }
+@media (max-width: 719px) { .pl-trace { top: 64px; left: 8px; width: calc(100% - 16px); max-height: 30%; } }
+
 /* round 4: phone debrief and intro polish */
 @media (max-width: 480px) {
   /* "Try this next": icon and heading on one row, the text full width, the buttons in a row underneath */
@@ -693,3 +705,11 @@
   /* the intro caption may use four lines while a sheet is open */
   .pl-root[data-mode="intro"].pl-has-selection .pl-caption-t, .pl-root[data-mode="intro"]:has(.pl-toolbar--open) .pl-caption-t { -webkit-line-clamp: 4; line-clamp: 4; }
 }
+
+/* Diagram inspection controls keep panels independently collapsible. */
+.pl-root.pl-diagram-large .pl-left, .pl-root.pl-diagram-large .pl-right, .pl-root.pl-parts-hidden .pl-left, .pl-root.pl-details-hidden .pl-right { display: none; }
+.pl-root .pl-tools { flex-wrap: wrap; }
+
+.pl-diagram-options { position: relative; }
+.pl-diagram-options-body { position: absolute; right: 0; top: 100%; display: grid; gap: 6px; padding: 10px; width: 210px; background: var(--surface-solid); border: 1px solid var(--border); border-radius: var(--radius-2); }
+.pl-diagram-options-body [aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); }

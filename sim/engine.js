@@ -2,6 +2,7 @@
 import { hashSeed, mulberry32 } from './rng.js';
 import { SimError, connectRule, coerceKnob, makeNode, normalizeGraphInput } from './graph.js';
 import { compile, refreshKnobs, KIND, M } from './route.js';
+import { traceRoute } from './trace.js';
 import { prepareNode, forwardPass, backwardPass, queueReturns, computeEdgeRtt } from './flow.js';
 import { makeInstance, startEvent, applyEffects, checkCompliance } from './events.js';
 import { newCounters, computeCost, nodeLabel } from './cost.js';
@@ -149,7 +150,7 @@ function blankState() {
     shiftShare: -0, shiftRegion: -1, usdTickExtra: -0, forceAttackLanes: false,
     lostWrites: -0, duplicates: -0, staleReads: -0, readsServed: -0, conflicts: -0, dupQueue: -0, attackDropped: -0, attackOffered: -0,
     offeredDay: -0, successDay: -0, latOk: -0, latW: -0, writesDay: -0, worstP99: -0,
-    typeOff: null, typeSucc: null, typeLatOk: null, typeLatW: null, typeP99Sum: null, typeWorst: null,
+    typeOff: null, typeSucc: null, typeLatOk: null, typeLatW: null, typeP99Sum: null, typeWorst: null, typeSlowHop: null,
     minOff: null, minSucc: null, hourOff: null, hourSucc: null, hourP99: null, hourW: null,
     complianceChecked: null, interventions: null, result: null, counters: null, firstBreak: null, tickNow: null,
     laneOff: null, laneSucc: null, laneP99: null, lastStorageGb: null, stateObj: null, frameDirty: false, rttE: null,
@@ -435,7 +436,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     S.dupQueue = 0; S.attackDropped = 0; S.attackOffered = 0;
     S.offeredDay = 0; S.successDay = 0; S.latOk = 0; S.latW = 0; S.writesDay = 0;
     S.typeOff = new Float64Array(T); S.typeSucc = new Float64Array(T);
-    S.typeLatOk = new Float64Array(T); S.typeLatW = new Float64Array(T); S.typeP99Sum = new Float64Array(T); S.typeWorst = new Float64Array(T);
+    S.typeLatOk = new Float64Array(T); S.typeLatW = new Float64Array(T); S.typeP99Sum = new Float64Array(T); S.typeWorst = new Float64Array(T); S.typeSlowHop = Array.from({ length: T }, () => ({ nodeId: null, p99Ms: 0 }));
     S.minOff = new Float64Array(1440); S.minSucc = new Float64Array(1440);
     S.hourOff = new Float64Array(24); S.hourSucc = new Float64Array(24); S.hourP99 = new Float64Array(24); S.hourW = new Float64Array(24);
     S.worstP99 = 0;
@@ -948,7 +949,16 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         const w = sc * dt;
         X.latW += w; X.typeLatW[t] += w; X.typeP99Sum[t] += p * w;
         if (p <= X.latTarget[t]) { X.latOk += w; X.typeLatOk[t] += w; } else tn.latBad += w;
-        if (p > X.typeWorst[t]) X.typeWorst[t] = p;
+        if (p > X.typeWorst[t]) {
+          X.typeWorst[t] = p;
+          const hop = X.typeSlowHop[t];
+          hop.nodeId = null; hop.p99Ms = 0;
+          for (const n of nodes) {
+            if (n.kind === 'source' || !(X.IN[n.i * LN + L] > 0)) continue;
+            const ms = X.hop99[n.i] + (X.isWrite[t] ? n.writeAdd * 2.5 : 0);
+            if (hop.nodeId == null || ms > hop.p99Ms) { hop.nodeId = n.id; hop.p99Ms = ms; }
+          }
+        }
         if (p > p99Now) p99Now = p;
         // the type's p99 now, averaged over user regions by traffic (the same figure the debrief reports per type)
         X.typeP99Now[t] += p * w;
@@ -1086,7 +1096,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       if (!st) {
         st = inst.stats = { failed: 0, offered: 0, peakOffered: 0, ticks: 0, lowTicks: 0, badTicks: 0, nodeFail: new Float64Array(N), nodeOver: new Float64Array(N), maxRho: new Float64Array(N),
           maxP99: 0, stale: 0, dup: 0, lost: inst.pendingLost || 0, attackOff0: X.attackOffered, attackDrop0: X.attackDropped, costExtra: 0, maxBacklog: 0, maxWait: 0,
-          maxInfP99: 0, capLost: 0, baseLoad: new Float64Array(N), maxLoad: new Float64Array(N), nodeIn: new Float64Array(N), maxWaste: 0, wasteNode: -1, N, latBad: 0 };
+          maxInfP99: 0, capLost: 0, timedOut: new Uint8Array(N), baseLoad: new Float64Array(N), maxLoad: new Float64Array(N), nodeIn: new Float64Array(N), maxWaste: 0, wasteNode: -1, N, latBad: 0 };
         for (let u = 0; u < N; u++) st.baseLoad[u] = inst.baseLoad && inst.baseLoad.length === N ? inst.baseLoad[u] : X.realInPrev[u];
       }
       if (st.N !== N) continue;
@@ -1109,6 +1119,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         if (X.cap[u] > 0 && X.rho[u] > st.maxRho[u]) st.maxRho[u] = X.rho[u];
         if (X.realIn[u] > st.maxLoad[u]) st.maxLoad[u] = X.realIn[u];
         if (X.llLoss[u] > st.capLost) st.capLost = X.llLoss[u];
+        if (X.realIn[u] > 0 && X.tmoAny[u]) st.timedOut[u] = 1;
         const ak = X.atkIn[u];
         if (ak > 0 && nodes[u].hAtk && nodes[u].kind !== 'filter' && nodes[u].kind !== 'source' && !nodes[u].el.params?.absorbsAttackShare) {
           const w = ak / (ak + X.realIn[u]);
@@ -1478,6 +1489,12 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       p99Ms: Math.round(S.hop99[n.i] * 10) / 10,
       failRps: Math.round(S.failedNow[n.i] * 10) / 10,
       queueDepth: S.frame ? Math.round(S.frame.nodeQueue[n.i]) : 0,
+      ...(n.kind === 'queue' ? {
+        oldestJobAgeSec: S.qAge[n.i] || 0,
+        queueDrainRps: S.qHist.get(n.id)?.procAvg || 0,
+        queueAcceptedRps: (() => { const q = S.qHist.get(n.id); return q && q.lastK >= 0 ? (q.A[q.lastK + 1] - q.A[q.lastK]) / S.dt : 0; })(),
+        queueLimitSec: S.qHist.get(n.id)?.limitSec || QUEUE_LATE_SEC,
+      } : {}),
       units: n.elastic ? 1 : Math.round(S.unitsCur[n.i]),
     }));
     st.edges = m.edges.map((e) => {
@@ -1652,6 +1669,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       return validateModel(S);
     },
     estimate,
+    trace(type) { ensureModel(); return traceRoute(S.model, type); },
     start() {
       if (phase === 'running') return;
       if (phase === 'done' || phase === 'paused') api.reset();

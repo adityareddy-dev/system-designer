@@ -1,4 +1,5 @@
 // The requirements card: always visible, collapsible on phones.
+import { loadSummary, gradingContract } from './load-labels.js';
 import { h, iconEl, fmtNum, fmtUsd, approx } from './util.js';
 import { shapeSvg } from '../../assets/shapes.js';
 import { latencyTarget } from '../../sim/engine.js';
@@ -24,7 +25,8 @@ export function createReqCard(host, { catalog, problem }) {
     iconEl(iconId, 16), h('span', { class: 'pl-req-k', text: label }), h('span', { class: 'pl-req-v' }, val));
   const rows = h('div', { class: 'pl-req-rows' });
   rows.append(row('ui.users', 'Users', r.users || '–'));
-  rows.append(row('ui.rps', 'Peak load', [approx(fmtNum(r.peakRps) + ' req/s')]));
+  rows.append(row('ui.rps', problem.warmUp ? 'Warm-up peak' : 'Normal peak', [approx(fmtNum(r.peakRps * (problem.traffic?.curve === 'drop' ? 0.1 : 1)) + ' req/s')]));
+  if (loadSummary(problem)) body.append(h('p', { class: 'pl-muted', text: loadSummary(problem) }));
   const mixEl = h('span', { class: 'pl-mix' });
   for (const [t, share] of Object.entries(r.mix || {}).sort((a, b) => b[1] - a[1])) {
     const rt = catalog.requestById?.get(t);
@@ -62,10 +64,23 @@ export function createReqCard(host, { catalog, problem }) {
   const regs = Object.entries(r.userRegions || {}).map(([k, v]) => `${regionName(k)} ${Math.round(v * 100)}%`).join(', ');
   rows.append(row('ui.region', 'Where users are', regs + (r.homeRegion ? ` (home: ${regionName(r.homeRegion)})` : '')));
   if (r.compliance?.length) {
-    const names = r.compliance.map((id) => world.complianceChecks.find((c) => c.id === id)?.name || id).join(', ');
-    rows.append(row('ui.shield', 'Must prove', names));
+    const proofs = h('div');
+    for (const id of r.compliance) {
+      const def = world.complianceChecks.find((c) => c.id === id);
+      const details = h('details', {}, h('summary', { text: def?.name || id }),
+        h('p', { text: def?.text || '' }));
+      const example = {
+        encryption: 'Key management is a dependency of your servers, separate from the main request flow. Example: users → app server → SQL database, plus app server → Key management (or Hardware security module). Draw the key connection from the app server, not SQL. The game accepts a connected key service as proof.',
+        'audit-log': 'An audit trail receives a copy of sensitive actions through a tap connection. Example: users → app server → SQL database, plus app server → Audit log. SQL database → Audit log is also accepted. Keep the main request path connected to the database.',
+        backups: 'Connect Backups to every store holding customer data. Example: Backups → SQL database. This is a control connection beside the request path.',
+      }[id];
+      if (example) details.append(h('p', { text: example }));
+      else if (def) details.append(h('p', { text: 'Add and connect ' + def.satisfiedBy.map((el) => catalog.elementById.get(el)?.name || el).join(' or ') + ' to provide this proof.' }));
+      proofs.append(details);
+    }
+    rows.append(row('ui.shield', 'Must prove', proofs));
   }
-  body.append(rows);
+  body.append(rows, h('p', { class: 'pl-muted', text: gradingContract(problem) }));
   if (r.notes?.length) body.append(h('ul', { class: 'pl-req-notes' }, r.notes.map((n) => h('li', { text: n }))));
   root.append(head, body);
   host.append(root);

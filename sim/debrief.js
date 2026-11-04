@@ -124,7 +124,9 @@ function helpersFor(S, inst, hurtIdx) {
     return false;
   };
   const inReach = (u, scope = 'any') => {
-    if (inst.id === 'duplicate-delivery') return true; // a repeat is caught wherever the design keeps its keys or unique ids
+    const node = model.nodes[u];
+    if (node.hasCap && st0 && !(st0.maxLoad[u] > 0)) return false;
+    if (inst.id === 'duplicate-delivery') return !reach || reach.up.has(u) || reach.near.has(u) || reach.seeds.has(u);
     if (!reach) return inst.def.group !== 'traffic' || onRushPath(u);
     const k = model.nodes[u].kind;
     if (k === 'observer' || k === 'control') return true;
@@ -409,7 +411,7 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
   let helped = null;
   let fix = fillT(t.fix, vars);
   const name = (x) => catalog.elementById.get(x.id)?.name || x.id;
-  const hows = helpers.map((x) => `${name(x)}: ${x.how}`.trim()).join(' ');
+  const hows = helpers.map((x) => `${name(x)}: on this request path. Its role: ${x.how}`.trim()).join(' ');
 
   // An event aimed at a kind of part the design does not have changes nothing.
   if (targeted && !anyTarget && def.group !== 'traffic' && def.group !== 'compliance' && inst.id !== 'zone-outage' && inst.id !== 'region-outage') {
@@ -512,6 +514,23 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
   }
 
   // Event-specific facts that the general templates cannot express.
+  if (inst.id === 'slow-dependency' && inst.stats) {
+    const st = inst.stats;
+    const targets = [...new Set(inst.effects.flatMap((e) => e.targets || []))];
+    const timeouts = model.nodes.filter((n) => st.timedOut?.[n.i]);
+    const facts = [`${vars.failed} requests failed in this window across the design.`];
+    if (timeouts.length) facts.push(`Calls timed out at ${joinNames(timeouts.map((n) => `${nodeLabel(n)} (${withCommas(n.timeoutMs)} ms timeout)`))}. A timed-out call fails even when the service has spare capacity.`);
+    else facts.push('No call timeouts were observed.');
+    facts.push(st.capLost > 0.0005 ? `Waiting reduced compute capacity by up to ${pct(st.capLost)} percent.` : 'No measurable compute capacity was lost to waiting.');
+    for (const u of targets) {
+      if (!(st.nodeIn[u] > 0)) facts.push(`No requests reached ${nodeLabel(model.nodes[u])}, so its added latency did not cause these failures.`);
+    }
+    const blocked = blockedOf(S);
+    if (blocked.top) facts.push(`Routing gap: ${blocked.top.message}`);
+    const failedNodes = model.nodes.filter((n) => st.nodeFail[n.i] >= 1).sort((a, b) => st.nodeFail[b.i] - st.nodeFail[a.i]).slice(0, 3);
+    if (failedNodes.length) facts.push(`Failed requests were recorded at ${joinNames(failedNodes.map((n) => `${nodeLabel(n)} (${fmtCount(st.nodeFail[n.i])})`))}; counts at successive parts can overlap.`);
+    hurt = facts.join(' ');
+  }
   if (inst.id === 'retry-storm') {
     const st = inst.stats;
     const peak = st && inst.mainIdx >= 0 && st.maxRho ? st.maxRho[inst.mainIdx] : 0;
@@ -556,7 +575,7 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
   if (limit && !(limit.st.cap && limit.st.cap.size)) return { headline: `${def.name}: nothing in your design calls an outside service.`, hurt: null, helped: null, fix: null, none: true };
   if (inst.id === 'compliance-audit' && inst.audit && !inst.audit.failed.length) fix = null;
 
-  if (helpers.length) helped = dmg.any && dmg.failShare > 0.01 ? `In place, but not enough on its own here. ${hows}` : hows;
+  if (helpers.length) helped = dmg.any && dmg.failShare > 0.01 ? `On this request path, but the run does not establish how many failures it prevented. ${helpers.map((x) => name(x)).join(', ')}.` : hows;
   // a standby plan only brings back the parts wired to it
   if (inst.id === 'region-outage' && dmg.any && model.nodes.some((n) => n.el.id === 'disaster-recovery')) {
     const left = (ef('regionDown')?.targets || []).map((u) => model.nodes[u]).filter((n) => n.drFrom < 0 && n.kind !== 'observer' && n.kind !== 'control');
@@ -598,6 +617,9 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
     if (mr) for (const n of model.nodes) { if (n.kind === 'source' || !n.hasCap) continue; if (mr[n.i] > tr) { tr = mr[n.i]; top = n.i; } }
     helped = top >= 0 && tr > 0 ? (tr <= 0.8 ? `Room to spare: ${nodeLabel(model.nodes[top])} peaked near ${busyPct(tr)} percent busy while this happened.` : `Sized for it: ${nodeLabel(model.nodes[top])} carried it, peaking near ${busyPct(tr)} percent busy.`) : 'Nothing in your design came close to a limit while this happened.';
   }
+  const offPath = (def.counters || []).filter((c) => c.element && counterApplies(inst, c) && model.present.has(c.element) && !helpers.some((h) => h.id === c.element));
+  if (offPath.length) helped = `${helped ? helped + ' ' : ''}${joinNames(offPath.map((c) => catalog.elementById.get(c.element)?.name || c.element))}: present but not on this request path.`;
+  if (helpers.some((h) => h.id === 'queue') && (inst.stats?.maxBacklog || 0) > 0) helped = `${helped || ''} The queue held up to about ${fmtCount(inst.stats.maxBacklog)} requests waiting during this event; that measures buffering, not how many failures it prevented.`.trim();
   return { headline: tidy(headline), hurt: tidy(hurt), helped: tidy(helped), fix: tidy(fix) };
 }
 
@@ -636,20 +658,24 @@ function fixedFix(n) {
   return `It has a fixed size, so add a second ${nm} beside it to share the work, put a bigger queue in front of it, or add rate limiting ahead of it.`;
 }
 
+function nextKind(S, score, metrics) {
+  const checks = passChecks(S.world, S.problem.requirements, metrics, score);
+  const losses = [['reliability', 400 - score.reliability], ['latency', 200 - score.latency], ['safety', 200 - score.safety], ['cost', 200 - score.cost]];
+  const failed = losses.filter(([k]) => checks[k === 'reliability' ? 'availability' : k] === false);
+  return (failed.length ? failed : losses).sort((a, b) => b[1] - a[1])[0];
+}
+
 function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
   const { model, catalog, problem } = S;
   const req = problem.requirements;
-  const losses = [
-    ['reliability', 400 - score.reliability],
-    ['latency', 200 - score.latency],
-    ['safety', 200 - score.safety],
-    ['cost', 200 - score.cost],
-  ].sort((a, b) => b[1] - a[1]);
-  const [kind, loss] = losses[0];
+  const [kind, loss] = nextKind(S, score, metrics);
   const nodes = model.nodes;
   const name = (n) => nodeLabel(n);
-  if (loss <= 0) return { text: 'Everything held. Try the daily challenge, or see how low you can take the monthly cost.' };
-  if (metrics.availability <= 0.001) return { text: 'Nothing was served. Connect your request sources through servers to a part that finishes each request type, such as a database.' };
+  if (loss <= 0 && passOf(S.world, req, metrics, score)) return { text: 'Everything held. Try the daily challenge, or see how low you can take the monthly cost.' };
+  if (metrics.availability <= 0.001) {
+    const required = Object.entries(problem.requires || {}).filter(([tid]) => req.mix[tid] > 0).map(([tid, groups]) => `${catalog.requestById.get(tid)?.plural || tid} must reach ${groups.map((g) => g.map((id) => catalog.elementById.get(id)?.name || id).join(' or ')).join(' and ')}`);
+    return { text: `Nothing was served. Connect your request sources through servers to a part that finishes each request type.${required.length ? ' Complete the required paths: ' + required.join('; ') + '.' : ''}` };
+  }
   if (kind === 'reliability') {
     // 0. A client with no path out fails everything it sends: that comes before any load or event advice.
     const ds = deadShare(S);
@@ -752,6 +778,18 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
     return { text: `${name(n)} dropped the most requests. Give it more room or put something in front of it.`, nodeId: n.id, knob: (n.el.knobs || []).includes('units') ? 'units' : undefined };
   }
   if (kind === 'latency') {
+    const slow = Object.entries(metrics.typeShares || {}).sort((a, b) => a[1] - b[1])[0];
+    const t = slow ? catalog.requests.findIndex((r) => r.id === slow[0]) : -1;
+    const hop = t >= 0 ? S.typeSlowHop?.[t] : null;
+    const n = hop ? nodes[model.idx.get(hop.nodeId)] : null;
+    if (n) {
+      const op = catalog.requestById.get(slow[0])?.plural || slow[0];
+      const busy = S.peakUtil[n.i] > 0.7;
+      const knob = busy ? ((n.el.knobs || []).includes('units') ? 'units' : (n.el.knobs || []).includes('tier') ? 'tier' : undefined) : undefined;
+      const fix = busy ? 'Give this part more capacity so it stays under about 70 percent busy.' : 'Shorten this request path and keep its parts in the same region; check synchronous replication across zones too.';
+      return { text: `${op} met their speed target for only ${Math.round(slow[1] * 100)} percent of served traffic. At their slowest moment, ${name(n)} was the costliest processing hop (p99 ≈ ${Math.round(hop.p99Ms)} ms, before network travel). ${fix}`, nodeId: n.id, knob, lesson: busy ? (n.kind === 'compute' ? 'autoscaling' : 'sharding') : 'requests-and-latency' };
+    }
+
     const far = Object.keys(req.userRegions).length > 1 && !model.present.has('cdn');
     let worst = -1, wu = 0;
     for (const n of nodes) if (n.hasCap && n.kind !== 'source' && S.peakUtil[n.i] > wu) { wu = S.peakUtil[n.i]; worst = n.i; }
@@ -816,7 +854,7 @@ function lessonOfStep(S, step) {
 
 function nextStepOf(S, score, metrics, nodesOut, eventsOut) {
   const step = nextStepCore(S, score, metrics, nodesOut, eventsOut);
-  const kind = [['reliability', 400 - score.reliability], ['latency', 200 - score.latency], ['safety', 200 - score.safety], ['cost', 200 - score.cost]].sort((a, b) => b[1] - a[1])[0][0];
+  const [kind] = nextKind(S, score, metrics);
   step.kind = kind;
   const lesson = lessonOfStep(S, step);
   if (lesson) step.lesson = lesson;
@@ -985,6 +1023,7 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
       p99Ms: S.typeLatW[t] > 0 ? Math.round(S.typeP99Sum[t] / S.typeLatW[t]) : 0,
       worstP99Ms: Math.round(S.typeWorst[t]),
       targetMs: S.latTarget[t],
+      costlyHop: S.typeSlowHop?.[t] || null,
       shareOk: S.typeLatW[t] > 0 ? Math.round((S.typeLatOk[t] / S.typeLatW[t]) * 10000) / 10000 : 1,
     };
   }
@@ -1013,6 +1052,13 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
       helpers: helpers.map((x) => x.id),
       hurt: hurt.map((u) => model.nodes[u].id),
       vars,
+      ...(inst.effects.some(e => e.op === 'traffic') ? { durations: {
+        rampSec: inst.effects.find(e => e.op === 'traffic').params.rampSec || 0,
+        spikeSec: inst.effects.find(e => e.op === 'traffic').params.holdSec || 0,
+        recoverySec: inst.effects.find(e => e.op === 'traffic').params.decaySec || 0,
+        overloadSec: Math.max(0, ...Array.from(inst.stats?.nodeOver || [])) * S.dt,
+        observedSec: (inst.stats?.ticks || 0) * S.dt,
+      } } : {}),
       story: storyFor(S, inst, vars, hurt, helpers),
     };
   });

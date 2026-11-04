@@ -113,6 +113,33 @@ section('Consensus databases lose one node, not the cluster');
   check('its story names the re-election', /re-elected/.test(sql.story.headline), sql.story.headline);
 }
 
+section('Repair advice preserves required destinations and event coverage');
+{
+  const p = { ...lessonProblem, requires: { payment: [['payment-processor']] }, requirements: { peakRps: 100, mix: { read: 0.5, payment: 0.5 } },
+    events: [{ id: 'duplicate-delivery', at: '10:00' }] };
+  const graph = { nodes: [{ id: 'u', type: 'mobile-app', x: 0, y: 0 }, { id: 'app', type: 'vm-fleet', x: 100, y: 0, units: 10 },
+    { id: 'q', type: 'queue', x: 200, y: 0 }, { id: 'wk', type: 'worker-pool', x: 300, y: 0, units: 10 },
+    { id: 'db', type: 'sql-replica', x: 400, y: 0 }, { id: 'pay', type: 'payment-processor', x: 400, y: 100 },
+    { id: 'keys', type: 'idempotency-store', x: 300, y: 100 }],
+    edges: [['u', 'app'], ['app', 'db'], ['app', 'q'], ['q', 'wk'], ['wk', 'db']].map(([from, to]) => ({ from, to })) };
+  const { sim, r } = runDay(p, graph);
+  const issue = sim.validate().find((i) => i.type === 'payment' && i.code === 'type-unserved');
+  check('a blocked worker payment path still requires the processor', /payment processor/i.test(issue?.message || '') && !/straight to.*SQL/.test(issue?.message || ''), issue?.message);
+  check('repair explains why a processor elsewhere does not cover this branch', /another branch/.test(issue?.message || ''));
+  check('the debrief keeps the required payment destination', /payment processor/i.test(r.nextStep.text), r.nextStep.text);
+  const ledgerProblem = { ...p, requires: { payment: [['ledger-db']] } };
+  const ledgerSim = createSim({ catalog, problem: ledgerProblem });
+  ledgerSim.loadGraph(graph);
+  check('a ledger requirement is preserved too', /ledger/i.test(ledgerSim.validate().find((i) => i.type === 'payment')?.message || ''));
+  const event = r.events.find((e) => e.id === 'duplicate-delivery');
+  check('disconnected idempotency keys receive no helper credit', !event.helpers.includes('idempotency-store'));
+  check('event advice explicitly identifies a counter off the request path', /Idempotency keys: present but not on this request path/.test(event.story.helped || ''), event.story.helped);
+  const fixed = structuredClone(graph);
+  fixed.edges.push({ from: 'wk', to: 'pay' }, { from: 'wk', to: 'keys' });
+  const covered = runDay(p, fixed).r.events.find((e) => e.id === 'duplicate-delivery');
+  check('keys called by active workers receive path coverage credit', covered.helpers.includes('idempotency-store'), covered.story.helped);
+}
+
 section('Debrief wording follows what was measured');
 {
   const bad = [];

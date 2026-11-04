@@ -14,7 +14,7 @@ export default {
     },
     {
       "kind": "demo",
-      "prompt": "One server cannot take 3,000 requests a second. Add a load balancer and more servers.",
+      "prompt": "One server cannot take about 3,000 requests a second at peak. Retries are off in this demo. Add a load balancer and more servers.",
       "setup": {
         "palette": [
           "regional-lb",
@@ -49,14 +49,16 @@ export default {
               "type": "mobile-app",
               "x": -480,
               "y": 0,
-              "locked": true
+              "locked": true,
+              "knobs": { "retries": 0 }
             },
             {
               "ref": "app",
               "type": "vm-fleet",
               "x": -300,
               "y": 0,
-              "units": 1
+              "units": 1,
+              "knobs": { "retries": 0 }
             },
             {
               "ref": "db",

@@ -51,6 +51,10 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     meter('avail', 'ui.availability', lesson ? 'Success now' : 'Uptime'); meter('lat', 'ui.latency', 'Speed (p99)'); meter('safe', 'ui.safety', 'Data safety'); meter('cost', 'ui.cost', 'Cost / mo');
   }
   const buildNote = h('div', { class: 'pl-buildnote' });
+  if (lesson) {
+    meter('lag', 'ui.clock', 'Completion lag');
+    M.lag.el.hidden = true;
+  }
 
   // legend
   const legend = h('div', { class: 'pl-legend', 'aria-label': 'Legend' });
@@ -182,11 +186,21 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
       // a lesson shows what is happening now, so a fix turns green at once instead of waiting out the earlier minutes
       // with a queue in the picture, work that waits in line is accepted, not failed: show what the door took, and the line beside it
       const queued = lesson ? (st.nodes || []).filter((n) => catalog.elementById.get(n.type)?.kind === 'queue') : [];
-      const accepted = offered > 0 ? clamp(1 - (t.failRps || 0) / offered, 0, 1) : 1;
+      root.classList.toggle('pl-hud--queues', queued.length > 0);
+      const accepted = offered > 0 ? clamp(queued.reduce((sum, n) => sum + (n.queueAcceptedRps || 0), 0) / offered, 0, 1) : 1;
       const aVal = lesson ? (queued.length ? accepted : (offered > 0 ? succ : 1)) : (a.actual ?? 1);
       const aTgt = a.target ?? tgt.availability;
       const aOk = aVal >= aTgt;
       const waiting = queued.reduce((x, n) => x + (n.queueDepth || 0), 0);
+      if (M.lag) {
+        M.lag.el.hidden = !queued.length;
+        const age = Math.max(0, ...queued.map((n) => n.oldestJobAgeSec || 0));
+        const risk = Math.max(0, ...queued.map((n) => (n.oldestJobAgeSec || 0) / (n.queueLimitSec || 1)));
+        const drain = queued.reduce((sum, n) => sum + (n.queueDrainRps || 0), 0);
+        meterSet('lag', { text: `≈ ${fmtNum(age)} s oldest`, sub: `≈ ${fmtNum(drain)}/s completed drain (smoothed)`, frac: risk, status: risk >= 1 ? 'bad' : risk >= 0.5 ? 'warn' : 'ok' });
+        M.safe.el.querySelector('.pl-m-l').textContent = queued.length ? 'Expiry risk' : 'Data safety';
+        M.lat.el.querySelector('.pl-m-l').textContent = queued.length ? 'Acceptance p99' : 'Speed (p99)';
+      }
       if (M.avail) M.avail.el.querySelector('.pl-m-l').textContent = queued.length ? 'Accepted' : 'Success now';
       meterSet('avail', { text: fmtPct(aVal), sub: queued.length ? (waiting > 0 ? `${fmtNum(waiting)} jobs waiting in line (approx.)` : `target ${fmtPct(aTgt)}`) : `target ${fmtPct(aTgt)}`, frac: aVal, tick: aTgt, status: aOk ? 'ok' : (queued.length && aVal > 0.9 ? 'warn' : 'bad') });
       const l = slo.latency || {};
@@ -194,10 +208,19 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
       // the request type furthest from its own target right now, against that target
       const ty = l.typeId && Object.keys(tgt.mix || {}).length > 1 ? (catalog.requestById.get(l.typeId)?.plural || '').toLowerCase() : '';
       meterSet('lat', { text: l.p99Ms != null ? fmtMs(l.p99Ms) : '–', sub: `${ty ? ty + ': ' : ''}target ${fmtMs(lt)}${l.shareOk != null ? ' · ' + fmtPct(l.shareOk, 0) + ' of minutes ok' : ''}`, frac: (l.p99Ms || 0) / (lt * 2), tick: 0.5, status: l.p99Ms == null || l.p99Ms <= lt ? 'ok' : 'bad' });
+      if (queued.length) {
+        const ack = Math.max(0, ...queued.map((n) => n.p99Ms || 0));
+        meterSet('lat', { text: `≈ ${fmtMs(ack)}`, sub: 'Queue hop only, before the job completes', status: 'ok' });
+      }
       const s = slo.safety || {};
       const bad = (s.lostWrites || 0) > 0 || (s.duplicates || 0) > 0 || (s.complianceFailed?.length || 0) > 0;
       const gaps = s.complianceFailed?.length || 0;
       meterSet('safe', { text: bad ? 'At risk' : 'Safe', sub: `${gaps ? `${gaps} audit gap${gaps > 1 ? 's' : ''} · ` : ''}${fmtNum(s.lostWrites || 0)} lost · ${fmtNum(s.duplicates || 0)} duplicate · ${fmtNum(s.staleReads || 0)} stale`, frac: bad ? 1 : 0, status: bad ? 'bad' : 'ok' });
+      if (queued.length) {
+        const risk = Math.max(0, ...queued.map((n) => (n.oldestJobAgeSec || 0) / (n.queueLimitSec || 1)));
+        const limit = Math.min(...queued.map((n) => n.queueLimitSec || 1));
+        meterSet('safe', { text: risk >= 1 ? 'Over deadline' : risk >= 0.5 ? 'Approaching' : 'Within deadline', sub: `Job deadline ≈ ${fmtNum(limit)} s. Acceptance does not guarantee completion.`, frac: risk, status: risk >= 1 ? 'bad' : risk >= 0.5 ? 'warn' : 'ok' });
+      }
       const bud = cost.budget || tgt.budgetPerMonth || 1;
       const ratio = (cost.perMonth || 0) / bud;
       // in a lesson about something else, the bill is shown but not judged

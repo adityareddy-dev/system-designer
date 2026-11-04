@@ -63,6 +63,7 @@ export function renderChallenge(host, ctx, route0) {
   let play = null;
   let board = null;
   let offAttach = null;
+  let offAccount = null;
   let offProgress = null;
   let immersive = false;
   let lastRoute = route0;
@@ -71,6 +72,7 @@ export function renderChallenge(host, ctx, route0) {
     if (play) { play.destroy(); play = null; }
     if (board) { board.destroy(); board = null; }
     if (offAttach) { offAttach(); offAttach = null; }
+    if (offAccount) { offAccount(); offAccount = null; }
     clear(host);
   }
 
@@ -156,6 +158,17 @@ export function renderChallenge(host, ctx, route0) {
     // Leaderboards appear only when the optional sign-in service is reachable. The account loads after the first
     // screen, so on a page opened directly or reloaded the card is added when the account arrives.
     const stack = h('div', { class: 'sh-stack' });
+    const offline = h('section', { class: 'sh-card', role: 'status' });
+    const accountInfo = h('li');
+    const updateService = () => {
+      const available = !!ctx.account?.available?.();
+      const checking = ctx.account?.state?.().status === 'checking';
+      offline.hidden = available;
+      offline.replaceChildren(h('h2', { class: 'sh-h2', text: checking ? 'Checking online competition' : 'Playing offline' }),
+        h('p', { class: 'sh-muted', text: checking ? 'Checking whether sign-in and leaderboards are available.' : 'Sign-in and leaderboards are unavailable. Your scores and streak stay in this browser. You can still play the daily challenge and share a link with a friend.' }));
+      accountInfo.replaceChildren(h('strong', { text: available && ctx.account?.isSignedIn?.() ? 'You are signed in. ' : 'No account needed. ' }),
+        available ? (ctx.account?.isSignedIn?.() ? 'Your score and streak follow you to every device. See the leaderboard above.' : 'Your score stays in this browser. Sign in through the leaderboard above to sync progress and join.') : 'Your score and streak stay in this browser.');
+    };
     const mountBoard = () => {
       if (board || !ctx.account?.leaderboardCard) return;
       try { board = ctx.account.leaderboardCard({ date, problemId: daily.problemId }) || null; } catch { board = null; }
@@ -164,12 +177,14 @@ export function renderChallenge(host, ctx, route0) {
     const how = h('section', { class: 'sh-card sh-how' }, h('h2', { class: 'sh-h2', text: 'How it works' }),
       h('ol', { class: 'sh-steps' },
         h('li', null, h('strong', { text: 'Same day, same scenario. ' }), 'The date picks the problem and shifts its events a little.'),
-        h('li', null, h('strong', { text: ctx.account?.isSignedIn?.() ? 'You are signed in. ' : 'No account needed. ' }), ctx.account?.isSignedIn?.() ? 'Your score and streak follow you to every device, and good scores can show on the leaderboard.' : ctx.account ? 'Your score stays in this browser. Sign in only if you want your progress on every device and a place on the leaderboard.' : 'Your score and streak stay in this browser.'),
+        accountInfo,
         h('li', null, h('strong', { text: 'Beat my design. ' }), 'After a finished day, share a link. Your friend sees your score as the target.')));
 
-    stack.append(history, how);
+    stack.append(offline, history, how);
+    updateService();
+    if (ctx.bus?.on) offAccount = ctx.bus.on('account', updateService);
     if (ctx.account?.leaderboardCard) mountBoard();
-    else if (ctx.bus?.on) offAttach = ctx.bus.on('account:attached', () => { if (offAttach) { offAttach(); offAttach = null; } mountBoard(); });
+    else if (ctx.bus?.on) offAttach = ctx.bus.on('account:attached', () => { if (offAttach) { offAttach(); offAttach = null; } mountBoard(); updateService(); });
 
     append(host, [h('div', { class: 'sh-page' }, head, nav, diffRow, hardNudge, quickPlay, h('div', { class: 'sh-two-col' }, scenario, stack))]);
   }
@@ -188,7 +203,7 @@ export function renderChallenge(host, ctx, route0) {
     get immersive() { return immersive; },
     title: 'Challenge',
     update: draw,
-    destroy() { clearTimeout(redrawTimer); if (offProgress) { offProgress(); offProgress = null; } if (play) play.destroy(); if (board) board.destroy(); },
+    destroy() { clearTimeout(redrawTimer); if (offProgress) { offProgress(); offProgress = null; } teardown(); },
     get play() { return play; },
   };
 }

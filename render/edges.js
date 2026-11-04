@@ -15,6 +15,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
   const dying = [];
   const tmp = { x: 0, y: 0, tx: 0, ty: 0, seg: 0 };
   let highlight = null;
+  let trace = new Set();
   let structDirty = true;
 
   // glow ropes, pooled
@@ -52,7 +53,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
     g.clear();
     if (!v.ok) return;
     const flowing = v.rps > 0.01;
-    const hi = highlight === v.id;
+    const hi = highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id);
     if (!v.carries) {
       const color = hi ? P.accent : v.kind === 'observe' ? P.cat.ops : P.cat.platform;
       const alpha = hi ? 0.95 : 0.55;
@@ -107,7 +108,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
 
   function wantsRedraw(v, P) {
     if (v.dirty) return true;
-    const hi = highlight === v.id;
+    const hi = highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id);
     if (hi !== v.drawnHi) return true;
     if (!v.carries) return false;
     const w = Math.round((2 + Math.min(4, Math.log10(1 + v.rps) * 0.8) + (env.highContrast() ? 1.2 : 0)) * 4) / 4;
@@ -227,6 +228,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
     setHighlight(id) {
       highlight = id;
     },
+    setTrace(ids) { trace = new Set(ids || []); },
     hit(x, y, tol) {
       let best = null, bd = tol;
       for (const v of list) {

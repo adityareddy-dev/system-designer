@@ -1,5 +1,6 @@
 // Inspector: what the selected element is, how busy it is now, what it costs, and its knobs.
-import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, approx, statusGlyph, STATUS_NAMES, STATUS_TEXT } from './util.js';
+import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, approx, statusGlyph } from './util.js';
+import { capacityText, inspectorStatus } from './inspector-facts.js';
 
 export function createInspector(host, { catalog, getNode, getHome, onKnob, onDelete, onDuplicate, onConnect, onClose, lesson = false }) {
   const root = h('aside', { class: 'pl-inspector', 'aria-label': 'Inspector', hidden: '' });
@@ -158,12 +159,9 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
     if (el.capacity == null) liveBox.append(h('div', { class: 'pl-muted pl-small', text: 'Not in the request path: it does not carry traffic itself.' }));
 
     // numbers
-    const units = node.units ?? el.units?.default ?? 1;
-    const tf = tiers[node.tier || 'M']?.capacity ?? 1;
     const facts = h('dl', { class: 'pl-facts' });
     if (el.capacity) {
-      const cap = el.capacity.rps * (el.units?.max === 1 ? 1 : units) * tf;
-      facts.append(h('dt', { text: 'Handles' }), h('dd', {}, approx(fmtNum(cap) + ' req/s at 100% busy'), h('span', { class: 'pl-muted pl-small', text: ' ' + (el.capacity.unit || '') })));
+      facts.append(h('dt', { text: 'Handles' }), h('dd', {}, approx(capacityText(el, node, tiers))));
     }
     if (el.latencyMs) facts.append(h('dt', { text: 'Adds' }), h('dd', {}, approx(`${fmtMs(el.latencyMs.p50)} typical, ${fmtMs(el.latencyMs.p99)} slow`), el.latencyMs.note ? h('span', { class: 'pl-muted pl-small', text: ' ' + el.latencyMs.note }) : null));
     facts.append(h('dt', { text: 'Uptime alone' }), h('dd', {}, approx(fmtPct(el.availability) + ' of the time, one copy in one zone')));
@@ -223,8 +221,9 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
     if (!refs.meter?.isConnected) return;
     const s = live;
     const util = s.util ?? 0;
-    const name = STATUS_NAMES[typeof s.status === 'number' ? s.status : 0] || s.status || 'ok';
-    refs.status.replaceChildren(statusGlyph(name, 16), STATUS_TEXT[name] || name);
+    const { name, text } = inspectorStatus(s);
+    refs.status.replaceChildren(statusGlyph(name, 16), text);
+    refs.status.title = 'Available means the process is up. Load and request failures are shown separately.';
     refs.status.className = 'pl-live-status pl-st-' + name;
     refs.util.textContent = Math.round(util * 100) + '% busy';
     const fill = refs.meter.firstChild;

@@ -1,6 +1,6 @@
 // In-problem screen: mountPlay() builds the canvas, toolbar, inspector, HUD, steps, hints, debrief and editorial.
 import { createSim } from '../../sim/engine.js';
-import { createScene } from '../../render/scene.js';
+import { createScene, regionLayout } from '../../render/scene.js';
 import { h, iconEl, clamp, clockLabel, snd as sndRaw, debounce, STATUS_NAMES, fmtMs, fmtPct } from './util.js';
 import { createSteps } from './steps.js';
 import { createReqCard } from './req-card.js';
@@ -13,6 +13,7 @@ import { createHints } from './hints.js';
 import { renderDebrief } from './debrief.js';
 import { renderEditorial } from './editorial.js';
 import { createTrafficPanel, DEFAULT_TRAFFIC } from './traffic-panel.js';
+import { createRouteTrace } from './route-trace.js';
 
 const GRID = 20;
 let connectTipShown = false; // the how-to-connect line shows once per visit outside lessons
@@ -96,6 +97,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
 
   // ---- scene
   const scene = await createScene(stage, { catalog, palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
+  const routeTrace = createRouteTrace(root, catalog, scene);
+  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && S.step === 'draw' && S.sim?.phase === 'build'); }
 
   // ---- sim
   function makeSim(problem, graph) {
@@ -187,6 +190,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     let sizes = []; try { sizes = riskyIssues().filter((i) => i.fix); } catch { /* optional */ }
     hud.setBuild(est, issues, sizes);
     paintIssues();
+    refreshTrace();
   }
   // Parts the peak estimate says will run past 100 percent, as list items that select the part.
   // What to change on a part that will not hold: more of its units (named the way the part names them), a bigger size,
@@ -281,6 +285,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     return { l, t, r: rr, b, w: r.width, h: r.height };
   }
   function fitView(animate = true, minZoom = null) {
+    if (S.connectFrom && isPhone()) return;
     const a = freeArea();
     const pad = isPhone() ? 20 : 36;
     // a big build zooms out far enough to sit between the panels instead of running underneath them
@@ -530,7 +535,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function startConnect(from) {
     S.connectFrom = from;
-    inspector.fold(true);
+    // Keep the phone sheet's space reserved while the player chooses a target.
+    if (isPhone()) scene.stopCamera();
+    else inspector.fold(true);
     root.classList.add('pl-connecting');
     showCaption('Now tap the part it should send requests to. Esc cancels.', 0);
   }
@@ -611,6 +618,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   scene.on('edge:tap', ({ id }) => {
     const e = graph().edges.find((x) => x.id === id);
     if (!e) return;
+    const armed = toolbar.armed();
+    if (armed) {
+      const g = graph(), a = g.nodes.find((n) => n.id === e.from), b = g.nodes.find((n) => n.id === e.to);
+      if (a && b) { placeComponent(armed, (a.x + b.x) / 2, (a.y + b.y) / 2, id); cancelModes(); }
+      return;
+    }
+    if (S.connectFrom) return;
     openMenu(null, [['Remove this connection', () => removeEdge(id), 'ui.disconnect']], { edge: e });
   });
   scene.on('node:longpress', ({ id, x, y }) => {
@@ -924,6 +938,28 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const hintBtn = btn('ui.hint', 'Hints (H)', () => hints.toggle(), 'pl-tool--hint');
   const edBtn = btn('ui.editorial', 'Editorial (after one finished day)', () => openEditorial(), 'pl-tool--editorial');
   tools.append(undoBtn, redoBtn, fitBtn);
+  if (!isLesson) {
+    const inspection = h('details', { class: 'pl-diagram-options' }, h('summary', { class: 'pl-btn pl-btn--small' }, 'Diagram tools'));
+    const options = h('div', { class: 'pl-diagram-options-body' });
+    inspection.append(options); tools.append(inspection);
+    const toggle = (label, action) => {
+      let on = false;
+      const button = h('button', { class: 'pl-btn pl-btn--small', type: 'button', 'aria-pressed': 'false', onClick: () => {
+        on = !on; button.setAttribute('aria-pressed', String(on)); action(on);
+      } }, label);
+      options.append(button);
+    };
+    toggle('Isolate paths', on => { scene.setPathIsolation(on); if (on) showCaption('Select a part to follow its upstream and downstream connections. Traffic dots are hidden while a path is selected.', 6000); });
+    toggle('Larger diagram', on => { root.classList.toggle('pl-diagram-large', on); later(() => fitView(), 60); });
+    toggle('Hide parts panel', on => { root.classList.toggle('pl-parts-hidden', on); later(() => fitView(), 60); });
+    toggle('Hide details panel', on => { root.classList.toggle('pl-details-hidden', on); later(() => fitView(), 60); });
+    toggle('Region boundaries', on => { scene.setRegionGroups(on); if (on) showCaption('Cross-region labels show approximate round-trip latency. Arrange by region separates overlapping groups.', 6000); });
+    options.append(h('button', { class: 'pl-btn pl-btn--small', type: 'button', title: 'Arrange parts in region groups. Undo restores their positions.', onClick: () => {
+      if (structureBlocked()) return;
+      for (const n of regionLayout(graph())) S.sim.moveNode(n.id, n.x, n.y);
+      commit(); fitView();
+    } }, 'Arrange by region'));
+  }
   if (stepped) tools.append(hintBtn, edBtn);
   top.append(tools);
   let ghostBtn = null;
@@ -960,6 +996,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const knobsOk = S.sim.phase === 'build' || (editableKnobs() && S.sim.phase !== 'done');
     inspector.setEditable(knobsOk, mode === 'challenge' ? 'Challenge days run without changes.' : 'This day has finished. Go back to drawing to change it.');
     root.dataset.phase = S.sim.phase;
+    refreshTrace();
     // the parts list folds to a strip while a day runs (and opens again after), so the diagram is fitted to the new free area
     const slim = toolbar.el.classList.contains('pl-toolbar--slim');
     if (slim !== S.slimWas) { const first = S.slimWas === undefined; S.slimWas = slim; if (!first && !isPhone() && !S.destroyed) later(() => { if (!S.destroyed) fitView(true); }, 80); }
@@ -988,11 +1025,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function startFromUi() {
     if (S.sim.phase === 'build' && stepped) {
       const errs = (S.issues || []).filter((i) => i.level === 'error' || (i.code === 'disconnected' && i.source));
-      if (errs.length) {
-        modal.replaceChildren(h('div', { class: 'pl-modal-card' },
-          h('div', { class: 'pl-ed-top' }, h('b', { text: 'Some requests have nowhere to go' })),
+      const proofs = (S.issues || []).filter((i) => i.code === 'compliance-missing');
+      if (errs.length || proofs.length) {
+        modal.replaceChildren(h('div', { class: 'pl-modal-card', style: { maxHeight: '100%', overflowY: 'auto' } },
+          h('div', { class: 'pl-ed-top' }, h('b', { text: errs.length ? 'Some requests have nowhere to go' : 'Some required proofs are missing' })),
           h('ul', { class: 'pl-list' }, mergeByCause(errs).slice(0, 4).map((m) => h('li', { text: m }))),
-          h('p', { class: 'pl-muted', text: 'Those requests will fail all day. Start anyway, or keep drawing?' }),
+          proofs.length ? h('div', {}, h('b', { text: 'Missing proofs' }), h('ul', { class: 'pl-list' }, proofs.map((i) => h('li', { text: i.message }))), h('p', { class: 'pl-muted', text: 'Open each Must prove requirement for wiring guidance. Missing proofs prevent a pass and reduce Data safety points.' })) : null,
+          h('p', { class: 'pl-muted', text: (errs.length ? 'Those requests will fail all day. ' : '') + 'Start anyway, or keep drawing?' }),
           h('div', { class: 'pl-actions' },
             h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: () => { modal.hidden = true; } }, 'Keep drawing'),
             h('button', { class: 'pl-btn', type: 'button', onClick: () => { modal.hidden = true; startTraffic(); } }, 'Start anyway'))));
@@ -1294,7 +1333,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (Object.keys(store.get('warmups', {}) || {}).length) return problem;
     } catch { return problem; }
     S.warm = true; S.fullEvents = problem.events; S.fullRequirements = problem.requirements;
-    return { ...problem, events: problem.events.filter((e) => e.id !== 'viral-spike'), requirements: { ...problem.requirements, peakRps: Math.max(1, Math.round((problem.requirements?.peakRps || 1000) * 0.25)) }, warmUp: true };
+    return { ...problem, events: problem.events.filter((e) => e.id !== 'viral-spike'), requirements: { ...problem.requirements, peakRps: Math.max(1, Math.round((problem.requirements?.peakRps || 1000) * 0.25)) }, normalPeakRps: problem.requirements.peakRps, warmUp: true };
   }
   function configure(problem, initialGraph) {
     // a twist day plays the same problem on its other event list (content/problems/twists.js); it is practice only

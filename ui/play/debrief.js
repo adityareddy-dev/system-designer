@@ -1,5 +1,8 @@
 // The debrief: verdict, score dial, four SLO cards, timeline, event stories, trade-offs, one thing to try next.
+import { loadSummary } from './load-labels.js';
 import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, clockLabel, minuteLabel, fill, approx } from './util.js';
+import { eventDescription } from './event-copy.js';
+import { renderCorrectness } from './correctness.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const svg = (tag, attrs = {}, ...kids) => {
@@ -148,7 +151,7 @@ function dial(total, reduced) {
   const num = h('div', { class: 'pl-dial-n pl-display' + (total >= 1000 ? ' pl-dial-n--4' : ''), text: '0' });
   const root = h('div', { class: 'pl-dial', role: 'img', 'aria-label': `Score ${total} out of 1000` },
     svg('svg', { viewBox: '0 0 140 140', width: 140, height: 140 }, svg('circle', { cx: 70, cy: 70, r, fill: 'none', 'stroke-width': 10, class: 'pl-dial-track' }), arc),
-    h('div', { class: 'pl-dial-c' }, num, h('div', { class: 'pl-dial-of', text: 'out of 1,000' })));
+    h('div', { class: 'pl-dial-c' }, num, h('div', { class: 'pl-dial-of' }, 'points', h('br'), 'out of 1,000')));
   const set = (v) => { num.textContent = Math.round(v).toLocaleString('en-US'); arc.setAttribute('stroke-dasharray', `${(v / 1000) * C} ${C}`); };
   if (reduced) set(total);
   else {
@@ -227,15 +230,16 @@ function eventStory(ev, i, result, catalog) {
   const vars = { ...(ev.vars || {}) };
   if (vars.helper == null || vars.helper === '') vars.helper = 'Nothing in your design';
   const st = ev.story;
-  const lines = st ? [st.headline, st.hurt, st.helped, st.fix] : [fill(t.headline, vars), fill(t.hurt, vars), fill(t.helped, vars), fill(t.fix, vars)];
+  const lines = st ? [st.headline, ev.durations ? st.hurt?.replace(/in the first (\S+) (minutes?)/, 'during $1 $2 of the observation window') : st.hurt, st.helped, st.fix] : [fill(t.headline, vars), fill(t.hurt, vars), fill(t.helped, vars), fill(t.fix, vars)];
   // An event the design never met still teaches: say what it would have done to a design that was exposed to it.
   const unreached = !!(st && (st.none || !lines[1] || (Array.isArray(ev.hurt) && ev.hurt.length === 0)));
-  const would = unreached && def ? [def.description, def.lesson].filter(Boolean).join(' ') : '';
+  const would = unreached && def ? [eventDescription(def, vars), def.lesson].filter(Boolean).join(' ') : '';
   const missing = st && !st.fix && !unreached ? [] : (def?.counters || []).filter((c) => c.element && !inGraph.has(c.element));
   const card = h('article', { class: 'pl-story', id: 'pl-ev-' + i, tabindex: '-1' },
     h('header', { class: 'pl-story-head' }, iconEl('ev.' + ev.id, 28, 'pl-ic pl-story-ic'),
       h('div', {}, h('b', { text: def?.name || ev.id }), h('div', { class: 'pl-muted pl-small', text: `${clockLabel(ev.atMs)} to ${clockLabel(ev.endMs || ev.atMs)}` }))),
     h('div', { class: 'pl-story-body' },
+      ev.durations ? h('p', { class: 'pl-muted', text: `Ramp: ${ev.durations.rampSec / 60} min. Spike duration at peak: ${ev.durations.spikeSec / 60} min. Traffic recovery duration: ${ev.durations.recoverySec / 60} min to return to normal. Overload duration: ≈ ${Math.round(ev.durations.overloadSec / 60)} min on the most overloaded part during the ${Math.round(ev.durations.observedSec / 60)} min observation window, including up to 10 min after the event. Recovery of your design may take longer.` }) : null,
       lines[0] && h('p', { class: 'pl-story-1', text: lines[0] }),
       lines[1] && h('p', {}, h('span', { class: 'pl-tag pl-tag--bad', text: 'What it did' }), lines[1]),
       would ? h('p', {}, h('span', { class: 'pl-tag pl-tag--info', text: 'What it would have done' }), would) : null,
@@ -319,7 +323,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     : null;
   root.append(h('section', { class: 'pl-verdict-sec' + (near ? ' pl-verdict-sec--near' : '') },
     h('div', { class: 'pl-kicker', text: 'Step 5 · Debrief' }),
-    h('h2', { class: 'pl-verdict-line', text: verdictLine(result, catalog, problem) }),
+    h('h2', { class: 'pl-verdict-line', text: `${result.passed ? 'Passed' : 'Not passed'}: ${verdictLine(result, catalog, problem)}` }),
     h('div', { class: 'pl-score-row' }, dial(Math.round(sc.total), reduced),
       h('div', { class: 'pl-score-side' }, stars,
         passBadge,
@@ -347,7 +351,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   // 3: SLO cards
   const a = slo.availability, l = slo.latency, s = slo.safety, c = slo.cost;
   const nines = a.actual < a.target ? Math.log10((1 - a.actual) / Math.max(1e-9, 1 - a.target)) : 0;
-  const worst = Object.entries(l.byType || {}).sort((x, y) => y[1].p99Ms - x[1].p99Ms).slice(0, 2);
+  const worst = Object.entries(l.byType || {});
   const compNames = (s.compliance?.failed || []).map((id) => wld.complianceChecks.find((x) => x.id === id)?.name || id);
   const topCost = [...(c.lines || [])].sort((x, y) => y.usd - x.usd).slice(0, 2);
   const checks = result.checks || {};
@@ -373,9 +377,9 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const cards = h('section', { class: 'pl-slo-grid', 'aria-label': 'Score cards' },
     sloCard({ key: 'reliability', title: 'Reliability', iconId: 'ui.availability', pts: sc.reliability, max: 400, ok: a.actual >= a.target, target: fmtPct(a.target), actual: fmtPct(a.actual),
       lines: [a.actual >= a.target ? 'You met the uptime target.' : `${nines.toFixed(1)} "nines" short of the target. Each nine is ten times fewer failures.`, lateNote, 'Real user requests only; attacks and retries are not counted.'].filter(Boolean) }),
-    sloCard({ key: 'latency', title: 'Speed', iconId: 'ui.latency', pts: sc.latency, max: 200, ok: okLat, flag: none || thin ? 'none' : null, target: latTarget, actual: none ? 'nothing served' : `${fmtPct(l.shareOk, l.shareOk < 1 && l.shareOk >= 0.995 ? 1 : 0)} of minutes`,
-      lines: none ? ['Not measured: nothing was served, so there is no speed to score.'] : [thinNote, `To pass: the p99 meets its target in ${Math.round(LAT_BAR * 100)}% of the day's minutes, and each request type in at least 80% of them.`,
-        `Slowest moment: ${fmtMs(l.worstP99Ms)} (p99, approx.).${okLat && overTarget ? ' That slow stretch is inside the allowance: the target only has to hold in most minutes.' : ''}`, ...worst.map(([t, v]) => `${catalog.requestById.get(t)?.name || t}: ${fmtMs(v.worstP99Ms ?? v.p99Ms)} at the slowest, target ${fmtMs(v.targetMs)}${okLat && (v.worstP99Ms ?? v.p99Ms) > v.targetMs ? ` (over it in ${Math.max(1, Math.round((1 - (v.shareOk ?? 1)) * 1440))} of 1,440 minutes, within the allowance)` : ''}`),
+    sloCard({ key: 'latency', title: 'Speed', iconId: 'ui.latency', pts: sc.latency, max: 200, ok: okLat, flag: none || thin ? 'none' : null, target: latTarget, actual: none ? 'nothing served' : `${fmtPct(l.shareOk, 1)} (≈ ${Math.round(l.shareOk * 1440).toLocaleString()} of 1,440 equivalent minutes)`,
+      lines: none ? ['Not measured: nothing was served, so there is no speed to score.'] : [thinNote, `Compliance uses served-request weighting; equivalent minutes scale that share to a 1,440-minute day. To pass: aggregate compliance must reach ${Math.round(LAT_BAR * 100)}%, and every request type at least 80%.`,
+        `Slowest moment: ${fmtMs(l.worstP99Ms)} (p99, approx.).${okLat && overTarget ? ' That slow stretch is inside the allowance: the target only has to hold in most minutes.' : ''}`, ...worst.map(([t, v]) => `${catalog.requestById.get(t)?.name || t}: ${fmtPct(v.shareOk, 1)} within target (≈ ${Math.round(v.shareOk * 1440).toLocaleString()} of 1,440 equivalent minutes, weighted by served requests). ${fmtMs(v.worstP99Ms ?? v.p99Ms)} at the slowest, target ${fmtMs(v.targetMs)}${okLat && (v.worstP99Ms ?? v.p99Ms) > v.targetMs ? ` (over it in ${Math.max(1, Math.round((1 - (v.shareOk ?? 1)) * 1440))} of 1,440 equivalent minutes, within the allowance)` : ''}`),
         slowTypes.length ? `Too often slow: ${slowTypes.join(', ')}.` : null, servedNote].filter(Boolean) }),
     sloCard({ key: 'safety', title: 'Data safety', iconId: 'ui.safety', pts: sc.safety, max: 200, ok: okSafe, flag: none || thin ? 'none' : null, target: problem?.requirements?.dataSafety === 'no-loss' ? 'no lost writes' : problem?.requirements?.dataSafety === 'rpo-1m' ? 'lose at most a minute of writes' : problem?.requirements?.dataSafety || '–', actual: `${fmtNum(s.lostWrites)} lost · ${fmtNum(s.duplicates)} duplicate`,
       lines: none ? ['Not measured: nothing was served, so no data was kept to score. Safety points are only awarded for served requests.'] : [thinNote, s.lostWrites ? `${fmtNum(s.lostWrites)} acknowledged writes were lost.` : 'No acknowledged write was lost.', s.duplicates ? `${fmtNum(s.duplicates)} duplicate effects (such as a double charge).` : 'No duplicate effects.',
@@ -383,6 +387,10 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     sloCard({ key: 'cost', title: 'Cost', iconId: 'ui.cost', pts: sc.cost, max: 200, ok: okCost, flag: none || thin ? 'none' : null, target: `≤ ${fmtUsd(c.budget)} a month`, actual: `≈ ${fmtUsd(c.perMonth)} a month`,
       lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (a.actual < 0.999 ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
   root.append(cards, h('p', { class: 'pl-footnote' }, approx('Every dollar and millisecond here is a sensible real-world approximation, not a quote.')));
+  const checkpoint = renderCorrectness(problem?.correctness);
+  if (checkpoint) root.append(checkpoint);
+
+  root.append(h('p', { class: 'pl-muted', text: loadSummary(problem) }));
 
   // 4: timeline
   const stories = h('section', { class: 'pl-stories', 'aria-label': 'What happened' });
