@@ -124,12 +124,12 @@ const N_F64 = ['cap', 'capNom', 'rho', 'sv', 'sPrev', 'rhoPrev', 'rhoQacc', 'rho
   'hop50', 'hop99', 'err', 'errSoft', 'addLat', 'cold', 'hot', 'flush', 'dup', 'lagEv', 'lag', 'cacheLag', 'capFactor', 'fan', 'limitCap',
   'connErr', 'nodeCostMul', 'unitsCur', 'cbOpenUntil', 'cbDown', 'cbLat', 'loadEq', 'realIn', 'realInPrev', 'wrRate', 'wrRatePrev',
   'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'failedNow', 'llLoss', 'highSince', 'lowSince', 'nodeReq', 'nodeKb', 'nodeInKb', 'nodeWKb', 'atkIn', 'BIN',
-  'qAge', 'qOver', 'lateNow', 'unitsLo', 'unitsHi'];
+  'qAge', 'qOver', 'lateNow', 'unitsLo', 'unitsHi', 'peakUnits', 'peakCapacity', 'peakRequests'];
 const N_U8 = ['down', 'blockW', 'poison', 'scaleBlocked', 'cbOpen', 'status', 'tmoAny'];
 const NL = ['IN', 'RIN', 'INJ', 'OKS', 'FAILR', 'DONE', 'HITS', 'PUa', 'SUCC', 'SOFT', 'LAT', 'TM', 'TV', 'EXTRA', 'PD', 'TMO', 'DD', 'BACK', 'DRAIN', 'RNEXT', 'RPEND', 'WNEXT', 'PQ'];
 const EL = ['W', 'ER', 'BACKE', 'DRAINE'];
 const PERSIST_N = ['unitsCur', 'sPrev', 'rhoPrev', 'rhoQPrev', 'health', 'unhealthySince', 'extraPrev', 'cbOpenUntil', 'cbDown', 'cbLat', 'realInPrev',
-  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'unitsLo', 'unitsHi'];
+  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'unitsLo', 'unitsHi', 'peakUnits', 'peakCapacity', 'peakRequests'];
 const PERSIST_NL = ['BACK', 'RPEND', 'RNEXT', 'WNEXT', 'PQ'];
 const PERSIST_EL = ['BACKE'];
 // Every field the engine state ever holds, declared up front so the object keeps one fast shape in V8.
@@ -162,7 +162,7 @@ function blankState() {
     dup: null, lagEv: null, lag: null, cacheLag: null, capFactor: null, fan: null, limitCap: null, connErr: null, nodeCostMul: null, unitsCur: null,
     cbOpenUntil: null, cbDown: null, cbLat: null, loadEq: null, realIn: null, realInPrev: null, wrRate: null, wrRatePrev: null, writesSoFar: null,
     peakUtil: null, overTicks: null, failedSum: null, failedNow: null, llLoss: null, highSince: null, lowSince: null,
-    nodeReq: null, nodeKb: null, nodeInKb: null, nodeWKb: null, atkIn: null, BIN: null, qAge: null, qOver: null, lateNow: null, unitsLo: null, unitsHi: null,
+    nodeReq: null, nodeKb: null, nodeInKb: null, nodeWKb: null, atkIn: null, BIN: null, qAge: null, qOver: null, lateNow: null, unitsLo: null, unitsHi: null, peakUnits: null, peakCapacity: null, peakRequests: null,
     down: null, blockW: null, poison: null, scaleBlocked: null, cbOpen: null, status: null, tmoAny: null,
     // per node and lane (N x LN)
     IN: null, RIN: null, INJ: null, OKS: null, FAILR: null, DONE: null, HITS: null, PUa: null, SUCC: null, SOFT: null, LAT: null, TM: null, TV: null,
@@ -1020,7 +1020,12 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       X.failedSum[u] += failReal * dt;
       const util = X.rho[u];
       const down = n.hasCap && n.k !== KIND.source && X.cap[u] <= 0;
-      if (!down && util > X.peakUtil[u]) X.peakUtil[u] = util;
+      if (!down && util > X.peakUtil[u]) {
+        X.peakUtil[u] = util;
+        X.peakUnits[u] = X.unitsCur[u];
+        X.peakCapacity[u] = X.cap[u];
+        X.peakRequests[u] = X.realIn[u];
+      }
       const behind = X.qOver[u] > 0;
       if (behind && X.qOver[u] > X.peakUtil[u]) X.peakUtil[u] = Math.min(X.qOver[u], 10);
       if (util > 1 || (down && X.realIn[u] > 0) || behind) X.overTicks[u] += 1;

@@ -140,6 +140,43 @@ section('Repair advice preserves required destinations and event coverage');
   check('keys called by active workers receive path coverage credit', covered.helpers.includes('idempotency-store'), covered.story.helped);
 }
 
+section('Sizing uses the fleet at the measured peak');
+{
+  const base = problemById.get('url-shortener');
+  const p = { ...base, requirements: { ...base.requirements, peakRps: 16000, budgetPerMonth: 1e9, latencyP99Ms: { default: 100 } }, events: [] };
+  const graph = { nodes: [
+    { id: 'u', type: 'mobile-app', x: 0, y: 0, knobs: { retries: 0 } },
+    { id: 'v', type: 'vm-fleet', x: 100, y: 0, units: 8, knobs: { autoscale: { on: true, min: 2, max: 8, targetUtil: 0.6 } } },
+    { id: 'd', type: 'kv-store', x: 200, y: 0, units: 100 }
+  ], edges: [{ from: 'u', to: 'v' }, { from: 'v', to: 'd' }] };
+  const { r } = runDay(p, graph);
+  check('sizing shows simultaneous load, active units, headroom and monthly cost', /Measured peak:.*requests\/s with.*active.*30 percent headroom.*0.70.*month/.test(r.nextStep.text), r.nextStep.text);
+  const m = r.nextStep.text.match(/round up ([\d,]+) ÷ \(([\d,]+) × 0.70\) = ([\d,]+)/);
+  check('suggested units follow the displayed capacity arithmetic', !!m && Math.abs(Math.ceil(Number(m[1].replaceAll(',', '')) / (Number(m[2].replaceAll(',', '')) * 0.7)) - Number(m[3].replaceAll(',', ''))) <= 1);
+  if (m) {
+    const count = Number(m[3].replaceAll(',', ''));
+    const resized = structuredClone(graph);
+    resized.nodes[1].units = count;
+    resized.nodes[1].knobs.autoscale.min = count;
+    resized.nodes[1].knobs.autoscale.max = count;
+    const busy = runDay(p, resized).r.nodes.find(n => n.id === 'v').peakUtil;
+    check('applying the advice lands near 70 percent peak busy', busy <= 0.71 && busy >= 0.6, String(busy));
+  }
+}
+section('Unreached dependencies do not receive repair advice');
+{
+  const base = problemById.get('url-shortener');
+  const p = { ...base, requirements: { ...base.requirements, peakRps: 60000 }, events: [{ id: 'slow-dependency', at: '10:00' }] };
+  const graph = { nodes: [
+    { id: 'u', type: 'mobile-app', x: 0, y: 0, knobs: { retries: 0 } },
+    { id: 'v', type: 'vm-fleet', x: 100, y: 0, units: 100 },
+    { id: 'sql', type: 'sql-primary', x: 200, y: 0 },
+    { id: 'dep', type: 'payment-processor', x: 300, y: 0 }
+  ], edges: [{ from: 'u', to: 'v' }, { from: 'v', to: 'sql' }] };
+  const story = runDay(p, graph).r.events.find(e => e.id === 'slow-dependency')?.story;
+  check('general dependency teaching is separate from the next action', /In general, timeouts/.test(story?.hurt || '') && /Fix.*SQL/.test(story?.fix || '') && !/timeout|circuit breaker/i.test(story?.fix || ''), JSON.stringify(story));
+}
+
 section('Debrief wording follows what was measured');
 {
   const bad = [];

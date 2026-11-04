@@ -529,6 +529,9 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
     if (blocked.top) facts.push(`Routing gap: ${blocked.top.message}`);
     const failedNodes = model.nodes.filter((n) => st.nodeFail[n.i] >= 1).sort((a, b) => st.nodeFail[b.i] - st.nodeFail[a.i]).slice(0, 3);
     if (failedNodes.length) facts.push(`Failed requests were recorded at ${joinNames(failedNodes.map((n) => `${nodeLabel(n)} (${fmtCount(st.nodeFail[n.i])})`))}; counts at successive parts can overlap.`);
+    if (targets.length && targets.every((u) => !(st.nodeIn[u] > 0))) {
+      facts.push('In general, timeouts bound waiting and circuit breakers stop repeated calls to a failing dependency. They do not repair failures elsewhere in this design.');
+    }
     hurt = facts.join(' ');
   }
   if (inst.id === 'retry-storm') {
@@ -620,6 +623,14 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
   const offPath = (def.counters || []).filter((c) => c.element && counterApplies(inst, c) && model.present.has(c.element) && !helpers.some((h) => h.id === c.element));
   if (offPath.length) helped = `${helped ? helped + ' ' : ''}${joinNames(offPath.map((c) => catalog.elementById.get(c.element)?.name || c.element))}: present but not on this request path.`;
   if (helpers.some((h) => h.id === 'queue') && (inst.stats?.maxBacklog || 0) > 0) helped = `${helped || ''} The queue held up to about ${fmtCount(inst.stats.maxBacklog)} requests waiting during this event; that measures buffering, not how many failures it prevented.`.trim();
+  if (inst.id === 'slow-dependency' && inst.stats) {
+    const targets = [...new Set(inst.effects.flatMap((e) => e.targets || []))];
+    if (targets.length && targets.every((u) => !(inst.stats.nodeIn[u] > 0))) {
+      const root = model.nodes.filter((n) => !targets.includes(n.i) && inst.stats.nodeFail[n.i] >= 1).sort((a, b) => inst.stats.nodeFail[b.i] - inst.stats.nodeFail[a.i])[0];
+      const gap = blockedOf(S).top;
+      fix = gap ? `Fix the routing gap first: ${gap.message}` : root ? `Fix the failures at ${nodeLabel(root)} first. The slow dependency caused none of these failures.` : null;
+    }
+  }
   return { headline: tidy(headline), hurt: tidy(hurt), helped: tidy(helped), fix: tidy(fix) };
 }
 
@@ -663,6 +674,21 @@ function nextKind(S, score, metrics) {
   const losses = [['reliability', 400 - score.reliability], ['latency', 200 - score.latency], ['safety', 200 - score.safety], ['cost', 200 - score.cost]];
   const failed = losses.filter(([k]) => checks[k === 'reliability' ? 'availability' : k] === false);
   return (failed.length ? failed : losses).sort((a, b) => b[1] - a[1])[0];
+}
+
+function sizingAdvice(S, n) {
+  const u = n.i, units = S.peakUnits[u], capacity = S.peakCapacity[u];
+  if (n.elastic || !(units > 0 && capacity > 0) || !(n.el.knobs || []).includes('units')) return '';
+  const requests = S.peakRequests[u], peak = S.peakUtil[u];
+  if (!(requests > 0 && peak > 0)) return '';
+  const perServer = requests / (peak * units);
+  const needed = Math.ceil(requests / (perServer * 0.7));
+  const need = Math.min(n.el.units.max, needed);
+  const price = (n.el.cost?.perUnit || 0) * n.tierCost;
+  const avg = S.counters.elapsedSec > 0 ? S.counters.unitSec[u] / S.counters.elapsedSec : n.units;
+  const delta = (need - avg) * price;
+  const scaling = n.autoscaleKnob || n.autoscaler >= 0;
+  return ` Measured peak: ≈ ${withCommas(requests)} requests/s with ${withCommas(units)} ${unitsWord(n)} active${scaling ? ' under autoscaling' : ''}. Effective capacity for this request mix: ≈ ${withCommas(perServer)} requests/s per unit. With 30 percent headroom (70 percent busy), round up ${withCommas(requests)} ÷ (${withCommas(perServer)} × 0.70) = ${withCommas(needed)} ${unitsWord(n)}.${need < needed ? ` The limit is ${withCommas(need)}; reduce load or use a bigger size too.` : ''} ${scaling ? `Set the autoscaling minimum to ${withCommas(need)} before the peak; new servers take 2 to 4 minutes to start. ` : ''}Keeping ${withCommas(need)} all day costs ≈ $${withCommas(need * price)}/month for units, ≈ $${withCommas(Math.abs(delta))}/month ${delta >= 0 ? 'more' : 'less'} than this run's average fleet (usage costs may change).`;
 }
 
 function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
@@ -739,13 +765,10 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
     const n = nodes[worst];
     const overMin = Math.round((S.overTicks[worst] * S.dt) / 60);
     if (overMin >= 1 && (n.kind === 'compute' || n.kind === 'store' || n.kind === 'cache' || n.kind === 'router')) {
-      const units = Math.round(S.unitsCur[worst]);
       const peak = S.peakUtil[worst];
-      const need = n.elastic || !(peak > 1) ? 0 : Math.ceil((units * peak) / 0.7);
       const busy = peak > 1 ? ` (peak ≈ ${busyPct(peak)} percent busy, overloaded for ≈ ${withCommas(overMin)} minutes of the day)` : '';
       if (n.kind === 'compute') {
-        const more = need > units ? (peak < 3 ? ` About ${withCommas(need)} units would peak near 70 percent.` : ' Peak load is several times what this part can do. Count the units you need from the peak, keep about 30 percent spare, and let autoscaling cover spikes.') : '';
-        const more2 = more.replace(' units ', ` ${unitsWord(n)} `);
+        const more2 = sizingAdvice(S, n);
         if (!n.autoscaleKnob && n.autoscaler < 0 && (n.el.knobs || []).includes('autoscale')) return { text: `${name(n)} ran out of room${busy}. Add ${unitsWord(n)} and turn on autoscaling.${more2}`, nodeId: n.id, knob: 'autoscale' };
         return { text: `${name(n)} ran out of room${busy}. Add ${unitsWord(n)} so it peaks under about 70 percent busy.${more2}`, nodeId: n.id, knob: 'units' };
       }
@@ -787,7 +810,7 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
       const busy = S.peakUtil[n.i] > 0.7;
       const knob = busy ? ((n.el.knobs || []).includes('units') ? 'units' : (n.el.knobs || []).includes('tier') ? 'tier' : undefined) : undefined;
       const fix = busy ? 'Give this part more capacity so it stays under about 70 percent busy.' : 'Shorten this request path and keep its parts in the same region; check synchronous replication across zones too.';
-      return { text: `${op} met their speed target for only ${Math.round(slow[1] * 100)} percent of served traffic. At their slowest moment, ${name(n)} was the costliest processing hop (p99 ≈ ${Math.round(hop.p99Ms)} ms, before network travel). ${fix}`, nodeId: n.id, knob, lesson: busy ? (n.kind === 'compute' ? 'autoscaling' : 'sharding') : 'requests-and-latency' };
+      return { text: `${op} met their speed target for only ${Math.round(slow[1] * 100)} percent of served traffic. At their slowest moment, ${name(n)} was the costliest processing hop (p99 ≈ ${Math.round(hop.p99Ms)} ms, before network travel). ${fix}${busy ? sizingAdvice(S, n) : ''}`, nodeId: n.id, knob, lesson: busy ? (n.kind === 'compute' ? 'autoscaling' : 'sharding') : 'requests-and-latency' };
     }
 
     const far = Object.keys(req.userRegions).length > 1 && !model.present.has('cdn');
@@ -795,14 +818,11 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
     for (const n of nodes) if (n.hasCap && n.kind !== 'source' && S.peakUtil[n.i] > wu) { wu = S.peakUtil[n.i]; worst = n.i; }
     if (worst >= 0 && wu > 0.7) {
       const n = nodes[worst];
-      const units = Math.round(S.unitsHi[n.i] || S.unitsCur[n.i]);
-      const need = !n.elastic && (n.el.knobs || []).includes('units') ? Math.ceil((units * wu) / 0.7) : 0;
-      const how = need > units ? ` About ${withCommas(need)} ${unitsWord(n)} would peak near 70 percent.` : '';
-      const shrunk = n.kind === 'compute' && S.unitsLo[n.i] < n.units ? ` Autoscaling cut it from ${n.units} to ${Math.round(S.unitsLo[n.i])} ${unitsWord(n)} when it was quiet, and new ones take 2 to 4 minutes to start: set its fewest ${unitsWord(n)} to what the peak needs (at least ${n.units}).` : '';
+      const how = sizingAdvice(S, n);
       const nk = n.el.knobs || [];
       if (!nk.includes('units') && !nk.includes('tier')) return { text: `${name(n)} got busy enough to slow requests (≈ ${busyPct(wu)} percent at its busiest). ${fixedFix(n)}`, nodeId: n.id, elementId: n.el.id };
       const lever = nk.includes('units') ? `Add ${unitsWord(n)}` : 'Use a bigger size';
-      return { text: `${name(n)} got busy enough to slow requests (≈ ${busyPct(wu)} percent at its busiest). ${lever} so it stays under about 70 percent.${how}${shrunk}${!shrunk && n.autoscaleKnob && n.kind === 'compute' ? ` Autoscaling needs 2 to 4 minutes to add ${unitsWord(n)}, so raise its fewest to be ready before the spike.` : ''}`, nodeId: n.id, knob: shrunk ? 'autoscale' : nk.includes('units') ? 'units' : 'tier' };
+      return { text: `${name(n)} got busy enough to slow requests (≈ ${busyPct(wu)} percent at its busiest). ${lever} so it stays under about 70 percent.${how}`, nodeId: n.id, knob: autoOn(n) ? 'autoscale' : nk.includes('units') ? 'units' : 'tier' };
     }
     const priv = req.privateReads || 0;
     if (far && priv >= 0.5) return { text: `Users far from your servers waited on long round trips. About ${Math.round(priv * 100)} percent of reads are personal (a balance, a record, an inbox), and a shared CDN copy cannot answer those, so add a second region close to them.`, elementId: 'global-lb' };
