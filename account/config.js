@@ -5,7 +5,7 @@ export const API = 'https://api.systemdesigner.io';
 
 // Turn on once https://api.systemdesigner.io/health answers (API.md, "Go live"). While false the site never contacts the service,
 // so visitors see no failed request and no sign-in button.
-export const API_LIVE = false;
+export const API_LIVE = true;
 
 export const DEV_API_PORT = 8792;
 
