@@ -12,6 +12,18 @@ export function createProgress(store, bus) {
     get: (problemId) => probs[problemId] || null,
     all: () => ({ ...probs }),
 
+    saveEstimates(problemId, values) {
+      const prev = probs[problemId];
+      probs[problemId] = {
+        attempts: 0, bestScore: 0, stars: 0, hintsUsed: 0, solvedAt: null, lastResultAt: null,
+        ...prev,
+        estimates: values.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null),
+        estimatesAt: Math.max(Date.now(), (prev?.estimatesAt || 0) + 1),
+      };
+      save();
+      bus.emit('progress:updated', { problemId });
+    },
+
     // Returns { first, improved } so callers can celebrate.
     record(problemId, debrief, hintsUsed = 0) {
       const total = Math.round(debrief?.score?.total ?? debrief?.total ?? 0);

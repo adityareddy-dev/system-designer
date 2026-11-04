@@ -30,6 +30,10 @@ const entries = (o) => (isObj(o) ? Object.keys(o).filter((k) => k !== '__proto__
 function cleanProblem(p) {
   if (!isObj(p)) return null;
   return {
+    ...(Array.isArray(p.estimates) && ts(p.estimatesAt) ? {
+      estimates: p.estimates.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 1e30 ? v : null),
+      estimatesAt: ts(p.estimatesAt),
+    } : {}),
     attempts: int(p.attempts, 0, 1e6),
     bestScore: int(p.bestScore, 0, 1000),
     stars: int(p.stars, 0, 3),
@@ -130,8 +134,11 @@ const maxTs = (x, y) => (x == null ? y : y == null ? x : Math.max(x, y));
 const smaller = (x, y) => (JSON.stringify(x) <= JSON.stringify(y) ? x : y);
 
 function mergeProblem(a, b) {
+  const estimates = (a.estimatesAt || 0) === (b.estimatesAt || 0) ? smaller(a.estimates || [], b.estimates || [])
+    : (a.estimatesAt || 0) > (b.estimatesAt || 0) ? a.estimates : b.estimates;
   const lead = a.bestScore !== b.bestScore ? (a.bestScore > b.bestScore ? a : b) : (a.hintsUsed <= b.hintsUsed ? a : b);
   return {
+    ...(estimates && (a.estimatesAt || b.estimatesAt) ? { estimates, estimatesAt: maxTs(a.estimatesAt, b.estimatesAt) } : {}),
     attempts: Math.max(a.attempts, b.attempts),
     bestScore: Math.max(a.bestScore, b.bestScore),
     stars: Math.max(a.stars, b.stars),

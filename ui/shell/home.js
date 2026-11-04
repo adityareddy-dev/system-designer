@@ -86,13 +86,19 @@ export function renderHome(host, ctx) {
   cta.push(h('a', { class: 'sh-btn sh-btn--lg', href: '#/drill' }, ico('ui.speed', 20), 'Quick drill'));
   cta.push(h('a', { class: 'sh-btn sh-btn--lg' + (lessonOf(ctx, 'intro') ? '' : ' sh-btn--primary'), href: '#/practice' }, 'Browse problems'));
 
+  const progressLine = h('p', { class: 'sh-fine', 'aria-live': 'polite' });
+  const paintAccount = () => { progressLine.textContent = ctx.account?.isSignedIn()
+    ? 'Signed in. Your progress follows you across devices.'
+    : 'No sign-up. Your progress stays in this browser.'; };
+  paintAccount();
+  const offAccount = ctx.bus.on('account', paintAccount);
   const hero = h('section', { class: 'sh-hero' },
     h('div', { class: 'sh-hero-copy' },
       h('p', { class: 'sh-eyebrow', text: 'Free and open source' }),
       h('h1', { class: 'sh-display', text: 'Build the system. Survive the day.' }),
       h('p', { class: 'sh-lead', text: 'Design real systems, from a link shortener to a bank ledger, then watch a full day of traffic flow through your design. See what held, what broke, what it cost, and why.' }),
       h('div', { class: 'sh-cta-row' }, cta),
-      h('p', { class: 'sh-fine', text: 'No sign-up. Your progress stays in this browser.' })),
+      progressLine),
     heroArt(ctx));
 
   const cards = h('section', { class: 'sh-section-grid', 'aria-label': 'Sections' },
@@ -149,5 +155,5 @@ export function renderHome(host, ctx) {
     h('span', null, 'Made by Aditya Reddy. Company names appear only as plain comparisons.'));
 
   host.append(h('div', { class: 'sh-page' }, hero, cards, extras, conceptStrip, strip, foot));
-  return { title: 'Home' };
+  return { title: 'Home', destroy: offAccount };
 }

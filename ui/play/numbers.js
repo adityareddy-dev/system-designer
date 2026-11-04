@@ -4,9 +4,12 @@ import { h, fmtNum, approx } from './util.js';
 
 const SL = 1000;
 
-export function renderNumbers(host, { problem, guesses, onNext, onBack, snd }) {
+export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, progress }) {
   host.replaceChildren();
   const rows = problem.numbers || [];
+  const saved = progress?.get(problem.id)?.estimates;
+  if (saved) rows.forEach((row, i) => { if (row.ask) guesses[i] = saved[i] ?? null; });
+  const save = () => progress?.saveEstimates(problem.id, rows.map((row, i) => row.ask ? guesses[i] ?? null : null));
   const list = h('div', { class: 'pl-nlist' });
   const checks = [];
 
@@ -39,13 +42,13 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd }) {
         slider.value = String(toPos(guesses[i]));
         input.value = String(+guesses[i].toPrecision(12));
         slider.classList.remove('pl-range--unset');
-        show(); syncReveal(); snd?.('ui.tap', { intensity: 0.3 });
+        save(); show(); syncReveal(); snd?.('ui.tap', { intensity: 0.3 });
       });
       input.addEventListener('input', () => {
         guesses[i] = input.value === '' || !Number.isFinite(input.valueAsNumber) ? null : snap(input.valueAsNumber);
         slider.value = String(guesses[i] == null ? 0 : toPos(guesses[i]));
         slider.classList.toggle('pl-range--unset', guesses[i] == null);
-        show(); syncReveal();
+        save(); show(); syncReveal();
       });
       input.addEventListener('change', () => { input.value = guesses[i] == null ? '' : String(guesses[i]); });
       show();

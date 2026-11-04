@@ -235,7 +235,15 @@ export function createAccountUi(ctx, api) {
       slot.hidden = false;
       const keep = pop && popKind === 'menu' && st.user ? pop : null;
       if (pop && !keep) closePop(false);
-      if (keep) { keep._paintSync?.(); return; }
+      if (keep) {
+        keep._paintSync?.();
+        keep.querySelector('#ac-menu-title').textContent = st.user.name;
+        keep.querySelector('.ac-me .ac-avatar').replaceWith(avatarEl(st.user, 44));
+        trigger.title = st.user.name;
+        trigger.setAttribute('aria-label', `Your account: ${st.user.name}`);
+        trigger.replaceChildren(avatarEl(st.user, 30));
+        return;
+      }
       clear(slot);
       if (st.user) {
         trigger = h('button', { type: 'button', class: 'ac-me-btn', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', 'aria-label': `Your account: ${st.user.name}`, title: st.user.name,

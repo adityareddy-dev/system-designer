@@ -1034,7 +1034,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     debriefWrap.hidden = step !== 'debrief';
     showPanel(step === 'clarify' || step === 'numbers');
     if (step === 'clarify') renderClarify(panel, { problem: S.problem, revealed: S.revealed, snd, warm: !!S.problem?.warmUp, onNext: () => go('numbers') });
-    if (step === 'numbers') renderNumbers(panel, { problem: S.problem, guesses: S.guesses, snd, onBack: () => go('clarify'), onNext: () => go('draw') });
+    if (step === 'numbers') renderNumbers(panel, { problem: S.problem, guesses: S.guesses, snd, progress: ctx.progress, onBack: () => go('clarify'), onNext: () => go('draw') });
     if (step === 'draw') { toolbar.setEnabled(canStructure(), ''); }
     stepsBar.set(step, { clarify: S.sim.phase === 'build', numbers: S.sim.phase === 'build', draw: true, debrief: !!S.result });
     if (step === 'debrief') showDebrief();
