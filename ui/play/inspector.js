@@ -1,5 +1,6 @@
 // Inspector: what the selected element is, how busy it is now, what it costs, and its knobs.
 import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, approx, statusGlyph } from './util.js';
+import { stepCount } from './draw-controls.js';
 import { capacityText, inspectorStatus } from './inspector-facts.js';
 
 export function createInspector(host, { catalog, getNode, getHome, onKnob, onDelete, onDuplicate, onConnect, onClose, lesson = false }) {
@@ -29,9 +30,9 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
     const set = (v) => { v = Math.min(max, Math.max(min, Math.round(+v || min))); inp.value = String(v); onSet(v); };
     inp.addEventListener('change', () => set(inp.value));
     return h('span', { class: 'pl-stepper' },
-      h('button', { class: 'pl-icon-btn', type: 'button', 'aria-label': 'Less ' + label, onClick: () => set(+inp.value - (+inp.value > 20 ? 5 : 1)) }, iconEl('ui.minus', 16)),
+      h('button', { class: 'pl-icon-btn', type: 'button', 'aria-label': 'Less ' + label, onClick: () => set(stepCount(+inp.value, -1, min, max)) }, iconEl('ui.minus', 16)),
       inp,
-      h('button', { class: 'pl-icon-btn', type: 'button', 'aria-label': 'More ' + label, onClick: () => set(+inp.value + (+inp.value >= 20 ? 5 : 1)) }, iconEl('ui.plus', 16)));
+      h('button', { class: 'pl-icon-btn', type: 'button', 'aria-label': 'More ' + label, onClick: () => set(stepCount(+inp.value, 1, min, max)) }, iconEl('ui.plus', 16)));
   }
 
   function segmented(options, value, onSet, label, fmt = String) {
@@ -178,7 +179,7 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
       // a lesson step names one setting: show only that, with a one-line description and the rest folded away
       const oneLine = (el.description || '').split(/(?<=[.!?])\s/)[0];
       const more = h('details', { class: 'pl-insp-more' }, h('summary', { text: 'More details' }),
-        actions, liveBox,
+        liveBox,
         section('Good at', h('ul', { class: 'pl-list' }, (el.goodAt || []).map((g) => h('li', { text: g })))),
         section('The trade-off', h('p', { text: el.tradeoff })),
         section('What it can do', facts),
@@ -186,7 +187,7 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
         knobs.children.length > 1 ? section('Other settings', knobs) : null,
         el.failureModes?.length ? section('How it breaks', h('ul', { class: 'pl-list' }, el.failureModes.map((f) => h('li', { text: f.text })))) : null);
       root.classList.add('pl-inspector--focus');
-      root.append(head, h('div', { class: 'pl-insp-scroll' }, focusRow, h('p', { class: 'pl-desc', text: oneLine }), more));
+      root.append(head, h('div', { class: 'pl-insp-scroll' }, actions, focusRow, h('p', { class: 'pl-desc', text: oneLine }), more));
       const sc = root.querySelector('.pl-insp-scroll'); if (sc) sc.scrollTop = 0;
       paintLive();
       return;
@@ -200,7 +201,7 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
         section('What it can do', facts),
         section('Cost a month', costLines(el, node)),
         el.failureModes?.length ? section('How it breaks', h('ul', { class: 'pl-list' }, el.failureModes.map((f) => h('li', { text: f.text })))) : null);
-      root.append(head, h('div', { class: 'pl-insp-scroll' }, replicaCount, section('Settings', knobs), h('p', { class: 'pl-desc', text: el.description }), actions, liveBox, more));
+      root.append(head, h('div', { class: 'pl-insp-scroll' }, actions, replicaCount, section('Settings', knobs), h('p', { class: 'pl-desc', text: el.description }), liveBox, more));
       const sc = root.querySelector('.pl-insp-scroll'); if (sc) sc.scrollTop = 0;
       paintLive();
       return;

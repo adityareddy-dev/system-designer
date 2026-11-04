@@ -346,6 +346,22 @@ export function createNodeLayer(PIXI, parent, env) {
       const P = env.kit().P;
       const reduced = env.reduced();
       for (const v of list) step(v, dt, now, P, reduced, time);
+      // Names grow when zoomed out. Stack colliding names below nearby parts.
+      const labels = [];
+      for (const v of list) {
+        if (!v.c.visible || !v.labelT.visible) continue;
+        const width = v.labelT.width, height = v.labelT.height;
+        let y = v.y + HALF + 10;
+        const x = v.x - width / 2;
+        for (let tries = 0; tries < list.length * 2; tries++) {
+          const hit = labels.find((b) => x < b.x + b.w + 8 && x + width + 8 > b.x && y < b.y + b.h + 6 && y + height + 6 > b.y)
+            || list.filter((n) => n !== v && n.c.visible).map((n) => ({ x: n.x - HALF, y: n.y - HALF, w: HALF * 2, h: HALF * 2 })).find((b) => x < b.x + b.w + 8 && x + width + 8 > b.x && y < b.y + b.h + 6 && y + height + 6 > b.y);
+          if (!hit) break;
+          y = hit.y + hit.h + 8;
+        }
+        v.labelT.y = y - v.y;
+        labels.push({ x, y, w: width, h: height });
+      }
       for (let i = dying.length - 1; i >= 0; i--) {
         const v = dying[i];
         v.fade += dt;

@@ -306,19 +306,19 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const cx = a.l + (a.w - a.l - a.r) / 2, cy = a.t + (a.h - a.t - a.b) / 2;
     const w = scene.screenToWorld(cx, cy);
     // a tap places the part in the nearest free spot; on a phone the settings sheet stays closed so the part is visible
-    const id = placeComponent(type, w.x, w.y, null, { select: !isPhone() });
+    const id = placeComponent(type, w.x, w.y, null, { select: !isPhone(), autoPlace: true });
     if (id) { announce(`${catalog.elementById.get(type)?.name || type} placed. Press C on the diagram to connect it.`); if (isPhone()) later(() => { if (!S.destroyed) fitView(true); }, 80); }
     return id;
   }
 
-  // ---- keeping parts apart: a new part never lands on top of another one
-  const GAP_X = 132, GAP_Y = 112; // centre to centre, so icons and their labels stay readable
+  // ---- spacing for automatic placement and insertion
+  const GAP_X = 180, GAP_Y = 160; // centre to centre, so icons and their labels stay readable
   const overlaps = (x, y, skip) => graph().nodes.some((n) => n.id !== skip && Math.abs(n.x - x) < GAP_X && Math.abs(n.y - y) < GAP_Y);
   function freeSpot(x, y, skip) {
     x = snap(x); y = snap(y);
     if (!overlaps(x, y, skip)) return { x, y };
     const cand = [];
-    for (let i = -8; i <= 8; i++) for (let j = -8; j <= 8; j++) if (i || j) cand.push([i * 40, j * 40]);
+    for (let i = -40; i <= 40; i++) for (let j = -40; j <= 40; j++) if (i || j) cand.push([i * 40, j * 40]);
     cand.sort((p, q) => Math.hypot(p[0], p[1] * 1.2) + (p[0] < 0 ? 1 : 0) - Math.hypot(q[0], q[1] * 1.2) - (q[0] < 0 ? 1 : 0)); // ties go to the right, away from the clients
     for (const [dx, dy] of cand) if (!overlaps(x + dx, y + dy, skip)) return { x: x + dx, y: y + dy };
     return { x, y };
@@ -373,15 +373,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (edgeId && canSplice(type, edgeId)) pos = makeRoomOnEdge(edgeId);
       else edgeId = null;
       const want = { x: snap(pos ? pos.x : x), y: snap(pos ? pos.y : y) };
-      const at = freeSpot(want.x, want.y, null);
-      const slid = at.x !== want.x || at.y !== want.y;
+      const at = opt.autoPlace && !edgeId ? freeSpot(want.x, want.y, null) : want;
       const id = S.sim.addNode(type, at.x, at.y, {});
       if (edgeId) spliceInto(id, type, edgeId);
       commit();
       snd('place', { category: el.category });
       note('place', type);
       if (opt.select !== false && mode !== 'lesson') { select(id); if (isLesson && isPhone()) setTimeout(() => { if (S.selected === id) select(null); }, 1400); }
-      if (slid && performance.now() - (S.slidToastAt || -1e4) > 3000) { S.slidToastAt = performance.now(); if (!isPhone()) toast(`${el.name} was moved to the nearest free spot so it does not sit on top of another part.`, 'info', 2600); announce(`${el.name} placed in the nearest free spot.`); }
+      if (!edgeId && !opt.autoPlace) showCaption('Placed here. Select the part and use "Connect to…" to wire it. Drag it to leave room for its name.', 7000);
       connectCoach(id, el);
       revealIfHidden(at.x, at.y);
       if (S.sim.phase !== 'build') {
@@ -480,18 +479,15 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const n = graph().nodes.find((x) => x.id === id);
     if (!n || n.locked) return;
     try {
-      const nid = S.sim.addNode(n.type, n.x + 40, n.y + 40, { units: n.units, zones: n.zones, region: n.region, tier: n.tier, knobs: { ...(n.knobs || {}) } });
+      const at = freeSpot(n.x + 40, n.y + 40, null);
+      const nid = S.sim.addNode(n.type, at.x, at.y, { units: n.units, zones: n.zones, region: n.region, tier: n.tier, knobs: { ...(n.knobs || {}) } });
       commit(); snd('place', { category: catalog.elementById.get(n.type)?.category }); select(nid);
     } catch (e) { toast(e.message, 'warn'); }
   }
   function moveNode(id, x, y) {
-    // a part dropped on another part (a locked source too) slides to the nearest free spot
-    const at = freeSpot(x, y, id);
+    const at = { x: snap(x), y: snap(y) };
     try { S.sim.moveNode(id, at.x, at.y); } catch { return; }
-    if ((at.x !== snap(x) || at.y !== snap(y)) && performance.now() - (S.slidToastAt || -1e4) > 3000) {
-      S.slidToastAt = performance.now();
-      toast('Moved to the nearest free spot so parts do not sit on top of each other.', 'info', 2200);
-    }
+    if (overlaps(at.x, at.y, id)) showCaption('Placed here. Drag the part to leave room for its name.', 5000);
     commit();
   }
 
@@ -545,7 +541,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     root.classList.toggle('pl-has-selection', !!id);
     // in a lesson the diagram steps out from under the settings panel, and settles back once it closes
-    if (isLesson && S.booted) { try { if (id) refitSoon(); else if (was) later(() => { if (!S.selected) fitView(true); }, 360); } catch { /* not ready yet */ } }
+    if ((isLesson || isSandbox) && S.booted) { try { if (id) refitSoon(); else if (was) later(() => { if (!S.selected) fitView(true); }, 360); } catch { /* not ready yet */ } }
     bus.emit('play:select', { nodeId: id });
   }
   function startConnect(from) {
@@ -1671,7 +1667,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const refitSoon = () => {
     clearTimeout(refitT);
     refitT = setTimeout(() => {
-      if (S.destroyed || S.connectFrom || !(S.sim.phase !== 'build' || isLesson) || !nodesHidden()) return;
+      if (S.destroyed || S.connectFrom || !(S.sim.phase !== 'build' || isLesson || isSandbox) || !nodesHidden()) return;
       fitView(true);
       // a big diagram that still does not fit between the panels gets the room the open traffic panel was using, and then
       // zooms out a little further than usual so the whole of it shows
