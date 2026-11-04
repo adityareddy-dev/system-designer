@@ -146,7 +146,8 @@ console.log('\nKeyboard');
     const live = await ev(() => document.querySelector('.pl-sr')?.textContent || '');
     if (/Load balancer/i.test(live)) break;
     await page.keyboard.press('ArrowRight');
-    await sleep(60);
+    // the live region is cleared, then filled a moment later, so wait for the new line before reading it
+    await page.waitForFunction(() => (document.querySelector('.pl-sr')?.textContent || '') !== '', { timeout: 2000 }).catch(() => {});
   }
   await page.keyboard.press('Enter');
   await sleep(200);
