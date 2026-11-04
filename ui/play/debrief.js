@@ -279,7 +279,7 @@ function versusCard(result, opp, handlers) {
     handlers?.onShare ? h('button', { class: 'pl-btn pl-btn--small', type: 'button', onClick: () => handlers.onShare() }, 'Send my design back') : null);
 }
 
-export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed = 0, prevBest = null, opponent = null, hasNext = false, reduced = false, handlers = {} }) {
+export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed = 0, prevBest = null, opponent = null, hasNext = false, reduced = false, handlers = {}, correctnessAnswer = null }) {
   host.replaceChildren();
   const sc = result.score;
   const slo = result.slo;
@@ -387,7 +387,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     sloCard({ key: 'cost', title: 'Cost', iconId: 'ui.cost', pts: sc.cost, max: 200, ok: okCost, flag: none || thin ? 'none' : null, target: `≤ ${fmtUsd(c.budget)} a month`, actual: `≈ ${fmtUsd(c.perMonth)} a month`,
       lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (a.actual < 0.999 ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
   root.append(cards, h('p', { class: 'pl-footnote' }, approx('Every dollar and millisecond here is a sensible real-world approximation, not a quote.')));
-  const checkpoint = renderCorrectness(problem?.correctness);
+  const checkpoint = renderCorrectness(problem?.correctness, correctnessAnswer);
   if (checkpoint) root.append(checkpoint);
 
   root.append(h('p', { class: 'pl-muted', text: loadSummary(problem) }));

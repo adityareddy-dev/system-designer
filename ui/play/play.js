@@ -14,6 +14,7 @@ import { renderDebrief } from './debrief.js';
 import { renderEditorial } from './editorial.js';
 import { createTrafficPanel, DEFAULT_TRAFFIC } from './traffic-panel.js';
 import { createRouteTrace } from './route-trace.js';
+import { renderCheckpointForm } from './correctness.js';
 
 const GRID = 20;
 let connectTipShown = false; // the how-to-connect line shows once per visit outside lessons
@@ -1043,6 +1044,17 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     return startTraffic();
   }
   function startTraffic() {
+    if (mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id) {
+      modal.replaceChildren(renderCheckpointForm(S.problem.correctness, S.correctnessAnswer, (answer) => {
+        S.correctnessAnswer = answer;
+        S.checkpointReady = S.problem.id;
+        modal.hidden = true;
+        startTraffic();
+      }, () => { modal.hidden = true; }));
+      modal.hidden = false;
+      modal.querySelector('select, input')?.focus();
+      return getState();
+    }
     const wasHeld = S.hold;
     S.hold = false;
     if (S.sim.phase !== 'build') { if (S.sim.phase === 'paused') resume(); return getState(); }
@@ -1055,6 +1067,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     hud.hideBanner();
     hud.resetHistory();
     S.sim.start();
+    S.checkpointReady = null;
     if (wasHeld) lessonLeadIn();
     S.lastClock = wasHeld ? S.sim.clockMs : 0; S.goalMs = 0;
     if (stepped) { S.step = 'day'; root.dataset.step = 'day'; stepsBar.set('day', { draw: false, debrief: false }); showPanel(false); reqCard?.toggle(false); }
@@ -1139,7 +1152,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const list = ctx.content?.problems || [];
     const idx = list.findIndex((p) => p.id === S.problem.id);
     renderDebrief(debriefWrap, {
-      result: S.result, problem: S.problem, catalog, ctx, hintsUsed: hints.used(), prevBest: S.prevBest, reduced: ctx.reducedMotion(),
+      result: S.result, problem: S.problem, catalog, ctx, hintsUsed: hints.used(), prevBest: S.prevBest, reduced: ctx.reducedMotion(), correctnessAnswer: mode === 'practice' ? S.correctnessAnswer : null,
       opponent: mode === 'beat' && opts.overlay ? opts.overlay : null,
       hasNext: mode === 'practice' && idx >= 0 && idx < list.length - 1,
       handlers: {
