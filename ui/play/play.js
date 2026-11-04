@@ -17,6 +17,7 @@ import { queueDrainAdvice } from './lesson-queue.js';
 import { createRouteTrace } from './route-trace.js';
 import { renderCheckpointForm } from './correctness.js';
 import { introPathHolds } from './intro-path.js';
+import { goalPassed } from './goal-feedback.js';
 
 const GRID = 20;
 let connectTipShown = false; // the how-to-connect line shows once per visit outside lessons
@@ -706,7 +707,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function note(action, detail) {
     for (let i = waiters.length - 1; i >= 0; i--) {
       const w = waiters[i];
-      if (w.spec.path) {
+      if (w.spec.path || (mode === 'intro' && w.spec.action === 'knob')) {
         if (alreadyHolds(w.spec)) { waiters.splice(i, 1); w.resolve(); }
         continue;
       }
@@ -719,7 +720,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // True when the graph already shows what the beat asks for (the player acted while the previous caption was up).
   function alreadyHolds(spec) {
     try {
+      if (spec.action === 'day-end') return S.sim.phase === 'done';
       const g = graph();
+      if (mode === 'intro' && spec.action === 'knob') return introPathHolds(g, spec);
       if (spec.action === 'place') return introPathHolds(g, spec);
       if (spec.action === 'connect') return false;
       if (spec.action === 'knob') {
@@ -774,7 +777,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         const paused = (held || S.sim.phase === 'running') && b.pause !== false;
         if (paused) pause();
         held = false;
-        const showInstruction = () => showCaption(text, 0, b.waitFor.path ? [{ label: 'Retry insertion', onClick: () => {
+        const showInstruction = () => showCaption(b.waitFor.path && graph().nodes.some(n => n.type === b.waitFor.type) && !alreadyHolds(b.waitFor)
+          ? `${text} This part is not on the path yet. Drag it onto the line, or connect both sides and remove the original line.` : text, 0, b.waitFor.path ? [{ label: 'Retry insertion', onClick: () => {
           const spec = b.waitFor, g = graph();
           const edge = g.edges.find(e => e.from === spec.path[0] && e.to === spec.path[1] && e.kind === 'flow');
           const loose = g.nodes.find(n => n.type === spec.type && !n.locked && !g.edges.some(e => e.from === n.id || e.to === n.id));
@@ -801,6 +805,17 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         S.captionNext = null;
       }
       toolbar.pulse(null);
+    }
+    if (mode === 'intro') {
+      let missing;
+      // Recheck the built path; autoscaling may have reduced the earlier server count.
+      while ((missing = beats.find(b => b.waitFor && b.waitFor.knob !== 'units' && !alreadyHolds(b.waitFor)))) {
+        const b = missing;
+        showCaption(b.caption + ' Keep this change on the request path before continuing.', 0);
+        await waitFor(b.waitFor);
+        if (S.destroyed) return;
+      }
+      hideCaption();
     }
     hostEl.dispatchEvent(new CustomEvent('pl:script-done', { bubbles: true }));
     if (opts.lesson?.id) bus.emit('lesson:done', { lessonId: opts.lesson.id, result: S.lastDay || null });
@@ -935,12 +950,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const gap = !ok ? goalGap(goal, st, v) : '';
     goalChip.title = gap;
     goalChip.replaceChildren(iconEl(S.goalMs > 0 ? 'ui.check' : 'ui.hint', 16),
-      h('span', { text: gap ? `${goalLabel()}. ${gap}` : goalLabel() }),
+      h('span', { text: gap ? `${goalLabel()}. ${gap}` : ok ? goalPassed(goal, v, nameOf(goal.node) || 'The part') : goalLabel() }),
       ...(need ? [h('span', { class: 'pl-goal-bar' }, h('i', { style: { width: clamp(S.goalMs / need, 0, 1) * 100 + '%' } }))] : []));
     if (ok && S.goalMs >= need) {
       S.goalMet = true;
       goalChip.classList.add('pl-goal--done');
-      goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: mode === 'lesson' ? 'Lesson goal reached for the current state. Day meters include earlier minutes.' : 'Goal reached. Nicely done.' }));
+      goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: mode === 'lesson' ? `${goalPassed(goal, v, nameOf(goal.node) || 'The part')} Day meters include earlier minutes.` : 'Goal reached. Nicely done.' }));
       snd('pass');
       // the goal is met: close the inspector and the parts sheet so the Continue button is never covered
       try { select(null); toolbar.el.classList.remove('pl-toolbar--open'); } catch { /* optional */ }
@@ -1155,6 +1170,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.lastDay = { availability: result.slo?.availability?.actual ?? 0, target: result.slo?.availability?.target ?? 0.99, passed: !!result.passed, cost: result.cost?.perMonth ?? result.metrics?.perMonth ?? result.perMonth ?? S.sim.state?.()?.cost?.perMonth ?? null };
     note('day-end', null);
     if (!stepped) {
+      if (mode === 'intro') return;
       later(() => { if (!S.destroyed) { S.sim.reset(); S.sim.start(); S.goalMs = 0; S.lastClock = 0; lessonLeadIn(); S.acc = 0; hud.resetHistory(); hud.setPhase('running'); if (isLesson) showCaption('Restarting the example with your changes. This is a fresh trial: the clock and backlog reset; the previous backlog was not drained.', 12000); } }, 600);
       S.result = null;
       return;

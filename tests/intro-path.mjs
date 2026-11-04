@@ -2,6 +2,10 @@
 import assert from 'node:assert/strict';
 import { introPathHolds } from '../ui/play/intro-path.js';
 import intro from '../content/lessons/intro.js';
+import { goalPassed } from '../ui/play/goal-feedback.js';
+import { createSim } from '../sim/engine.js';
+import { createCatalog } from '../sim/catalog.js';
+import { readFile } from 'node:fs/promises';
 
 const insertions = intro.steps[0].beats.filter(b => b.waitFor?.path);
 assert.equal(insertions.length, 2, 'Both intro insertions require a path');
@@ -21,4 +25,28 @@ for (const beat of insertions) {
   graph.edges = [edge(from, 'part', 'observe'), edge('part', to)];
   assert.equal(introPathHolds(graph, spec), false, 'Only traffic links count');
 }
-console.log('Intro path checks passed.');
+const data = await Promise.all(['elements', 'requests', 'events', 'world'].map(async name =>
+  [name, JSON.parse(await readFile(new URL(`../catalog/${name}.json`, import.meta.url), 'utf8'))]));
+const sim = createSim({ catalog: createCatalog(Object.fromEntries(data)), problem: intro.steps[0].setup, mode: 'intro' });
+const specs = intro.steps[0].beats.filter(b => b.waitFor).map(b => b.waitFor);
+const ready = () => specs.every(spec => introPathHolds(sim.getGraph(), spec));
+const lb = sim.addNode('regional-lb', 0, 100), cache = sim.addNode('cache', 100, 100);
+sim.setKnob('app', 'units', 3);
+sim.setKnob('app', 'autoscale', { on: true });
+assert.equal(ready(), false, 'Clicking loose parts must not unlock victory');
+for (const [from, mid, to] of [['users', lb, 'app'], ['app', cache, 'db']]) {
+  sim.disconnect(sim.getGraph().edges.find(e => e.from === from && e.to === to).id);
+  sim.connect(from, mid); sim.connect(mid, to);
+}
+assert.equal(ready(), true, 'The instructed chain and app settings unlock victory');
+sim.setKnob('app', 'autoscale', { on: false });
+const spare = sim.addNode('vm-fleet', 0, 200);
+sim.setKnob(spare, 'units', 30); sim.setKnob(spare, 'autoscale', { on: true });
+assert.equal(ready(), false, 'A loose fleet cannot supply autoscaling credit');
+sim.setKnob('app', 'autoscale', { on: true });
+sim.disconnect(sim.getGraph().edges.find(e => e.from === 'users').id);
+assert.equal(ready(), false, 'Removing an earlier connection revokes completion');
+assert.equal(goalPassed({ metric: 'util', op: '<=', value: 0.7 }, 0.42, 'SQL'),
+  'Check passed now: SQL busy 42%, goal at most 70%.');
+assert.match(goalPassed({ metric: 'cost', op: '<=', value: 2000 }, 1500), /Cost \$1,500 a month, goal at most \$2,000/);
+console.log('Intro path and lesson feedback checks passed.');
