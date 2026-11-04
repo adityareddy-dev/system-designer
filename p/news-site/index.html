@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>News site: system design practice | System Designer</title>
+<meta name="description" content="Practice News site as a system design problem: build it, survive a fast-forward traffic day, and see if you can beat a friend's score. Free, no sign-up.">
+<link rel="canonical" href="https://systemdesigner.io/p/news-site/">
+<link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="News site: system design practice">
+<meta property="og:description" content="Practice News site as a system design problem: build it, survive a fast-forward traffic day, and see if you can beat a friend's score. Free, no sign-up.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="System Designer">
+<meta property="og:url" content="https://systemdesigner.io/p/news-site/">
+<meta property="og:image" content="https://systemdesigner.io/p/news-site/preview.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="System Designer practice problem: News site">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="News site: system design practice">
+<meta name="twitter:description" content="Practice News site as a system design problem: build it, survive a fast-forward traffic day, and see if you can beat a friend's score. Free, no sign-up.">
+<meta name="twitter:image" content="https://systemdesigner.io/p/news-site/preview.jpg">
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-content: center; gap: 12px; padding: 24px; text-align: center; font: 500 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: #f3f5fa; color: #1b2433; }
+  a { color: #3a5bd9; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { body { background: #0e1422; color: #e6ebf5; } a { color: #8fa8ff; } }
+</style>
+</head>
+<body>
+<h1>News site</h1>
+<p>Practice problem.</p>
+<p><a id="go" href="../../#/practice/news-site">Open the problem</a></p>
+<noscript><p>This page needs JavaScript to open the game.</p></noscript>
+<script>
+// A "beat my design" link keeps the design in the fragment: forward it to the app as it is.
+(function () {
+  var h = location.hash || '';
+  var app = new URL('../../', location.href).href;
+  var to = h.indexOf('#/beat/') === 0 ? h : '#/practice/news-site';
+  document.getElementById('go').href = app + to;
+  location.replace(app + to);
+})();
+</script>
+</body>
+</html>
