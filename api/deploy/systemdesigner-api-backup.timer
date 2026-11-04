@@ -1,0 +1,11 @@
+# Runs the System Designer sign-in database backup every night.
+[Unit]
+Description=Nightly System Designer sign-in database backup
+
+[Timer]
+OnCalendar=*-*-* 03:40:00
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

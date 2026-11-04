@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>Synthetic checks</title><g transform="scale(.5)" stroke-width="3.5"><style>.s{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.f{fill:currentColor;fill-opacity:.18}.d{fill:currentColor;stroke:none}</style><circle class="s f" cx="24" cy="24" r="18"/>
+<ellipse class="s" cx="24" cy="24" rx="7.5" ry="18"/>
+<path class="s" d="M6 26H15L18 19L22 31L26 22L29 26H42"/>
+<path class="s" d="M30 34L33 37L38 32"/></g></svg>

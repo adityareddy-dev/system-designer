@@ -1,0 +1,43 @@
+# System Designer sign-in service on 127.0.0.1:8791 (Caddy serves it as https://api.systemdesigner.io). Installed by api/deploy/install.sh.
+[Unit]
+Description=System Designer sign-in service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sdapi
+Group=sdapi
+EnvironmentFile=/etc/systemdesigner-api/env
+WorkingDirectory=/srv/systemdesigner-api/api
+ExecStart=@NODE@ /srv/systemdesigner-api/api/server.js
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+UMask=0077
+
+# Sandbox: read-only system and code, writable data folder only, no privileges.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/systemdesigner-api
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

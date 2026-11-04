@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Privacy | System Designer</title>
+  <meta name="description" content="What System Designer stores when you sign in, and how to delete it.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap">
+  <link rel="stylesheet" href="assets/palette.css">
+  <script>
+    // Same theme as the game when the player picked one.
+    try { const t = JSON.parse(localStorage.getItem('hotpath.v1.settings') || '{}').theme; if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) { /* system theme */ }
+  </script>
+  <style>
+    body { margin: 0; min-height: 100vh; background: radial-gradient(800px 420px at 10% -10%, var(--accent-soft), transparent 70%), var(--bg); color: var(--text); font: 400 16px/1.6 var(--font-ui); }
+    .pv { max-width: 680px; margin: 0 auto; padding: 40px 16px 64px; }
+    .pv a { color: var(--accent); }
+    .pv-back { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; text-decoration: none; }
+    .pv-back:hover { text-decoration: underline; }
+    .pv h1 { margin: 20px 0 6px; font: 700 clamp(28px, 5vw, 38px)/1.15 var(--font-display); letter-spacing: -0.015em; }
+    .pv h2 { margin: 30px 0 8px; font: 600 19px/1.3 var(--font-display); }
+    .pv p, .pv li { color: var(--text-2); }
+    .pv ul { padding-left: 1.2em; margin: 8px 0; }
+    .pv li { margin: 4px 0; }
+    .pv strong { color: var(--text); font-weight: 600; }
+    .pv p.pv-lead { font-size: 18px; color: var(--text); }
+    .pv-card { margin: 18px 0; padding: 16px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-strong); }
+    .pv-card p { margin: 0; }
+    .pv p.pv-fine { margin-top: 36px; font-size: 13px; color: var(--text-3); }
+  </style>
+</head>
+<body>
+  <main class="pv">
+    <a class="pv-back" href="./#/">&larr; Back to System Designer</a>
+    <h1>Privacy</h1>
+    <p class="pv-lead">Playing never needs an account. Signing in is optional and only keeps your progress on every device and your scores on the leaderboards.</p>
+
+    <div class="pv-card"><p><strong>Without signing in</strong>, nothing about you leaves your browser. Progress, drafts and settings live in your browser's own storage on this device.</p></div>
+
+    <h2>What we store when you sign in</h2>
+    <ul>
+      <li><strong>Your sign-in provider's id for you</strong>: the account number Google or GitHub gives this game. It is how we recognise you next time.</li>
+      <li><strong>A display name</strong>: your first name from Google or your GitHub name. You can change it anytime in the account menu. It appears on leaderboards and on "beat my design" links you share.</li>
+      <li><strong>Your avatar's web address</strong>, so your picture shows in the account menu.</li>
+      <li><strong>Your progress</strong>: solved problems, best scores, finished lessons and the days you played (for your streak).</li>
+      <li><strong>Your scores</strong>: your best score per daily challenge and per problem, with its stars.</li>
+      <li><strong>A sign-in cookie</strong> that keeps you signed in for 30 days. The server keeps only a scrambled (hashed) copy of it.</li>
+      <li><strong>A one-time sign-in code</strong>, only while you sign in with Google: a cookie that lasts at most 10 minutes and is deleted as soon as you are signed in. It makes sure the sign-in really came from your browser.</li>
+    </ul>
+
+    <h2>What we never store</h2>
+    <ul>
+      <li>Your email address or password.</li>
+      <li>A GitHub access token. GitHub sign-in asks for no permissions beyond your public profile, and the one-time token is thrown away right after reading it.</li>
+      <li>Analytics, ads or trackers. There are none.</li>
+    </ul>
+
+    <h2>Who sees what</h2>
+    <p>Anyone can see the leaderboards: display name, score, stars and rank. Your progress is visible only to you. Nothing is sold, rented or shared with anyone.</p>
+
+    <h2>Delete it anytime</h2>
+    <p>Open the account menu in the top bar and choose <strong>Delete my account</strong>. Your name, avatar address, synced progress and scores are removed from the server at once. Nightly backups roll off within 7 days. Progress saved on your own device stays there until you clear it in Settings.</p>
+
+    <h2>Questions</h2>
+    <p>System Designer is free and open source. Ask anything by opening an issue at <a href="https://github.com/adityareddy-dev/system-designer/issues" rel="noopener">github.com/adityareddy-dev/system-designer</a>.</p>
+
+    <p class="pv-fine">Last updated November 3, 2026.</p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,753 @@
+{
+  "version": 1,
+  "updated": "2026-11-02",
+  "disclaimer": "Timings and magnitudes are rough real-world approximations for teaching. Problems may override any param.",
+  "fieldGuide": {
+    "group": "traffic | data | infra | dependency | change | security | cost | compliance",
+    "severity": "1 mild, 2 serious, 3 severe. Drives the warning sound and banner colour.",
+    "effects": "Ordered list of engine ops applied when the event starts. See 'ops'.",
+    "target": "Selector string. See 'selectors'. A problem may override it with params.target.",
+    "untilFixed": "The effect lasts until people notice and fix it: detection time plus repair time from world.json 'response', which depends on the observability and control elements present.",
+    "counters": "Elements or knobs that soften the event. The engine applies these through ordinary behaviour; the list drives the debrief and hints.",
+    "debrief": "Plain-words templates. Placeholders in braces are filled by sim results (see CONTRACT.md, DebriefData).",
+    "realWorld": "One sentence tying the event to the real world, with approximate numbers."
+  },
+  "selectors": {
+    "traffic": "All offered user traffic.",
+    "all": "Every element.",
+    "kind:<kind>": "Every element of that kind, for example kind:store.",
+    "el:<elementId>": "Every placed element of that type, for example el:sql-primary.",
+    "cat:<category>": "Every element in that category, for example cat:external.",
+    "busiest:<kind|el:id|cat:id>": "The single placed element of that group with the highest utilisation when the event starts.",
+    "random:<kind|el:id|cat:id>": "One placed element of that group chosen by the seeded random generator.",
+    "keyed": "Every placed element whose params.keyed is true, plus caches.",
+    "ref:<nodeRef>": "A specific node from the problem starter or editorial."
+  },
+  "ops": {
+    "traffic": { "params": { "factor": "multiplier on offered load", "rampSec": "seconds to reach the factor", "holdSec": "seconds at the factor", "decaySec": "seconds back to normal", "types": "optional list of request types; default all" } },
+    "attack": { "params": { "factorOfPeak": "attack rps as a multiple of the problem's peak rps", "layer": "network | app", "types": "request types it imitates for routing", "durationSec": "seconds" } },
+    "regionShift": { "params": { "region": "region id", "share": "share of users moved to that region", "rampSec": "seconds" } },
+    "hotKey": { "params": { "share": "share of a keyed element's traffic that lands on one unit or key", "durationSec": "seconds" } },
+    "fanout": { "params": { "factor": "multiplier on writes reaching stores and queues", "types": "request types", "durationSec": "seconds" } },
+    "cacheFlush": { "params": { "recoverSec": "seconds for the hit rate to return; coalesce on the cache divides misses reaching the origin by 10" } },
+    "fail": { "params": { "mode": "down | errors | slow", "errorRate": "share failing in errors mode", "addLatencyMs": "added latency in slow mode", "durationSec": "seconds, or untilFixed" } },
+    "zoneDown": { "params": { "durationSec": "seconds; the seeded random generator picks zone a, b or c" } },
+    "regionDown": { "params": { "region": "region id or 'primary'", "durationSec": "seconds" } },
+    "lag": { "params": { "lagSec": "replication or copy lag in seconds", "durationSec": "seconds" } },
+    "retryAmplify": { "params": { "durationSec": "seconds; callers with backoff 'none' re-send failed requests up to their retries count in the next tick" } },
+    "costMultiplier": { "params": { "line": "usage | element selector", "factor": "multiplier on usage-priced cost", "durationSec": "seconds" } },
+    "audit": { "params": { "checks": "list of compliance check ids from world.json 'complianceChecks'" } },
+    "capacity": { "params": { "factor": "multiplier on capacity", "durationSec": "seconds, or untilFixed" } },
+    "capacityDecay": { "params": { "perHour": "share of capacity lost per hour", "durationSec": "untilFixed" } },
+    "coldStart": { "params": { "addMs": "latency added to new instances", "durationSec": "seconds" } },
+    "poison": { "params": { "durationSec": "untilFixed; consumers of the target queue process nothing unless a dead-letter queue is connected" } },
+    "duplicate": { "params": { "share": "share of messages delivered twice", "durationSec": "seconds" } },
+    "partition": { "params": { "durationSec": "seconds; regions cannot reach each other" } },
+    "limit": { "params": { "rpsCapFactor": "new capacity as a share of the target's current load", "durationSec": "seconds" } },
+    "corrupt": { "params": { "share": "share of rows damaged; replicas copy the damage" } },
+    "blockWrites": { "params": { "durationSec": "seconds, or untilFixed" } },
+    "scaleBlock": { "params": { "durationSec": "seconds during which autoscaling cannot add units" } },
+    "deploy": { "params": { "errorRate": "share of requests failing on the bad version", "durationSec": "untilFixed; with ci-cd only canaryShare of units run it until rollback" } },
+    "configPush": { "params": { "errorRate": "share failing", "durationSec": "untilFixed; with config-service only its stagedShare is hit first" } },
+    "keyLeak": { "params": { "restartSec": "seconds of half capacity on every compute element while keys are rotated by redeploy; zero impact with secrets-manager" } }
+  },
+  "events": [
+    {
+      "id": "viral-spike", "name": "Viral spike", "group": "traffic", "severity": 2,
+      "description": "A post blows up. Traffic climbs to several times normal within minutes.",
+      "effects": [ { "op": "traffic", "target": "traffic", "params": { "factor": 6, "rampSec": 600, "holdSec": 3600, "decaySec": 3600 } } ],
+      "counters": [
+        { "element": "autoscaler", "how": "Adds servers, but only after a minute of measuring plus boot time." },
+        { "element": "cdn", "how": "Serves popular content without touching your servers." },
+        { "element": "cache", "how": "Keeps repeated reads off the database." },
+        { "element": "queue", "how": "Turns write spikes into a short wait instead of errors." },
+        { "knob": "units", "how": "Headroom: run at about 60 percent busy so you can absorb 1.5 times." }
+      ],
+      "lesson": "Spikes arrive faster than new servers start. Keep headroom, let caches and CDNs absorb reads, queue what can wait, and autoscale for the rest.",
+      "debrief": {
+        "headline": "Viral spike: traffic reached {factor} times normal ({peakRps} req/s).",
+        "hurt": "{node} ran out of room for {minutes} minutes and {failed} requests failed.",
+        "helped": "{helper} absorbed the extra load.",
+        "fix": "Add headroom or a cache in front of {node}, and turn on autoscaling."
+      },
+      "realWorld": "A front-page link can send 10 to 50 times normal traffic within 15 minutes, approx.",
+      "icon": "Upward-curving arrow with three short motion lines below it."
+    },
+    {
+      "id": "flash-crowd", "name": "Flash crowd", "group": "traffic", "severity": 3,
+      "description": "Tickets go on sale, a show premieres or a patch drops. Everyone arrives in the same 30 seconds.",
+      "effects": [ { "op": "traffic", "target": "traffic", "params": { "factor": 40, "rampSec": 30, "holdSec": 900, "decaySec": 1800 } } ],
+      "counters": [
+        { "element": "queue", "how": "A virtual waiting room admits people at a pace the busiest step can handle." },
+        { "element": "rate-limiter", "how": "Caps each client so bots cannot take every slot." },
+        { "element": "cdn", "how": "Serves the static pages and the waiting room itself." },
+        { "knob": "units", "how": "Scale up before the known start time; autoscaling is too slow for 30 seconds." }
+      ],
+      "lesson": "When you know when the crowd comes, scale before it arrives and let people in at a steady rate from a waiting room.",
+      "debrief": {
+        "headline": "Flash crowd: {factor} times normal in {rampSec} seconds.",
+        "hurt": "{failed} requests failed in the first {minutes} minutes while {node} was overwhelmed.",
+        "helped": "{helper} kept the crowd orderly.",
+        "fix": "Pre-scale before the start time and put a waiting-room queue in front of {node}."
+      },
+      "realWorld": "Ticket sales, market opens and enrolment days can bring millions of people within a minute of the start, approx.",
+      "icon": "Cluster of five small person dots rushing toward a narrow door."
+    },
+    {
+      "id": "deadline-surge", "name": "Deadline surge", "group": "traffic", "severity": 2,
+      "description": "Tax day, enrollment close or a sign-up deadline. Traffic climbs for hours until the cut-off.",
+      "effects": [ { "op": "traffic", "target": "traffic", "params": { "factor": 8, "rampSec": 21600, "holdSec": 3600, "decaySec": 600 } } ],
+      "counters": [
+        { "knob": "autoscale", "how": "A slow, predictable climb is exactly what autoscaling handles well." },
+        { "element": "queue", "how": "Accept submissions now, process them after the deadline." },
+        { "element": "cache", "how": "Forms and rules pages are the same for everyone." }
+      ],
+      "lesson": "Predictable surges are the easiest kind: scale on schedule, accept-and-queue the final submissions, and make 'received' the promise, not 'processed'.",
+      "debrief": {
+        "headline": "Deadline surge: traffic rose to {factor} times normal over {rampHours} hours.",
+        "hurt": "In the last hour, {failed} submissions failed at {node}.",
+        "helped": "{helper} kept up with the climb.",
+        "fix": "Accept submissions into a queue and confirm receipt; process them after the deadline."
+      },
+      "realWorld": "Tax filing sites often see several times their normal daily volume on the final day, approx.",
+      "icon": "Calendar page with an upward arrow climbing to its last day."
+    },
+    {
+      "id": "hot-key", "name": "Hot key", "group": "data", "severity": 2,
+      "description": "One item gets a huge share of traffic: a celebrity profile, one product, one merchant.",
+      "effects": [ { "op": "hotKey", "target": "keyed", "params": { "share": 0.3, "durationSec": 3600 } } ],
+      "counters": [
+        { "element": "cache", "how": "A cache in front answers the hot item from memory." },
+        { "element": "cdn", "how": "Public hot items are served from the edge." },
+        { "element": "sql-replica", "how": "Spreads hot reads, though writes still hit one place." }
+      ],
+      "lesson": "Sharding spreads keys, not popularity. One hot key still lands on one shard; cache it, copy it, or split it.",
+      "debrief": {
+        "headline": "Hot key: {share} percent of traffic hit a single item.",
+        "hurt": "The one unit of {node} that held it overloaded while the others sat idle.",
+        "helped": "{helper} answered the hot item before it reached storage.",
+        "fix": "Put a cache in front of {node}; for hot writes, split the key into several sub-keys."
+      },
+      "realWorld": "A single partition in a managed key-value store tops out around 1,000 writes per second, approx.",
+      "icon": "Key with three small heat lines rising from it."
+    },
+    {
+      "id": "celebrity-fanout", "name": "Celebrity post", "group": "traffic", "severity": 2,
+      "description": "Someone with 50 million followers posts. Copying it into every follower's feed means 50 million writes.",
+      "effects": [ { "op": "fanout", "target": "kind:store", "params": { "factor": 25, "types": ["write", "message", "notify"], "durationSec": 900 } } ],
+      "counters": [
+        { "element": "queue", "how": "Do the fan-out in the background at a steady pace." },
+        { "element": "worker-pool", "how": "Workers spread the copying over minutes." },
+        { "element": "cache", "how": "Pull celebrity posts at read time instead of copying them." }
+      ],
+      "lesson": "Fan-out on write is fast to read and expensive for celebrities; fan-out on read is the reverse. Big systems mix both.",
+      "debrief": {
+        "headline": "Celebrity post: one write turned into {factor} times the write load.",
+        "hurt": "{node} fell behind and feeds were {lagMinutes} minutes late.",
+        "helped": "{helper} spread the copying over time.",
+        "fix": "Fan out through a queue, and serve very popular accounts at read time."
+      },
+      "realWorld": "Copying one post to 50 million feeds at 1 million writes per second still takes about a minute, approx.",
+      "icon": "One large dot with many thin lines spraying out to small dots."
+    },
+    {
+      "id": "cache-stampede", "name": "Cache stampede", "group": "data", "severity": 3,
+      "description": "The cache empties (restart, purge, mass expiry) and every request rushes to the database at once.",
+      "effects": [ { "op": "cacheFlush", "target": "kind:cache", "params": { "recoverSec": 300 } } ],
+      "counters": [
+        { "knob": "coalesce", "how": "One request refills each key while the rest wait." },
+        { "element": "origin-shield", "how": "Only one location asks your servers per item." },
+        { "element": "sql-replica", "how": "More read capacity behind the cache." },
+        { "knob": "ttlSec", "how": "Spreading expiry times avoids everything expiring together." }
+      ],
+      "lesson": "A cache hides how weak the database behind it is. Plan for the moment it is empty.",
+      "debrief": {
+        "headline": "Cache stampede: hit rate fell to zero.",
+        "hurt": "{node} received {factor} times its normal reads and {failed} requests failed.",
+        "helped": "{helper} limited how many misses reached the database.",
+        "fix": "Turn on 'collapse misses' and keep database headroom for a cold cache."
+      },
+      "realWorld": "With a 90 percent hit rate, an empty cache sends 10 times the normal load to the database, approx.",
+      "icon": "Lightning bolt broken in the middle, with small arrows pouring downward."
+    },
+    {
+      "id": "db-failover", "name": "Database failover", "group": "infra", "severity": 3,
+      "description": "The primary database dies. A standby takes over after about a minute.",
+      "effects": [ { "op": "fail", "target": "busiest:el:sql-primary", "params": { "mode": "down", "durationSec": 60 } } ],
+      "counters": [
+        { "knob": "zones", "how": "A standby in a second zone takes over; with one zone, you wait for a rebuild." },
+        { "knob": "replication", "how": "sync replication loses nothing; async loses the last moment of writes." },
+        { "element": "db-proxy", "how": "Holds connections and halves the switchover time." },
+        { "element": "queue", "how": "Writes wait in the queue instead of failing." },
+        { "knob": "backoff", "how": "Clients that retry with jitter reconnect gently." }
+      ],
+      "lesson": "Failover is measured in two numbers: how long you were down (RTO) and how much data you lost (RPO). Choose them on purpose.",
+      "debrief": {
+        "headline": "Database failover: the primary was down for {seconds} seconds.",
+        "hurt": "{failed} requests failed and {lostWrites} acknowledged writes were lost.",
+        "helped": "{helper} kept writes safe during the switch.",
+        "fix": "Run the database across 2 zones with sync replication, and put a pooler in front."
+      },
+      "realWorld": "Managed database failover typically takes 30 to 120 seconds, approx.",
+      "icon": "Database cylinder with a curved arrow handing over to a second cylinder."
+    },
+    {
+      "id": "replication-lag", "name": "Replication lag", "group": "data", "severity": 1,
+      "description": "Copies fall behind. Users read old data, even their own fresh changes.",
+      "effects": [ { "op": "lag", "target": "kind:store", "params": { "lagSec": 30, "durationSec": 1200 } } ],
+      "counters": [
+        { "knob": "readFrom", "how": "Read your own recent writes from the primary." },
+        { "element": "cdc-connector", "how": "Invalidates caches and indexes as soon as data changes." }
+      ],
+      "lesson": "Copies are always a little behind. Decide which screens must show the very latest and read those from the source.",
+      "debrief": {
+        "headline": "Replication lag: copies fell {lagSec} seconds behind.",
+        "hurt": "{stale} reads showed old data, including people's own changes.",
+        "helped": "{helper} kept fresh reads on the primary.",
+        "fix": "Read-after-write from the primary for a few seconds after a change."
+      },
+      "realWorld": "Replica lag is usually under a second and can reach minutes under heavy writes, approx.",
+      "icon": "Two clocks side by side, the second one's hands behind the first."
+    },
+    {
+      "id": "zone-outage", "name": "Zone outage", "group": "infra", "severity": 3,
+      "description": "One data-centre building (an availability zone) loses power or network for an hour.",
+      "effects": [ { "op": "zoneDown", "target": "all", "params": { "durationSec": 3600 } } ],
+      "counters": [
+        { "knob": "zones", "how": "Spread every component across 3 zones." },
+        { "knob": "units", "how": "Run each zone at about 60 percent so the other two can carry the load." }
+      ],
+      "lesson": "Run in 3 zones at about 60 percent each, so losing one leaves two at 90 percent instead of zero.",
+      "debrief": {
+        "headline": "Zone outage: zone {zone} was down for {minutes} minutes.",
+        "hurt": "{node} lived only in that zone and went dark.",
+        "helped": "{helper} carried on from the other zones.",
+        "fix": "Set every stateful component to 2 or 3 zones."
+      },
+      "realWorld": "Zone outages happen a few times a year across the big clouds and often last 1 to 4 hours, approx.",
+      "icon": "Three small buildings in a row, the middle one crossed out."
+    },
+    {
+      "id": "region-outage", "name": "Region outage", "group": "infra", "severity": 3,
+      "description": "A whole cloud region goes down for a couple of hours.",
+      "effects": [ { "op": "regionDown", "target": "all", "params": { "region": "primary", "durationSec": 7200 } } ],
+      "counters": [
+        { "element": "geo-dns", "how": "Sends users to the surviving region in about 90 seconds." },
+        { "element": "global-lb", "how": "Sends users to the surviving region in about 30 seconds." },
+        { "element": "disaster-recovery", "how": "Brings up a standby; speed depends on the mode." },
+        { "element": "backups", "how": "Copies in another region mean data survives." }
+      ],
+      "lesson": "Multi-region is a business decision: hours of downtime and cheap, or minutes and double the cost.",
+      "debrief": {
+        "headline": "Region outage: {region} was down for {minutes} minutes.",
+        "hurt": "Users were cut off for {downMinutes} minutes and {lostWrites} writes were lost.",
+        "helped": "{helper} moved users to another region.",
+        "fix": "Add a second region behind GeoDNS or a global load balancer, or a disaster-recovery plan."
+      },
+      "realWorld": "Full region outages are rare, about once every year or two per provider, and can last hours, approx.",
+      "icon": "Globe with one continent shaded and crossed out."
+    },
+    {
+      "id": "slow-dependency", "name": "Slow dependency", "group": "dependency", "severity": 2,
+      "description": "An outside service slows from 150 ms to 3 seconds. Your servers fill with requests waiting on it.",
+      "effects": [ { "op": "fail", "target": "busiest:cat:external", "params": { "mode": "slow", "addLatencyMs": 3000, "durationSec": 1800 } } ],
+      "counters": [
+        { "knob": "timeoutMs", "how": "Give up after 300 ms to 1 s instead of waiting 30 s." },
+        { "element": "circuit-breaker", "how": "Stops calling it and fails fast for a while." },
+        { "element": "queue", "how": "Call it in the background so users do not wait." },
+        { "element": "cache", "how": "Serve the last good answer." }
+      ],
+      "lesson": "Slow is worse than down: waiting requests hold servers hostage. Set short timeouts and fail fast.",
+      "debrief": {
+        "headline": "Slow dependency: {node} took {addLatencyMs} ms extra.",
+        "hurt": "Callers waited up to {timeoutMs} ms per call, lost {capacityLostPct} percent of their capacity, and {failed} requests failed.",
+        "helped": "{helper} cut the wait short.",
+        "fix": "Set a 1 second timeout and add a circuit breaker in front of {node}."
+      },
+      "realWorld": "A server that can do 1,000 rps at 50 ms does about 17 rps when each request waits 3 s, approx.",
+      "icon": "Snail shell shape next to a small clock."
+    },
+    {
+      "id": "dependency-outage", "name": "Dependency outage", "group": "dependency", "severity": 3,
+      "description": "An outside service (payments, email, maps, an AI model) fails every call for 20 minutes.",
+      "effects": [ { "op": "fail", "target": "busiest:cat:external", "params": { "mode": "errors", "errorRate": 1, "durationSec": 1200 } } ],
+      "counters": [
+        { "element": "queue", "how": "Accept now, finish when it is back ('payment pending')." },
+        { "element": "workflow-engine", "how": "Retries the step later without losing the order." },
+        { "element": "circuit-breaker", "how": "Fails fast instead of piling up." },
+        { "element": "llm-gateway", "how": "Falls back to a second model provider." }
+      ],
+      "lesson": "Every outside service will fail sometimes. Decide in advance what your product does then: queue, degrade, or switch providers.",
+      "debrief": {
+        "headline": "Dependency outage: {node} was down for {minutes} minutes.",
+        "hurt": "{failed} {types} failed outright.",
+        "helped": "{helper} held the work until it returned.",
+        "fix": "Queue calls to {node} and retry them later; tell users 'pending' instead of 'failed'."
+      },
+      "realWorld": "A provider at 99.95 percent availability is down about 22 minutes a month, approx.",
+      "icon": "Puzzle piece with a crack and a small x."
+    },
+    {
+      "id": "retry-storm", "name": "Retry storm", "group": "traffic", "severity": 3,
+      "description": "A half-minute blip fails most requests; every client retries at once, up to three times, and the load roughly quadruples.",
+      "effects": [
+        { "op": "fail", "target": "busiest:kind:compute", "params": { "mode": "errors", "errorRate": 0.9, "durationSec": 30 } },
+        { "op": "retryAmplify", "target": "traffic", "params": { "durationSec": 1200 } }
+      ],
+      "counters": [
+        { "knob": "backoff", "how": "Exponential backoff with jitter spreads retries out." },
+        { "knob": "retries", "how": "Fewer retries mean less amplification." },
+        { "element": "rate-limiter", "how": "Caps the flood per client." },
+        { "element": "circuit-breaker", "how": "Stops hammering a struggling service." }
+      ],
+      "lesson": "Retries without backoff turn a small problem into a big one: 3 retries can mean 4 times the load exactly when you are weakest.",
+      "debrief": {
+        "headline": "Retry storm: a short blip at {node} grew into {factor} times the load.",
+        "hurt": "Retries kept {node} overloaded for {minutes} minutes after the blip ended.",
+        "helped": "{helper} damped the retries.",
+        "fix": "Use exponential backoff with jitter and at most 2 retries."
+      },
+      "realWorld": "Several well-known multi-hour outages were prolonged by clients retrying in lockstep, approx.",
+      "icon": "Three circular arrows stacked, each larger than the last."
+    },
+    {
+      "id": "thundering-herd", "name": "Thundering herd", "group": "traffic", "severity": 2,
+      "description": "After a restart or outage, every client reconnects and signs in at the same moment.",
+      "effects": [ { "op": "traffic", "target": "traffic", "params": { "factor": 10, "rampSec": 10, "holdSec": 60, "decaySec": 300, "types": ["login", "message", "read", "sync"] } } ],
+      "counters": [
+        { "knob": "backoff", "how": "Random jitter spreads reconnects over a minute." },
+        { "element": "rate-limiter", "how": "Admits reconnects at a safe pace." },
+        { "element": "cache", "how": "Serves session and profile reads." }
+      ],
+      "lesson": "Recovery is a spike of its own. Spread reconnects with random delays.",
+      "debrief": {
+        "headline": "Thundering herd: {factor} times normal reconnects in {rampSec} seconds.",
+        "hurt": "{node} was knocked over again right after recovering.",
+        "helped": "{helper} let clients back in gradually.",
+        "fix": "Add random jitter to reconnects and a rate limiter in front of sign-in."
+      },
+      "realWorld": "A million clients reconnecting within 10 seconds is 100,000 connections per second, approx.",
+      "icon": "Many small arrows converging on one point from all sides."
+    },
+    {
+      "id": "cost-blowout", "name": "Cost blowout", "group": "cost", "severity": 2,
+      "description": "A crawler hits uncached pages all day, and every pay-per-use part of the bill multiplies.",
+      "effects": [
+        { "op": "traffic", "target": "traffic", "params": { "factor": 1.5, "rampSec": 600, "holdSec": 21600, "decaySec": 600, "types": ["read", "search"] } },
+        { "op": "costMultiplier", "target": "traffic", "params": { "line": "usage", "factor": 3, "durationSec": 21600 } }
+      ],
+      "counters": [
+        { "element": "cdn", "how": "Cached answers cost a fraction of origin answers." },
+        { "element": "rate-limiter", "how": "One crawler cannot take thousands of pages a second." },
+        { "element": "waf", "how": "Blocks known bad bots." },
+        { "element": "alerting", "how": "A budget alert catches it in hours, not at month end." }
+      ],
+      "lesson": "Pay-per-use is cheap until something uses it a lot. Cache, limit, and alert on spend.",
+      "debrief": {
+        "headline": "Cost blowout: usage costs ran {factor} times normal for {hours} hours.",
+        "hurt": "The month's bill rose by about ${costDelta}.",
+        "helped": "{helper} kept the extra traffic cheap.",
+        "fix": "Cache what bots read and rate-limit per client; add a spend alert."
+      },
+      "realWorld": "Runaway serverless or egress bills of thousands of dollars in a weekend are a common story, approx.",
+      "icon": "Dollar coin with an upward arrow bursting from it."
+    },
+    {
+      "id": "compliance-audit", "name": "Compliance audit", "group": "compliance", "severity": 2,
+      "description": "An auditor checks your design: who did what, encryption keys, personal data, backups and consent.",
+      "effects": [ { "op": "audit", "target": "all", "params": { "checks": ["audit-log", "encryption", "pii-vault", "backups", "access-control"] } } ],
+      "counters": [
+        { "element": "audit-log", "how": "Proves who did what and when." },
+        { "element": "kms", "how": "Shows data is encrypted with managed keys." },
+        { "element": "privacy-vault", "how": "Keeps personal data in one controlled place." },
+        { "element": "backups", "how": "Shows you can restore." },
+        { "element": "identity-provider", "how": "Shows every access is signed in." },
+        { "element": "consent-service", "how": "Shows you honour opt-outs." }
+      ],
+      "lesson": "Regulated industries (health, money, government) need proof built into the design, not added at audit time.",
+      "debrief": {
+        "headline": "Compliance audit: {passed} of {total} checks passed.",
+        "hurt": "Missing: {missing}.",
+        "helped": "{helper} provided the evidence.",
+        "fix": "Add the missing pieces: {missing}."
+      },
+      "realWorld": "Health, payment-card and finance rules each require audit trails, encryption and tested backups, approx.",
+      "icon": "Clipboard with a magnifying glass over a check mark."
+    },
+    {
+      "id": "ddos-attack", "name": "DDoS attack", "group": "security", "severity": 3,
+      "description": "A botnet floods you with 50 times your peak traffic in junk requests.",
+      "effects": [ { "op": "attack", "target": "traffic", "params": { "factorOfPeak": 50, "layer": "network", "types": ["read"], "durationSec": 1800 } } ],
+      "counters": [
+        { "element": "ddos-shield", "how": "Absorbs the flood at the network edge." },
+        { "element": "cdn", "how": "Huge edge capacity soaks up much of it." },
+        { "element": "waf", "how": "Blocks junk web requests." },
+        { "element": "rate-limiter", "how": "Caps each source." }
+      ],
+      "lesson": "You cannot out-scale a botnet. Filter at the edge, in layers, before traffic reaches anything you pay for per request.",
+      "debrief": {
+        "headline": "DDoS attack: {factor} times your peak in junk traffic.",
+        "hurt": "Junk reached {node} and crowded out {failed} real requests.",
+        "helped": "{helper} dropped {blockedPct} percent of the attack.",
+        "fix": "Put a DDoS shield and WAF in front, and a CDN to absorb the rest."
+      },
+      "realWorld": "Large attacks now exceed a few terabits per second and tens of millions of requests per second, approx.",
+      "icon": "Many small x marks raining onto a shield."
+    },
+    {
+      "id": "bot-scraping", "name": "Bot scraping", "group": "security", "severity": 2,
+      "description": "Bots try stolen passwords and scrape every page, at half your normal traffic, all day.",
+      "effects": [ { "op": "attack", "target": "traffic", "params": { "factorOfPeak": 0.5, "layer": "app", "types": ["login", "read"], "durationSec": 7200 } } ],
+      "counters": [
+        { "element": "waf", "how": "Bot rules recognise scrapers and stuffers." },
+        { "element": "rate-limiter", "how": "Limits attempts per client." },
+        { "element": "identity-provider", "how": "Lockouts and two-factor stop stolen passwords." }
+      ],
+      "lesson": "Not all traffic is human. Count bots in your capacity plan and filter them early.",
+      "debrief": {
+        "headline": "Bot scraping: bots added {factor} times your peak in sign-ins and reads.",
+        "hurt": "{node} spent {wastePct} percent of its capacity on bots.",
+        "helped": "{helper} filtered the bots.",
+        "fix": "Add a WAF with bot rules and a per-client rate limit."
+      },
+      "realWorld": "Automated bots make up roughly a third to a half of web traffic, approx.",
+      "icon": "Small robot head with a magnifying glass."
+    },
+    {
+      "id": "bad-deploy", "name": "Bad deploy", "group": "change", "severity": 2,
+      "description": "A new version ships with a bug; 30 percent of requests to that service fail.",
+      "effects": [ { "op": "deploy", "target": "random:kind:compute", "params": { "errorRate": 0.3, "durationSec": "untilFixed" } } ],
+      "counters": [
+        { "element": "ci-cd", "how": "A 5 percent canary limits the damage, and rollback takes about 5 minutes." },
+        { "element": "feature-flags", "how": "Switch the new code path off in seconds." },
+        { "element": "alerting", "how": "Notices the error rate in minutes." },
+        { "element": "pager", "how": "Gets a person on it quickly." }
+      ],
+      "lesson": "Most outages start with a change. Ship small, canary first, watch, and make rollback one click.",
+      "debrief": {
+        "headline": "Bad deploy at {node}: {errorPct} percent of its requests failed.",
+        "hurt": "It took {minutes} minutes to notice and roll back; {failed} requests failed.",
+        "helped": "{helper} limited the blast radius.",
+        "fix": "Add a CI/CD pipeline with a canary and quick rollback, plus alerting."
+      },
+      "realWorld": "Industry studies consistently find most incidents follow a change such as a deploy or config edit, approx.",
+      "icon": "Package box with a small crack and a warning mark."
+    },
+    {
+      "id": "bad-config-push", "name": "Bad config push", "group": "change", "severity": 3,
+      "description": "A bad setting reaches every server at once. Everything starts failing together.",
+      "effects": [ { "op": "configPush", "target": "kind:compute", "params": { "errorRate": 0.9, "durationSec": "untilFixed" } } ],
+      "counters": [
+        { "element": "config-service", "how": "Staged rollout hits 10 percent first and keeps the last good config." },
+        { "element": "feature-flags", "how": "Kill switch for the affected behaviour." },
+        { "element": "synthetic-probe", "how": "Catches a total failure within a minute." }
+      ],
+      "lesson": "Config is code. Roll it out in stages, validate it, and keep the last good version ready.",
+      "debrief": {
+        "headline": "Bad config push: {errorPct} percent of requests failed everywhere at once.",
+        "hurt": "Outage lasted {minutes} minutes.",
+        "helped": "{helper} contained it to a slice of servers.",
+        "fix": "Push config through a staged config service that keeps the last good version."
+      },
+      "realWorld": "Several of the largest public cloud and CDN outages were caused by a single global config change, approx.",
+      "icon": "Three sliders with one knob pushed to the far end and a warning mark."
+    },
+    {
+      "id": "noisy-neighbor", "name": "Noisy neighbour", "group": "infra", "severity": 2,
+      "description": "A big report or batch job runs on the live database at noon and takes half its capacity.",
+      "effects": [ { "op": "capacity", "target": "busiest:kind:store", "params": { "factor": 0.5, "durationSec": 3600 } } ],
+      "counters": [
+        { "element": "sql-replica", "how": "Run reports on a replica, not the primary." },
+        { "element": "data-warehouse", "how": "Analytics belongs in the warehouse." },
+        { "element": "rate-limiter", "how": "Per-tenant limits stop one customer taking everything." }
+      ],
+      "lesson": "Separate heavy, slow work from live user traffic: different copies, different machines, different limits.",
+      "debrief": {
+        "headline": "Noisy neighbour: {node} lost half its capacity to a heavy job.",
+        "hurt": "Live requests slowed to {p99} ms at p99 and {failed} failed.",
+        "helped": "{helper} kept heavy work away from live traffic.",
+        "fix": "Point reports at a replica or the warehouse."
+      },
+      "realWorld": "One unindexed report can use all of a database's CPU for minutes, approx.",
+      "icon": "Two houses side by side, one with loud sound waves coming out."
+    },
+    {
+      "id": "memory-leak", "name": "Memory leak", "group": "infra", "severity": 1,
+      "description": "A service slowly loses memory and gets slower each hour until someone restarts it.",
+      "effects": [ { "op": "capacityDecay", "target": "random:kind:compute", "params": { "perHour": 0.15, "durationSec": "untilFixed" } } ],
+      "counters": [
+        { "element": "metrics", "how": "Shows memory climbing." },
+        { "element": "alerting", "how": "Fires before it hurts users." },
+        { "element": "autoscaler", "how": "Replaces unhealthy servers with fresh ones." }
+      ],
+      "lesson": "Slow problems hide in averages. Watch saturation, not only errors.",
+      "debrief": {
+        "headline": "Memory leak at {node}: capacity fell {pct} percent per hour.",
+        "hurt": "It went unnoticed for {minutes} minutes.",
+        "helped": "{helper} spotted or replaced it.",
+        "fix": "Add metrics with alerting on memory, and let health checks replace bad servers."
+      },
+      "realWorld": "Leaks often take hours or days to show and are found by watching memory graphs, approx.",
+      "icon": "Water droplet falling from a memory stick."
+    },
+    {
+      "id": "disk-full", "name": "Disk full", "group": "infra", "severity": 2,
+      "description": "Data or logs fill the disk. Writes stop until someone frees space.",
+      "effects": [ { "op": "blockWrites", "target": "busiest:kind:store", "params": { "durationSec": "untilFixed" } } ],
+      "counters": [
+        { "knob": "retentionDays", "how": "Keep only what you need." },
+        { "element": "alerting", "how": "Alert on growth rate days before it is full." },
+        { "element": "queue", "how": "Writes wait instead of failing." }
+      ],
+      "lesson": "Storage fills predictably. Alert on how fast it grows, and set retention from day one.",
+      "debrief": {
+        "headline": "Disk full: {node} stopped accepting writes.",
+        "hurt": "{failed} writes failed over {minutes} minutes.",
+        "helped": "{helper} held the writes.",
+        "fix": "Set retention and alert when the disk will be full within 3 days."
+      },
+      "realWorld": "Disk-full incidents are among the most common and most preventable outages, approx.",
+      "icon": "Hard drive with a level gauge at the top of its scale."
+    },
+    {
+      "id": "cold-start", "name": "Cold starts", "group": "infra", "severity": 1,
+      "description": "A burst needs new serverless instances; each new one takes almost a second to start.",
+      "effects": [ { "op": "coldStart", "target": "el:serverless-fn", "params": { "addMs": 800, "durationSec": 600 } } ],
+      "counters": [
+        { "knob": "warmPool", "how": "Keep some instances ready." },
+        { "element": "container-cluster", "how": "Always-on containers have no cold start." }
+      ],
+      "lesson": "Pay-per-use compute starts from zero. Keep a few warm for latency-sensitive paths.",
+      "debrief": {
+        "headline": "Cold starts added {addMs} ms to new instances.",
+        "hurt": "p99 latency rose to {p99} ms during the burst.",
+        "helped": "{helper} had instances ready.",
+        "fix": "Keep a warm pool sized for your typical burst."
+      },
+      "realWorld": "Function cold starts range from about 100 ms to over 1 second depending on language and size, approx.",
+      "icon": "Snowflake beside a small lightning bolt."
+    },
+    {
+      "id": "poison-message", "name": "Poison message", "group": "data", "severity": 2,
+      "description": "One malformed message crashes every worker that picks it up, again and again.",
+      "effects": [ { "op": "poison", "target": "busiest:kind:queue", "params": { "durationSec": "untilFixed" } } ],
+      "counters": [
+        { "element": "dead-letter-queue", "how": "After 5 failures the message is parked and work resumes." },
+        { "element": "alerting", "how": "Fires when the queue stops draining." }
+      ],
+      "lesson": "Never let one bad message block the line. Cap retries and park failures.",
+      "debrief": {
+        "headline": "Poison message in {node}.",
+        "hurt": "Workers processed nothing for {minutes} minutes; {backlog} messages piled up.",
+        "helped": "{helper} parked the bad message.",
+        "fix": "Connect a dead-letter queue to {node}."
+      },
+      "realWorld": "Without a retry cap, one bad message can stall a pipeline indefinitely, approx.",
+      "icon": "Envelope with a small hazard triangle on its corner."
+    },
+    {
+      "id": "duplicate-delivery", "name": "Duplicate delivery", "group": "data", "severity": 2,
+      "description": "The queue redelivers 1 percent of messages. Without protection, some customers are charged twice.",
+      "effects": [ { "op": "duplicate", "target": "kind:queue", "params": { "share": 0.01, "durationSec": 3600 } } ],
+      "counters": [
+        { "element": "idempotency-store", "how": "Recognises the repeat and skips it." },
+        { "element": "outbox", "how": "Deduplicates published events." },
+        { "element": "ledger-db", "how": "Unique posting ids reject a second copy." }
+      ],
+      "lesson": "Most queues deliver at least once, not exactly once. Make every handler safe to run twice.",
+      "debrief": {
+        "headline": "Duplicate delivery: {share} percent of messages arrived twice.",
+        "hurt": "{duplicates} duplicate {types} went through.",
+        "helped": "{helper} caught the repeats.",
+        "fix": "Check an idempotency key before every money move or side effect."
+      },
+      "realWorld": "Standard managed queues guarantee at-least-once delivery; duplicates are rare but certain at scale, approx.",
+      "icon": "Two identical envelopes overlapping."
+    },
+    {
+      "id": "network-partition", "name": "Network partition", "group": "infra", "severity": 3,
+      "description": "Your regions cannot talk to each other for 5 minutes.",
+      "effects": [ { "op": "partition", "target": "all", "params": { "durationSec": 300 } } ],
+      "counters": [
+        { "element": "distributed-sql", "how": "Stays correct: the minority side stops writing." },
+        { "element": "queue", "how": "Holds cross-region work until the link returns." }
+      ],
+      "lesson": "During a partition you choose: refuse some requests to stay correct, or accept them and reconcile later.",
+      "debrief": {
+        "headline": "Network partition for {minutes} minutes.",
+        "hurt": "{failed} requests were refused, or {conflicts} conflicting writes need fixing.",
+        "helped": "{helper} kept data consistent.",
+        "fix": "Pick per feature: money stays consistent, likes and views stay available."
+      },
+      "realWorld": "Cross-region links fail or degrade for minutes a few times a year, approx.",
+      "icon": "Two circles with a zigzag break between them."
+    },
+    {
+      "id": "cert-expiry", "name": "Certificate expired", "group": "change", "severity": 3,
+      "description": "The HTTPS certificate on your front door expires. Every browser refuses to connect.",
+      "effects": [ { "op": "fail", "target": "busiest:kind:router", "params": { "mode": "errors", "errorRate": 1, "durationSec": "untilFixed" } } ],
+      "counters": [
+        { "element": "synthetic-probe", "how": "Notices within a minute." },
+        { "element": "pager", "how": "Gets someone to renew it fast." }
+      ],
+      "lesson": "Automate renewals and check expiry from outside. This one is always avoidable.",
+      "debrief": {
+        "headline": "Certificate expired on {node}.",
+        "hurt": "Every request failed for {minutes} minutes.",
+        "helped": "{helper} raised the alarm.",
+        "fix": "Automatic renewal plus a synthetic check on expiry date."
+      },
+      "realWorld": "Expired certificates have taken down major apps and services for hours, approx.",
+      "icon": "Certificate ribbon with a small clock showing zero."
+    },
+    {
+      "id": "dns-misconfig", "name": "DNS mistake", "group": "change", "severity": 3,
+      "description": "A wrong DNS record sends half your users nowhere, and caches keep the mistake for an hour.",
+      "effects": [ { "op": "fail", "target": "kind:router", "params": { "mode": "errors", "errorRate": 0.5, "durationSec": 3600 } } ],
+      "counters": [
+        { "knob": "ttlSec", "how": "A short TTL means mistakes expire in a minute." },
+        { "element": "synthetic-probe", "how": "Catches it from outside." }
+      ],
+      "lesson": "Lower the TTL before changing DNS, so you can undo a mistake quickly.",
+      "debrief": {
+        "headline": "DNS mistake: half of users got a wrong address.",
+        "hurt": "The wrong answer stayed cached for {minutes} minutes.",
+        "helped": "{helper} shortened the damage.",
+        "fix": "Lower TTL to 60 s before changes."
+      },
+      "realWorld": "Common DNS TTLs are 5 minutes to 1 hour; some resolvers keep answers longer, approx.",
+      "icon": "Signpost with its arrow board pointing the wrong way and a small x."
+    },
+    {
+      "id": "third-party-rate-limit", "name": "Provider rate limit", "group": "dependency", "severity": 2,
+      "description": "An outside service starts answering 'too many requests' above half your current rate.",
+      "effects": [ { "op": "limit", "target": "busiest:cat:external", "params": { "rpsCapFactor": 0.5, "durationSec": 3600 } } ],
+      "counters": [
+        { "element": "queue", "how": "Send at the allowed pace and let the rest wait." },
+        { "element": "cache", "how": "Do not ask twice for the same answer." },
+        { "knob": "backoff", "how": "Back off when told to." }
+      ],
+      "lesson": "Know your providers' limits before launch day, and design to stay under them.",
+      "debrief": {
+        "headline": "{node} limited you to {cap} req/s.",
+        "hurt": "{failed} calls were refused.",
+        "helped": "{helper} paced calls under the limit.",
+        "fix": "Queue calls to {node} and send at its limit; cache repeated answers."
+      },
+      "realWorld": "Many APIs default to about 100 requests per second per account until you ask for more, approx.",
+      "icon": "Gauge with its needle at a red line and a hand-stop sign."
+    },
+    {
+      "id": "data-corruption", "name": "Bad migration", "group": "data", "severity": 3,
+      "description": "A buggy data change damages 5 percent of rows, and replicas faithfully copy the damage.",
+      "effects": [ { "op": "corrupt", "target": "busiest:kind:store", "params": { "share": 0.05 } } ],
+      "counters": [
+        { "element": "backups", "how": "Point-in-time restore to 5 minutes before the change." },
+        { "element": "ci-cd", "how": "Migration checks catch it in testing." }
+      ],
+      "lesson": "Replicas protect against machines failing, not against mistakes. Only backups undo a bad change.",
+      "debrief": {
+        "headline": "Bad migration damaged {share} percent of {node}.",
+        "hurt": "{lostWrites} records were wrong; restore took {minutes} minutes.",
+        "helped": "{helper} restored the data.",
+        "fix": "Turn on point-in-time backups and test restores."
+      },
+      "realWorld": "Restoring a database snapshot takes roughly an hour per terabyte, approx.",
+      "icon": "Database cylinder with a jagged crack across it."
+    },
+    {
+      "id": "cardinality-explosion", "name": "Metrics explosion", "group": "cost", "severity": 1,
+      "description": "Someone adds a user id to a metric label. Series count jumps 20 times and so does the bill.",
+      "effects": [ { "op": "costMultiplier", "target": "el:metrics", "params": { "line": "el:metrics", "factor": 20, "durationSec": 21600 } } ],
+      "counters": [
+        { "element": "alerting", "how": "An alert on series count catches it in minutes." }
+      ],
+      "lesson": "Labels must have few possible values. Put ids in logs or traces, never in metric labels.",
+      "debrief": {
+        "headline": "Metrics explosion: series count rose {factor} times.",
+        "hurt": "Monitoring cost rose by about ${costDelta} for the month.",
+        "helped": "{helper} caught it early.",
+        "fix": "Limit labels per metric and alert on active series."
+      },
+      "realWorld": "At about $0.10 to $0.30 per 1,000 series a month, 20 million accidental series cost thousands, approx.",
+      "icon": "Small line chart exploding into many thin lines."
+    },
+    {
+      "id": "key-leak", "name": "Leaked key", "group": "security", "severity": 2,
+      "description": "An API key is pushed to a public repo. It must be rotated now.",
+      "effects": [ { "op": "keyLeak", "target": "kind:compute", "params": { "restartSec": 1200 } } ],
+      "counters": [
+        { "element": "secrets-manager", "how": "Rotate in minutes with no redeploy." },
+        { "element": "kms", "how": "Keys can be disabled instantly." }
+      ],
+      "lesson": "Assume secrets leak. Keep them out of code so rotating is boring.",
+      "debrief": {
+        "headline": "Leaked key had to be rotated.",
+        "hurt": "Redeploying every service halved capacity for {minutes} minutes.",
+        "helped": "{helper} rotated it without a redeploy.",
+        "fix": "Store keys in a secrets manager."
+      },
+      "realWorld": "Automated scanners find keys pushed to public code within minutes, approx.",
+      "icon": "Key slipping out of an open padlock."
+    },
+    {
+      "id": "gpu-shortage", "name": "GPU shortage", "group": "infra", "severity": 2,
+      "description": "Demand for AI jumps, and the cloud has no more GPUs to give you for two hours.",
+      "effects": [
+        { "op": "traffic", "target": "traffic", "params": { "factor": 3, "rampSec": 900, "holdSec": 7200, "decaySec": 1800, "types": ["inference"] } },
+        { "op": "scaleBlock", "target": "el:gpu-cluster", "params": { "durationSec": 7200 } }
+      ],
+      "counters": [
+        { "element": "semantic-cache", "how": "Answers repeated questions without a GPU." },
+        { "element": "llm-gateway", "how": "Overflows to a hosted model." },
+        { "element": "queue", "how": "Lets long jobs wait their turn." }
+      ],
+      "lesson": "GPUs are scarce and slow to add. Plan fallbacks: cache, a smaller model, or a hosted provider.",
+      "debrief": {
+        "headline": "GPU shortage: AI demand rose {factor} times with no new GPUs.",
+        "hurt": "Replies queued for up to {waitSec} seconds and {failed} timed out.",
+        "helped": "{helper} took load off the GPUs.",
+        "fix": "Add a semantic cache and a gateway that can fall back to a hosted model."
+      },
+      "realWorld": "High-end GPUs have often been sold out in popular regions for days, approx.",
+      "icon": "GPU chip with an empty box outline beside it."
+    },
+    {
+      "id": "schema-migration-lock", "name": "Table lock", "group": "change", "severity": 2,
+      "description": "A schema change locks a busy table. Writes wait for 3 minutes.",
+      "effects": [ { "op": "blockWrites", "target": "busiest:kind:store", "params": { "durationSec": 180 } } ],
+      "counters": [
+        { "element": "queue", "how": "Writes wait in the queue instead of timing out." },
+        { "element": "ci-cd", "how": "Runs online migrations in small steps." }
+      ],
+      "lesson": "Change schemas in small, online steps: add, backfill, switch, then remove.",
+      "debrief": {
+        "headline": "Table lock on {node} for {minutes} minutes.",
+        "hurt": "{failed} writes timed out.",
+        "helped": "{helper} buffered the writes.",
+        "fix": "Use online migrations and buffer writes through a queue."
+      },
+      "realWorld": "Some table changes on large tables lock writes for minutes unless done online, approx.",
+      "icon": "Table grid with a padlock over its corner."
+    },
+    {
+      "id": "overseas-launch", "name": "Overseas launch", "group": "traffic", "severity": 1,
+      "description": "Marketing launches in a new continent. 40 percent of users are now far from your servers.",
+      "effects": [ { "op": "regionShift", "target": "traffic", "params": { "region": "apac", "share": 0.4, "rampSec": 3600 } } ],
+      "counters": [
+        { "element": "cdn", "how": "Serves static and cached content locally." },
+        { "element": "edge-fn", "how": "Runs light logic near users." },
+        { "element": "geo-dns", "how": "Routes them to a second region near them." }
+      ],
+      "lesson": "Distance is latency: about 150 to 300 ms per round trip across oceans, and pages need several round trips.",
+      "debrief": {
+        "headline": "Overseas launch: {share} percent of users moved to {region}.",
+        "hurt": "Their p99 latency rose to {p99} ms.",
+        "helped": "{helper} served them nearby.",
+        "fix": "Put a CDN in front and consider a second region."
+      },
+      "realWorld": "A round trip from the US east coast to Singapore is about 220 ms, approx.",
+      "icon": "Airplane above a globe with a dotted path."
+    }
+  ]
+}

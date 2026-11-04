@@ -1,0 +1,1450 @@
+{
+ "version": 1,
+ "updated": "2026-11-02",
+ "viewBox": "0 0 24 24",
+ "style": "stroke currentColor 1.75, round caps and joins, duotone fill currentColor at .18, no text, own artwork",
+ "total": 239,
+ "counts": {
+  "element": 99,
+  "category": 9,
+  "event": 36,
+  "request-shape": 19,
+  "ui": 76
+ },
+ "icons": [
+  {
+   "id": "el.web-browser",
+   "group": "element",
+   "file": "assets/icons/web-browser.svg",
+   "name": "Web browser"
+  },
+  {
+   "id": "el.mobile-app",
+   "group": "element",
+   "file": "assets/icons/mobile-app.svg",
+   "name": "Mobile app"
+  },
+  {
+   "id": "el.tv-app",
+   "group": "element",
+   "file": "assets/icons/tv-app.svg",
+   "name": "TV and console app"
+  },
+  {
+   "id": "el.game-client",
+   "group": "element",
+   "file": "assets/icons/game-client.svg",
+   "name": "Game client"
+  },
+  {
+   "id": "el.iot-device",
+   "group": "element",
+   "file": "assets/icons/iot-device.svg",
+   "name": "IoT devices"
+  },
+  {
+   "id": "el.partner-system",
+   "group": "element",
+   "file": "assets/icons/partner-system.svg",
+   "name": "Partner system"
+  },
+  {
+   "id": "el.admin-console",
+   "group": "element",
+   "file": "assets/icons/admin-console.svg",
+   "name": "Admin console"
+  },
+  {
+   "id": "el.dns",
+   "group": "element",
+   "file": "assets/icons/dns.svg",
+   "name": "DNS"
+  },
+  {
+   "id": "el.geo-dns",
+   "group": "element",
+   "file": "assets/icons/geo-dns.svg",
+   "name": "GeoDNS"
+  },
+  {
+   "id": "el.cdn",
+   "group": "element",
+   "file": "assets/icons/cdn.svg",
+   "name": "CDN"
+  },
+  {
+   "id": "el.origin-shield",
+   "group": "element",
+   "file": "assets/icons/origin-shield.svg",
+   "name": "Origin shield"
+  },
+  {
+   "id": "el.waf",
+   "group": "element",
+   "file": "assets/icons/waf.svg",
+   "name": "Web firewall (WAF)"
+  },
+  {
+   "id": "el.firewall",
+   "group": "element",
+   "file": "assets/icons/firewall.svg",
+   "name": "Network firewall"
+  },
+  {
+   "id": "el.ddos-shield",
+   "group": "element",
+   "file": "assets/icons/ddos-shield.svg",
+   "name": "DDoS shield"
+  },
+  {
+   "id": "el.api-gateway",
+   "group": "element",
+   "file": "assets/icons/api-gateway.svg",
+   "name": "API gateway"
+  },
+  {
+   "id": "el.global-lb",
+   "group": "element",
+   "file": "assets/icons/global-lb.svg",
+   "name": "Global load balancer"
+  },
+  {
+   "id": "el.regional-lb",
+   "group": "element",
+   "file": "assets/icons/regional-lb.svg",
+   "name": "Load balancer"
+  },
+  {
+   "id": "el.network-lb",
+   "group": "element",
+   "file": "assets/icons/network-lb.svg",
+   "name": "Network load balancer"
+  },
+  {
+   "id": "el.service-mesh",
+   "group": "element",
+   "file": "assets/icons/service-mesh.svg",
+   "name": "Service mesh"
+  },
+  {
+   "id": "el.private-link",
+   "group": "element",
+   "file": "assets/icons/private-link.svg",
+   "name": "VPN or private link"
+  },
+  {
+   "id": "el.vm-fleet",
+   "group": "element",
+   "file": "assets/icons/vm-fleet.svg",
+   "name": "App servers (VMs)"
+  },
+  {
+   "id": "el.container-cluster",
+   "group": "element",
+   "file": "assets/icons/container-cluster.svg",
+   "name": "Containers"
+  },
+  {
+   "id": "el.serverless-fn",
+   "group": "element",
+   "file": "assets/icons/serverless-fn.svg",
+   "name": "Serverless functions"
+  },
+  {
+   "id": "el.edge-fn",
+   "group": "element",
+   "file": "assets/icons/edge-fn.svg",
+   "name": "Edge functions"
+  },
+  {
+   "id": "el.gpu-cluster",
+   "group": "element",
+   "file": "assets/icons/gpu-cluster.svg",
+   "name": "GPU servers"
+  },
+  {
+   "id": "el.worker-pool",
+   "group": "element",
+   "file": "assets/icons/worker-pool.svg",
+   "name": "Background workers"
+  },
+  {
+   "id": "el.batch-cluster",
+   "group": "element",
+   "file": "assets/icons/batch-cluster.svg",
+   "name": "Batch cluster"
+  },
+  {
+   "id": "el.cron-scheduler",
+   "group": "element",
+   "file": "assets/icons/cron-scheduler.svg",
+   "name": "Scheduler"
+  },
+  {
+   "id": "el.autoscaler",
+   "group": "element",
+   "file": "assets/icons/autoscaler.svg",
+   "name": "Autoscaler"
+  },
+  {
+   "id": "el.sql-primary",
+   "group": "element",
+   "file": "assets/icons/sql-primary.svg",
+   "name": "SQL database"
+  },
+  {
+   "id": "el.sql-replica",
+   "group": "element",
+   "file": "assets/icons/sql-replica.svg",
+   "name": "Read replica"
+  },
+  {
+   "id": "el.sharded-sql",
+   "group": "element",
+   "file": "assets/icons/sharded-sql.svg",
+   "name": "Sharded SQL"
+  },
+  {
+   "id": "el.distributed-sql",
+   "group": "element",
+   "file": "assets/icons/distributed-sql.svg",
+   "name": "Distributed SQL"
+  },
+  {
+   "id": "el.kv-store",
+   "group": "element",
+   "file": "assets/icons/kv-store.svg",
+   "name": "Key-value store"
+  },
+  {
+   "id": "el.document-db",
+   "group": "element",
+   "file": "assets/icons/document-db.svg",
+   "name": "Document database"
+  },
+  {
+   "id": "el.wide-column",
+   "group": "element",
+   "file": "assets/icons/wide-column.svg",
+   "name": "Wide-column store"
+  },
+  {
+   "id": "el.graph-db",
+   "group": "element",
+   "file": "assets/icons/graph-db.svg",
+   "name": "Graph database"
+  },
+  {
+   "id": "el.timeseries-db",
+   "group": "element",
+   "file": "assets/icons/timeseries-db.svg",
+   "name": "Time-series database"
+  },
+  {
+   "id": "el.search-index",
+   "group": "element",
+   "file": "assets/icons/search-index.svg",
+   "name": "Search index"
+  },
+  {
+   "id": "el.vector-db",
+   "group": "element",
+   "file": "assets/icons/vector-db.svg",
+   "name": "Vector database"
+  },
+  {
+   "id": "el.cache",
+   "group": "element",
+   "file": "assets/icons/cache.svg",
+   "name": "Cache"
+  },
+  {
+   "id": "el.distributed-cache",
+   "group": "element",
+   "file": "assets/icons/distributed-cache.svg",
+   "name": "Distributed cache"
+  },
+  {
+   "id": "el.object-storage",
+   "group": "element",
+   "file": "assets/icons/object-storage.svg",
+   "name": "Object storage"
+  },
+  {
+   "id": "el.block-storage",
+   "group": "element",
+   "file": "assets/icons/block-storage.svg",
+   "name": "Block storage"
+  },
+  {
+   "id": "el.file-system",
+   "group": "element",
+   "file": "assets/icons/file-system.svg",
+   "name": "Shared file system"
+  },
+  {
+   "id": "el.data-warehouse",
+   "group": "element",
+   "file": "assets/icons/data-warehouse.svg",
+   "name": "Data warehouse"
+  },
+  {
+   "id": "el.data-lake",
+   "group": "element",
+   "file": "assets/icons/data-lake.svg",
+   "name": "Data lake"
+  },
+  {
+   "id": "el.ledger-db",
+   "group": "element",
+   "file": "assets/icons/ledger-db.svg",
+   "name": "Ledger"
+  },
+  {
+   "id": "el.db-proxy",
+   "group": "element",
+   "file": "assets/icons/db-proxy.svg",
+   "name": "Connection pooler"
+  },
+  {
+   "id": "el.cold-archive",
+   "group": "element",
+   "file": "assets/icons/cold-archive.svg",
+   "name": "Cold archive"
+  },
+  {
+   "id": "el.queue",
+   "group": "element",
+   "file": "assets/icons/queue.svg",
+   "name": "Queue"
+  },
+  {
+   "id": "el.pubsub",
+   "group": "element",
+   "file": "assets/icons/pubsub.svg",
+   "name": "Pub/sub topic"
+  },
+  {
+   "id": "el.event-stream",
+   "group": "element",
+   "file": "assets/icons/event-stream.svg",
+   "name": "Event stream"
+  },
+  {
+   "id": "el.stream-processor",
+   "group": "element",
+   "file": "assets/icons/stream-processor.svg",
+   "name": "Stream processor"
+  },
+  {
+   "id": "el.dead-letter-queue",
+   "group": "element",
+   "file": "assets/icons/dead-letter-queue.svg",
+   "name": "Dead-letter queue"
+  },
+  {
+   "id": "el.outbox",
+   "group": "element",
+   "file": "assets/icons/outbox.svg",
+   "name": "Transactional outbox"
+  },
+  {
+   "id": "el.workflow-engine",
+   "group": "element",
+   "file": "assets/icons/workflow-engine.svg",
+   "name": "Workflow engine"
+  },
+  {
+   "id": "el.websocket-gateway",
+   "group": "element",
+   "file": "assets/icons/websocket-gateway.svg",
+   "name": "Live connection gateway"
+  },
+  {
+   "id": "el.cdc-connector",
+   "group": "element",
+   "file": "assets/icons/cdc-connector.svg",
+   "name": "Change data capture"
+  },
+  {
+   "id": "el.identity-provider",
+   "group": "element",
+   "file": "assets/icons/identity-provider.svg",
+   "name": "Identity provider"
+  },
+  {
+   "id": "el.secrets-manager",
+   "group": "element",
+   "file": "assets/icons/secrets-manager.svg",
+   "name": "Secrets manager"
+  },
+  {
+   "id": "el.kms",
+   "group": "element",
+   "file": "assets/icons/kms.svg",
+   "name": "Key management"
+  },
+  {
+   "id": "el.hsm",
+   "group": "element",
+   "file": "assets/icons/hsm.svg",
+   "name": "Hardware security module"
+  },
+  {
+   "id": "el.rate-limiter",
+   "group": "element",
+   "file": "assets/icons/rate-limiter.svg",
+   "name": "Rate limiter"
+  },
+  {
+   "id": "el.circuit-breaker",
+   "group": "element",
+   "file": "assets/icons/circuit-breaker.svg",
+   "name": "Circuit breaker"
+  },
+  {
+   "id": "el.idempotency-store",
+   "group": "element",
+   "file": "assets/icons/idempotency-store.svg",
+   "name": "Idempotency keys"
+  },
+  {
+   "id": "el.feature-flags",
+   "group": "element",
+   "file": "assets/icons/feature-flags.svg",
+   "name": "Feature flags"
+  },
+  {
+   "id": "el.config-service",
+   "group": "element",
+   "file": "assets/icons/config-service.svg",
+   "name": "Config service"
+  },
+  {
+   "id": "el.coordination-service",
+   "group": "element",
+   "file": "assets/icons/coordination-service.svg",
+   "name": "Coordination service"
+  },
+  {
+   "id": "el.audit-log",
+   "group": "element",
+   "file": "assets/icons/audit-log.svg",
+   "name": "Audit log"
+  },
+  {
+   "id": "el.privacy-vault",
+   "group": "element",
+   "file": "assets/icons/privacy-vault.svg",
+   "name": "Privacy vault"
+  },
+  {
+   "id": "el.consent-service",
+   "group": "element",
+   "file": "assets/icons/consent-service.svg",
+   "name": "Consent service"
+  },
+  {
+   "id": "el.metrics",
+   "group": "element",
+   "file": "assets/icons/metrics.svg",
+   "name": "Metrics"
+  },
+  {
+   "id": "el.logs",
+   "group": "element",
+   "file": "assets/icons/logs.svg",
+   "name": "Logs"
+  },
+  {
+   "id": "el.traces",
+   "group": "element",
+   "file": "assets/icons/traces.svg",
+   "name": "Traces"
+  },
+  {
+   "id": "el.alerting",
+   "group": "element",
+   "file": "assets/icons/alerting.svg",
+   "name": "Alerting"
+  },
+  {
+   "id": "el.dashboards",
+   "group": "element",
+   "file": "assets/icons/dashboards.svg",
+   "name": "Dashboards"
+  },
+  {
+   "id": "el.pager",
+   "group": "element",
+   "file": "assets/icons/pager.svg",
+   "name": "On-call pager"
+  },
+  {
+   "id": "el.ci-cd",
+   "group": "element",
+   "file": "assets/icons/ci-cd.svg",
+   "name": "CI/CD pipeline"
+  },
+  {
+   "id": "el.backups",
+   "group": "element",
+   "file": "assets/icons/backups.svg",
+   "name": "Backups"
+  },
+  {
+   "id": "el.disaster-recovery",
+   "group": "element",
+   "file": "assets/icons/disaster-recovery.svg",
+   "name": "Disaster recovery"
+  },
+  {
+   "id": "el.synthetic-probe",
+   "group": "element",
+   "file": "assets/icons/synthetic-probe.svg",
+   "name": "Synthetic checks"
+  },
+  {
+   "id": "el.model-server",
+   "group": "element",
+   "file": "assets/icons/model-server.svg",
+   "name": "Model server"
+  },
+  {
+   "id": "el.llm-gateway",
+   "group": "element",
+   "file": "assets/icons/llm-gateway.svg",
+   "name": "AI gateway"
+  },
+  {
+   "id": "el.semantic-cache",
+   "group": "element",
+   "file": "assets/icons/semantic-cache.svg",
+   "name": "Semantic cache"
+  },
+  {
+   "id": "el.safety-filter",
+   "group": "element",
+   "file": "assets/icons/safety-filter.svg",
+   "name": "Safety filter"
+  },
+  {
+   "id": "el.feature-store",
+   "group": "element",
+   "file": "assets/icons/feature-store.svg",
+   "name": "Feature store"
+  },
+  {
+   "id": "el.embedding-service",
+   "group": "element",
+   "file": "assets/icons/embedding-service.svg",
+   "name": "Embedding service"
+  },
+  {
+   "id": "el.recommender",
+   "group": "element",
+   "file": "assets/icons/recommender.svg",
+   "name": "Recommendation engine"
+  },
+  {
+   "id": "el.etl-pipeline",
+   "group": "element",
+   "file": "assets/icons/etl-pipeline.svg",
+   "name": "Data pipeline (ETL)"
+  },
+  {
+   "id": "el.payment-processor",
+   "group": "element",
+   "file": "assets/icons/payment-processor.svg",
+   "name": "Payment processor"
+  },
+  {
+   "id": "el.email-provider",
+   "group": "element",
+   "file": "assets/icons/email-provider.svg",
+   "name": "Email provider"
+  },
+  {
+   "id": "el.sms-provider",
+   "group": "element",
+   "file": "assets/icons/sms-provider.svg",
+   "name": "SMS provider"
+  },
+  {
+   "id": "el.push-service",
+   "group": "element",
+   "file": "assets/icons/push-service.svg",
+   "name": "Push notifications"
+  },
+  {
+   "id": "el.maps-api",
+   "group": "element",
+   "file": "assets/icons/maps-api.svg",
+   "name": "Maps API"
+  },
+  {
+   "id": "el.video-transcoder",
+   "group": "element",
+   "file": "assets/icons/video-transcoder.svg",
+   "name": "Video transcoder"
+  },
+  {
+   "id": "el.identity-verification",
+   "group": "element",
+   "file": "assets/icons/identity-verification.svg",
+   "name": "ID verification"
+  },
+  {
+   "id": "el.hosted-llm-api",
+   "group": "element",
+   "file": "assets/icons/hosted-llm-api.svg",
+   "name": "Hosted AI model"
+  },
+  {
+   "id": "el.third-party-api",
+   "group": "element",
+   "file": "assets/icons/third-party-api.svg",
+   "name": "Third-party API"
+  },
+  {
+   "id": "cat.clients",
+   "group": "category",
+   "file": "assets/categories/clients.svg",
+   "name": "Clients and devices"
+  },
+  {
+   "id": "cat.edge",
+   "group": "category",
+   "file": "assets/categories/edge.svg",
+   "name": "Edge and network"
+  },
+  {
+   "id": "cat.compute",
+   "group": "category",
+   "file": "assets/categories/compute.svg",
+   "name": "Compute"
+  },
+  {
+   "id": "cat.data",
+   "group": "category",
+   "file": "assets/categories/data.svg",
+   "name": "Data stores"
+  },
+  {
+   "id": "cat.messaging",
+   "group": "category",
+   "file": "assets/categories/messaging.svg",
+   "name": "Messaging and streaming"
+  },
+  {
+   "id": "cat.platform",
+   "group": "category",
+   "file": "assets/categories/platform.svg",
+   "name": "Platform and security"
+  },
+  {
+   "id": "cat.ops",
+   "group": "category",
+   "file": "assets/categories/ops.svg",
+   "name": "Operations"
+  },
+  {
+   "id": "cat.ai",
+   "group": "category",
+   "file": "assets/categories/ai.svg",
+   "name": "AI and data"
+  },
+  {
+   "id": "cat.external",
+   "group": "category",
+   "file": "assets/categories/external.svg",
+   "name": "External services"
+  },
+  {
+   "id": "ev.viral-spike",
+   "group": "event",
+   "file": "assets/events/viral-spike.svg",
+   "name": "Viral spike"
+  },
+  {
+   "id": "ev.flash-crowd",
+   "group": "event",
+   "file": "assets/events/flash-crowd.svg",
+   "name": "Flash crowd"
+  },
+  {
+   "id": "ev.deadline-surge",
+   "group": "event",
+   "file": "assets/events/deadline-surge.svg",
+   "name": "Deadline surge"
+  },
+  {
+   "id": "ev.hot-key",
+   "group": "event",
+   "file": "assets/events/hot-key.svg",
+   "name": "Hot key"
+  },
+  {
+   "id": "ev.celebrity-fanout",
+   "group": "event",
+   "file": "assets/events/celebrity-fanout.svg",
+   "name": "Celebrity post"
+  },
+  {
+   "id": "ev.cache-stampede",
+   "group": "event",
+   "file": "assets/events/cache-stampede.svg",
+   "name": "Cache stampede"
+  },
+  {
+   "id": "ev.db-failover",
+   "group": "event",
+   "file": "assets/events/db-failover.svg",
+   "name": "Database failover"
+  },
+  {
+   "id": "ev.replication-lag",
+   "group": "event",
+   "file": "assets/events/replication-lag.svg",
+   "name": "Replication lag"
+  },
+  {
+   "id": "ev.zone-outage",
+   "group": "event",
+   "file": "assets/events/zone-outage.svg",
+   "name": "Zone outage"
+  },
+  {
+   "id": "ev.region-outage",
+   "group": "event",
+   "file": "assets/events/region-outage.svg",
+   "name": "Region outage"
+  },
+  {
+   "id": "ev.slow-dependency",
+   "group": "event",
+   "file": "assets/events/slow-dependency.svg",
+   "name": "Slow dependency"
+  },
+  {
+   "id": "ev.dependency-outage",
+   "group": "event",
+   "file": "assets/events/dependency-outage.svg",
+   "name": "Dependency outage"
+  },
+  {
+   "id": "ev.retry-storm",
+   "group": "event",
+   "file": "assets/events/retry-storm.svg",
+   "name": "Retry storm"
+  },
+  {
+   "id": "ev.thundering-herd",
+   "group": "event",
+   "file": "assets/events/thundering-herd.svg",
+   "name": "Thundering herd"
+  },
+  {
+   "id": "ev.cost-blowout",
+   "group": "event",
+   "file": "assets/events/cost-blowout.svg",
+   "name": "Cost blowout"
+  },
+  {
+   "id": "ev.compliance-audit",
+   "group": "event",
+   "file": "assets/events/compliance-audit.svg",
+   "name": "Compliance audit"
+  },
+  {
+   "id": "ev.ddos-attack",
+   "group": "event",
+   "file": "assets/events/ddos-attack.svg",
+   "name": "DDoS attack"
+  },
+  {
+   "id": "ev.bot-scraping",
+   "group": "event",
+   "file": "assets/events/bot-scraping.svg",
+   "name": "Bot scraping"
+  },
+  {
+   "id": "ev.bad-deploy",
+   "group": "event",
+   "file": "assets/events/bad-deploy.svg",
+   "name": "Bad deploy"
+  },
+  {
+   "id": "ev.bad-config-push",
+   "group": "event",
+   "file": "assets/events/bad-config-push.svg",
+   "name": "Bad config push"
+  },
+  {
+   "id": "ev.noisy-neighbor",
+   "group": "event",
+   "file": "assets/events/noisy-neighbor.svg",
+   "name": "Noisy neighbour"
+  },
+  {
+   "id": "ev.memory-leak",
+   "group": "event",
+   "file": "assets/events/memory-leak.svg",
+   "name": "Memory leak"
+  },
+  {
+   "id": "ev.disk-full",
+   "group": "event",
+   "file": "assets/events/disk-full.svg",
+   "name": "Disk full"
+  },
+  {
+   "id": "ev.cold-start",
+   "group": "event",
+   "file": "assets/events/cold-start.svg",
+   "name": "Cold starts"
+  },
+  {
+   "id": "ev.poison-message",
+   "group": "event",
+   "file": "assets/events/poison-message.svg",
+   "name": "Poison message"
+  },
+  {
+   "id": "ev.duplicate-delivery",
+   "group": "event",
+   "file": "assets/events/duplicate-delivery.svg",
+   "name": "Duplicate delivery"
+  },
+  {
+   "id": "ev.network-partition",
+   "group": "event",
+   "file": "assets/events/network-partition.svg",
+   "name": "Network partition"
+  },
+  {
+   "id": "ev.cert-expiry",
+   "group": "event",
+   "file": "assets/events/cert-expiry.svg",
+   "name": "Certificate expired"
+  },
+  {
+   "id": "ev.dns-misconfig",
+   "group": "event",
+   "file": "assets/events/dns-misconfig.svg",
+   "name": "DNS mistake"
+  },
+  {
+   "id": "ev.third-party-rate-limit",
+   "group": "event",
+   "file": "assets/events/third-party-rate-limit.svg",
+   "name": "Provider rate limit"
+  },
+  {
+   "id": "ev.data-corruption",
+   "group": "event",
+   "file": "assets/events/data-corruption.svg",
+   "name": "Bad migration"
+  },
+  {
+   "id": "ev.cardinality-explosion",
+   "group": "event",
+   "file": "assets/events/cardinality-explosion.svg",
+   "name": "Metrics explosion"
+  },
+  {
+   "id": "ev.key-leak",
+   "group": "event",
+   "file": "assets/events/key-leak.svg",
+   "name": "Leaked key"
+  },
+  {
+   "id": "ev.gpu-shortage",
+   "group": "event",
+   "file": "assets/events/gpu-shortage.svg",
+   "name": "GPU shortage"
+  },
+  {
+   "id": "ev.schema-migration-lock",
+   "group": "event",
+   "file": "assets/events/schema-migration-lock.svg",
+   "name": "Table lock"
+  },
+  {
+   "id": "ev.overseas-launch",
+   "group": "event",
+   "file": "assets/events/overseas-launch.svg",
+   "name": "Overseas launch"
+  },
+  {
+   "id": "req.read",
+   "group": "request-shape",
+   "file": "assets/requests/read.svg",
+   "name": "Read"
+  },
+  {
+   "id": "req.write",
+   "group": "request-shape",
+   "file": "assets/requests/write.svg",
+   "name": "Write"
+  },
+  {
+   "id": "req.upload",
+   "group": "request-shape",
+   "file": "assets/requests/upload.svg",
+   "name": "Upload"
+  },
+  {
+   "id": "req.stream",
+   "group": "request-shape",
+   "file": "assets/requests/stream.svg",
+   "name": "Stream chunk"
+  },
+  {
+   "id": "req.live",
+   "group": "request-shape",
+   "file": "assets/requests/live.svg",
+   "name": "Live segment"
+  },
+  {
+   "id": "req.search",
+   "group": "request-shape",
+   "file": "assets/requests/search.svg",
+   "name": "Search"
+  },
+  {
+   "id": "req.report",
+   "group": "request-shape",
+   "file": "assets/requests/report.svg",
+   "name": "Report"
+  },
+  {
+   "id": "req.payment",
+   "group": "request-shape",
+   "file": "assets/requests/payment.svg",
+   "name": "Payment"
+  },
+  {
+   "id": "req.login",
+   "group": "request-shape",
+   "file": "assets/requests/login.svg",
+   "name": "Sign-in"
+  },
+  {
+   "id": "req.inference",
+   "group": "request-shape",
+   "file": "assets/requests/inference.svg",
+   "name": "AI request"
+  },
+  {
+   "id": "req.message",
+   "group": "request-shape",
+   "file": "assets/requests/message.svg",
+   "name": "Message"
+  },
+  {
+   "id": "req.location",
+   "group": "request-shape",
+   "file": "assets/requests/location.svg",
+   "name": "Location ping"
+  },
+  {
+   "id": "req.notify",
+   "group": "request-shape",
+   "file": "assets/requests/notify.svg",
+   "name": "Notification"
+  },
+  {
+   "id": "req.sync",
+   "group": "request-shape",
+   "file": "assets/requests/sync.svg",
+   "name": "Sync change"
+  },
+  {
+   "id": "req.telemetry",
+   "group": "request-shape",
+   "file": "assets/requests/telemetry.svg",
+   "name": "Telemetry batch"
+  },
+  {
+   "id": "req.event",
+   "group": "request-shape",
+   "file": "assets/requests/event.svg",
+   "name": "Analytics event"
+  },
+  {
+   "id": "req.batch",
+   "group": "request-shape",
+   "file": "assets/requests/batch.svg",
+   "name": "Batch task"
+  },
+  {
+   "id": "req.webhook",
+   "group": "request-shape",
+   "file": "assets/requests/webhook.svg",
+   "name": "Webhook"
+  },
+  {
+   "id": "req.attack",
+   "group": "request-shape",
+   "file": "assets/requests/attack.svg",
+   "name": "Attack traffic"
+  },
+  {
+   "id": "ui.play",
+   "group": "ui",
+   "file": "assets/ui/play.svg",
+   "name": "play"
+  },
+  {
+   "id": "ui.pause",
+   "group": "ui",
+   "file": "assets/ui/pause.svg",
+   "name": "pause"
+  },
+  {
+   "id": "ui.step",
+   "group": "ui",
+   "file": "assets/ui/step.svg",
+   "name": "step"
+  },
+  {
+   "id": "ui.speed",
+   "group": "ui",
+   "file": "assets/ui/speed.svg",
+   "name": "speed"
+  },
+  {
+   "id": "ui.restart",
+   "group": "ui",
+   "file": "assets/ui/restart.svg",
+   "name": "restart"
+  },
+  {
+   "id": "ui.undo",
+   "group": "ui",
+   "file": "assets/ui/undo.svg",
+   "name": "undo"
+  },
+  {
+   "id": "ui.redo",
+   "group": "ui",
+   "file": "assets/ui/redo.svg",
+   "name": "redo"
+  },
+  {
+   "id": "ui.delete",
+   "group": "ui",
+   "file": "assets/ui/delete.svg",
+   "name": "delete"
+  },
+  {
+   "id": "ui.duplicate",
+   "group": "ui",
+   "file": "assets/ui/duplicate.svg",
+   "name": "duplicate"
+  },
+  {
+   "id": "ui.connect",
+   "group": "ui",
+   "file": "assets/ui/connect.svg",
+   "name": "connect"
+  },
+  {
+   "id": "ui.disconnect",
+   "group": "ui",
+   "file": "assets/ui/disconnect.svg",
+   "name": "disconnect"
+  },
+  {
+   "id": "ui.search",
+   "group": "ui",
+   "file": "assets/ui/search.svg",
+   "name": "search"
+  },
+  {
+   "id": "ui.filter",
+   "group": "ui",
+   "file": "assets/ui/filter.svg",
+   "name": "filter"
+  },
+  {
+   "id": "ui.settings",
+   "group": "ui",
+   "file": "assets/ui/settings.svg",
+   "name": "settings"
+  },
+  {
+   "id": "ui.theme-light",
+   "group": "ui",
+   "file": "assets/ui/theme-light.svg",
+   "name": "theme light"
+  },
+  {
+   "id": "ui.theme-dark",
+   "group": "ui",
+   "file": "assets/ui/theme-dark.svg",
+   "name": "theme dark"
+  },
+  {
+   "id": "ui.theme-system",
+   "group": "ui",
+   "file": "assets/ui/theme-system.svg",
+   "name": "theme system"
+  },
+  {
+   "id": "ui.sound-on",
+   "group": "ui",
+   "file": "assets/ui/sound-on.svg",
+   "name": "sound on"
+  },
+  {
+   "id": "ui.sound-off",
+   "group": "ui",
+   "file": "assets/ui/sound-off.svg",
+   "name": "sound off"
+  },
+  {
+   "id": "ui.hint",
+   "group": "ui",
+   "file": "assets/ui/hint.svg",
+   "name": "hint"
+  },
+  {
+   "id": "ui.editorial",
+   "group": "ui",
+   "file": "assets/ui/editorial.svg",
+   "name": "editorial"
+  },
+  {
+   "id": "ui.share",
+   "group": "ui",
+   "file": "assets/ui/share.svg",
+   "name": "share"
+  },
+  {
+   "id": "ui.copy",
+   "group": "ui",
+   "file": "assets/ui/copy.svg",
+   "name": "copy"
+  },
+  {
+   "id": "ui.download",
+   "group": "ui",
+   "file": "assets/ui/download.svg",
+   "name": "download"
+  },
+  {
+   "id": "ui.close",
+   "group": "ui",
+   "file": "assets/ui/close.svg",
+   "name": "close"
+  },
+  {
+   "id": "ui.back",
+   "group": "ui",
+   "file": "assets/ui/back.svg",
+   "name": "back"
+  },
+  {
+   "id": "ui.home",
+   "group": "ui",
+   "file": "assets/ui/home.svg",
+   "name": "home"
+  },
+  {
+   "id": "ui.learn",
+   "group": "ui",
+   "file": "assets/ui/learn.svg",
+   "name": "learn"
+  },
+  {
+   "id": "ui.practice",
+   "group": "ui",
+   "file": "assets/ui/practice.svg",
+   "name": "practice"
+  },
+  {
+   "id": "ui.challenge",
+   "group": "ui",
+   "file": "assets/ui/challenge.svg",
+   "name": "challenge"
+  },
+  {
+   "id": "ui.sandbox",
+   "group": "ui",
+   "file": "assets/ui/sandbox.svg",
+   "name": "sandbox"
+  },
+  {
+   "id": "ui.trophy",
+   "group": "ui",
+   "file": "assets/ui/trophy.svg",
+   "name": "trophy"
+  },
+  {
+   "id": "ui.star",
+   "group": "ui",
+   "file": "assets/ui/star.svg",
+   "name": "star"
+  },
+  {
+   "id": "ui.star-empty",
+   "group": "ui",
+   "file": "assets/ui/star-empty.svg",
+   "name": "star empty"
+  },
+  {
+   "id": "ui.streak",
+   "group": "ui",
+   "file": "assets/ui/streak.svg",
+   "name": "streak"
+  },
+  {
+   "id": "ui.check",
+   "group": "ui",
+   "file": "assets/ui/check.svg",
+   "name": "check"
+  },
+  {
+   "id": "ui.warn",
+   "group": "ui",
+   "file": "assets/ui/warn.svg",
+   "name": "warn"
+  },
+  {
+   "id": "ui.error",
+   "group": "ui",
+   "file": "assets/ui/error.svg",
+   "name": "error"
+  },
+  {
+   "id": "ui.info",
+   "group": "ui",
+   "file": "assets/ui/info.svg",
+   "name": "info"
+  },
+  {
+   "id": "ui.lock",
+   "group": "ui",
+   "file": "assets/ui/lock.svg",
+   "name": "lock"
+  },
+  {
+   "id": "ui.unlock",
+   "group": "ui",
+   "file": "assets/ui/unlock.svg",
+   "name": "unlock"
+  },
+  {
+   "id": "ui.zoom-in",
+   "group": "ui",
+   "file": "assets/ui/zoom-in.svg",
+   "name": "zoom in"
+  },
+  {
+   "id": "ui.zoom-out",
+   "group": "ui",
+   "file": "assets/ui/zoom-out.svg",
+   "name": "zoom out"
+  },
+  {
+   "id": "ui.fit",
+   "group": "ui",
+   "file": "assets/ui/fit.svg",
+   "name": "fit"
+  },
+  {
+   "id": "ui.grid",
+   "group": "ui",
+   "file": "assets/ui/grid.svg",
+   "name": "grid"
+  },
+  {
+   "id": "ui.region",
+   "group": "ui",
+   "file": "assets/ui/region.svg",
+   "name": "region"
+  },
+  {
+   "id": "ui.zone",
+   "group": "ui",
+   "file": "assets/ui/zone.svg",
+   "name": "zone"
+  },
+  {
+   "id": "ui.units",
+   "group": "ui",
+   "file": "assets/ui/units.svg",
+   "name": "units"
+  },
+  {
+   "id": "ui.clock",
+   "group": "ui",
+   "file": "assets/ui/clock.svg",
+   "name": "clock"
+  },
+  {
+   "id": "ui.cost",
+   "group": "ui",
+   "file": "assets/ui/cost.svg",
+   "name": "cost"
+  },
+  {
+   "id": "ui.latency",
+   "group": "ui",
+   "file": "assets/ui/latency.svg",
+   "name": "latency"
+  },
+  {
+   "id": "ui.availability",
+   "group": "ui",
+   "file": "assets/ui/availability.svg",
+   "name": "availability"
+  },
+  {
+   "id": "ui.safety",
+   "group": "ui",
+   "file": "assets/ui/safety.svg",
+   "name": "safety"
+  },
+  {
+   "id": "ui.budget",
+   "group": "ui",
+   "file": "assets/ui/budget.svg",
+   "name": "budget"
+  },
+  {
+   "id": "ui.users",
+   "group": "ui",
+   "file": "assets/ui/users.svg",
+   "name": "users"
+  },
+  {
+   "id": "ui.rps",
+   "group": "ui",
+   "file": "assets/ui/rps.svg",
+   "name": "rps"
+  },
+  {
+   "id": "ui.calendar",
+   "group": "ui",
+   "file": "assets/ui/calendar.svg",
+   "name": "calendar"
+  },
+  {
+   "id": "ui.hot",
+   "group": "ui",
+   "file": "assets/ui/hot.svg",
+   "name": "hot"
+  },
+  {
+   "id": "ui.shield",
+   "group": "ui",
+   "file": "assets/ui/shield.svg",
+   "name": "shield"
+  },
+  {
+   "id": "ui.link",
+   "group": "ui",
+   "file": "assets/ui/link.svg",
+   "name": "link"
+  },
+  {
+   "id": "ui.menu",
+   "group": "ui",
+   "file": "assets/ui/menu.svg",
+   "name": "menu"
+  },
+  {
+   "id": "ui.more",
+   "group": "ui",
+   "file": "assets/ui/more.svg",
+   "name": "more"
+  },
+  {
+   "id": "ui.chevron-left",
+   "group": "ui",
+   "file": "assets/ui/chevron-left.svg",
+   "name": "chevron left"
+  },
+  {
+   "id": "ui.chevron-right",
+   "group": "ui",
+   "file": "assets/ui/chevron-right.svg",
+   "name": "chevron right"
+  },
+  {
+   "id": "ui.chevron-up",
+   "group": "ui",
+   "file": "assets/ui/chevron-up.svg",
+   "name": "chevron up"
+  },
+  {
+   "id": "ui.chevron-down",
+   "group": "ui",
+   "file": "assets/ui/chevron-down.svg",
+   "name": "chevron down"
+  },
+  {
+   "id": "ui.plus",
+   "group": "ui",
+   "file": "assets/ui/plus.svg",
+   "name": "plus"
+  },
+  {
+   "id": "ui.minus",
+   "group": "ui",
+   "file": "assets/ui/minus.svg",
+   "name": "minus"
+  },
+  {
+   "id": "ui.drag",
+   "group": "ui",
+   "file": "assets/ui/drag.svg",
+   "name": "drag"
+  },
+  {
+   "id": "ui.keyboard",
+   "group": "ui",
+   "file": "assets/ui/keyboard.svg",
+   "name": "keyboard"
+  },
+  {
+   "id": "ui.motion",
+   "group": "ui",
+   "file": "assets/ui/motion.svg",
+   "name": "motion"
+  },
+  {
+   "id": "ui.contrast",
+   "group": "ui",
+   "file": "assets/ui/contrast.svg",
+   "name": "contrast"
+  },
+  {
+   "id": "ui.external",
+   "group": "ui",
+   "file": "assets/ui/external.svg",
+   "name": "external"
+  },
+  {
+   "id": "ui.ghost",
+   "group": "ui",
+   "file": "assets/ui/ghost.svg",
+   "name": "ghost"
+  },
+  {
+   "id": "ui.verified",
+   "group": "ui",
+   "file": "assets/ui/verified.svg",
+   "name": "verified"
+  },
+  {
+   "id": "ui.approx",
+   "group": "ui",
+   "file": "assets/ui/approx.svg",
+   "name": "approx"
+  }
+ ]
+}

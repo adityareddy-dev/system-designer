@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Designer</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-content: center; gap: 12px; padding: 24px; text-align: center; font: 500 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: #f3f5fa; color: #1b2433; }
+  a { color: #3a5bd9; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { body { background: #0e1422; color: #e6ebf5; } a { color: #8fa8ff; } }
+</style>
+</head>
+<body>
+<h1>That page is not here</h1>
+<p><a id="home" href="/">Open System Designer</a></p>
+<script>
+// A daily link for a date without its own page (d/YYYY-MM-DD/) still opens that day, with a design kept in the fragment.
+(function () {
+  var m = /^(.*\/)d\/(\d{4}-\d{2}-\d{2})\/?$/.exec(location.pathname);
+  var home = m ? m[1] : '/';
+  var h = location.hash || '';
+  document.getElementById('home').href = home;
+  if (m) location.replace(home + (h.indexOf('#/beat/') === 0 ? h : '#/challenge/' + m[2]));
+})();
+</script>
+</body>
+</html>

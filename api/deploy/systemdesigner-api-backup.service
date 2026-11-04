@@ -1,0 +1,21 @@
+# Nightly copy of the System Designer sign-in database (keeps 7). Started by systemdesigner-api-backup.timer.
+[Unit]
+Description=System Designer sign-in database backup
+
+[Service]
+Type=oneshot
+User=sdapi
+Group=sdapi
+EnvironmentFile=/etc/systemdesigner-api/env
+ExecStart=@NODE@ /srv/systemdesigner-api/api/backup.js
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/systemdesigner-api
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+CapabilityBoundingSet=
+RestrictSUIDSGID=yes
+LockPersonality=yes

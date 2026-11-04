@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>System Designer</title>
+  <meta name="description" content="A free browser game for practising system design: build a real architecture, survive a traffic day of spikes and outages, and see in plain words why it held.">
+  <meta name="theme-color" content="#F3F5FA">
+  <meta property="og:title" content="System Designer">
+  <meta property="og:description" content="Build the system. Survive the day. See why it held. Free system design practice in your browser, no sign-up.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="System Designer">
+  <meta property="og:url" content="https://systemdesigner.io/">
+  <meta property="og:image" content="https://systemdesigner.io/assets/social-preview.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="System Designer: build the system, survive the day, see why it held.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="System Designer">
+  <meta name="twitter:description" content="Build the system. Survive the day. See why it held. Free system design practice in your browser, no sign-up.">
+  <meta name="twitter:image" content="https://systemdesigner.io/assets/social-preview.png">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@500;600;700&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@500;600;700&display=swap"></noscript>
+  <link rel="stylesheet" href="assets/palette.css">
+  <link rel="stylesheet" href="ui/shell/shell.css">
+  <link rel="stylesheet" href="ui/play/play.css">
+  <link rel="stylesheet" href="compete/compete.css">
+  <link rel="stylesheet" href="account/account.css">
+  <style>
+    .sh-boot { min-height: 100vh; min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 14px; padding: 16px; text-align: center; color: var(--text-2); font: 500 15px/1.4 var(--font-ui); }
+    .sh-boot-mark { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow-2); animation: sh-boot-pulse 1.4s var(--ease-in-out) infinite alternate; }
+    .sh-boot--bad strong { color: var(--bad); font: 600 18px/1.3 var(--font-display); }
+    .sh-boot--bad p { margin: 0; max-width: 36ch; }
+    @keyframes sh-boot-pulse { from { transform: scale(0.92); opacity: 0.7; } to { transform: scale(1); opacity: 1; } }
+    :root[data-motion="reduce"] .sh-boot-mark { animation: none; }
+  </style>
+  <!-- preload:start (made by tools/gen-preload.mjs) -->
+  <link rel="modulepreload" href="main.js">
+  <link rel="modulepreload" href="core/bus.js">
+  <link rel="modulepreload" href="core/store.js">
+  <link rel="modulepreload" href="core/router.js">
+  <link rel="modulepreload" href="sim/catalog.js">
+  <link rel="modulepreload" href="content/loader.js">
+  <link rel="modulepreload" href="ui/shell/settings.js">
+  <link rel="modulepreload" href="ui/shell/dom.js">
+  <link rel="modulepreload" href="assets/icons/index.js">
+  <link rel="modulepreload" href="assets/icons/data.js">
+  <link rel="modulepreload" href="ui/shell/overlay.js">
+  <link rel="modulepreload" href="ui/shell/progress.js">
+  <link rel="modulepreload" href="ui/shell/shell.js">
+  <link rel="modulepreload" href="assets/sound.js">
+  <link rel="modulepreload" href="assets/palette.js">
+  <link rel="modulepreload" href="assets/tokens.js">
+  <link rel="modulepreload" href="compete/index.js">
+  <link rel="modulepreload" href="compete/daily.js">
+  <link rel="modulepreload" href="sim/rng.js">
+  <link rel="modulepreload" href="compete/util.js">
+  <link rel="modulepreload" href="compete/daily-safe.js">
+  <link rel="modulepreload" href="compete/share.js">
+  <link rel="modulepreload" href="compete/card.js">
+  <link rel="modulepreload" href="compete/bests.js">
+  <link rel="modulepreload" href="compete/ui.js">
+  <link rel="preload" as="fetch" href="catalog/elements.json" crossorigin>
+  <link rel="preload" as="fetch" href="catalog/requests.json" crossorigin>
+  <link rel="preload" as="fetch" href="catalog/events.json" crossorigin>
+  <link rel="preload" as="fetch" href="catalog/world.json" crossorigin>
+  <link rel="preload" as="fetch" href="content/data/lite.json" crossorigin>
+  <script>
+  // Starts fetching the code and data of the page being opened (made by tools/gen-preload.mjs).
+  (function () {
+    var M = {"home":["ui/shell/home.js","ui/shell/concepts.js"],"learn":["ui/shell/learn.js"],"lesson":["ui/shell/lesson-page.js","ui/shell/playhost.js"],"practice":["ui/shell/practice.js"],"problem":["ui/shell/problem-page.js","ui/shell/playhost.js","ui/shell/home.js","ui/shell/concepts.js"],"challenge":["ui/shell/challenge.js","ui/shell/playhost.js"],"sandbox":["ui/shell/sandbox.js","ui/shell/playhost.js"],"drill":["ui/shell/drill.js"],"settings":[],"play":["ui/play/play.js","sim/engine.js","sim/graph.js","sim/route.js","sim/flow.js","sim/util.js","sim/events.js","sim/cost.js","sim/score.js","sim/validate.js","sim/debrief.js","render/scene.js","render/theme.js","render/textures.js","render/geom.js","render/icons.js","render/camera.js","render/nodes.js","render/edges.js","render/particles.js","render/fx.js","render/input.js","render/grid.js","ui/play/util.js","ui/play/steps.js","ui/play/req-card.js","assets/shapes.js","ui/play/clarify.js","ui/play/numbers.js","ui/play/toolbar.js","ui/play/inspector.js","ui/play/hud.js","ui/play/hints.js","ui/play/debrief.js","ui/play/editorial.js","ui/play/traffic-panel.js"]};
+    var hs = location.hash.slice(1); if (hs.charAt(0) === '/') hs = hs.slice(1);
+    var parts = hs.split('?')[0].split('/');
+    var a = parts[0], b = parts[1], seen = false, use = [], data = [], play = false;
+    try { seen = localStorage.getItem('hotpath.v1.seenIntro') === 'true'; } catch (e) {}
+    if (a === 'intro' || (!a && !seen)) { use = M.lesson; data = ['content/data/l/intro.json']; play = true; }
+    else if (!a) use = M.home;
+    else if (a === 'learn') { if (b) { use = M.lesson; data = ['content/data/l/' + b + '.json']; play = true; } else use = M.learn; }
+    else if (a === 'practice') { if (b) { use = M.problem; data = ['content/data/p/' + b + '.json']; play = true; } else use = M.practice; }
+    else if (a === 'challenge' || a === 'beat') { use = M.challenge; play = a === 'beat'; }
+    else if (a === 'sandbox') { use = M.sandbox; play = true; }
+    else if (a === 'drill') { use = M.drill; data = ['content/data/lessons.json']; }
+    else if (a === 'settings') use = M.settings;
+    var head = document.head;
+    function add(rel, href, as, cors) { var l = document.createElement('link'); l.rel = rel; l.href = href; if (as) l.as = as; if (cors) l.crossOrigin = ''; head.appendChild(l); }
+    use.forEach(function (f) { add('modulepreload', f); });
+    data.forEach(function (f) { add('preload', f, 'fetch', true); });
+    // The workbench code waits until the page is drawn, so it does not slow the first screen down.
+    if (play) document.addEventListener('sd:play', function () {
+      M.play.forEach(function (f) { add('modulepreload', f); });
+      add('preload', 'https://cdn.jsdelivr.net/npm/pixi.js@8.6.6/dist/pixi.min.js', 'script');
+    }, { once: true });
+  })();
+  </script>
+  <!-- preload:end -->
+  <script type="module" src="main.js"></script>
+</head>
+<body>
+  <div id="app"><div class="sh-boot" role="status"><div class="sh-boot-mark" aria-hidden="true"></div><span>Loading System Designer</span></div></div>
+  <div id="overlay"></div>
+  <noscript><p style="padding:16px">System Designer needs JavaScript to run.</p></noscript>
+</body>
+</html>

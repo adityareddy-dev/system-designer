@@ -1,0 +1,153 @@
+// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+export default {
+  "id": "requests-and-latency",
+  "title": "What a request is, and p50 versus p99",
+  "track": "Start",
+  "minutes": 3,
+  "summary": "A request is one question and one answer. Averages hide the slow ones that people remember.",
+  "steps": [
+    {
+      "kind": "read",
+      "title": "One tap, one request",
+      "text": "A request is one question from a person (\"show my feed\") and one answer. Every request waits a little. Latency is that wait, in milliseconds (ms). A blink is about 100 ms (approx.).",
+      "icon": "ui.clock",
+      "tap": true
+    },
+    {
+      "kind": "read",
+      "title": "p50 and p99",
+      "text": "p50 is the wait that half of requests beat, the typical one. p99 is the wait that 99 of every 100 requests beat, so the slowest 1 in 100 is slower than that. If a page makes 10 requests, about 1 page in 10 meets a p99 request, so p99 is what people feel."
+    },
+    {
+      "kind": "demo",
+      "prompt": "People in Europe wait too long. Move the servers closer to them.",
+      "setup": {
+        "palette": [
+          "vm-fleet"
+        ],
+        "requirements": {
+          "peakRps": 800,
+          "mix": {
+            "read": 1
+          },
+          "latencyP99Ms": {
+            "default": 120
+          },
+          "availability": 0.99,
+          "budgetPerMonth": 5000,
+          "userRegions": {
+            "eu": 1
+          },
+          "homeRegion": "us"
+        },
+        "traffic": {
+          "curve": "flat",
+          "sources": {
+            "web-browser": 1
+          }
+        },
+        "starter": {
+          "nodes": [
+            {
+              "ref": "users",
+              "type": "web-browser",
+              "x": -480,
+              "y": 0,
+              "locked": true
+            },
+            {
+              "ref": "app",
+              "type": "vm-fleet",
+              "x": -300,
+              "y": 0,
+              "units": 2,
+              "region": "us"
+            },
+            {
+              "ref": "db",
+              "type": "sql-primary",
+              "x": -120,
+              "y": 0,
+              "region": "us"
+            }
+          ],
+          "edges": [
+            [
+              "users",
+              "app"
+            ],
+            [
+              "app",
+              "db"
+            ]
+          ]
+        },
+        "events": []
+      },
+      "goal": {
+        "holdSec": 60,
+        "metric": "p99",
+        "op": "<=",
+        "value": 120
+      },
+      "hint": "Select the server and the database, then set Region to Europe. The trip across the ocean and back adds about 80 ms (approx.)."
+    },
+    {
+      "kind": "numbers",
+      "rows": [
+        {
+          "label": "Same-zone hop",
+          "value": "≈ 1 ms",
+          "how": "approx."
+        },
+        {
+          "label": "Across the Atlantic and back",
+          "value": "≈ 80 ms",
+          "how": "round trip, approx."
+        },
+        {
+          "label": "Europe to Asia Pacific and back",
+          "value": "≈ 160 ms",
+          "how": "round trip, approx."
+        }
+      ]
+    },
+    {
+      "kind": "quiz",
+      "q": "What is p99?",
+      "choices": [
+        "The average wait across every request",
+        "The wait the fastest 1 in 100 saw",
+        "The wait 99 of 100 requests beat",
+        "The wait of the single slowest request"
+      ],
+      "answer": 2,
+      "why": "The slowest 1 in 100 requests is slower than p99."
+    },
+    {
+      "kind": "quiz",
+      "q": "Why watch p99 and not just the average?",
+      "choices": [
+        "The p99 is far cheaper to measure",
+        "A few very slow requests spoil a page",
+        "The average is always wrong by half",
+        "Users only ever read the p99 figure"
+      ],
+      "answer": 1,
+      "why": "A page makes many requests, so slow ones show up often for real people."
+    },
+    {
+      "kind": "quiz",
+      "q": "How do you cut the wait for far-away users?",
+      "choices": [
+        "Add more memory to every server",
+        "Turn off all logging for a day",
+        "Compress the logo image more",
+        "Put the service closer to them"
+      ],
+      "answer": 3,
+      "why": "Distance sets a floor on latency that no faster server can beat."
+    }
+  ],
+  "takeaway": "Judge a system by its slow requests, and remember distance is part of latency."
+};

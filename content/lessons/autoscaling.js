@@ -1,0 +1,159 @@
+// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+export default {
+  "id": "autoscaling",
+  "title": "Adding servers, and why it is late",
+  "track": "Scale the front",
+  "minutes": 3,
+  "summary": "Autoscaling adds servers when busy, but new servers take minutes to start.",
+  "steps": [
+    {
+      "kind": "read",
+      "title": "More servers on demand",
+      "text": "Evening traffic is much heavier than the dead of night. Instead of paying for peak servers all day, autoscaling adds servers when they are busy and removes them when quiet.",
+      "icon": "el.autoscaler"
+    },
+    {
+      "kind": "demo",
+      "prompt": "Evening rush and a viral spike are coming. Turn on Autoscale for the servers.",
+      "setup": {
+        "palette": [
+          "vm-fleet"
+        ],
+        "requirements": {
+          "peakRps": 6000,
+          "mix": {
+            "read": 0.95,
+            "write": 0.05
+          },
+          "latencyP99Ms": {
+            "default": 300
+          },
+          "availability": 0.99,
+          "budgetPerMonth": 3000,
+          "userRegions": {
+            "us": 1
+          },
+          "homeRegion": "us"
+        },
+        "traffic": {
+          "curve": "consumer-evening",
+          "sources": {
+            "mobile-app": 1
+          }
+        },
+        "starter": {
+          "nodes": [
+            {
+              "ref": "users",
+              "type": "mobile-app",
+              "x": -480,
+              "y": 0,
+              "locked": true
+            },
+            {
+              "ref": "app",
+              "type": "vm-fleet",
+              "x": -300,
+              "y": 0,
+              "units": 2
+            },
+            {
+              "ref": "db",
+              "type": "sql-primary",
+              "x": -120,
+              "y": 0
+            }
+          ],
+          "edges": [
+            [
+              "users",
+              "app"
+            ],
+            [
+              "app",
+              "db"
+            ]
+          ]
+        },
+        "events": [
+          {
+            "id": "viral-spike",
+            "at": "20:00",
+            "params": {
+              "factor": 2
+            }
+          }
+        ]
+      },
+      "goal": {
+        "holdSec": 120,
+        "metric": "availability",
+        "op": ">=",
+        "value": 0.99
+      },
+      "hint": "Select the servers, switch Autoscale on, and set the highest number to 20 with a target of 60 percent."
+    },
+    {
+      "kind": "read",
+      "title": "Why it is always a little late",
+      "text": "Autoscaling reacts after load rises, and a new server needs 2 to 4 minutes to start (approx.). A steep spike can break things before help arrives. Keep spare room, or scale before a known event."
+    },
+    {
+      "kind": "numbers",
+      "rows": [
+        {
+          "label": "New server ready in",
+          "value": "≈ 3 minutes",
+          "how": "approx."
+        },
+        {
+          "label": "Target busy level",
+          "value": "≈ 60 percent",
+          "how": "leaves room while servers start"
+        },
+        {
+          "label": "Night versus peak traffic",
+          "value": "≈ 1 to 5",
+          "how": "consumer apps, approx."
+        }
+      ]
+    },
+    {
+      "kind": "quiz",
+      "q": "Why not run peak servers all day?",
+      "choices": [
+        "Servers wear out faster when always on",
+        "You pay for servers that sit idle",
+        "The law limits server running hours",
+        "Peak servers are slower at night"
+      ],
+      "answer": 1,
+      "why": "Autoscaling saves money in quiet hours."
+    },
+    {
+      "kind": "quiz",
+      "q": "Why can a spike still break an autoscaled system?",
+      "choices": [
+        "Autoscaling is switched off after dark",
+        "Servers cannot be added during a spike",
+        "New servers need minutes to start up",
+        "The load balancer refuses extra servers"
+      ],
+      "answer": 2,
+      "why": "The spike can outrun the startup time."
+    },
+    {
+      "kind": "quiz",
+      "q": "A famous launch is at noon. Best move?",
+      "choices": [
+        "Wait and let autoscaling react to it",
+        "Turn off the cache to save money now",
+        "Ask users to come back a bit later",
+        "Add servers a little before noon"
+      ],
+      "answer": 3,
+      "why": "When you know the time, scale ahead of it."
+    }
+  ],
+  "takeaway": "Autoscaling follows the crowd; for known surges, scale ahead of it."
+};

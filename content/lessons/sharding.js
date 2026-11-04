@@ -1,0 +1,151 @@
+// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+export default {
+  "id": "sharding",
+  "title": "Splitting data",
+  "track": "Scale the data",
+  "minutes": 3,
+  "summary": "When one database cannot take the writes, split the data across several.",
+  "steps": [
+    {
+      "kind": "read",
+      "title": "One database has a ceiling",
+      "text": "A single database can only take so many writes, and replicas do not help. Sharding splits the data by a key, such as user id, so each shard holds a slice and takes only its share of writes.",
+      "icon": "el.sharded-sql"
+    },
+    {
+      "kind": "demo",
+      "prompt": "Writes are far above what one database can do. Swap it for a sharded database.",
+      "setup": {
+        "palette": [
+          "sharded-sql"
+        ],
+        "requirements": {
+          "peakRps": 7000,
+          "mix": {
+            "read": 0.4,
+            "write": 0.6
+          },
+          "latencyP99Ms": {
+            "default": 300
+          },
+          "availability": 0.99,
+          "budgetPerMonth": 5000,
+          "userRegions": {
+            "us": 1
+          },
+          "homeRegion": "us"
+        },
+        "traffic": {
+          "curve": "flat",
+          "sources": {
+            "mobile-app": 1
+          }
+        },
+        "starter": {
+          "nodes": [
+            {
+              "ref": "users",
+              "type": "mobile-app",
+              "x": -480,
+              "y": 0,
+              "locked": true
+            },
+            {
+              "ref": "app",
+              "type": "vm-fleet",
+              "x": -300,
+              "y": 0,
+              "units": 10
+            },
+            {
+              "ref": "db",
+              "type": "sql-primary",
+              "x": -120,
+              "y": 0
+            }
+          ],
+          "edges": [
+            [
+              "users",
+              "app"
+            ],
+            [
+              "app",
+              "db"
+            ]
+          ]
+        },
+        "events": []
+      },
+      "goal": {
+        "holdSec": 60,
+        "metric": "availability",
+        "op": ">=",
+        "value": 0.99
+      },
+      "hint": "Remove the single database, place Sharded SQL, connect the servers to it, and set Units to 4 or more."
+    },
+    {
+      "kind": "read",
+      "title": "Choosing the key",
+      "text": "A good key spreads people evenly, like a user id. A bad key piles them up, like a country with half your users. Questions across all shards, such as \"everyone named Sam\", are slower because every shard must answer."
+    },
+    {
+      "kind": "numbers",
+      "rows": [
+        {
+          "label": "One SQL primary",
+          "value": "≈ 2,000 writes a second",
+          "how": "approx."
+        },
+        {
+          "label": "Four shards",
+          "value": "≈ 8,000 writes a second",
+          "how": "if the key spreads evenly, approx."
+        },
+        {
+          "label": "Moving data to add shards",
+          "value": "hours to days",
+          "how": "plan ahead, approx."
+        }
+      ]
+    },
+    {
+      "kind": "quiz",
+      "q": "Sharding mainly helps with:",
+      "choices": [
+        "Making each single query much faster",
+        "Cutting the monthly bill by a half",
+        "Keeping all the data in one place",
+        "Handling more writes and more data"
+      ],
+      "answer": 3,
+      "why": "Each shard handles only a slice of the writes and the data."
+    },
+    {
+      "kind": "quiz",
+      "q": "Which is the best shard key?",
+      "choices": [
+        "The user's country",
+        "A hash of the user id",
+        "The day of the week",
+        "The month of sign-up"
+      ],
+      "answer": 1,
+      "why": "User ids spread evenly; countries and days pile up."
+    },
+    {
+      "kind": "quiz",
+      "q": "What gets harder after sharding?",
+      "choices": [
+        "Reading one user's own records",
+        "Writing a single new row",
+        "Looking up one record by its key",
+        "Questions that span many shards"
+      ],
+      "answer": 3,
+      "why": "They must visit every shard and combine the answers."
+    }
+  ],
+  "takeaway": "Shard when writes or size outgrow one machine, and pick a key that spreads evenly."
+};

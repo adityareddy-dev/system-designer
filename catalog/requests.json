@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "updated": "2026-11-02",
+  "disclaimer": "Sizes and timings are rough real-world approximations for teaching.",
+  "fieldGuide": {
+    "family": "Colour family. Colour is never the only cue: every type also has its own shape.",
+    "shape": "Particle and legend shape id from assets/shapes.js.",
+    "sizeKb": "Typical payload, used for bandwidth and egress cost.",
+    "interactive": "A person is waiting; counts toward the latency SLO.",
+    "async": "Usually fine to finish later; a queue may acknowledge it and the work completes downstream.",
+    "isWrite": "Counts against capacity.writeRps on stores and changes data.",
+    "durable": "Losing it after it was acknowledged is a data-safety failure.",
+    "cacheable": "Caches and CDNs may answer it.",
+    "idempotent": "Running it twice is harmless by nature. When false, duplicates are a data-safety failure unless an idempotency store is on the path.",
+    "defaultLatencyBudgetMs": "Used when a problem gives no latency target for this type."
+  },
+  "families": [
+    { "id": "read", "name": "Reads", "token": "--req-read" },
+    { "id": "write", "name": "Writes", "token": "--req-write" },
+    { "id": "media", "name": "Media", "token": "--req-media" },
+    { "id": "trust", "name": "Money and identity", "token": "--req-trust" },
+    { "id": "ai", "name": "AI", "token": "--req-ai" },
+    { "id": "realtime", "name": "Real-time", "token": "--req-realtime" },
+    { "id": "background", "name": "Background", "token": "--req-background" },
+    { "id": "attack", "name": "Attack", "token": "--req-attack" }
+  ],
+  "types": [
+    {
+      "id": "read", "name": "Read", "plural": "reads", "family": "read", "shape": "circle",
+      "description": "Fetch something to show: open a page, load a profile, follow a short link.",
+      "examples": ["Open a product page", "Load a profile", "Follow a short link"],
+      "sizeKb": 4, "interactive": true, "async": false, "isWrite": false, "durable": false, "cacheable": true, "idempotent": true,
+      "defaultLatencyBudgetMs": 200
+    },
+    {
+      "id": "write", "name": "Write", "plural": "writes", "family": "write", "shape": "square",
+      "description": "Save something: post a comment, update a profile, create a short link.",
+      "examples": ["Post a comment", "Create a short link", "Update an address"],
+      "sizeKb": 2, "interactive": true, "async": false, "isWrite": true, "durable": true, "cacheable": false, "idempotent": false,
+      "defaultLatencyBudgetMs": 400
+    },
+    {
+      "id": "upload", "name": "Upload", "plural": "uploads", "family": "media", "shape": "triangle-up",
+      "description": "Send a file: a photo, a video, a document. Processing usually happens afterwards.",
+      "examples": ["Post a photo", "Upload a video", "Attach a scan to a claim"],
+      "sizeKb": 3000, "interactive": true, "async": true, "isWrite": true, "durable": true, "cacheable": false, "idempotent": true,
+      "defaultLatencyBudgetMs": 3000
+    },
+    {
+      "id": "stream", "name": "Stream chunk", "plural": "stream chunks", "family": "media", "shape": "capsule",
+      "description": "A few seconds of video or audio; a player fetches one every 2 to 6 seconds.",
+      "examples": ["Next 4 seconds of a movie", "Next part of a song"],
+      "sizeKb": 2000, "interactive": true, "async": false, "isWrite": false, "durable": false, "cacheable": true, "idempotent": true,
+      "defaultLatencyBudgetMs": 1000
+    },
+    {
+      "id": "live", "name": "Live segment", "plural": "live segments", "family": "media", "shape": "ring",
+      "description": "A piece of a live broadcast; everyone watching wants the same piece at the same moment.",
+      "examples": ["Live match", "Live concert", "Streamer's broadcast"],
+      "sizeKb": 1000, "interactive": true, "async": false, "isWrite": false, "durable": false, "cacheable": true, "idempotent": true,
+      "defaultLatencyBudgetMs": 1500
+    },
+    {
+      "id": "search", "name": "Search", "plural": "searches", "family": "read", "shape": "diamond",
+      "description": "Find things by words, filters or meaning.",
+      "examples": ["Search box", "Autocomplete as you type", "Find similar items"],
+      "sizeKb": 2, "interactive": true, "async": false, "isWrite": false, "durable": false, "cacheable": true, "idempotent": true,
+      "defaultLatencyBudgetMs": 300
+    },
+    {
+      "id": "report", "name": "Report", "plural": "reports", "family": "read", "shape": "octagon",
+      "description": "An analytics question over many rows: a dashboard tile, a monthly statement.",
+      "examples": ["Sales by region", "Monthly statement", "Admin export"],
+      "sizeKb": 50, "interactive": true, "async": false, "isWrite": false, "durable": false, "cacheable": true, "idempotent": true,
+      "defaultLatencyBudgetMs": 10000
+    },
+    {
+      "id": "payment", "name": "Payment", "plural": "payments", "family": "trust", "shape": "hexagon",
+      "description": "Move money: charge a card, transfer between accounts. Must happen exactly once.",
+      "examples": ["Checkout", "Send money to a friend", "Pay a claim"],
+      "sizeKb": 2, "interactive": true, "async": false, "isWrite": true, "durable": true, "cacheable": false, "idempotent": false,
+      "defaultLatencyBudgetMs": 3000
+    },
+    {
+      "id": "login", "name": "Sign-in", "plural": "sign-ins", "family": "trust", "shape": "pentagon",
+      "description": "Prove who you are and get a token; later requests carry the token.",
+      "examples": ["Password sign-in", "Two-factor code", "Session refresh"],
+      "sizeKb": 1, "interactive": true, "async": false, "isWrite": false, "durable": false, "cacheable": false, "idempotent": true,
+      "defaultLatencyBudgetMs": 1000
+    },
+    {
+      "id": "inference", "name": "AI request", "plural": "AI requests", "family": "ai", "shape": "star",
+      "description": "Ask a model: one chatbot reply (about 400 words-pieces out) or one prediction.",
+      "examples": ["Chatbot reply", "Fraud score", "Image label"],
+      "sizeKb": 4, "interactive": true, "async": false, "isWrite": false, "durable": false, "cacheable": true, "idempotent": true,
+      "defaultLatencyBudgetMs": 10000
+    },
+    {
+      "id": "message", "name": "Message", "plural": "messages", "family": "realtime", "shape": "chevron",
+      "description": "A chat message or a game move that other people should see within a moment.",
+      "examples": ["Chat message", "Game move", "Typing indicator"],
+      "sizeKb": 1, "interactive": true, "async": false, "isWrite": true, "durable": true, "cacheable": false, "idempotent": false,
+      "defaultLatencyBudgetMs": 300
+    },
+    {
+      "id": "location", "name": "Location ping", "plural": "location pings", "family": "realtime", "shape": "triangle-down",
+      "description": "A GPS update from a phone or vehicle, every few seconds.",
+      "examples": ["Driver position every 4 s", "Courier on the way", "Truck position"],
+      "sizeKb": 0.2, "interactive": false, "async": true, "isWrite": true, "durable": false, "cacheable": false, "idempotent": true,
+      "defaultLatencyBudgetMs": 2000
+    },
+    {
+      "id": "notify", "name": "Notification", "plural": "notifications", "family": "realtime", "shape": "dome",
+      "description": "Tell a person something: push, email or text.",
+      "examples": ["Your ride is here", "Password reset email", "Appointment reminder"],
+      "sizeKb": 2, "interactive": false, "async": true, "isWrite": false, "durable": true, "cacheable": false, "idempotent": false,
+      "defaultLatencyBudgetMs": 30000
+    },
+    {
+      "id": "sync", "name": "Sync change", "plural": "sync changes", "family": "write", "shape": "bowtie",
+      "description": "A small change to shared state that must reach every device in order: a keystroke in a shared doc, a changed file block.",
+      "examples": ["Keystroke in a shared document", "File block changed", "Calendar edit"],
+      "sizeKb": 1, "interactive": true, "async": false, "isWrite": true, "durable": true, "cacheable": false, "idempotent": false,
+      "defaultLatencyBudgetMs": 500
+    },
+    {
+      "id": "telemetry", "name": "Telemetry batch", "plural": "telemetry batches", "family": "background", "shape": "dash",
+      "description": "A batch of about 100 readings from a device or agent.",
+      "examples": ["Sensor readings", "Server metrics", "Car diagnostics"],
+      "sizeKb": 1, "interactive": false, "async": true, "isWrite": true, "durable": true, "cacheable": false, "idempotent": true,
+      "defaultLatencyBudgetMs": 10000
+    },
+    {
+      "id": "event", "name": "Analytics event", "plural": "analytics events", "family": "background", "shape": "plus",
+      "description": "A record that something happened: a click, a view, a purchase.",
+      "examples": ["Button click", "Video watched 30 s", "Item added to cart"],
+      "sizeKb": 0.5, "interactive": false, "async": true, "isWrite": true, "durable": false, "cacheable": false, "idempotent": true,
+      "defaultLatencyBudgetMs": 60000
+    },
+    {
+      "id": "batch", "name": "Batch task", "plural": "batch tasks", "family": "background", "shape": "crate",
+      "description": "One chunk of a big offline job, about 100 MB of data.",
+      "examples": ["Nightly billing run", "Rebuild recommendations", "Export for a partner"],
+      "sizeKb": 100000, "interactive": false, "async": true, "isWrite": true, "durable": true, "cacheable": false, "idempotent": true,
+      "defaultLatencyBudgetMs": 3600000
+    },
+    {
+      "id": "webhook", "name": "Webhook", "plural": "webhooks", "family": "background", "shape": "trapezoid",
+      "description": "A call from or to a partner that says something changed, such as 'payment succeeded'.",
+      "examples": ["Payment succeeded", "Parcel delivered", "Build finished"],
+      "sizeKb": 2, "interactive": false, "async": true, "isWrite": true, "durable": true, "cacheable": false, "idempotent": false,
+      "defaultLatencyBudgetMs": 30000
+    },
+    {
+      "id": "attack", "name": "Attack traffic", "plural": "attack requests", "family": "attack", "shape": "x",
+      "description": "Junk from bots or a flood. It never succeeds, but it uses capacity wherever it reaches until a filter drops it.",
+      "examples": ["DDoS flood", "Credential stuffing", "Aggressive scraper"],
+      "sizeKb": 1, "interactive": false, "async": false, "isWrite": false, "durable": false, "cacheable": false, "idempotent": true,
+      "defaultLatencyBudgetMs": 0,
+      "routesLike": "read"
+    }
+  ]
+}

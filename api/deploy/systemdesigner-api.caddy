@@ -1,0 +1,45 @@
+# System Designer sign-in service. Pending: not imported by the live Caddyfile until DNS for api.systemdesigner.io exists.
+# Go live: add `import /etc/caddy/sites-pending/systemdesigner-api.caddy` at the end of /etc/caddy/Caddyfile, then
+# `caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy`.
+api.systemdesigner.io {
+	encode zstd gzip
+
+	# Progress uploads are the largest bodies (256 KB); the service checks each route's own limit.
+	request_body {
+		max_size 512KB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		# The service sets its own policy on every answer; this fills in only if one is missing.
+		?Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+		-X-Powered-By
+	}
+	# /probe is the one page https://systemdesigner.io may frame (its own CSP names the site); nothing else can be framed.
+	@not_probe not path /probe
+	header @not_probe X-Frame-Options "DENY"
+
+	reverse_proxy 127.0.0.1:8791
+
+	log {
+		output file /var/log/caddy/systemdesigner-api.log {
+			roll_size 20MiB
+			roll_keep 5
+		}
+		format filter {
+			wrap json
+			fields {
+				# GitHub's one-time code and the sign-in state never reach the log.
+				request>uri query {
+					delete code
+					delete state
+				}
+			}
+		}
+	}
+}

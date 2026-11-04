@@ -1,0 +1,14 @@
+{
+  "name": "systemdesigner-api",
+  "version": "1.0.0",
+  "description": "Optional sign-in, progress sync and leaderboards for System Designer",
+  "private": true,
+  "license": "MIT",
+  "author": "Aditya Reddy",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  }
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>Data pipeline (ETL)</title><g transform="scale(.5)" stroke-width="3.5"><style>.s{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.f{fill:currentColor;fill-opacity:.18}.d{fill:currentColor;stroke:none}</style><rect class="s f" x="8" y="6" width="8" height="8" rx="2"/>
+<rect class="s f" x="20" y="6" width="8" height="8" rx="2"/>
+<rect class="s f" x="32" y="6" width="8" height="8" rx="2"/>
+<path class="s" d="M12 14V18M24 14V18M36 14V18"/>
+<path class="s f" d="M6 18H42L30 31V37H18V31Z"/>
+<path class="s" d="M24 40V44M21 41.5L24 44.5L27 41.5"/></g></svg>

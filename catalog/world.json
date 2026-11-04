@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "updated": "2026-11-02",
+  "disclaimer": "Distances, prices and response times are rough real-world approximations for teaching.",
+  "regions": [
+    { "id": "us", "name": "North America", "short": "US" },
+    { "id": "eu", "name": "Europe", "short": "EU" },
+    { "id": "apac", "name": "Asia Pacific", "short": "APAC" },
+    { "id": "latam", "name": "South America", "short": "LATAM" }
+  ],
+  "rttMs": {
+    "note": "Round trip between regions over the backbone, approx. Same region is 1 ms across zones.",
+    "us": { "us": 1, "eu": 80, "apac": 170, "latam": 120 },
+    "eu": { "us": 80, "eu": 1, "apac": 160, "latam": 190 },
+    "apac": { "us": 170, "eu": 160, "apac": 1, "latam": 300 },
+    "latam": { "us": 120, "eu": 190, "apac": 300, "latam": 1 }
+  },
+  "egress": { "internetPerGB": 0.09, "crossRegionPerGB": 0.02, "crossZonePerGB": 0.01, "note": "Typical list prices, approx." },
+  "zones": ["a", "b", "c"],
+  "sim": {
+    "tickMs": 10000,
+    "dayMs": 86400000,
+    "wallSecPerSimHourAt1x": 6,
+    "speeds": [0, 0.25, 0.5, 1, 2, 4, 8],
+    "maxTicksPerFrame": 16,
+    "queueingLatencyCap": 20,
+    "utilBands": { "ok": 0.7, "warn": 0.9, "hot": 1.0 },
+    "note": "One tick is 10 simulated seconds. At 1x one simulated hour plays in 6 wall seconds, so a full day takes 144 s and one tick lands on each 60 fps frame."
+  },
+  "curves": {
+    "note": "24 hourly multipliers of peak load, hour 0 = midnight in the problem's first region. The engine interpolates linearly between hours.",
+    "flat": [0.85, 0.85, 0.85, 0.85, 0.85, 0.85, 0.9, 0.9, 0.95, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.95, 0.95, 0.9, 0.9, 0.85, 0.85],
+    "business-hours": [0.08, 0.06, 0.05, 0.05, 0.06, 0.1, 0.2, 0.45, 0.8, 0.95, 1, 1, 0.9, 0.95, 1, 0.95, 0.85, 0.6, 0.35, 0.25, 0.2, 0.15, 0.12, 0.1],
+    "consumer-evening": [0.35, 0.22, 0.15, 0.12, 0.1, 0.12, 0.2, 0.32, 0.42, 0.48, 0.5, 0.55, 0.6, 0.58, 0.55, 0.55, 0.6, 0.68, 0.8, 0.92, 1, 0.98, 0.82, 0.55],
+    "commute": [0.1, 0.06, 0.05, 0.05, 0.1, 0.3, 0.7, 1, 0.9, 0.55, 0.45, 0.5, 0.55, 0.5, 0.5, 0.6, 0.8, 1, 0.95, 0.7, 0.55, 0.45, 0.3, 0.18],
+    "meals": [0.12, 0.06, 0.04, 0.03, 0.03, 0.05, 0.1, 0.2, 0.25, 0.25, 0.35, 0.75, 1, 0.8, 0.4, 0.3, 0.35, 0.6, 0.95, 1, 0.85, 0.55, 0.35, 0.2],
+    "market-hours": [0.02, 0.02, 0.02, 0.02, 0.02, 0.03, 0.05, 0.1, 0.3, 1, 0.8, 0.7, 0.6, 0.6, 0.65, 0.95, 0.4, 0.15, 0.08, 0.05, 0.04, 0.03, 0.02, 0.02],
+    "global-follow-sun": [0.8, 0.78, 0.76, 0.78, 0.8, 0.84, 0.88, 0.92, 0.96, 1, 1, 0.98, 0.96, 0.95, 0.96, 0.98, 1, 1, 0.97, 0.94, 0.9, 0.86, 0.83, 0.81],
+    "night-batch": [0.6, 1, 1, 1, 1, 0.7, 0.3, 0.15, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.15, 0.2, 0.3],
+    "deadline": "computed: base consumer-evening scaled by 0.4, then a linear climb to 1.0 at params.deadlineAt, then 0.1",
+    "drop": "computed: flat 0.1 with the drop handled by a flash-crowd event at params.dropAt"
+  },
+  "ttlHitAdjust": { "note": "Change to an element's default hitRate by TTL, clamped to 0.2..0.99.", "5": -0.35, "60": -0.1, "300": 0, "3600": 0.04, "86400": 0.07 },
+  "tiers": { "S": { "capacity": 0.5, "cost": 0.5 }, "M": { "capacity": 1, "cost": 1 }, "L": { "capacity": 2, "cost": 2 }, "XL": { "capacity": 4, "cost": 4.2 } },
+  "response": {
+    "note": "How long problems take to notice and fix. Detection uses the fastest detector present; repair is reduced by each speedup present (multiplied).",
+    "detectSec": { "none": 1800, "metricsOnly": 900, "metricsAndAlerting": 180, "syntheticForTotalOutage": 60 },
+    "ackSec": { "withPager": 300, "withoutPager": 1200 },
+    "repairSec": { "base": 1800, "rollbackWithCiCd": 300, "killSwitchWithFlags": 30, "configRevertWithConfigService": 120, "restartUnhealthyWithAutoscaler": 240 },
+    "repairSpeedupFrom": { "logs": 0.25, "traces": 0.35, "dashboards": 0.15 }
+  },
+  "complianceChecks": [
+    { "id": "audit-log", "name": "Audit trail", "satisfiedBy": ["audit-log"], "text": "Every sensitive action is recorded where nobody can edit it." },
+    { "id": "encryption", "name": "Managed encryption keys", "satisfiedBy": ["kms", "hsm"], "text": "Data is encrypted with keys held in a key service." },
+    { "id": "pii-vault", "name": "Personal data isolated", "satisfiedBy": ["privacy-vault"], "text": "Sensitive personal data lives in one controlled place." },
+    { "id": "backups", "name": "Tested backups", "satisfiedBy": ["backups"], "text": "Every store that holds customer data is backed up." },
+    { "id": "access-control", "name": "Signed-in access", "satisfiedBy": ["identity-provider"], "text": "Every user and staff action is tied to a signed-in identity." },
+    { "id": "consent", "name": "Consent records", "satisfiedBy": ["consent-service"], "text": "Marketing and tracking check what each person agreed to." },
+    { "id": "retention", "name": "Retention rules", "satisfiedBy": ["cold-archive", "backups"], "text": "Records are kept for the required years, and no longer." },
+    { "id": "private-network", "name": "Private connections", "satisfiedBy": ["private-link", "firewall"], "text": "Partner and database traffic does not cross the public internet." }
+  ],
+  "scoring": {
+    "max": 1000,
+    "weights": { "reliability": 400, "latency": 200, "safety": 200, "cost": 200 },
+    "reliability": "400 x clamp(1 - missNines / 2, 0, 1), where missNines = max(0, log10((1 - actual) / (1 - target))). One nine short scores 200, two nines short scores 0.",
+    "latency": "200 x the traffic-weighted share of simulated minutes whose p99 met the target for interactive types, times the share of requests served. A type's target is its own entry, else the larger of the problem default and the type's natural budget.",
+    "safety": "Start at 200. Minus 100 if any acknowledged durable write was lost under a 'no-loss' requirement (minus 40 under 'rpo-1m' if more than 1 minute of writes was lost). Minus 50 if any duplicate non-idempotent request (payment, message, notify, sync, write, webhook) went through. Minus 30 if stale reads exceeded 1 percent where 'read-your-writes' is required. Minus 40 per failed compliance check. Floor 0.",
+    "cost": "200 if monthly cost is at or under budget; falls linearly to 0 at 2 times budget. Safety and cost points are also multiplied by the share of requests served, so a design that serves nothing scores nothing.",
+    "pass": "availability at or above target AND latency share at least 0.95 with every interactive type at least 0.8 AND safety at least 150 with no lost write beyond the data-safety rule, no duplicate, no failed compliance check and no stale reads over 1 percent where read-your-writes is required AND cost at or under budget.",
+    "stars": { "1": "pass", "2": "pass and total at least 800", "3": "pass and total at least 920" }
+  }
+}

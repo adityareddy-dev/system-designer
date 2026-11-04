@@ -1,0 +1,2016 @@
+{
+  "version": 1,
+  "updated": "2026-11-02",
+  "disclaimer": "Every number in this file is a rough real-world approximation for teaching, based on typical 2026 public list prices and common benchmarks. Real figures vary by vendor, region, hardware, data shape and workload. The game always shows these numbers with a ≈ sign and the label 'approx.'",
+  "fieldGuide": {
+    "kind": "Engine behaviour class. See 'kinds'.",
+    "managed": "true when a provider runs it for you and it is multi-zone inside its region by default.",
+    "capacity.rps": "Requests per second one unit handles at 100 percent busy (one server, node, shard, or the managed allowance). Null when the element is not in the request path.",
+    "capacity.writeRps": "Optional separate limit for write-type requests (request types with isWrite true). When absent, rps covers every type.",
+    "latencyMs": "Time this hop adds at normal load. p50 is the typical request, p99 the slow 1 in 100. Null when not in the request path.",
+    "cost": "USD per month. base is paid once per element, perUnit per unit, perMillion per million requests handled, perGB per GB sent out, perGBMonth per GB stored, perThousandUsers per thousand monthly active users. Omitted fields are 0.",
+    "units": "How many copies the player may run. max 1 means the capacity is elastic and managed for you.",
+    "availability": "Share of time one unit in one zone is up, before your design adds redundancy.",
+    "handles": "Request type ids this element accepts. '*' means every type except attack.",
+    "completes": "Request type ids this element can finish (the request has been served). Requests that are only handled are passed on.",
+    "params": "Kind-specific engine parameters. See CONTRACT.md, section sim.",
+    "knobs": "Inspector settings the player can change. See 'knobs'.",
+    "failureModes": "How it breaks. event links to an id in events.json, or null for a note only.",
+    "icon": "Brief for our own SVG icon."
+  },
+  "iconStyle": "24 x 24 viewBox, 1.75 px stroke, round caps and joins, stroke currentColor, optional duotone fill using var(--icon-fill, currentColor) at 0.18 opacity. No text or letters inside icons. Must read clearly at 16 px. No real logos or brand marks.",
+  "kinds": {
+    "source": "Creates requests (users, devices, partners, schedules).",
+    "router": "Passes requests on and spreads them across its outbound neighbours.",
+    "filter": "Passes requests on but drops a share (attacks, over-limit clients, failing calls).",
+    "cache": "Answers a share of requests itself (hits); passes the misses on.",
+    "compute": "Runs your code; passes requests to its dependencies. Scales with units.",
+    "store": "Keeps data; completes the request types it lists.",
+    "queue": "Accepts and acknowledges at once, then hands messages to consumers at their pace.",
+    "lookaside": "Called by a compute node on the way (auth, keys, features); adds latency and uses capacity but does not complete the request.",
+    "tap": "Receives a copy of what flows through the node it hangs off; adds no latency to the request.",
+    "external": "Someone else's service; completes requests with its own latency, limits, outages and per-call price.",
+    "observer": "Watches the system; never carries requests. Shortens how long problems take to notice and fix.",
+    "control": "Changes how other elements behave (scaling, rollout, backups, failover). Never carries requests."
+  },
+  "knobs": {
+    "units": { "type": "int", "label": "Units", "help": "How many copies (servers, nodes or shards). Capacity and cost grow with it." },
+    "tier": { "type": "enum", "label": "Size", "options": ["S", "M", "L", "XL"], "default": "M", "capacityFactor": { "S": 0.5, "M": 1, "L": 2, "XL": 4 }, "costFactor": { "S": 0.5, "M": 1, "L": 2, "XL": 4.2 }, "help": "Bigger machines. Simple, but one big box is still one box." },
+    "zones": { "type": "enum", "label": "Zones", "options": [1, 2, 3], "default": 1, "help": "Spread units across this many availability zones (separate data centre buildings). Units must be at least the zone count." },
+    "region": { "type": "region", "label": "Region", "default": "problem", "help": "Which part of the world this runs in. Far away users wait longer." },
+    "autoscale": { "type": "object", "label": "Autoscale", "default": { "on": false, "min": 1, "max": 20, "targetUtil": 0.6 }, "help": "Add units when busy, remove when quiet. New units take time to start." },
+    "ttlSec": { "type": "enum", "label": "Keep answers for", "options": [5, 60, 300, 3600, 86400], "default": 300, "help": "Longer means more hits. A CDN copy is not cleared when data changes, so someone may see an answer up to this old, even their own change; a cache beside your servers is cleared when your servers write." },
+    "coalesce": { "type": "bool", "label": "Collapse misses", "default": false, "help": "On a miss, one request fetches and the rest wait for it. Stops stampedes." },
+    "replication": { "type": "enum", "label": "Replication", "options": ["none", "async", "sync"], "default": "async", "help": "async: fast writes, a short window of loss on failover. sync: no loss, a few ms slower." },
+    "readFrom": { "type": "enum", "label": "Read from", "options": ["primary", "replicas"], "default": "replicas", "help": "Replicas spread load but can be a little behind." },
+    "partitions": { "type": "int", "label": "Partitions", "default": 12, "help": "How many ordered lanes. More lanes, more parallel consumers; order is kept only inside a lane." },
+    "retentionDays": { "type": "enum", "label": "Keep for (days)", "options": [1, 4, 7, 14, 30, 90, 395], "default": 7, "help": "Older data or messages are deleted." },
+    "retries": { "type": "enum", "label": "Retries", "options": [0, 1, 2, 3, 5], "default": 3, "help": "How many times a failed call is tried again." },
+    "backoff": { "type": "enum", "label": "Retry spacing", "options": ["none", "exponential", "exponential-jitter"], "default": "none", "help": "Waiting longer between tries, with randomness, stops everyone retrying at once." },
+    "timeoutMs": { "type": "enum", "label": "Timeout (ms)", "options": [25, 50, 100, 300, 1000, 3000, 10000, 30000], "default": 30000, "help": "How long to wait for a dependency before giving up." },
+    "limitRps": { "type": "int", "label": "Limit per client (req/s)", "default": 100, "help": "Requests per second one client may send before getting a polite 429." },
+    "warmPool": { "type": "int", "label": "Kept warm", "default": 0, "help": "Instances kept ready so they skip the cold start. Paid even when idle." },
+    "sampling": { "type": "enum", "label": "Sample rate", "options": [0.01, 0.1, 1], "default": 0.1, "help": "Share of requests recorded. More detail, more cost." },
+    "mode": { "type": "enum", "label": "Mode", "options": "params.modes", "help": "Element-specific choices listed in params.modes." }
+  },
+  "categories": [
+    { "id": "clients", "name": "Clients and devices", "order": 1, "blurb": "Where requests come from.", "nodeShape": "circle", "icon": "Person silhouette in front of a phone outline." },
+    { "id": "edge", "name": "Edge and network", "order": 2, "blurb": "Getting requests to the right place, safely and fast.", "nodeShape": "hexagon", "icon": "Globe with a small arrow entering from the left." },
+    { "id": "compute", "name": "Compute", "order": 3, "blurb": "Where your code runs.", "nodeShape": "rounded-square", "icon": "Square chip with four pins on each side." },
+    { "id": "data", "name": "Data stores", "order": 4, "blurb": "Where data lives and how fast you can get it back.", "nodeShape": "cylinder", "icon": "Database cylinder with three rings." },
+    { "id": "messaging", "name": "Messaging and streaming", "order": 5, "blurb": "Moving work and events between parts, at their own pace.", "nodeShape": "pill", "icon": "Three envelopes in a row with a motion line." },
+    { "id": "platform", "name": "Platform and security", "order": 6, "blurb": "Identity, keys, limits, flags and records that keep it safe.", "nodeShape": "shield", "icon": "Shield with a keyhole." },
+    { "id": "ops", "name": "Operations", "order": 7, "blurb": "Seeing problems early and fixing them fast.", "nodeShape": "dashed-square", "icon": "Heartbeat line inside a monitor." },
+    { "id": "ai", "name": "AI and data", "order": 8, "blurb": "Models, features, vectors and pipelines.", "nodeShape": "octagon", "icon": "Four-point sparkle above a small chip." },
+    { "id": "external", "name": "External services", "order": 9, "blurb": "Other companies' services you call and pay for.", "nodeShape": "double-square", "icon": "Puzzle piece with an arrow leaving to the right." }
+  ],
+  "elements": [
+    {
+      "id": "web-browser", "code": "wb", "name": "Web browser", "category": "clients", "kind": "source", "managed": false,
+      "description": "People using your site in a browser on a laptop or desktop.",
+      "goodAt": ["Rich pages and long sessions", "Easy to update: every visit loads the newest code"],
+      "tradeoff": "Free to you, but every slow page or error is felt by a person. Browsers retry and refresh when things look stuck.",
+      "capacity": null,
+      "latencyMs": { "p50": 25, "p99": 120, "note": "Home or office internet to the nearest region on the same continent, approx." },
+      "cost": { "note": "Users bring their own devices." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "audience" },
+      "availability": 1,
+      "handles": ["read", "write", "upload", "stream", "live", "search", "payment", "login", "message", "event", "sync", "inference", "report"],
+      "completes": [],
+      "params": { "refreshOnErrorShare": 0.3 },
+      "knobs": ["retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "refresh-storm", "event": "retry-storm", "text": "When pages hang, people press refresh, which adds load to a system that is already struggling." },
+        { "id": "far-users", "event": "overseas-launch", "text": "Users on another continent wait an extra 80 to 300 ms for every round trip." }
+      ],
+      "icon": "Browser window outline with three small header dots and a pointer cursor at the lower right."
+    },
+    {
+      "id": "mobile-app", "code": "ma", "name": "Mobile app", "category": "clients", "kind": "source", "managed": false,
+      "description": "Your app on phones and tablets, often on cellular networks.",
+      "goodAt": ["Push notifications and location", "Works offline and syncs later"],
+      "tradeoff": "Old app versions stay in the wild for years, and cellular links are slow and flaky.",
+      "capacity": null,
+      "latencyMs": { "p50": 45, "p99": 300, "note": "Cellular to the nearest region, approx. 4G and 5G vary widely." },
+      "cost": { "note": "Users bring their own devices." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "audience" },
+      "availability": 1,
+      "handles": ["read", "write", "upload", "stream", "live", "search", "payment", "login", "message", "location", "event", "sync", "inference", "notify"],
+      "completes": [],
+      "params": { "reconnectAfterOutage": true },
+      "knobs": ["retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "herd-reconnect", "event": "thundering-herd", "text": "After an outage every phone reconnects in the same few seconds." },
+        { "id": "old-versions", "event": null, "text": "Old versions keep calling APIs you wanted to retire." }
+      ],
+      "icon": "Phone outline with rounded corners and two signal arcs at the top right."
+    },
+    {
+      "id": "tv-app", "code": "tv", "name": "TV and console app", "category": "clients", "kind": "source", "managed": false,
+      "description": "Smart TVs, streaming sticks and game consoles that mostly watch video.",
+      "goodAt": ["Long viewing sessions", "Big screens that want high bitrates"],
+      "tradeoff": "Hard to update and slow to start; a whole country presses play at the same moment for a big show.",
+      "capacity": null,
+      "latencyMs": { "p50": 30, "p99": 150, "note": "Home broadband, approx." },
+      "cost": { "note": "Users bring their own devices." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "audience" },
+      "availability": 1,
+      "handles": ["read", "stream", "live", "search", "login", "event", "payment"],
+      "completes": [],
+      "params": {},
+      "knobs": ["retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "premiere", "event": "flash-crowd", "text": "A finale or match starts and millions press play within a minute." }
+      ],
+      "icon": "TV screen on a short stand with a small play triangle in the centre."
+    },
+    {
+      "id": "game-client", "code": "gc", "name": "Game client", "category": "clients", "kind": "source", "managed": false,
+      "description": "Players' game apps that send moves and receive the game state many times a second.",
+      "goodAt": ["Real-time play", "Long-lived connections"],
+      "tradeoff": "Players notice 100 ms of lag, and a patch day downloads gigabytes per player.",
+      "capacity": null,
+      "latencyMs": { "p50": 30, "p99": 140, "note": "Home broadband to the nearest region, approx." },
+      "cost": { "note": "Players bring their own devices." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "audience" },
+      "availability": 1,
+      "handles": ["read", "write", "message", "login", "event", "stream", "payment", "sync"],
+      "completes": [],
+      "params": {},
+      "knobs": ["retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "patch-day", "event": "flash-crowd", "text": "Everyone downloads the new patch the hour it ships." },
+        { "id": "cheats", "event": "bot-scraping", "text": "Bots and cheaters send impossible moves at high rates." }
+      ],
+      "icon": "Game controller outline with a cross pad on the left and two round buttons on the right."
+    },
+    {
+      "id": "iot-device", "code": "io", "name": "IoT devices", "category": "clients", "kind": "source", "managed": false,
+      "description": "Sensors, meters, vehicles and smart-home gadgets that report readings on a schedule.",
+      "goodAt": ["Steady streams of small readings", "Huge counts of devices"],
+      "tradeoff": "Millions of devices can wake at the same second, and a firmware bug can turn them into an accidental flood.",
+      "capacity": null,
+      "latencyMs": { "p50": 60, "p99": 600, "note": "Cellular or home Wi-Fi with small radios, approx." },
+      "cost": { "note": "Devices are owned by customers; connectivity is usually bundled." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "fleet" },
+      "availability": 1,
+      "handles": ["telemetry", "read", "write", "location", "notify", "event"],
+      "completes": [],
+      "params": { "syncedWakeups": true },
+      "knobs": ["retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "synced-wake", "event": "thundering-herd", "text": "Devices set to report 'on the hour' all report at 00 seconds." },
+        { "id": "firmware-loop", "event": "retry-storm", "text": "A firmware bug retries forever with no wait." }
+      ],
+      "icon": "Small round sensor puck with three wireless arcs above it."
+    },
+    {
+      "id": "partner-system", "code": "pt", "name": "Partner system", "category": "clients", "kind": "source", "managed": false,
+      "description": "Another company's servers calling your API, such as a store calling your payments API.",
+      "goodAt": ["Large, steady, machine-made traffic", "Bulk jobs at night"],
+      "tradeoff": "One partner's bug can send more traffic than all your human users together.",
+      "capacity": null,
+      "latencyMs": { "p50": 15, "p99": 80, "note": "Data centre to data centre, approx." },
+      "cost": { "note": "Partners pay their own way." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "partners" },
+      "availability": 1,
+      "handles": ["read", "write", "payment", "webhook", "batch", "search", "report"],
+      "completes": [],
+      "params": {},
+      "knobs": ["retries", "backoff", "timeoutMs", "limitRps"],
+      "failureModes": [
+        { "id": "partner-flood", "event": "retry-storm", "text": "A partner's retry loop sends 10 times its normal volume." }
+      ],
+      "icon": "Two overlapping rounded squares joined by a short two-way arrow."
+    },
+    {
+      "id": "admin-console", "code": "ad", "name": "Admin console", "category": "clients", "kind": "source", "managed": false,
+      "description": "Your own staff tools for support, operations and reports.",
+      "goodAt": ["Powerful one-off actions", "Reports and exports"],
+      "tradeoff": "Few users, but one heavy report can slow the database for everyone else.",
+      "capacity": null,
+      "latencyMs": { "p50": 20, "p99": 100, "note": "Office network, approx." },
+      "cost": { "note": "Staff laptops." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "staff" },
+      "availability": 1,
+      "handles": ["read", "write", "report", "login", "search"],
+      "completes": [],
+      "params": {},
+      "knobs": ["retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "heavy-report", "event": "noisy-neighbor", "text": "A full-table export runs on the main database at lunchtime." }
+      ],
+      "icon": "Window outline with a small shield in one corner and two slider lines."
+    },
+    {
+      "id": "dns", "code": "dn", "name": "DNS", "category": "edge", "kind": "router", "managed": true,
+      "description": "Turns your name (example.com) into the address of your servers, like a phone book.",
+      "goodAt": ["Cheap and almost never down", "Answers are cached by everyone along the way"],
+      "tradeoff": "Caching makes it fast, but a wrong answer stays cached for as long as its time-to-live.",
+      "capacity": { "rps": 1000000, "unit": "lookups per second (managed)", "note": "Effectively unlimited for one site, approx." },
+      "latencyMs": { "p50": 1, "p99": 40, "note": "Usually answered from a nearby cache; a fresh lookup is 20 to 60 ms, approx." },
+      "cost": { "base": 0.5, "perMillion": 0.4, "note": "≈ $0.50 per hosted zone per month and ≈ $0.40 per million lookups." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "zone" },
+      "availability": 0.99999,
+      "handles": ["*"],
+      "completes": [],
+      "params": { "ttlSec": 300, "lookupShare": 0.01 },
+      "knobs": ["ttlSec"],
+      "failureModes": [
+        { "id": "bad-record", "event": "dns-misconfig", "text": "A typo in a record sends users nowhere, and caches keep the typo for the whole TTL." }
+      ],
+      "icon": "Signpost with two arrow boards, a small globe at its base."
+    },
+    {
+      "id": "geo-dns", "code": "gd", "name": "GeoDNS", "category": "edge", "kind": "router", "managed": true,
+      "description": "DNS that answers with the nearest healthy region for each user, and stops answering with a region that fails its health checks.",
+      "goodAt": ["Sending users to a region near them", "Region failover in about a minute or two"],
+      "tradeoff": "Failover waits for health checks plus cached answers to expire, so it is minutes, not seconds.",
+      "capacity": { "rps": 1000000, "unit": "lookups per second (managed)", "note": "Effectively unlimited, approx." },
+      "latencyMs": { "p50": 1, "p99": 40, "note": "Same as plain DNS, approx." },
+      "cost": { "base": 3, "perMillion": 0.7, "note": "≈ $0.70 per million latency or geo lookups plus ≈ $0.50 to $1 per health check per month." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "zone" },
+      "availability": 0.99999,
+      "handles": ["*"],
+      "completes": [],
+      "params": { "failoverSec": 90, "lookupShare": 0.01, "modes": ["latency", "geo", "failover"] },
+      "knobs": ["ttlSec", "mode"],
+      "failureModes": [
+        { "id": "slow-failover", "event": "region-outage", "text": "About 30 s of health checks plus a 60 s TTL before users move, approx." },
+        { "id": "bad-geo", "event": "dns-misconfig", "text": "A wrong rule sends one country to a region far away." }
+      ],
+      "icon": "Globe with a location pin on it and two curved arrows pointing to different sides."
+    },
+    {
+      "id": "cdn", "code": "cd", "name": "CDN", "category": "edge", "kind": "cache", "managed": true,
+      "description": "Copies of your pages, images and video kept in hundreds of locations close to users.",
+      "goodAt": ["Video, images and files", "Absorbing huge read spikes and floods", "Cutting latency for far-away users", "Passing every other request to your servers"],
+      "tradeoff": "Pays for itself on popular content; useless for personal or always-changing data, and a purge sends a wave to your servers.",
+      "capacity": { "rps": 2000000, "unit": "requests per second across the edge network", "note": "Large providers serve far more; this is a generous single-customer figure, approx." },
+      "latencyMs": { "p50": 15, "p99": 60, "note": "Hit served from a nearby location, approx." },
+      "cost": { "perMillion": 0.9, "perGB": 0.04, "note": "≈ $0.02 to $0.085 per GB depending on volume and country, plus ≈ $0.75 to $1 per million HTTPS requests." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "edge network" },
+      "availability": 0.9999,
+      "handles": ["*", "attack"],
+      "completes": ["read", "stream", "live"],
+      "params": { "hitRate": 0.92, "warmupMin": 10, "absorbsAttackShare": 0.6 },
+      "knobs": ["ttlSec", "coalesce"],
+      "failureModes": [
+        { "id": "purge-wave", "event": "cache-stampede", "text": "A full purge empties every location and the misses hit your servers together." },
+        { "id": "stale", "event": null, "text": "Users see the old version until the TTL runs out." },
+        { "id": "egress-bill", "event": "cost-blowout", "text": "Uncacheable responses still pay egress on every byte." }
+      ],
+      "icon": "Globe with three small dots on its rim, each linked by a short line to the centre."
+    },
+    {
+      "id": "origin-shield", "code": "os", "name": "Origin shield", "category": "edge", "kind": "cache", "managed": true,
+      "description": "One extra cache layer between the CDN and your servers, so only one place asks your servers for each file.",
+      "goodAt": ["Protecting your servers during purges and cold starts", "Live video where every location wants the same segment"],
+      "tradeoff": "A small extra fee and a few ms on misses, in exchange for far fewer origin hits.",
+      "capacity": { "rps": 200000, "unit": "requests per second (managed)", "note": "approx." },
+      "latencyMs": { "p50": 20, "p99": 80, "note": "Only paid on CDN misses, approx." },
+      "cost": { "perMillion": 0.75, "note": "≈ $0.0075 per 10,000 requests that reach the shield." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "shield" },
+      "availability": 0.9999,
+      "handles": ["read", "stream", "live"],
+      "completes": ["read", "stream", "live"],
+      "params": { "hitRate": 0.8 },
+      "knobs": ["coalesce"],
+      "failureModes": [
+        { "id": "shield-down", "event": "region-outage", "text": "If the shield's region fails, the CDN falls back to hitting your servers directly." }
+      ],
+      "icon": "Shield shape with three stacked horizontal layers inside."
+    },
+    {
+      "id": "waf", "code": "wf", "name": "Web firewall (WAF)", "category": "edge", "kind": "filter", "managed": true,
+      "description": "Reads each web request and blocks known attacks, bad bots and abusive patterns before they reach your code.",
+      "goodAt": ["Blocking injection attacks and scrapers", "Bot and credential-stuffing rules"],
+      "tradeoff": "Adds about a millisecond and a few dollars, and a too-strict rule can block real customers.",
+      "capacity": { "rps": 200000, "unit": "requests per second (managed)", "note": "Scales with the CDN or load balancer it sits on, approx." },
+      "latencyMs": { "p50": 1, "p99": 5, "note": "approx." },
+      "cost": { "base": 15, "perMillion": 0.6, "note": "≈ $5 per rule set plus ≈ $1 per rule per month and ≈ $0.60 per million requests." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "rule set" },
+      "availability": 0.9999,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "blockAttackShare": 0.9, "falsePositiveShare": 0.0001 },
+      "knobs": ["limitRps"],
+      "failureModes": [
+        { "id": "false-positive", "event": null, "text": "A new rule blocks about 0.1 percent of real users, approx." },
+        { "id": "volumetric", "event": "ddos-attack", "text": "Raw network floods overwhelm it; it needs a DDoS shield in front." }
+      ],
+      "icon": "Shield containing a small funnel with a dot passing through and an x blocked above it."
+    },
+    {
+      "id": "firewall", "code": "fw", "name": "Network firewall", "category": "edge", "kind": "filter", "managed": true,
+      "description": "Allows or denies traffic by address and port, so only expected connections reach your servers.",
+      "goodAt": ["Closing every door you do not use", "Keeping databases off the public internet"],
+      "tradeoff": "Basic rules are free; a managed inspection firewall costs hundreds a month per zone and does not stop floods.",
+      "capacity": { "rps": 1000000, "unit": "requests per second (managed)", "note": "approx." },
+      "latencyMs": { "p50": 0.2, "p99": 1, "note": "approx." },
+      "cost": { "base": 290, "perGB": 0.065, "note": "Security groups are free; a managed inspection firewall is ≈ $0.40 per hour per zone plus ≈ $0.065 per GB." },
+      "units": { "min": 1, "max": 3, "default": 1, "label": "zone endpoint" },
+      "availability": 0.9999,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "blockAttackShare": 0.3 },
+      "knobs": ["units"],
+      "failureModes": [
+        { "id": "rule-mistake", "event": "bad-config-push", "text": "One wrong rule blocks a whole service." }
+      ],
+      "icon": "Brick wall of three rows with a small padlock in front."
+    },
+    {
+      "id": "ddos-shield", "code": "dd", "name": "DDoS shield", "category": "edge", "kind": "filter", "managed": true,
+      "description": "Absorbs floods of junk traffic at the network edge before they reach you.",
+      "goodAt": ["Huge network floods", "Cost protection during attacks"],
+      "tradeoff": "Basic protection is free; advanced protection with a response team is about $3,000 a month.",
+      "capacity": { "rps": 50000000, "unit": "requests per second absorbed", "note": "Large providers absorb terabits per second, approx." },
+      "latencyMs": { "p50": 0.5, "p99": 2, "note": "approx." },
+      "cost": { "base": 3000, "note": "Advanced managed tier ≈ $3,000 per month per organisation; basic tier free with reduced coverage." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "subscription" },
+      "availability": 0.99999,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "blockAttackShare": 0.99 },
+      "knobs": [],
+      "failureModes": [
+        { "id": "app-layer", "event": "bot-scraping", "text": "Slow, realistic-looking bot traffic gets through; pair with a WAF and rate limits." }
+      ],
+      "icon": "Umbrella with three downward arrows bouncing off its canopy."
+    },
+    {
+      "id": "api-gateway", "code": "ag", "name": "API gateway", "category": "edge", "kind": "router", "managed": true,
+      "description": "One front door for your APIs: checks keys and tokens, applies quotas and routes each path to the right service.",
+      "goodAt": ["Per-client quotas and API keys", "Routing many small services behind one address"],
+      "tradeoff": "Pay per request, add a few ms, and watch the account-wide throttle on launch day.",
+      "capacity": { "rps": 10000, "unit": "requests per second per account and region (default throttle)", "note": "≈ 10,000 rps default, raised on request, approx." },
+      "latencyMs": { "p50": 6, "p99": 25, "note": "approx." },
+      "cost": { "perMillion": 1.2, "note": "≈ $1 per million for lightweight HTTP APIs, up to ≈ $3.50 per million for full-featured ones." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "throttle allowance" },
+      "availability": 0.9995,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "throttleShare": 1 },
+      "knobs": ["units", "limitRps"],
+      "failureModes": [
+        { "id": "throttle", "event": "flash-crowd", "text": "The default throttle returns 429s when a launch exceeds about 10,000 rps." },
+        { "id": "cert", "event": "cert-expiry", "text": "An expired certificate on the custom domain fails every request." }
+      ],
+      "icon": "Rounded arch doorway with three short arrows fanning out from inside it."
+    },
+    {
+      "id": "global-lb", "code": "gl", "name": "Global load balancer", "category": "edge", "kind": "router", "managed": true,
+      "description": "One worldwide address that sends each user to the nearest healthy region over a fast private network.",
+      "goodAt": ["Region failover in seconds", "One address for every continent"],
+      "tradeoff": "Faster failover than DNS, for a monthly fee and a per-GB charge.",
+      "capacity": { "rps": 1000000, "unit": "requests per second (managed)", "note": "approx." },
+      "latencyMs": { "p50": 2, "p99": 8, "note": "approx." },
+      "cost": { "base": 18, "perGB": 0.008, "note": "≈ $18 per month plus ≈ $0.008 per GB processed, approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "address" },
+      "availability": 0.99995,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "failoverSec": 30 },
+      "knobs": [],
+      "failureModes": [
+        { "id": "global-config", "event": "bad-config-push", "text": "A bad global rule affects every region at once." }
+      ],
+      "icon": "Globe with three outgoing arrows of equal length at the bottom."
+    },
+    {
+      "id": "regional-lb", "code": "lb", "name": "Load balancer", "category": "edge", "kind": "router", "managed": true,
+      "description": "Spreads requests across your servers in one region and skips servers that stop answering health checks.",
+      "goodAt": ["Sharing load evenly", "Hiding a dead server within about 30 seconds"],
+      "tradeoff": "Cheap and essential; a sudden 10 times spike can outrun it unless it is pre-warmed.",
+      "capacity": { "rps": 50000, "unit": "requests per second per balancer (scales up automatically over minutes)", "note": "approx." },
+      "latencyMs": { "p50": 1, "p99": 5, "note": "approx." },
+      "cost": { "base": 18, "perMillion": 0.02, "note": "≈ $16 per month plus ≈ $0.008 per capacity unit-hour, which comes to about $0.02 per million small requests, approx." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "balancer" },
+      "availability": 0.9999,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "healthCheckSec": 30, "modes": ["round-robin", "least-requests"] },
+      "knobs": ["units", "zones", "region", "mode"],
+      "failureModes": [
+        { "id": "spike-warmup", "event": "viral-spike", "text": "Its own capacity grows over minutes; a 30-second 10 times jump queues." },
+        { "id": "cert", "event": "cert-expiry", "text": "An expired certificate breaks every HTTPS request." }
+      ],
+      "icon": "One arrow entering from the left that splits into three equal arrows on the right."
+    },
+    {
+      "id": "network-lb", "code": "nl", "name": "Network load balancer", "category": "edge", "kind": "router", "managed": true,
+      "description": "A very fast balancer that spreads raw connections without reading them; good for live sockets and games.",
+      "goodAt": ["Millions of long-lived connections", "Lowest added latency"],
+      "tradeoff": "Fast and cheap, but it cannot route by URL or look inside requests.",
+      "capacity": { "rps": 1000000, "unit": "requests per second (managed)", "note": "approx." },
+      "latencyMs": { "p50": 0.3, "p99": 1, "note": "approx." },
+      "cost": { "base": 16, "perGB": 0.006, "note": "≈ $16 per month plus a small per-GB capacity charge, approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "balancer" },
+      "availability": 0.9999,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "healthCheckSec": 20 },
+      "knobs": ["zones", "region"],
+      "failureModes": [
+        { "id": "sticky-imbalance", "event": null, "text": "Long-lived connections stay on old servers after you add new ones." }
+      ],
+      "icon": "One thick arrow splitting into three thin arrows, with a small lightning bolt above the split."
+    },
+    {
+      "id": "service-mesh", "code": "sm", "name": "Service mesh", "category": "edge", "kind": "router", "managed": false,
+      "description": "A small helper next to each service that encrypts, retries, times out and measures every call between services.",
+      "goodAt": ["Encryption between services", "Uniform timeouts, retries and metrics"],
+      "tradeoff": "Adds about 1 to 3 ms per hop and some CPU, and badly set retries multiply load.",
+      "capacity": { "rps": 20000, "unit": "requests per second per mesh unit", "note": "≈ 0.5 vCPU of helper per 1,000 rps, approx." },
+      "latencyMs": { "p50": 1, "p99": 4, "note": "Per hop, approx." },
+      "cost": { "perUnit": 60, "note": "Helper CPU and memory overhead, roughly 10 percent of compute, approx." },
+      "units": { "min": 1, "max": 50, "default": 1, "label": "mesh unit" },
+      "availability": 0.9999,
+      "handles": ["*"],
+      "completes": [],
+      "params": { "addsRetries": 2 },
+      "knobs": ["units", "zones", "retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "retry-multiply", "event": "retry-storm", "text": "Retries at every layer multiply: 3 layers of 3 retries is up to 27 calls." },
+        { "id": "mesh-config", "event": "bad-config-push", "text": "A bad policy blocks traffic between services." }
+      ],
+      "icon": "Four small hexagons joined by short lines into a loose grid."
+    },
+    {
+      "id": "private-link", "code": "pl", "name": "VPN or private link", "category": "edge", "kind": "router", "managed": true,
+      "description": "A private connection to a partner, an office or a cloud service that skips the public internet.",
+      "goodAt": ["Talking to banks, hospitals and partners privately", "Meeting compliance rules"],
+      "tradeoff": "Safer and steadier than the internet, but a single tunnel is a single point of failure.",
+      "capacity": { "rps": 50000, "unit": "requests per second per connection", "note": "A VPN tunnel carries about 1.25 Gbps, approx." },
+      "latencyMs": { "p50": 1, "p99": 5, "note": "approx." },
+      "cost": { "base": 36, "perGB": 0.01, "note": "≈ $36 per VPN connection or ≈ $7 per private endpoint per zone, plus ≈ $0.01 per GB." },
+      "units": { "min": 1, "max": 4, "default": 1, "label": "tunnel" },
+      "availability": 0.9995,
+      "handles": ["*"],
+      "completes": [],
+      "params": {},
+      "knobs": ["units"],
+      "failureModes": [
+        { "id": "one-tunnel", "event": "zone-outage", "text": "With one tunnel, its zone failing cuts the partner off." }
+      ],
+      "icon": "Short cable with a padlock in the middle and a plug at each end."
+    },
+    {
+      "id": "vm-fleet", "code": "vm", "name": "App servers (VMs)", "category": "compute", "kind": "compute", "managed": false,
+      "description": "Virtual machines running your service code; the classic way to run an app.",
+      "goodAt": ["Any language and any workload", "Steady, predictable traffic"],
+      "tradeoff": "Simple and flexible, but new machines take 2 to 4 minutes to boot, so spikes outrun scaling.",
+      "capacity": { "rps": 1000, "unit": "requests per second per 4 vCPU server", "note": "Typical JSON API with one or two data calls; real range 200 to 5,000, approx." },
+      "latencyMs": { "p50": 20, "p99": 80, "note": "Your code's own work, approx." },
+      "cost": { "perUnit": 140, "note": "4 vCPU and 16 GB on demand ≈ $0.19 per hour; committed use is 30 to 50 percent less." },
+      "units": { "min": 1, "max": 500, "default": 2, "label": "server" },
+      "availability": 0.999,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "scaleDelaySec": 180 },
+      "knobs": ["units", "tier", "zones", "region", "autoscale", "retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "spike", "event": "viral-spike", "text": "Boot time means 2 to 4 minutes of overload before new servers help." },
+        { "id": "leak", "event": "memory-leak", "text": "Slowly losing memory until servers crash or slow down." },
+        { "id": "deploy", "event": "bad-deploy", "text": "A bad version errors on a share of requests." },
+        { "id": "one-zone", "event": "zone-outage", "text": "All servers in one zone disappear together." }
+      ],
+      "icon": "Server rack outline with three stacked slots, each with a small status dot."
+    },
+    {
+      "id": "container-cluster", "code": "k8", "name": "Containers", "category": "compute", "kind": "compute", "managed": false,
+      "description": "Your code packed in containers on a managed cluster that places, restarts and scales them.",
+      "goodAt": ["Many small services on shared machines", "Fast scaling when spare room exists"],
+      "tradeoff": "Pods start in seconds, but new machines still take minutes; the cluster itself needs care.",
+      "capacity": { "rps": 1000, "unit": "requests per second per 4 vCPU node", "note": "approx." },
+      "latencyMs": { "p50": 18, "p99": 75, "note": "approx." },
+      "cost": { "base": 73, "perUnit": 140, "note": "≈ $73 per month for the managed control plane plus the nodes." },
+      "units": { "min": 1, "max": 500, "default": 3, "label": "node" },
+      "availability": 0.999,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "scaleDelaySec": 45 },
+      "knobs": ["units", "tier", "zones", "region", "autoscale", "retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "node-shortage", "event": "viral-spike", "text": "Pods wait for new nodes when the cluster is full." },
+        { "id": "deploy", "event": "bad-deploy", "text": "A rolling update spreads a bad image." }
+      ],
+      "icon": "Three small cubes arranged in a triangle inside a rounded square."
+    },
+    {
+      "id": "serverless-fn", "code": "fn", "name": "Serverless functions", "category": "compute", "kind": "compute", "managed": true,
+      "description": "Small pieces of code that start per request and scale by themselves; you pay only while they run.",
+      "goodAt": ["Spiky or low traffic", "Glue code and event handlers"],
+      "tradeoff": "No servers to manage, but cold starts add up to a second, concurrency has limits, and the bill grows with every call.",
+      "capacity": { "rps": 10000, "unit": "requests per second per 1,000 concurrent executions at about 100 ms each", "note": "Default regional concurrency ≈ 1,000, raised on request, approx." },
+      "latencyMs": { "p50": 25, "p99": 120, "note": "Warm; a cold start adds about 200 to 1,000 ms, approx." },
+      "cost": { "perMillion": 1.05, "note": "≈ $0.20 per million calls plus ≈ $0.0000167 per GB-second; 512 MB for 100 ms ≈ $1 per million calls." },
+      "units": { "min": 1, "max": 20, "default": 1, "label": "1,000 concurrency" },
+      "availability": 0.9995,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "scaleDelaySec": 0, "coldStartMs": 600, "warmPoolCostPerMonth": 11 },
+      "knobs": ["units", "region", "warmPool", "retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "cold", "event": "cold-start", "text": "A burst of new instances each pays a cold start." },
+        { "id": "bill", "event": "cost-blowout", "text": "Bots or a loop multiply calls, and the bill follows." },
+        { "id": "db-conns", "event": null, "text": "Thousands of instances each open database connections; use a connection pooler." }
+      ],
+      "icon": "Lightning bolt between a pair of curly braces."
+    },
+    {
+      "id": "edge-fn", "code": "ef", "name": "Edge functions", "category": "compute", "kind": "compute", "managed": true,
+      "description": "Tiny pieces of code that run inside the CDN, a few ms from the user: redirects, token checks, personalisation.",
+      "goodAt": ["Fast answers anywhere in the world", "Cheap filtering before your servers"],
+      "tradeoff": "Very fast and cheap, but limited CPU time and no direct database connection.",
+      "capacity": { "rps": 200000, "unit": "requests per second (managed)", "note": "CPU limit about 10 to 50 ms per request, approx." },
+      "latencyMs": { "p50": 2, "p99": 10, "note": "Runs near the user, approx." },
+      "cost": { "base": 5, "perMillion": 0.5, "note": "≈ $5 per month plus ≈ $0.30 to $0.60 per million requests." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "edge network" },
+      "availability": 0.9999,
+      "handles": ["read", "login", "event", "write", "search", "attack"],
+      "completes": [],
+      "params": { "regionless": true },
+      "knobs": [],
+      "failureModes": [
+        { "id": "cpu-limit", "event": null, "text": "Heavy work hits the CPU limit and fails." }
+      ],
+      "icon": "Lightning bolt resting on the rim of a globe."
+    },
+    {
+      "id": "gpu-cluster", "code": "gp", "name": "GPU servers", "category": "compute", "kind": "compute", "managed": false,
+      "description": "Machines with graphics processors that run AI models and video work.",
+      "goodAt": ["AI model replies", "Image and video processing"],
+      "tradeoff": "Fast for AI, but each GPU costs thousands a month, takes minutes to load a model, and can be hard to get.",
+      "capacity": { "rps": 6, "unit": "chatbot replies per second per GPU", "note": "≈ 2,500 output tokens per second with batching on a mid-size model, about 400 tokens per reply, approx." },
+      "latencyMs": { "p50": 3000, "p99": 9000, "note": "Full reply; the first words arrive in about 300 ms, approx." },
+      "cost": { "perUnit": 2200, "note": "One high-end data-centre GPU ≈ $3 per hour on demand; committed use is far cheaper." },
+      "units": { "min": 1, "max": 256, "default": 2, "label": "GPU" },
+      "availability": 0.995,
+      "handles": ["inference", "batch", "upload"],
+      "completes": ["inference"],
+      "params": { "scaleDelaySec": 600, "modelLoadSec": 120 },
+      "knobs": ["units", "zones", "region", "autoscale", "timeoutMs"],
+      "failureModes": [
+        { "id": "shortage", "event": "gpu-shortage", "text": "No more GPUs available in the region when you need to scale." },
+        { "id": "long-prompts", "event": "cost-blowout", "text": "Long prompts use memory and slow every reply in the batch." }
+      ],
+      "icon": "Chip with fins along its top edge and three parallel lanes across its face."
+    },
+    {
+      "id": "worker-pool", "code": "wk", "name": "Background workers", "category": "compute", "kind": "compute", "managed": false,
+      "description": "Servers that take jobs from a queue and do them in the background: emails, resizing, settling payments.",
+      "goodAt": ["Slow or bursty work users need not wait for", "Steady pace no matter the spike"],
+      "tradeoff": "Users get a fast answer, but the work finishes later; a stuck job can block a worker.",
+      "capacity": { "rps": 200, "unit": "light jobs per second per 2 vCPU worker", "note": "Heavy jobs such as image resizing are about 5 per second, approx." },
+      "latencyMs": { "p50": 50, "p99": 400, "note": "Per job, approx." },
+      "cost": { "perUnit": 70, "note": "2 vCPU and 4 GB ≈ $0.10 per hour." },
+      "units": { "min": 1, "max": 500, "default": 2, "label": "worker" },
+      "availability": 0.999,
+      "handles": ["write", "upload", "notify", "event", "batch", "webhook", "telemetry", "payment", "message", "location", "sync", "inference", "search"],
+      "completes": [],
+      "params": { "scaleDelaySec": 120 },
+      "knobs": ["units", "tier", "zones", "region", "autoscale", "retries", "backoff", "timeoutMs"],
+      "failureModes": [
+        { "id": "poison", "event": "poison-message", "text": "One bad message crashes a worker again and again." },
+        { "id": "dupes", "event": "duplicate-delivery", "text": "A job delivered twice runs twice unless it is idempotent." }
+      ],
+      "icon": "Two interlocking gears beside a short stack of three cards."
+    },
+    {
+      "id": "batch-cluster", "code": "bc", "name": "Batch cluster", "category": "compute", "kind": "compute", "managed": false,
+      "description": "A group of machines for big offline jobs over lots of data: nightly reports, billing runs, training data.",
+      "goodAt": ["Chewing through terabytes cheaply", "Jobs that can wait hours"],
+      "tradeoff": "Cheap per byte, especially on spare capacity, but slow and can steal capacity from live systems.",
+      "capacity": { "rps": 1, "unit": "100 MB batch tasks per second per 8 vCPU node", "note": "≈ 100 MB per second scanned per node, approx." },
+      "latencyMs": { "p50": 60000, "p99": 600000, "note": "Minutes per task, approx." },
+      "cost": { "perUnit": 250, "note": "8 vCPU node; spare (spot) capacity is 60 to 70 percent cheaper but can be taken back." },
+      "units": { "min": 1, "max": 1000, "default": 4, "label": "node" },
+      "availability": 0.99,
+      "handles": ["batch", "report", "event", "telemetry"],
+      "completes": [],
+      "params": { "scaleDelaySec": 300 },
+      "knobs": ["units", "zones", "tier", "region", "autoscale"],
+      "failureModes": [
+        { "id": "daytime-overrun", "event": "noisy-neighbor", "text": "The nightly job runs late into business hours and loads the main database." }
+      ],
+      "icon": "Three stacked boxes with a small clock face at the top right."
+    },
+    {
+      "id": "cron-scheduler", "code": "cr", "name": "Scheduler", "category": "compute", "kind": "source", "managed": true,
+      "description": "Starts jobs at set times, like an alarm clock for your system.",
+      "goodAt": ["Nightly and hourly jobs", "Reminders and cleanups"],
+      "tradeoff": "Cheap and simple, but every job set for midnight starts at the same second.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 1, "note": "≈ $0.10 per scheduled job per month or about $1 per million triggers." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "schedule" },
+      "availability": 0.9995,
+      "handles": ["batch", "report", "notify", "event"],
+      "completes": [],
+      "params": { "emits": "batch" },
+      "knobs": [],
+      "failureModes": [
+        { "id": "midnight", "event": "thundering-herd", "text": "Every job scheduled at 00:00 starts together." },
+        { "id": "double-run", "event": "duplicate-delivery", "text": "Without a lock a job can run twice after a failover." }
+      ],
+      "icon": "Calendar page with a small clock face over its lower right corner."
+    },
+    {
+      "id": "autoscaler", "code": "as", "name": "Autoscaler", "category": "compute", "kind": "control", "managed": true,
+      "description": "Adds servers when they get busy and removes them when it is quiet. Attach it to a compute element.",
+      "goodAt": ["Daily ups and downs", "Saving money at night"],
+      "tradeoff": "Saves money, but it reacts after about a minute of measuring plus boot time, so sudden spikes still hurt.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "note": "Free; you pay for the units it adds." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "policy" },
+      "availability": 0.9999,
+      "handles": [],
+      "completes": [],
+      "params": { "reactSec": 60, "targetUtil": 0.6, "scaleInDelaySec": 600 },
+      "knobs": ["autoscale"],
+      "failureModes": [
+        { "id": "too-slow", "event": "flash-crowd", "text": "Measuring plus booting is too slow for a 30-second surge." },
+        { "id": "wrong-bottleneck", "event": null, "text": "It adds app servers while the database is the real limit, making it worse." }
+      ],
+      "icon": "Three vertical bars of rising height with an up arrow and a down arrow beside them."
+    },
+    {
+      "id": "sql-primary", "code": "pg", "name": "SQL database", "category": "data", "kind": "store", "managed": true,
+      "description": "A relational database: tables, joins and transactions. The usual source of truth.",
+      "goodAt": ["Correctness: transactions and constraints", "Flexible queries and joins"],
+      "tradeoff": "The safest default, but one primary takes all the writes, so it is the first thing to run out.",
+      "capacity": { "rps": 8000, "writeRps": 2000, "unit": "simple indexed queries per second per 4 vCPU, 32 GB primary", "note": "Complex queries are far lower; a cached working set is assumed, approx." },
+      "latencyMs": { "p50": 2, "p99": 15, "note": "In the same zone, approx." },
+      "cost": { "perUnit": 450, "perGBMonth": 0.115, "note": "≈ $450 per month for 4 vCPU and 32 GB managed; a standby in a second zone doubles it." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "primary" },
+      "availability": 0.9995,
+      "handles": ["read", "write", "payment", "login", "report", "sync", "search", "message", "location", "event", "attack"],
+      "completes": ["read", "write", "payment", "login", "report", "sync", "message", "location", "event"],
+      "params": { "family": "sql", "maxConnections": 1000, "failoverSec": 60, "replicationLagMs": 100, "role": "primary" },
+      "knobs": ["tier", "zones", "replication", "region", "retentionDays"],
+      "failureModes": [
+        { "id": "failover", "event": "db-failover", "text": "When the primary dies, a standby takes 30 to 120 s to take over, approx." },
+        { "id": "conns", "event": null, "text": "Too many connections from many servers exhaust its limit." },
+        { "id": "migration", "event": "schema-migration-lock", "text": "A table change locks writes for minutes." },
+        { "id": "disk", "event": "disk-full", "text": "Running out of disk stops all writes." },
+        { "id": "noisy", "event": "noisy-neighbor", "text": "A big report steals CPU from live traffic." }
+      ],
+      "icon": "Database cylinder with a small star badge at its top right."
+    },
+    {
+      "id": "sql-replica", "code": "rr", "name": "Read replica", "category": "data", "kind": "store", "managed": true,
+      "description": "A read-only copy of the SQL database that follows the primary; spreads read load.",
+      "goodAt": ["Read-heavy apps", "Reports without slowing the primary"],
+      "tradeoff": "Cheap read scaling, but replicas are a little behind, so a user may not see what they just saved.",
+      "capacity": { "rps": 8000, "unit": "simple reads per second per replica", "note": "approx." },
+      "latencyMs": { "p50": 2, "p99": 15, "note": "approx." },
+      "cost": { "perUnit": 450, "note": "Same price as a primary of the same size." },
+      "units": { "min": 1, "max": 15, "default": 1, "label": "replica" },
+      "availability": 0.9995,
+      "handles": ["read", "report", "login", "search", "attack"],
+      "completes": ["read", "report", "login"],
+      "params": { "family": "sql", "role": "replica", "lagMs": 100, "promotable": true },
+      "knobs": ["units", "tier", "zones", "region"],
+      "failureModes": [
+        { "id": "lag", "event": "replication-lag", "text": "Under heavy writes, replicas fall seconds or minutes behind." },
+        { "id": "promote-loss", "event": "db-failover", "text": "Promoting a replica loses the writes it had not received yet." }
+      ],
+      "icon": "Database cylinder outline with a second, offset copy behind it."
+    },
+    {
+      "id": "sharded-sql", "code": "sh", "name": "Sharded SQL", "category": "data", "kind": "store", "managed": false,
+      "description": "Relational data split across many primaries by a key such as user id; each shard holds a slice.",
+      "goodAt": ["Write volume beyond one machine", "Keeping each user's data together"],
+      "tradeoff": "Writes scale with shards, but queries across shards are slow and moving data between shards is risky work.",
+      "capacity": { "rps": 8000, "writeRps": 2000, "unit": "queries per second per shard", "note": "approx." },
+      "latencyMs": { "p50": 3, "p99": 20, "note": "Includes the routing layer, approx." },
+      "cost": { "perUnit": 450, "perGBMonth": 0.115, "note": "Per shard, plus your team's time." },
+      "units": { "min": 2, "max": 64, "default": 4, "label": "shard" },
+      "availability": 0.9995,
+      "handles": ["read", "write", "payment", "login", "sync", "message", "location", "event", "report", "attack"],
+      "completes": ["read", "write", "payment", "login", "sync", "message", "location", "event", "report"],
+      "params": { "keyed": true, "failoverSec": 60, "replicationLagMs": 100 },
+      "knobs": ["units", "tier", "zones", "replication", "region"],
+      "failureModes": [
+        { "id": "hot-shard", "event": "hot-key", "text": "One popular key sends a big share of traffic to a single shard." },
+        { "id": "cross-shard", "event": null, "text": "A query over all users must ask every shard." }
+      ],
+      "icon": "Database cylinder split vertically into three wedge-shaped slices with small gaps."
+    },
+    {
+      "id": "distributed-sql", "code": "ds", "name": "Distributed SQL", "category": "data", "kind": "store", "managed": true,
+      "description": "SQL that splits and copies itself across nodes, zones and even regions, keeping strong consistency.",
+      "goodAt": ["Growing without manual sharding", "Surviving a zone or region with no data loss"],
+      "tradeoff": "Scales and survives, but each write waits for a majority, so cross-region writes take 100 ms or more, and it costs more.",
+      "capacity": { "rps": 10000, "writeRps": 2500, "unit": "queries per second per node", "note": "approx." },
+      "latencyMs": { "p50": 6, "p99": 30, "note": "Within a region; add the round trip to the nearest majority for writes across regions, approx." },
+      "cost": { "perUnit": 900, "perGBMonth": 0.3, "note": "Per 8 vCPU node, 3 nodes minimum." },
+      "units": { "min": 3, "max": 60, "default": 3, "label": "node" },
+      "availability": 0.99995,
+      "handles": ["read", "write", "payment", "login", "sync", "message", "location", "event", "report", "attack"],
+      "completes": ["read", "write", "payment", "login", "sync", "message", "location", "event", "report"],
+      "params": { "keyed": true, "consensus": true, "replication": "quorum" },
+      "knobs": ["units", "tier", "zones", "region"],
+      "failureModes": [
+        { "id": "partition", "event": "network-partition", "text": "The side without a majority stops accepting writes." },
+        { "id": "hot-range", "event": "hot-key", "text": "Sequential keys land on one node." }
+      ],
+      "icon": "Three small database cylinders in a triangle, joined by thin lines."
+    },
+    {
+      "id": "kv-store", "code": "kv", "name": "Key-value store", "category": "data", "kind": "store", "managed": true,
+      "description": "A managed table that fetches an item by its key in a few milliseconds, at almost any size.",
+      "goodAt": ["Huge scale with simple lookups", "Sessions, carts, user settings"],
+      "tradeoff": "Effortless scale, but no joins, each key has its own speed limit, and pay-per-request bills grow with traffic.",
+      "capacity": { "rps": 40000, "writeRps": 40000, "unit": "requests per second per table (default account limit, raised on request)", "note": "Each partition ≈ 3,000 reads and 1,000 writes per second, approx." },
+      "latencyMs": { "p50": 4, "p99": 12, "note": "approx." },
+      "cost": { "perMillion": 0.6, "perGBMonth": 0.25, "note": "≈ $0.25 per million reads and ≈ $1.25 per million writes on demand, plus ≈ $0.25 per GB-month." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "table allowance" },
+      "availability": 0.9999,
+      "handles": ["read", "write", "login", "sync", "message", "location", "event", "payment", "telemetry", "attack"],
+      "completes": ["read", "write", "login", "sync", "message", "location", "event", "payment", "telemetry"],
+      "params": { "keyed": true, "perKeyReadRps": 3000, "perKeyWriteRps": 1000 },
+      "knobs": ["units", "region"],
+      "failureModes": [
+        { "id": "hot-partition", "event": "hot-key", "text": "One key above about 1,000 writes per second is throttled." },
+        { "id": "bill", "event": "cost-blowout", "text": "A scan or a bot multiplies paid reads." }
+      ],
+      "icon": "Key with its bow drawn as a small 2 by 2 grid."
+    },
+    {
+      "id": "document-db", "code": "dc", "name": "Document database", "category": "data", "kind": "store", "managed": true,
+      "description": "Stores JSON documents with flexible fields; queries use indexes you choose.",
+      "goodAt": ["Catalogs and profiles with varied fields", "Fast iteration on data shape"],
+      "tradeoff": "Flexible and fast to build, but unindexed queries scan everything and multi-document transactions are slower.",
+      "capacity": { "rps": 10000, "writeRps": 3000, "unit": "operations per second per node", "note": "approx." },
+      "latencyMs": { "p50": 3, "p99": 20, "note": "approx." },
+      "cost": { "perUnit": 400, "perGBMonth": 0.1, "note": "Per node; a 3-node set is typical." },
+      "units": { "min": 1, "max": 50, "default": 3, "label": "node" },
+      "availability": 0.9995,
+      "handles": ["read", "write", "login", "sync", "message", "event", "search", "report", "location", "attack"],
+      "completes": ["read", "write", "login", "sync", "message", "event", "report", "location"],
+      "params": { "keyed": true, "replicationLagMs": 200 },
+      "knobs": ["units", "tier", "zones", "replication", "readFrom", "region"],
+      "failureModes": [
+        { "id": "no-index", "event": "noisy-neighbor", "text": "A query without an index scans the whole collection." },
+        { "id": "stale-secondary", "event": "replication-lag", "text": "Reads from secondaries can be behind." }
+      ],
+      "icon": "Page outline with a folded corner and a pair of curly braces on it."
+    },
+    {
+      "id": "wide-column", "code": "wc", "name": "Wide-column store", "category": "data", "kind": "store", "managed": false,
+      "description": "Huge, write-heavy tables spread over many nodes, like Cassandra; you choose how many copies must agree.",
+      "goodAt": ["Massive write rates such as feeds, messages and events", "Adding nodes for more capacity"],
+      "tradeoff": "Writes scale almost forever, but you must design tables around your queries and live with tunable consistency.",
+      "capacity": { "rps": 7000, "writeRps": 15000, "unit": "operations per second per 8 vCPU node", "note": "approx." },
+      "latencyMs": { "p50": 3, "p99": 25, "note": "approx." },
+      "cost": { "perUnit": 600, "perGBMonth": 0.1, "note": "Per node, 3 nodes minimum, data copied 3 times." },
+      "units": { "min": 3, "max": 300, "default": 6, "label": "node" },
+      "availability": 0.9999,
+      "handles": ["read", "write", "login", "message", "event", "telemetry", "location", "sync", "attack"],
+      "completes": ["read", "write", "login", "message", "event", "telemetry", "location", "sync"],
+      "params": { "keyed": true, "replicationFactor": 3, "modes": ["ONE", "QUORUM", "ALL"] },
+      "knobs": ["units", "tier", "zones", "region", "mode"],
+      "failureModes": [
+        { "id": "hot-partition", "event": "hot-key", "text": "A partition key like 'today' puts every write on the same nodes." },
+        { "id": "stale-one", "event": "replication-lag", "text": "Reading with ONE can return an older copy." }
+      ],
+      "icon": "Table grid with three tall columns, the middle one highlighted."
+    },
+    {
+      "id": "graph-db", "code": "gr", "name": "Graph database", "category": "data", "kind": "store", "managed": true,
+      "description": "Stores things and the links between them; fast at 'friends of friends' and 'who is connected to this card'.",
+      "goodAt": ["Social graphs and fraud rings", "Recommendations from connections"],
+      "tradeoff": "Great for link-hopping, but hard to split across machines and slow around nodes with millions of links.",
+      "capacity": { "rps": 3000, "writeRps": 1000, "unit": "two-hop traversals per second per node", "note": "approx." },
+      "latencyMs": { "p50": 6, "p99": 50, "note": "approx." },
+      "cost": { "perUnit": 700, "perGBMonth": 0.1, "note": "Per memory-heavy node." },
+      "units": { "min": 1, "max": 16, "default": 2, "label": "node" },
+      "availability": 0.9995,
+      "handles": ["read", "write", "search", "payment", "attack"],
+      "completes": ["read", "write", "search"],
+      "params": { "keyed": false },
+      "knobs": ["units", "tier", "zones", "region"],
+      "failureModes": [
+        { "id": "supernode", "event": "celebrity-fanout", "text": "A celebrity with 50 million followers makes every traversal through them slow." }
+      ],
+      "icon": "Three circles joined by lines into a triangle, with a fourth circle linked off one corner."
+    },
+    {
+      "id": "timeseries-db", "code": "ts", "name": "Time-series database", "category": "data", "kind": "store", "managed": false,
+      "description": "Stores numbers over time (metrics, sensor readings, prices) compressed tightly, and answers range queries fast.",
+      "goodAt": ["Millions of readings per second", "Graphs over hours and months"],
+      "tradeoff": "About 1.5 bytes per sample after compression, but each unique label set is a new series, and series count drives memory.",
+      "capacity": { "rps": 500, "writeRps": 3000, "unit": "per node: 3,000 batches of 100 samples per second written, 500 range queries per second", "note": "≈ 300,000 samples per second per ingest node, approx." },
+      "latencyMs": { "p50": 5, "p99": 200, "note": "Writes are a few ms; long range queries take longer, approx." },
+      "cost": { "perUnit": 500, "perGBMonth": 0.023, "note": "Per node; old data goes to object storage at ≈ $0.023 per GB-month." },
+      "units": { "min": 1, "max": 300, "default": 3, "label": "node" },
+      "availability": 0.9995,
+      "handles": ["telemetry", "report", "read", "event", "location"],
+      "completes": ["telemetry", "report", "read", "event", "location"],
+      "params": { "bytesPerSample": 1.5 },
+      "knobs": ["units", "tier", "zones", "region", "retentionDays"],
+      "failureModes": [
+        { "id": "cardinality", "event": "cardinality-explosion", "text": "A user id in a label creates millions of series and exhausts memory." },
+        { "id": "disk", "event": "disk-full", "text": "Retention set too long fills local disks." }
+      ],
+      "icon": "Small line chart drawn above a flat database cylinder."
+    },
+    {
+      "id": "search-index", "code": "si", "name": "Search index", "category": "data", "kind": "store", "managed": true,
+      "description": "Full-text search with ranking, typo tolerance, filters and facets.",
+      "goodAt": ["Search boxes and autocomplete", "Filtering by many fields at once"],
+      "tradeoff": "Fast search, but it is a copy of your data that lags by about a second and needs its own capacity.",
+      "capacity": { "rps": 1500, "writeRps": 5000, "unit": "queries per second (writes are documents indexed) per 8 vCPU, 64 GB node", "note": "approx." },
+      "latencyMs": { "p50": 15, "p99": 120, "note": "approx." },
+      "cost": { "perUnit": 450, "perGBMonth": 0.1, "note": "Per node; usually 3 or more." },
+      "units": { "min": 1, "max": 100, "default": 3, "label": "node" },
+      "availability": 0.9995,
+      "handles": ["search", "write", "read", "report", "event", "attack"],
+      "completes": ["search", "write", "read", "report", "event"],
+      "params": { "refreshSec": 1, "isCopy": true },
+      "knobs": ["units", "tier", "zones", "region"],
+      "failureModes": [
+        { "id": "heavy-query", "event": "noisy-neighbor", "text": "Leading-wildcard queries make every node scan." },
+        { "id": "index-lag", "event": "replication-lag", "text": "Bulk writes leave search results minutes behind." }
+      ],
+      "icon": "Magnifying glass over three horizontal text lines of different lengths."
+    },
+    {
+      "id": "vector-db", "code": "vd", "name": "Vector database", "category": "data", "kind": "store", "managed": true,
+      "description": "Finds the most similar items by meaning, using vectors (lists of numbers) made by an embedding model.",
+      "goodAt": ["Semantic search and 'more like this'", "Giving an AI chatbot the right documents"],
+      "tradeoff": "Finds meaning instead of exact words, but answers are approximate and the vectors need lots of memory.",
+      "capacity": { "rps": 1000, "writeRps": 2000, "unit": "similarity queries per second per node on about 10 million vectors", "note": "10 million vectors of 768 numbers ≈ 30 GB raw, approx." },
+      "latencyMs": { "p50": 8, "p99": 40, "note": "≈ 95 percent recall with approximate search, approx." },
+      "cost": { "perUnit": 600, "perGBMonth": 0.25, "note": "Per memory-heavy node." },
+      "units": { "min": 1, "max": 64, "default": 2, "label": "node" },
+      "availability": 0.9995,
+      "handles": ["search", "write", "read", "inference"],
+      "completes": ["search", "write", "read"],
+      "params": { "recall": 0.95 },
+      "knobs": ["units", "tier", "zones", "region"],
+      "failureModes": [
+        { "id": "re-embed", "event": null, "text": "Changing the embedding model means re-computing every vector." },
+        { "id": "memory", "event": "disk-full", "text": "The index outgrows memory and queries slow sharply." }
+      ],
+      "icon": "Magnifying glass over a small scatter of dots with two short arrows between dots."
+    },
+    {
+      "id": "cache", "code": "ca", "name": "Cache", "category": "data", "kind": "cache", "managed": true,
+      "description": "Keeps recent answers in memory, about 10 times faster than a database, so repeat questions skip the database.",
+      "goodAt": ["Read-heavy data that many people ask for", "Sessions and counters"],
+      "tradeoff": "Cheap speed, but data can be stale, and when it empties everything rushes to the database at once.",
+      "capacity": { "rps": 100000, "unit": "operations per second per cache node (about 13 GB)", "note": "approx." },
+      "latencyMs": { "p50": 0.5, "p99": 2, "note": "In the same zone, approx." },
+      "cost": { "perUnit": 150, "note": "≈ 13 GB in-memory node ≈ $0.20 per hour." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "node" },
+      "availability": 0.999,
+      "handles": ["read", "login", "search", "write", "attack"],
+      "completes": ["read", "login", "search"],
+      "params": { "hitRate": 0.85, "memoryGb": 13, "writeThrough": true },
+      "knobs": ["tier", "zones", "ttlSec", "coalesce", "replication", "region"],
+      "failureModes": [
+        { "id": "stampede", "event": "cache-stampede", "text": "A flush or restart sends every request to the database together." },
+        { "id": "hot-key", "event": "hot-key", "text": "One very hot key saturates the single node." },
+        { "id": "stale", "event": "replication-lag", "text": "Cached answers are wrong until they expire or are invalidated." }
+      ],
+      "icon": "Lightning bolt over a small memory stick with four contacts."
+    },
+    {
+      "id": "distributed-cache", "code": "dx", "name": "Distributed cache", "category": "data", "kind": "cache", "managed": true,
+      "description": "A cache spread over many nodes; each key lives on one node, chosen by hashing the key.",
+      "goodAt": ["Very large hot data sets", "Millions of reads per second"],
+      "tradeoff": "Scales out, but one hot key still lives on one node, and adding nodes moves some keys.",
+      "capacity": { "rps": 100000, "unit": "operations per second per shard", "note": "approx." },
+      "latencyMs": { "p50": 0.7, "p99": 3, "note": "approx." },
+      "cost": { "perUnit": 150, "note": "Per shard; a replica per shard doubles it." },
+      "units": { "min": 2, "max": 64, "default": 3, "label": "shard" },
+      "availability": 0.9995,
+      "handles": ["read", "login", "search", "write", "attack"],
+      "completes": ["read", "login", "search"],
+      "params": { "hitRate": 0.9, "keyed": true, "reshardMissShare": 0.2 },
+      "knobs": ["units", "tier", "zones", "ttlSec", "coalesce", "replication", "region"],
+      "failureModes": [
+        { "id": "hot-key", "event": "hot-key", "text": "A single celebrity key overloads its one shard." },
+        { "id": "flush", "event": "cache-stampede", "text": "Losing a shard sends its keys' traffic to the database." }
+      ],
+      "icon": "Three small memory sticks arranged in a ring with a lightning bolt in the middle."
+    },
+    {
+      "id": "object-storage", "code": "ob", "name": "Object storage", "category": "data", "kind": "store", "managed": true,
+      "description": "Stores files of any size (photos, video, backups) very cheaply and durably, fetched by name.",
+      "goodAt": ["Media and large files", "Durability: about 11 nines", "Cheap storage at any scale"],
+      "tradeoff": "Almost never loses data and costs little to keep, but each fetch takes tens of ms, and sending data out is the expensive part.",
+      "capacity": { "rps": 55000, "writeRps": 35000, "unit": "requests per second (5,500 reads and 3,500 writes per key prefix, 10 prefixes)", "note": "Scales further with more prefixes, approx." },
+      "latencyMs": { "p50": 30, "p99": 150, "note": "Time to first byte, approx." },
+      "cost": { "perMillion": 1.5, "perGB": 0.09, "perGBMonth": 0.023, "note": "≈ $0.023 per GB-month, ≈ $0.40 per million reads, ≈ $5 per million writes, ≈ $0.09 per GB sent to the internet." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "bucket" },
+      "availability": 0.9999,
+      "handles": ["upload", "read", "stream", "live", "batch", "write", "report", "attack"],
+      "completes": ["upload", "read", "stream", "live", "batch", "write"],
+      "params": { "durabilityNines": 11 },
+      "knobs": ["region", "retentionDays"],
+      "failureModes": [
+        { "id": "egress", "event": "cost-blowout", "text": "Serving video straight from storage pays ≈ $0.09 per GB; a CDN cuts this." },
+        { "id": "public-bucket", "event": "compliance-audit", "text": "A bucket left public fails any audit." }
+      ],
+      "icon": "Bucket outline holding a small cube."
+    },
+    {
+      "id": "block-storage", "code": "bs", "name": "Block storage", "category": "data", "kind": "store", "managed": true,
+      "description": "A virtual disk attached to one server, used by self-run databases and apps.",
+      "goodAt": ["Low-latency disk for one machine", "Self-managed databases"],
+      "tradeoff": "Fast and simple, but it lives in one zone, attaches to one machine, and has a speed limit in operations per second.",
+      "capacity": { "rps": 3000, "unit": "operations per second per disk (baseline)", "note": "Up to ≈ 16,000 when you pay for more, approx." },
+      "latencyMs": { "p50": 0.6, "p99": 3, "note": "approx." },
+      "cost": { "perUnit": 8, "perGBMonth": 0.08, "note": "≈ $0.08 per GB-month; a unit here is 100 GB." },
+      "units": { "min": 1, "max": 160, "default": 1, "label": "100 GB disk" },
+      "availability": 0.999,
+      "handles": ["read", "write", "batch", "telemetry", "event"],
+      "completes": ["read", "write", "batch", "telemetry", "event"],
+      "params": { "singleZone": true },
+      "knobs": ["units", "region"],
+      "failureModes": [
+        { "id": "zone", "event": "zone-outage", "text": "The disk is gone while its zone is down." },
+        { "id": "iops", "event": "noisy-neighbor", "text": "Hitting the operations limit makes every request slow." }
+      ],
+      "icon": "Rectangular hard drive with a circular platter and a small arm."
+    },
+    {
+      "id": "file-system", "code": "nf", "name": "Shared file system", "category": "data", "kind": "store", "managed": true,
+      "description": "A network folder that many servers can open at the same time.",
+      "goodAt": ["Legacy apps that expect files", "Shared assets for build and media tools"],
+      "tradeoff": "Convenient, but slower than a local disk, about 4 times the price of object storage, and slow with millions of tiny files.",
+      "capacity": { "rps": 35000, "writeRps": 7000, "unit": "operations per second (managed)", "note": "approx." },
+      "latencyMs": { "p50": 2, "p99": 15, "note": "approx." },
+      "cost": { "perGBMonth": 0.3, "note": "≈ $0.30 per GB-month for the standard class." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "file system" },
+      "availability": 0.9999,
+      "handles": ["read", "write", "upload", "batch"],
+      "completes": ["read", "write", "upload", "batch"],
+      "params": {},
+      "knobs": ["region"],
+      "failureModes": [
+        { "id": "small-files", "event": "noisy-neighbor", "text": "Listing millions of small files stalls every user of the share." }
+      ],
+      "icon": "Folder outline with three small linked dots on its front."
+    },
+    {
+      "id": "data-warehouse", "code": "dw", "name": "Data warehouse", "category": "data", "kind": "store", "managed": true,
+      "description": "Column-based storage for analytics over billions of rows: dashboards, finance, product questions.",
+      "goodAt": ["Big analytical questions in seconds", "Joining data from every system"],
+      "tradeoff": "Answers questions over billions of rows, but each query takes seconds and costs money; never put it behind a user click.",
+      "capacity": { "rps": 20, "unit": "concurrent analytical queries per second per cluster unit", "note": "approx." },
+      "latencyMs": { "p50": 2000, "p99": 20000, "note": "approx." },
+      "cost": { "perUnit": 1800, "perGBMonth": 0.023, "note": "≈ $1,800 per month per provisioned unit, or ≈ $5 per TB scanned on pay-per-query." },
+      "units": { "min": 1, "max": 32, "default": 1, "label": "cluster unit" },
+      "availability": 0.999,
+      "handles": ["report", "batch", "event", "read"],
+      "completes": ["report", "batch", "event"],
+      "params": { "freshnessSec": 3600 },
+      "knobs": ["units", "region", "retentionDays"],
+      "failureModes": [
+        { "id": "scan-bill", "event": "cost-blowout", "text": "A dashboard refreshing every minute scans terabytes all day." },
+        { "id": "stale", "event": null, "text": "Data is only as fresh as the last load, often an hour or a day." }
+      ],
+      "icon": "Small warehouse building with a bar chart on its front."
+    },
+    {
+      "id": "data-lake", "code": "dl", "name": "Data lake", "category": "data", "kind": "store", "managed": true,
+      "description": "Every raw event and file kept cheaply in object storage with a catalog, queried by big-data engines.",
+      "goodAt": ["Keeping everything for later", "Training data for AI"],
+      "tradeoff": "Cheapest way to keep everything, but without owners and schemas it becomes a swamp, and personal data spreads.",
+      "capacity": { "rps": 200, "writeRps": 20000, "unit": "per lake: queries per second and events written per second", "note": "approx." },
+      "latencyMs": { "p50": 5000, "p99": 60000, "note": "Query time, approx." },
+      "cost": { "perGBMonth": 0.023, "perMillion": 0.5, "note": "≈ $0.023 per GB-month plus ≈ $5 per TB scanned." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "lake" },
+      "availability": 0.9999,
+      "handles": ["batch", "report", "event", "telemetry", "upload"],
+      "completes": ["batch", "report", "event", "telemetry", "upload"],
+      "params": {},
+      "knobs": ["region", "retentionDays"],
+      "failureModes": [
+        { "id": "pii", "event": "compliance-audit", "text": "Personal data copied into the lake without controls fails an audit." }
+      ],
+      "icon": "Three wavy water lines under the outline of a database cylinder."
+    },
+    {
+      "id": "ledger-db", "code": "lg", "name": "Ledger", "category": "data", "kind": "store", "managed": false,
+      "description": "Append-only money records: every movement is two entries (one out, one in) that must balance, and history is never edited.",
+      "goodAt": ["Balances that always add up", "Proving every change to auditors"],
+      "tradeoff": "The right way to hold money, but every write is a strict transaction, and one very busy account becomes a hot spot.",
+      "capacity": { "rps": 8000, "writeRps": 2000, "unit": "per unit: balance reads and double-entry postings per second", "note": "approx." },
+      "latencyMs": { "p50": 5, "p99": 30, "note": "approx." },
+      "cost": { "perUnit": 600, "perGBMonth": 0.115, "note": "Built on a strict relational store; per unit." },
+      "units": { "min": 1, "max": 32, "default": 1, "label": "ledger shard" },
+      "availability": 0.9995,
+      "handles": ["payment", "write", "read", "report"],
+      "completes": ["payment", "write", "read", "report"],
+      "params": { "keyed": true, "immutable": true, "failoverSec": 60, "replicationLagMs": 100 },
+      "knobs": ["units", "tier", "zones", "replication", "region"],
+      "failureModes": [
+        { "id": "hot-account", "event": "hot-key", "text": "One merchant receives most payments and every posting waits on its row." },
+        { "id": "drift", "event": "data-corruption", "text": "Without double entry, balances drift and nobody can say why." }
+      ],
+      "icon": "Open book with a small balance scale drawn on the right page."
+    },
+    {
+      "id": "db-proxy", "code": "px", "name": "Connection pooler", "category": "data", "kind": "router", "managed": true,
+      "description": "Sits in front of a database and shares a few connections among thousands of app servers or functions.",
+      "goodAt": ["Serverless and large fleets", "Faster, smoother database failover"],
+      "tradeoff": "Small cost, big protection for the database, but it is one more hop and must itself be redundant.",
+      "capacity": { "rps": 20000, "unit": "queries per second per proxy", "note": "Turns about 10,000 client connections into a few hundred, approx." },
+      "latencyMs": { "p50": 0.5, "p99": 2, "note": "approx." },
+      "cost": { "perUnit": 40, "note": "Priced per database vCPU; ≈ $40 per month for a small database." },
+      "units": { "min": 1, "max": 8, "default": 1, "label": "proxy" },
+      "availability": 0.9995,
+      "handles": ["*"],
+      "completes": [],
+      "params": { "failoverSpeedup": 0.5, "poolSize": 500 },
+      "knobs": ["units", "zones", "region"],
+      "failureModes": [
+        { "id": "single", "event": "zone-outage", "text": "One proxy in one zone becomes a single point of failure." }
+      ],
+      "icon": "Funnel with many thin lines entering the wide end and two lines leaving the narrow end."
+    },
+    {
+      "id": "cold-archive", "code": "ar", "name": "Cold archive", "category": "data", "kind": "store", "managed": true,
+      "description": "Very cheap long-term storage for things you must keep but rarely read; getting data back takes minutes to hours.",
+      "goodAt": ["Records kept 7 years for the law", "Old backups"],
+      "tradeoff": "About 10 times cheaper than object storage, but a restore can take hours and costs a retrieval fee.",
+      "capacity": { "rps": 1000, "unit": "writes per second", "note": "approx." },
+      "latencyMs": { "p50": 600000, "p99": 43200000, "note": "Retrieval takes minutes to 12 hours, approx." },
+      "cost": { "perGBMonth": 0.002, "note": "≈ $0.001 to $0.004 per GB-month plus ≈ $0.01 to $0.03 per GB retrieved." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "vault" },
+      "availability": 0.9999,
+      "handles": ["batch", "write", "report"],
+      "completes": ["batch", "write"],
+      "params": {},
+      "knobs": ["region", "retentionDays"],
+      "failureModes": [
+        { "id": "slow-restore", "event": "data-corruption", "text": "Restoring from archive during an incident takes hours." }
+      ],
+      "icon": "Archive box with a small snowflake on its front."
+    },
+    {
+      "id": "queue", "code": "qu", "name": "Queue", "category": "messaging", "kind": "queue", "managed": true,
+      "description": "Holds jobs in a line until a worker takes them, so a spike waits instead of breaking things.",
+      "goodAt": ["Smoothing spikes", "Work users need not wait for", "Retrying failed work later"],
+      "tradeoff": "Turns overload into delay, but a growing line hides problems until messages pass their retention and are lost.",
+      "capacity": { "rps": 100000, "unit": "messages per second (standard queue, managed)", "note": "Ordered queues are about 300 to 3,000 per second per group, approx." },
+      "latencyMs": { "p50": 5, "p99": 30, "note": "To accept a message, approx." },
+      "cost": { "perMillion": 1.2, "note": "≈ $0.40 per million API calls; each message is sent, received and deleted, so ≈ $1.20 per million messages." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "queue" },
+      "availability": 0.9999,
+      "handles": ["write", "upload", "notify", "event", "batch", "webhook", "payment", "message", "telemetry", "location", "sync", "inference", "search"],
+      "completes": [],
+      "params": { "ackImmediately": true, "retentionDays": 4, "visibilityTimeoutSec": 30, "delivery": "at-least-once", "modes": ["standard", "fifo"] },
+      "knobs": ["retentionDays", "mode"],
+      "failureModes": [
+        { "id": "backlog", "event": "viral-spike", "text": "Consumers slower than producers make the line grow without limit." },
+        { "id": "dupes", "event": "duplicate-delivery", "text": "At-least-once means some messages arrive twice." },
+        { "id": "poison", "event": "poison-message", "text": "A bad message is retried forever without a dead-letter queue." }
+      ],
+      "icon": "Tube shape with three small envelopes lined up inside, an arrow at its right end."
+    },
+    {
+      "id": "pubsub", "code": "ps", "name": "Pub/sub topic", "category": "messaging", "kind": "queue", "managed": true,
+      "description": "One message is delivered to every subscriber: publish once, many services react.",
+      "goodAt": ["Fan-out to several services", "Decoupling teams"],
+      "tradeoff": "Easy fan-out, but order is not guaranteed and slow subscribers fall behind or drop messages.",
+      "capacity": { "rps": 100000, "unit": "messages published per second (managed)", "note": "approx." },
+      "latencyMs": { "p50": 20, "p99": 100, "note": "approx." },
+      "cost": { "perMillion": 0.5, "note": "≈ $0.50 per million publishes plus delivery charges, approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "topic" },
+      "availability": 0.9999,
+      "handles": ["event", "notify", "message", "write", "payment", "location", "telemetry"],
+      "completes": [],
+      "params": { "ackImmediately": true, "fanout": true, "retentionDays": 7, "delivery": "at-least-once" },
+      "knobs": ["retentionDays"],
+      "failureModes": [
+        { "id": "slow-sub", "event": null, "text": "One slow subscriber builds a backlog that only it feels." },
+        { "id": "dupes", "event": "duplicate-delivery", "text": "Subscribers receive some messages twice." }
+      ],
+      "icon": "One filled dot with three lines branching to three hollow dots."
+    },
+    {
+      "id": "event-stream", "code": "ks", "name": "Event stream", "category": "messaging", "kind": "queue", "managed": false,
+      "description": "An ordered, replayable log of events, like Kafka; many consumers read it at their own pace, and it is kept for days.",
+      "goodAt": ["High-volume events in order per key", "Replaying history to rebuild data"],
+      "tradeoff": "Huge throughput and replay, but order holds only within a partition, and running it well is real work.",
+      "capacity": { "rps": 50000, "unit": "1 KB messages per second per broker", "note": "≈ 50 MB per second per broker and ≈ 10 MB per second per partition, approx." },
+      "latencyMs": { "p50": 5, "p99": 50, "note": "approx." },
+      "cost": { "perUnit": 500, "perGBMonth": 0.1, "note": "Per broker; 3 brokers minimum, each message stored 3 times." },
+      "units": { "min": 3, "max": 100, "default": 3, "label": "broker" },
+      "availability": 0.9999,
+      "handles": ["event", "telemetry", "location", "write", "payment", "message", "sync", "notify", "batch"],
+      "completes": [],
+      "params": { "ackImmediately": true, "fanout": true, "replicationFactor": 3, "retentionDays": 7, "keyed": true },
+      "knobs": ["units", "partitions", "retentionDays", "zones", "region"],
+      "failureModes": [
+        { "id": "hot-partition", "event": "hot-key", "text": "A bad key sends most events to one partition." },
+        { "id": "lag", "event": "viral-spike", "text": "Consumers fall behind and data arrives late everywhere downstream." },
+        { "id": "disk", "event": "disk-full", "text": "Brokers run out of disk before retention clears old data." }
+      ],
+      "icon": "Horizontal strip of five cells, the last one filled, with an arrow continuing to the right."
+    },
+    {
+      "id": "stream-processor", "code": "sp", "name": "Stream processor", "category": "messaging", "kind": "compute", "managed": false,
+      "description": "Computes on events as they flow: running counts, time windows, joins and live alerts.",
+      "goodAt": ["Live dashboards and counters", "Fraud signals within seconds", "Surge pricing and ETAs"],
+      "tradeoff": "Fresh answers in seconds, but it keeps state that must be checkpointed, and late events complicate windows.",
+      "capacity": { "rps": 20000, "unit": "events per second per worker with state", "note": "approx." },
+      "latencyMs": { "p50": 50, "p99": 1000, "note": "Includes window time, approx." },
+      "cost": { "perUnit": 300, "note": "Per 4 vCPU worker." },
+      "units": { "min": 1, "max": 200, "default": 2, "label": "worker" },
+      "availability": 0.999,
+      "handles": ["event", "telemetry", "location", "payment", "write", "message", "report"],
+      "completes": ["event", "location"],
+      "params": { "checkpointSec": 60 },
+      "knobs": ["units", "tier", "zones", "region", "autoscale"],
+      "failureModes": [
+        { "id": "checkpoint", "event": null, "text": "Large state makes checkpoints slow, so lag grows." },
+        { "id": "replay", "event": "bad-deploy", "text": "After a crash it reprocesses from the last checkpoint and may double count." }
+      ],
+      "icon": "Wave line passing through the centre of a small gear."
+    },
+    {
+      "id": "dead-letter-queue", "code": "dq", "name": "Dead-letter queue", "category": "messaging", "kind": "queue", "managed": true,
+      "description": "A parking spot for messages that failed too many times, so they stop blocking the rest.",
+      "goodAt": ["Isolating poison messages", "Fixing and replaying failures later"],
+      "tradeoff": "Almost free and saves the pipeline, but only helps if someone watches it.",
+      "capacity": { "rps": 10000, "unit": "messages per second", "note": "approx." },
+      "latencyMs": { "p50": 5, "p99": 30, "note": "approx." },
+      "cost": { "perMillion": 1.2, "note": "Same price as a queue: ≈ $1.20 per million messages sent, received and deleted." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "queue" },
+      "availability": 0.9999,
+      "handles": ["write", "upload", "notify", "event", "batch", "webhook", "payment", "message", "telemetry", "location", "sync"],
+      "completes": [],
+      "params": { "maxReceives": 5, "retentionDays": 14 },
+      "knobs": ["retentionDays"],
+      "failureModes": [
+        { "id": "unwatched", "event": null, "text": "Nobody alerts on it, and messages expire after 14 days unseen." }
+      ],
+      "icon": "Inbox tray holding an envelope marked with a small x."
+    },
+    {
+      "id": "outbox", "code": "ox", "name": "Transactional outbox", "category": "messaging", "kind": "queue", "managed": false,
+      "description": "Saves the event in the same database transaction as the data, then a relay publishes it, so you never save without telling or tell without saving.",
+      "goodAt": ["Orders and payments that must also notify others", "No lost or phantom events"],
+      "tradeoff": "Makes data and events agree, at the cost of a small table, a relay and up to a second of delay.",
+      "capacity": { "rps": 5000, "unit": "events relayed per second per relay", "note": "approx." },
+      "latencyMs": { "p50": 2, "p99": 10, "note": "Added to the write; publishing follows within about 100 ms to 1 s, approx." },
+      "cost": { "perUnit": 70, "note": "One small relay worker." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "relay" },
+      "availability": 0.9995,
+      "handles": ["write", "payment", "event", "sync"],
+      "completes": [],
+      "params": { "ackImmediately": true, "dedupe": true, "publishDelayMs": 500 },
+      "knobs": ["units"],
+      "failureModes": [
+        { "id": "relay-lag", "event": null, "text": "If the relay falls behind, other services hear about changes late." }
+      ],
+      "icon": "Inbox tray with an arrow rising out of it to the upper right."
+    },
+    {
+      "id": "workflow-engine", "code": "we", "name": "Workflow engine", "category": "messaging", "kind": "queue", "managed": true,
+      "description": "Runs multi-step processes reliably: each step is retried, and timers and progress survive crashes.",
+      "goodAt": ["Bookings, claims and payouts with many steps", "Waiting hours or days between steps"],
+      "tradeoff": "Turns fragile chains of calls into durable processes, for a per-step fee and a new way of writing code.",
+      "capacity": { "rps": 2000, "unit": "workflow steps per second per unit", "note": "approx." },
+      "latencyMs": { "p50": 20, "p99": 100, "note": "Per step, approx." },
+      "cost": { "perMillion": 25, "note": "≈ $25 per million state transitions on a managed service." },
+      "units": { "min": 1, "max": 20, "default": 1, "label": "allowance" },
+      "availability": 0.9999,
+      "handles": ["payment", "write", "batch", "upload", "notify", "webhook", "sync"],
+      "completes": [],
+      "params": { "ackImmediately": true, "retriesBuiltIn": true, "backoff": "exponential-jitter" },
+      "knobs": ["units"],
+      "failureModes": [
+        { "id": "stuck", "event": "dependency-outage", "text": "Workflows pile up waiting on a step whose service is down." }
+      ],
+      "icon": "Three small boxes joined by arrows, with a curved arrow looping from the last back to the first."
+    },
+    {
+      "id": "websocket-gateway", "code": "ws", "name": "Live connection gateway", "category": "messaging", "kind": "router", "managed": false,
+      "description": "Keeps a live two-way connection open to each user, so messages arrive instantly without asking.",
+      "goodAt": ["Chat, presence and live scores", "Driver locations and game state"],
+      "tradeoff": "Instant delivery, but every open connection uses memory, and after a restart everyone reconnects at once.",
+      "capacity": { "rps": 50000, "unit": "messages per second per node, holding about 100,000 open connections", "note": "approx." },
+      "latencyMs": { "p50": 10, "p99": 60, "note": "approx." },
+      "cost": { "perUnit": 200, "note": "Per 8 GB node; managed services charge ≈ $1 per million messages plus ≈ $0.25 per million connection-minutes." },
+      "units": { "min": 1, "max": 200, "default": 2, "label": "node" },
+      "availability": 0.999,
+      "handles": ["*", "attack"],
+      "completes": ["notify"],
+      "params": { "connectionsPerUnit": 100000 },
+      "knobs": ["units", "zones", "region", "autoscale"],
+      "failureModes": [
+        { "id": "reconnect", "event": "thundering-herd", "text": "After a deploy, every client reconnects in the same few seconds." },
+        { "id": "uneven", "event": null, "text": "New nodes stay empty while old ones keep their connections." }
+      ],
+      "icon": "Electric plug with two arrows above it pointing in opposite directions."
+    },
+    {
+      "id": "cdc-connector", "code": "cc", "name": "Change data capture", "category": "messaging", "kind": "tap", "managed": false,
+      "description": "Reads the database's own change log and streams every change out, to keep search, caches and analytics in sync.",
+      "goodAt": ["Keeping copies (search, cache, warehouse) in sync", "No changes to app code"],
+      "tradeoff": "Reliable sync without dual writes, but it lags under big transactions and breaks on schema changes.",
+      "capacity": { "rps": 10000, "unit": "changes per second per connector", "note": "approx." },
+      "latencyMs": { "p50": 300, "p99": 3000, "note": "Lag from commit to event, approx." },
+      "cost": { "perUnit": 200, "note": "One connector worker." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "connector" },
+      "availability": 0.999,
+      "handles": ["write", "payment", "sync", "message", "event", "location"],
+      "completes": [],
+      "params": { "tapsWrites": true },
+      "knobs": ["units"],
+      "failureModes": [
+        { "id": "schema", "event": "schema-migration-lock", "text": "A table change stops the connector until it is updated." },
+        { "id": "lag", "event": "replication-lag", "text": "Big transactions make every copy late." }
+      ],
+      "icon": "Database cylinder with a curved arrow peeling off its side to the right."
+    },
+    {
+      "id": "identity-provider", "code": "id", "name": "Identity provider", "category": "platform", "kind": "lookaside", "managed": true,
+      "description": "Signs people in and hands out tokens: passwords, two-factor codes, 'sign in with' buttons.",
+      "goodAt": ["Secure sign-in without building it", "Tokens your services can check locally"],
+      "tradeoff": "Safer than rolling your own, priced per active user, and if it goes down nobody can sign in.",
+      "capacity": { "rps": 1000, "unit": "sign-ins per second per allowance", "note": "Password hashing deliberately takes about 100 ms of CPU, approx." },
+      "latencyMs": { "p50": 150, "p99": 600, "note": "Per sign-in; checking a token afterwards is under 1 ms locally, approx." },
+      "cost": { "perThousandUsers": 5.5, "note": "≈ $0.0055 per monthly active user after a free tier, approx." },
+      "units": { "min": 1, "max": 20, "default": 1, "label": "allowance" },
+      "availability": 0.9995,
+      "handles": ["login", "attack"],
+      "completes": ["login"],
+      "params": { "callShare": 1 },
+      "knobs": ["units", "region"],
+      "failureModes": [
+        { "id": "stuffing", "event": "bot-scraping", "text": "Bots try leaked passwords by the million." },
+        { "id": "down", "event": "dependency-outage", "text": "An outage locks everyone out at once." }
+      ],
+      "icon": "ID badge with a small person outline and a lanyard clip at the top."
+    },
+    {
+      "id": "secrets-manager", "code": "sc", "name": "Secrets manager", "category": "platform", "kind": "control", "managed": true,
+      "description": "Keeps passwords and API keys out of code; apps fetch them at start and can rotate them without a redeploy.",
+      "goodAt": ["Rotating leaked keys in minutes", "Keeping secrets out of code and logs"],
+      "tradeoff": "Cheap and safer, but calling it on every request gets you throttled; cache the secret.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 20, "note": "≈ $0.40 per secret per month plus ≈ $0.05 per 10,000 calls; about 50 secrets assumed." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "vault" },
+      "availability": 0.9999,
+      "handles": [],
+      "completes": [],
+      "params": { "rotationSec": 300 },
+      "knobs": [],
+      "failureModes": [
+        { "id": "leak", "event": "key-leak", "text": "Without it, a leaked key means a code change and a full redeploy." }
+      ],
+      "icon": "Round vault door with a keyhole in the centre and three bolts on its edge."
+    },
+    {
+      "id": "kms", "code": "km", "name": "Key management", "category": "platform", "kind": "lookaside", "managed": true,
+      "description": "Creates and guards encryption keys; your data is encrypted with small keys that it locks (envelope encryption).",
+      "goodAt": ["Encryption that auditors accept", "Turning off access by disabling a key"],
+      "tradeoff": "Cheap and required for most audits, but it has request limits, and a deleted key makes data unreadable forever.",
+      "capacity": { "rps": 10000, "unit": "requests per second shared per account and region", "note": "Quotas range ≈ 5,500 to 50,000 by region and operation, approx." },
+      "latencyMs": { "p50": 5, "p99": 20, "note": "approx." },
+      "cost": { "base": 10, "perMillion": 3, "note": "≈ $1 per key per month plus ≈ $0.03 per 10,000 requests." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "key set" },
+      "availability": 0.9999,
+      "handles": ["payment", "write", "login", "upload"],
+      "completes": [],
+      "params": { "callShare": 0.05 },
+      "knobs": ["region"],
+      "failureModes": [
+        { "id": "throttle", "event": "third-party-rate-limit", "text": "Calling it for every record instead of caching data keys hits the quota." }
+      ],
+      "icon": "Key whose bow is a padlock outline."
+    },
+    {
+      "id": "hsm", "code": "hs", "name": "Hardware security module", "category": "platform", "kind": "lookaside", "managed": true,
+      "description": "A tamper-proof device that signs and stores the most sensitive keys, such as card payment keys.",
+      "goodAt": ["Payment card rules and banking", "Keys that must never leave hardware"],
+      "tradeoff": "The strongest key protection, at over $1,000 a month per device, with a hard signing limit; run two.",
+      "capacity": { "rps": 1500, "unit": "signing operations per second per device", "note": "approx." },
+      "latencyMs": { "p50": 5, "p99": 25, "note": "approx." },
+      "cost": { "perUnit": 1400, "note": "≈ $1.50 to $2 per hour per device." },
+      "units": { "min": 1, "max": 8, "default": 1, "label": "device" },
+      "availability": 0.999,
+      "handles": ["payment", "login"],
+      "completes": [],
+      "params": { "callShare": 1 },
+      "knobs": ["units", "zones", "region"],
+      "failureModes": [
+        { "id": "single", "event": "zone-outage", "text": "One device is a single point of failure for every payment." }
+      ],
+      "icon": "Small chip inside a shield outline, with a keyhole on the chip."
+    },
+    {
+      "id": "rate-limiter", "code": "rl", "name": "Rate limiter", "category": "platform", "kind": "filter", "managed": false,
+      "description": "Caps how many requests each client may send per second and politely says 'try again later' (429) above it.",
+      "goodAt": ["Stopping one client from hurting everyone", "Taming bots and retry storms"],
+      "tradeoff": "Protects the system for a small cost, but limits that are too tight turn away real users at peak.",
+      "capacity": { "rps": 100000, "unit": "checks per second per limiter node", "note": "Token bucket counters in memory, approx." },
+      "latencyMs": { "p50": 0.5, "p99": 2, "note": "approx." },
+      "cost": { "perUnit": 150, "note": "One in-memory counter node." },
+      "units": { "min": 1, "max": 16, "default": 1, "label": "node" },
+      "availability": 0.9995,
+      "handles": ["*", "attack"],
+      "completes": [],
+      "params": { "blockAttackShare": 0.7, "capsRetryShare": 0.8, "modes": ["fail-open", "fail-closed"] },
+      "knobs": ["units", "zones", "limitRps", "mode", "region"],
+      "failureModes": [
+        { "id": "too-tight", "event": "flash-crowd", "text": "A real surge of real people gets 429s." },
+        { "id": "limiter-down", "event": null, "text": "If it fails, you must choose: let all through, or block all." }
+      ],
+      "icon": "Speedometer dial with its needle stopped against a small bar."
+    },
+    {
+      "id": "circuit-breaker", "code": "cb", "name": "Circuit breaker", "category": "platform", "kind": "filter", "managed": true,
+      "description": "Stops calling a failing dependency for a short while and fails fast instead, so servers do not pile up waiting.",
+      "goodAt": ["Slow or failing dependencies", "Keeping the rest of the app working"],
+      "tradeoff": "Free and protective, but some requests fail on purpose, and a twitchy setting trips on small blips.",
+      "capacity": { "rps": 1000000, "unit": "library inside your service", "note": "No real limit." },
+      "latencyMs": { "p50": 0, "p99": 0.1, "note": "approx." },
+      "cost": { "note": "Free; a library or mesh setting." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "breaker" },
+      "availability": 1,
+      "handles": ["*"],
+      "completes": [],
+      "params": { "errorThreshold": 0.5, "slowThresholdMs": 1000, "openSec": 30 },
+      "knobs": ["timeoutMs"],
+      "failureModes": [
+        { "id": "twitchy", "event": null, "text": "Trips on a short blip and fails good traffic for 30 seconds." }
+      ],
+      "icon": "Electrical switch symbol drawn open, with a small gap and two contact dots."
+    },
+    {
+      "id": "idempotency-store", "code": "ik", "name": "Idempotency keys", "category": "platform", "kind": "lookaside", "managed": true,
+      "description": "Remembers each request's unique key for a day, so a retried payment or order happens exactly once.",
+      "goodAt": ["Payments and orders that get retried", "Exactly-once effects on at-least-once delivery"],
+      "tradeoff": "A few ms per write prevents double charges; if the store is down you must refuse money moves.",
+      "capacity": { "rps": 50000, "unit": "checks per second", "note": "approx." },
+      "latencyMs": { "p50": 2, "p99": 8, "note": "approx." },
+      "cost": { "perUnit": 100, "note": "A small key-value table with a 24 hour expiry." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "table" },
+      "availability": 0.9999,
+      "handles": ["payment", "write", "webhook", "notify", "sync", "message"],
+      "completes": [],
+      "params": { "callShare": 1, "ttlHours": 24 },
+      "knobs": ["units", "region"],
+      "failureModes": [
+        { "id": "short-ttl", "event": "duplicate-delivery", "text": "Keys that expire before the last retry let duplicates through." }
+      ],
+      "icon": "Fingerprint shape with a small check mark at its lower right."
+    },
+    {
+      "id": "feature-flags", "code": "ff", "name": "Feature flags", "category": "platform", "kind": "control", "managed": true,
+      "description": "Turns features on or off for some or all users without a deploy; a kill switch for bad code.",
+      "goodAt": ["Gradual launches", "Switching off a bad feature in seconds"],
+      "tradeoff": "Fast, safe launches, but old flags pile up and one wrong rule can expose a feature to everyone.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 300, "note": "Managed plans ≈ $10 to $20 per seat; checks run locally in each service." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "project" },
+      "availability": 0.9999,
+      "handles": [],
+      "completes": [],
+      "params": { "killSwitchSec": 30 },
+      "knobs": [],
+      "failureModes": [
+        { "id": "wrong-target", "event": "bad-config-push", "text": "A targeting mistake turns an unfinished feature on for everyone." }
+      ],
+      "icon": "Toggle switch in the on position with a small flag on a pole rising from it."
+    },
+    {
+      "id": "config-service", "code": "cf", "name": "Config service", "category": "platform", "kind": "control", "managed": true,
+      "description": "One place that pushes settings to every server, with versions, staged rollout and rollback.",
+      "goodAt": ["Changing behaviour without a deploy", "Rolling back a bad setting fast"],
+      "tradeoff": "Powerful and cheap, and also one of the most common causes of big outages when a bad value goes everywhere at once.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 50, "note": "approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "service" },
+      "availability": 0.9999,
+      "handles": [],
+      "completes": [],
+      "params": { "stagedShare": 0.1, "keepsLastGood": true },
+      "knobs": [],
+      "failureModes": [
+        { "id": "bad-push", "event": "bad-config-push", "text": "A bad value reaches every server in seconds." }
+      ],
+      "icon": "Three horizontal sliders with a small broadcast arc above them."
+    },
+    {
+      "id": "coordination-service", "code": "zk", "name": "Coordination service", "category": "platform", "kind": "lookaside", "managed": false,
+      "description": "A small, strongly consistent store for leader election, locks and 'who is alive' lists.",
+      "goodAt": ["Electing one leader", "Locks so a job runs once"],
+      "tradeoff": "Rock-solid agreement for small data, but losing a majority stops it, and it is not a database.",
+      "capacity": { "rps": 50000, "writeRps": 5000, "unit": "per 3-node set", "note": "approx." },
+      "latencyMs": { "p50": 2, "p99": 10, "note": "approx." },
+      "cost": { "perUnit": 100, "note": "Per small node; run 3 or 5." },
+      "units": { "min": 3, "max": 5, "default": 3, "label": "node" },
+      "availability": 0.9999,
+      "handles": ["batch", "write", "payment"],
+      "completes": [],
+      "params": { "callShare": 0.01, "quorum": true },
+      "knobs": ["units", "zones", "region"],
+      "failureModes": [
+        { "id": "quorum", "event": "zone-outage", "text": "With 3 nodes in 1 zone, a zone loss stops all locks and elections." }
+      ],
+      "icon": "Three dots in a triangle joined by lines, the top dot wearing a small crown."
+    },
+    {
+      "id": "audit-log", "code": "au", "name": "Audit log", "category": "platform", "kind": "tap", "managed": true,
+      "description": "A tamper-evident record of who did what and when, kept on write-once storage.",
+      "goodAt": ["Passing security and health-data audits", "Investigating incidents"],
+      "tradeoff": "Small cost, required by most regulated industries; it must never hold raw personal data itself.",
+      "capacity": { "rps": 20000, "unit": "records per second", "note": "approx." },
+      "latencyMs": { "p50": 0, "p99": 0, "note": "Written in the background; adds nothing to the request." },
+      "cost": { "base": 50, "perGBMonth": 0.023, "note": "≈ $0.50 per GB ingested plus write-once storage at ≈ $0.023 per GB-month." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "log" },
+      "availability": 0.9999,
+      "handles": ["login", "payment", "write", "read", "report", "sync"],
+      "completes": [],
+      "params": { "satisfies": ["audit-log"] },
+      "knobs": ["retentionDays"],
+      "failureModes": [
+        { "id": "missing", "event": "compliance-audit", "text": "No audit trail fails the audit outright." }
+      ],
+      "icon": "Clipboard with three check lines and a small padlock on the clip."
+    },
+    {
+      "id": "privacy-vault", "code": "pv", "name": "Privacy vault", "category": "platform", "kind": "lookaside", "managed": true,
+      "description": "Keeps sensitive personal data (card numbers, ID numbers, health details) in one locked place and gives the rest of the system harmless tokens.",
+      "goodAt": ["Shrinking what auditors must check", "Keeping personal data out of logs and analytics"],
+      "tradeoff": "Shrinks risk and audit scope, but every look-up of real data adds 10 to 40 ms and a dependency.",
+      "capacity": { "rps": 5000, "unit": "token look-ups per second per unit", "note": "approx." },
+      "latencyMs": { "p50": 10, "p99": 40, "note": "approx." },
+      "cost": { "base": 1000, "perMillion": 10, "note": "Managed vaults start around $1,000 per month, approx." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "unit" },
+      "availability": 0.9995,
+      "handles": ["payment", "write", "read", "login", "report"],
+      "completes": [],
+      "params": { "callShare": 0.3, "satisfies": ["pii-vault"] },
+      "knobs": ["units", "region"],
+      "failureModes": [
+        { "id": "vault-down", "event": "dependency-outage", "text": "While it is down, screens that show personal data must degrade." }
+      ],
+      "icon": "Safe box with a small tag hanging from its handle."
+    },
+    {
+      "id": "consent-service", "code": "cn", "name": "Consent service", "category": "platform", "kind": "lookaside", "managed": false,
+      "description": "Records what each person agreed to (emails, tracking, data sharing) and answers 'may we?' before you act.",
+      "goodAt": ["Privacy laws in many countries", "Honouring opt-outs everywhere"],
+      "tradeoff": "Cheap insurance against fines, but a stale copy can still email someone who opted out.",
+      "capacity": { "rps": 20000, "unit": "checks per second", "note": "approx." },
+      "latencyMs": { "p50": 3, "p99": 15, "note": "Cached, approx." },
+      "cost": { "perUnit": 200, "note": "approx." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "unit" },
+      "availability": 0.9995,
+      "handles": ["event", "notify", "read", "report"],
+      "completes": [],
+      "params": { "callShare": 0.2, "satisfies": ["consent"] },
+      "knobs": ["units", "zones", "region"],
+      "failureModes": [
+        { "id": "stale-opt-out", "event": "compliance-audit", "text": "Marketing reaches people who opted out." }
+      ],
+      "icon": "Check box with a small person outline beside it."
+    },
+    {
+      "id": "metrics", "code": "mt", "name": "Metrics", "category": "ops", "kind": "observer", "managed": true,
+      "description": "Numbers over time for every part: requests, errors, latency and how busy things are.",
+      "goodAt": ["Seeing trouble in a minute or two", "Capacity planning"],
+      "tradeoff": "Essential and cheap at first, but every unique label combination is a new series you pay for.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 300, "note": "≈ $0.10 to $0.30 per 1,000 active series per month; about 1 million series assumed." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "workspace" },
+      "availability": 0.9995,
+      "handles": [],
+      "completes": [],
+      "params": { "satisfies": ["metrics"] },
+      "knobs": ["retentionDays"],
+      "failureModes": [
+        { "id": "cardinality", "event": "cardinality-explosion", "text": "A user id in a label multiplies series and the bill." }
+      ],
+      "icon": "Line chart with a sharp heartbeat-like peak in the middle."
+    },
+    {
+      "id": "logs", "code": "lo", "name": "Logs", "category": "ops", "kind": "observer", "managed": true,
+      "description": "Text records of what each service did, searchable when something goes wrong.",
+      "goodAt": ["Finding the exact error", "Explaining one user's bad experience"],
+      "tradeoff": "Great detail, but volume and bills jump during incidents, exactly when you need them.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 1500, "note": "≈ $0.50 per GB ingested; about 100 GB per day assumed." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "workspace" },
+      "availability": 0.999,
+      "handles": [],
+      "completes": [],
+      "params": { "repairSpeedup": 0.25, "satisfies": ["logs"] },
+      "knobs": ["retentionDays", "sampling"],
+      "failureModes": [
+        { "id": "pii", "event": "compliance-audit", "text": "Personal data written into logs fails an audit." },
+        { "id": "bill", "event": "cost-blowout", "text": "An error loop writes gigabytes per minute." }
+      ],
+      "icon": "Page with four short horizontal lines, each starting with a small tick mark."
+    },
+    {
+      "id": "traces", "code": "tr", "name": "Traces", "category": "ops", "kind": "observer", "managed": true,
+      "description": "Follows one request through every service and shows where its time went.",
+      "goodAt": ["Finding which hop is slow", "Understanding call chains"],
+      "tradeoff": "Pinpoints slow hops, but you keep only a sample, so rare slow requests can be missed.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 400, "note": "≈ $0.20 to $1 per million spans after sampling, approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "workspace" },
+      "availability": 0.999,
+      "handles": [],
+      "completes": [],
+      "params": { "repairSpeedup": 0.35 },
+      "knobs": ["sampling", "retentionDays"],
+      "failureModes": [
+        { "id": "sampled-out", "event": null, "text": "A 1 percent sample may miss the slow request a customer reports." }
+      ],
+      "icon": "Waterfall of four horizontal bars, each starting a little later than the one above."
+    },
+    {
+      "id": "alerting", "code": "al", "name": "Alerting", "category": "ops", "kind": "observer", "managed": true,
+      "description": "Watches the metrics and fires an alert when users are being hurt, for example when errors burn the SLO too fast.",
+      "goodAt": ["Noticing problems before customers tweet", "Measuring against SLOs"],
+      "tradeoff": "Turns dashboards into action, but noisy alerts teach people to ignore them.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 50, "note": "approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "rule set" },
+      "availability": 0.9995,
+      "handles": [],
+      "completes": [],
+      "params": { "needs": ["metrics"], "detectSec": 180 },
+      "knobs": [],
+      "failureModes": [
+        { "id": "noise", "event": null, "text": "Fifty alerts a night and the real one is missed." }
+      ],
+      "icon": "Bell with two short sound waves on each side."
+    },
+    {
+      "id": "dashboards", "code": "da", "name": "Dashboards", "category": "ops", "kind": "observer", "managed": true,
+      "description": "Shared screens of the key graphs, so a whole team can see the same picture.",
+      "goodAt": ["Fast shared understanding in an incident", "Daily health checks"],
+      "tradeoff": "Cheap and helpful, but dashboards showing averages hide the slow 1 percent.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 60, "note": "≈ $8 to $20 per seat, approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "team" },
+      "availability": 0.999,
+      "handles": [],
+      "completes": [],
+      "params": { "needs": ["metrics"], "repairSpeedup": 0.15 },
+      "knobs": [],
+      "failureModes": [
+        { "id": "averages", "event": null, "text": "The average looks fine while 1 in 100 users waits 5 seconds." }
+      ],
+      "icon": "Two by two grid of rounded tiles, one with a small bar chart and one with a line."
+    },
+    {
+      "id": "pager", "code": "pa", "name": "On-call pager", "category": "ops", "kind": "observer", "managed": true,
+      "description": "Wakes the person on call when an alert fires, and escalates to the next person if nobody answers.",
+      "goodAt": ["Fast human response at 3 AM", "Clear ownership"],
+      "tradeoff": "A few dollars per person, and a real human cost: rotate fairly and keep alerts meaningful.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 125, "note": "≈ $20 to $40 per responder per month; 5 responders assumed." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "rotation" },
+      "availability": 0.9999,
+      "handles": [],
+      "completes": [],
+      "params": { "needs": ["alerting"], "ackSec": 300 },
+      "knobs": [],
+      "failureModes": [
+        { "id": "no-escalation", "event": null, "text": "One sleeping person and no escalation means a long outage." }
+      ],
+      "icon": "Small pager device with vibration lines on both sides."
+    },
+    {
+      "id": "ci-cd", "code": "ci", "name": "CI/CD pipeline", "category": "ops", "kind": "control", "managed": true,
+      "description": "Builds, tests and ships code safely: a small canary first, then everyone, with one-click rollback.",
+      "goodAt": ["Shipping many times a day safely", "Rolling back in minutes"],
+      "tradeoff": "Small monthly cost; the canary and rollback turn a bad release from a long outage into a short blip.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 200, "note": "≈ $0.008 per build minute; about 25,000 minutes a month assumed." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "pipeline" },
+      "availability": 0.999,
+      "handles": [],
+      "completes": [],
+      "params": { "canaryShare": 0.05, "rollbackSec": 300 },
+      "knobs": [],
+      "failureModes": [
+        { "id": "no-canary", "event": "bad-deploy", "text": "Without a canary a bad build reaches 100 percent of servers." }
+      ],
+      "icon": "Infinity loop with a small arrowhead on its right curve."
+    },
+    {
+      "id": "backups", "code": "bk", "name": "Backups", "category": "ops", "kind": "control", "managed": true,
+      "description": "Regular copies of your databases plus point-in-time restore, kept somewhere separate.",
+      "goodAt": ["Undoing a bad migration or deletion", "Passing audits"],
+      "tradeoff": "Cheap insurance, but only real if you test a restore, and restoring a terabyte takes about an hour.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 20, "perGBMonth": 0.05, "note": "≈ $0.05 per GB-month of snapshot, approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "policy" },
+      "availability": 0.99999,
+      "handles": [],
+      "completes": [],
+      "params": { "rpoSec": 300, "restoreSecPerTb": 3600, "satisfies": ["backups"] },
+      "knobs": ["retentionDays", "region"],
+      "failureModes": [
+        { "id": "same-region", "event": "region-outage", "text": "Backups in the same region are lost with it." },
+        { "id": "untested", "event": "data-corruption", "text": "An untested backup fails on the one day you need it." }
+      ],
+      "icon": "Database cylinder with a circular arrow wrapped around its lower half."
+    },
+    {
+      "id": "disaster-recovery", "code": "dr", "name": "Disaster recovery", "category": "ops", "kind": "control", "managed": false,
+      "description": "A standby copy of your system in another region, ready to take over if your main region is lost.",
+      "goodAt": ["Surviving a whole region going down", "Meeting strict uptime promises"],
+      "tradeoff": "From hours and cheap (restore from backup) to about a minute and double the cost (active-active); pick by what an hour down costs you.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "note": "Share of the protected region's cost: backup-restore ≈ 5 percent, pilot-light ≈ 10 percent, warm-standby ≈ 40 percent, active-active ≈ 100 percent." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "plan" },
+      "availability": 1,
+      "handles": [],
+      "completes": [],
+      "params": { "modes": ["backup-restore", "pilot-light", "warm-standby", "active-active"], "rtoSec": { "backup-restore": 14400, "pilot-light": 3600, "warm-standby": 900, "active-active": 30 }, "costShare": { "backup-restore": 0.05, "pilot-light": 0.1, "warm-standby": 0.4, "active-active": 1.0 }, "rpoSec": { "backup-restore": 3600, "pilot-light": 300, "warm-standby": 5, "active-active": 1 } },
+      "knobs": ["mode", "region"],
+      "failureModes": [
+        { "id": "never-drilled", "event": "region-outage", "text": "A plan never practised fails on the day." }
+      ],
+      "icon": "Two small buildings with a pair of curved swap arrows between them."
+    },
+    {
+      "id": "synthetic-probe", "code": "sy", "name": "Synthetic checks", "category": "ops", "kind": "observer", "managed": true,
+      "description": "Robots that use your site from around the world every minute and shout when it fails.",
+      "goodAt": ["Catching total outages within a minute", "Expired certificates and DNS mistakes"],
+      "tradeoff": "Cheap early warning, but robots test the happy path, not every real user's path.",
+      "capacity": null,
+      "latencyMs": null,
+      "cost": { "base": 50, "note": "≈ $1 to $12 per 10,000 checks, approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "check set" },
+      "availability": 0.9999,
+      "handles": [],
+      "completes": [],
+      "params": { "detectSec": 60, "detectsTotalOutagesOnly": true },
+      "knobs": [],
+      "failureModes": [
+        { "id": "happy-path", "event": null, "text": "Checks pass while one region's users are failing." }
+      ],
+      "icon": "Globe with a small check mark on a pulse line crossing it."
+    },
+    {
+      "id": "model-server", "code": "ms", "name": "Model server", "category": "ai", "kind": "compute", "managed": false,
+      "description": "Runs smaller machine learning models, such as fraud scores, ranking and classification, in milliseconds.",
+      "goodAt": ["Scores and predictions inside a request", "Cheap CPU inference"],
+      "tradeoff": "Fast and cheap for small models, but a model update can quietly change every decision.",
+      "capacity": { "rps": 2000, "unit": "predictions per second per node (small model, batched)", "note": "approx." },
+      "latencyMs": { "p50": 8, "p99": 30, "note": "approx." },
+      "cost": { "perUnit": 300, "note": "Per 8 vCPU node." },
+      "units": { "min": 1, "max": 100, "default": 2, "label": "node" },
+      "availability": 0.999,
+      "handles": ["inference", "payment", "read", "event", "upload", "message"],
+      "completes": ["inference"],
+      "params": { "scaleDelaySec": 120, "lookasideFor": ["payment", "read", "event", "upload", "message"] },
+      "knobs": ["units", "tier", "zones", "region", "autoscale", "timeoutMs"],
+      "failureModes": [
+        { "id": "drift", "event": "bad-deploy", "text": "A new model version blocks good customers." }
+      ],
+      "icon": "Small chip with a four-point sparkle above it."
+    },
+    {
+      "id": "llm-gateway", "code": "lm", "name": "AI gateway", "category": "ai", "kind": "router", "managed": false,
+      "description": "One front door to AI models: routes to the right model, enforces token budgets, falls back to a backup model, logs usage.",
+      "goodAt": ["Cost control per team or user", "Switching models without code changes"],
+      "tradeoff": "Control and fallbacks for a few ms, but a fallback model may give weaker answers.",
+      "capacity": { "rps": 5000, "unit": "requests per second per gateway", "note": "approx." },
+      "latencyMs": { "p50": 10, "p99": 40, "note": "approx." },
+      "cost": { "perUnit": 200, "note": "approx." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "gateway" },
+      "availability": 0.9995,
+      "handles": ["inference", "search", "attack"],
+      "completes": [],
+      "params": { "fallback": true },
+      "knobs": ["units", "zones", "region", "limitRps"],
+      "failureModes": [
+        { "id": "token-limit", "event": "third-party-rate-limit", "text": "The provider's tokens-per-minute limit is hit at peak." },
+        { "id": "runaway", "event": "cost-blowout", "text": "One user's script spends thousands of dollars in tokens overnight." }
+      ],
+      "icon": "Rounded arch doorway with a four-point sparkle inside."
+    },
+    {
+      "id": "semantic-cache", "code": "sx", "name": "Semantic cache", "category": "ai", "kind": "cache", "managed": false,
+      "description": "Returns a saved AI answer when a new question means the same as an old one.",
+      "goodAt": ["Frequently asked questions", "Cutting GPU and token bills"],
+      "tradeoff": "Saves 10 to 30 percent of model calls, but a similar-looking question can get a wrong saved answer.",
+      "capacity": { "rps": 5000, "unit": "look-ups per second", "note": "approx." },
+      "latencyMs": { "p50": 10, "p99": 40, "note": "approx." },
+      "cost": { "perUnit": 300, "note": "approx." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "node" },
+      "availability": 0.999,
+      "handles": ["inference", "search"],
+      "completes": ["inference", "search"],
+      "params": { "hitRate": 0.2 },
+      "knobs": ["units", "zones", "ttlSec", "region"],
+      "failureModes": [
+        { "id": "wrong-hit", "event": null, "text": "Two questions that look alike but differ get the same answer." }
+      ],
+      "icon": "Speech bubble with a small lightning bolt inside."
+    },
+    {
+      "id": "safety-filter", "code": "sf", "name": "Safety filter", "category": "ai", "kind": "filter", "managed": false,
+      "description": "Checks prompts, answers and uploads for harmful content, leaked personal data and trick prompts.",
+      "goodAt": ["Keeping AI features safe", "Content moderation"],
+      "tradeoff": "Needed for public AI features, but adds 30 to 120 ms and sometimes blocks harmless content.",
+      "capacity": { "rps": 2000, "unit": "checks per second per node", "note": "approx." },
+      "latencyMs": { "p50": 30, "p99": 120, "note": "approx." },
+      "cost": { "perUnit": 400, "note": "approx." },
+      "units": { "min": 1, "max": 50, "default": 1, "label": "node" },
+      "availability": 0.999,
+      "handles": ["inference", "upload", "message", "attack"],
+      "completes": [],
+      "params": { "blockAttackShare": 0.5, "blockShare": 0.02 },
+      "knobs": ["units", "zones", "region"],
+      "failureModes": [
+        { "id": "new-trick", "event": "bot-scraping", "text": "A new phrasing slips through until the filter is updated." }
+      ],
+      "icon": "Shield with a small speech bubble inside it."
+    },
+    {
+      "id": "feature-store", "code": "fs", "name": "Feature store", "category": "ai", "kind": "lookaside", "managed": false,
+      "description": "Serves fresh model inputs, such as 'orders in the last hour', in milliseconds, the same way they were used in training.",
+      "goodAt": ["Fraud and ranking models", "Same numbers in training and in production"],
+      "tradeoff": "Consistent, fast features, but if its pipeline lags, models decide on stale facts.",
+      "capacity": { "rps": 20000, "unit": "look-ups per second per unit", "note": "approx." },
+      "latencyMs": { "p50": 3, "p99": 12, "note": "approx." },
+      "cost": { "perUnit": 500, "note": "approx." },
+      "units": { "min": 1, "max": 20, "default": 1, "label": "unit" },
+      "availability": 0.9995,
+      "handles": ["payment", "inference", "read", "event"],
+      "completes": [],
+      "params": { "callShare": 1 },
+      "knobs": ["units", "zones", "region"],
+      "failureModes": [
+        { "id": "stale", "event": "replication-lag", "text": "The pipeline stalls and models use hour-old numbers." }
+      ],
+      "icon": "Shelf unit with two shelves, each holding three small cubes."
+    },
+    {
+      "id": "embedding-service", "code": "em", "name": "Embedding service", "category": "ai", "kind": "compute", "managed": false,
+      "description": "Turns text or images into vectors (lists of numbers that capture meaning) for search and AI.",
+      "goodAt": ["Semantic search", "Grouping similar items"],
+      "tradeoff": "Makes meaning searchable, but switching models means re-embedding everything.",
+      "capacity": { "rps": 1000, "unit": "short texts per second per GPU unit (batched)", "note": "approx." },
+      "latencyMs": { "p50": 15, "p99": 60, "note": "approx." },
+      "cost": { "perUnit": 900, "note": "Per smaller GPU, approx." },
+      "units": { "min": 1, "max": 64, "default": 1, "label": "GPU unit" },
+      "availability": 0.999,
+      "handles": ["search", "write", "inference", "upload"],
+      "completes": [],
+      "params": { "scaleDelaySec": 300 },
+      "knobs": ["units", "zones", "region", "autoscale"],
+      "failureModes": [
+        { "id": "saturate", "event": "viral-spike", "text": "Search slows as the embedding step queues." }
+      ],
+      "icon": "Three short text lines on the left turning into a small cloud of dots on the right, joined by an arrow."
+    },
+    {
+      "id": "recommender", "code": "rc", "name": "Recommendation engine", "category": "ai", "kind": "compute", "managed": false,
+      "description": "Picks what to show each person: first gathers candidates, then ranks them with a model.",
+      "goodAt": ["Home feeds and 'you may like'", "Personal ranking"],
+      "tradeoff": "Drives engagement, but costs real compute per request and tends to show only what is already popular.",
+      "capacity": { "rps": 2000, "unit": "ranked lists per second per unit", "note": "approx." },
+      "latencyMs": { "p50": 40, "p99": 150, "note": "approx." },
+      "cost": { "perUnit": 1200, "note": "approx." },
+      "units": { "min": 1, "max": 100, "default": 2, "label": "unit" },
+      "availability": 0.999,
+      "handles": ["read", "inference", "search"],
+      "completes": [],
+      "params": { "scaleDelaySec": 180 },
+      "knobs": ["units", "tier", "zones", "region", "autoscale", "timeoutMs"],
+      "failureModes": [
+        { "id": "slow-rank", "event": "slow-dependency", "text": "Ranking misses its time budget and the page waits." }
+      ],
+      "icon": "Three stacked cards with a small star on the top card."
+    },
+    {
+      "id": "etl-pipeline", "code": "et", "name": "Data pipeline (ETL)", "category": "ai", "kind": "compute", "managed": false,
+      "description": "Moves data on a schedule from your apps into the warehouse or lake, cleaning and reshaping it on the way.",
+      "goodAt": ["Feeding reports and models", "Joining data from many systems"],
+      "tradeoff": "Gives everyone the data, but late or partial loads quietly produce wrong numbers.",
+      "capacity": { "rps": 1, "unit": "100 MB chunks per second per worker", "note": "≈ 100 MB per second per worker, approx." },
+      "latencyMs": { "p50": 60000, "p99": 900000, "note": "Minutes per load, approx." },
+      "cost": { "perUnit": 300, "note": "Per worker." },
+      "units": { "min": 1, "max": 100, "default": 2, "label": "worker" },
+      "availability": 0.995,
+      "handles": ["batch", "report", "event", "telemetry"],
+      "completes": [],
+      "params": {},
+      "knobs": ["units", "zones", "region", "autoscale"],
+      "failureModes": [
+        { "id": "schema-break", "event": "schema-migration-lock", "text": "An upstream column change breaks the load." },
+        { "id": "double-load", "event": "duplicate-delivery", "text": "A retried load doubles a day's revenue in the report." }
+      ],
+      "icon": "Three small boxes passing through a funnel with an arrow coming out of the bottom."
+    },
+    {
+      "id": "payment-processor", "code": "pp", "name": "Payment processor", "category": "external", "kind": "external", "managed": true,
+      "description": "Charges cards and wallets and answers approved or declined, like Stripe or Adyen.",
+      "goodAt": ["Accepting cards worldwide", "Taking most card-security work off your hands"],
+      "tradeoff": "Saves years of work for about 2.9 percent plus 30 cents per charge, but it is slow, rate limited and sometimes down.",
+      "capacity": { "rps": 1000, "unit": "charges per second for a large merchant account", "note": "Default limits are closer to 100 requests per second until raised, approx." },
+      "latencyMs": { "p50": 400, "p99": 2000, "note": "approx." },
+      "cost": { "note": "≈ 2.9 percent plus $0.30 per card charge in the US, paid from revenue and not counted in the infrastructure budget." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "account" },
+      "availability": 0.9995,
+      "handles": ["payment", "webhook"],
+      "completes": ["payment", "webhook"],
+      "params": { "emitsWebhooks": true },
+      "knobs": ["timeoutMs", "retries", "backoff"],
+      "failureModes": [
+        { "id": "down", "event": "dependency-outage", "text": "The processor is down; charges fail or must wait." },
+        { "id": "slow", "event": "slow-dependency", "text": "Charges take 5 seconds and your servers fill with waiting requests." },
+        { "id": "double", "event": "duplicate-delivery", "text": "A retry without an idempotency key charges twice." },
+        { "id": "limit", "event": "third-party-rate-limit", "text": "A ticket drop exceeds the account's request limit." }
+      ],
+      "icon": "Credit card outline with a check mark in a circle at its lower right."
+    },
+    {
+      "id": "email-provider", "code": "ep", "name": "Email provider", "category": "external", "kind": "external", "managed": true,
+      "description": "Sends email at scale and tracks bounces.",
+      "goodAt": ["Receipts, resets and newsletters", "Deliverability know-how"],
+      "tradeoff": "About 10 cents per thousand emails, but sending limits and spam reputation decide whether mail arrives.",
+      "capacity": { "rps": 1000, "unit": "emails per second (raised quota)", "note": "New accounts start far lower, approx." },
+      "latencyMs": { "p50": 200, "p99": 1000, "note": "To accept; delivery takes seconds to minutes, approx." },
+      "cost": { "perMillion": 100, "note": "≈ $0.10 per 1,000 emails." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "account" },
+      "availability": 0.999,
+      "handles": ["notify"],
+      "completes": ["notify"],
+      "params": {},
+      "knobs": ["timeoutMs", "retries", "backoff"],
+      "failureModes": [
+        { "id": "throttle", "event": "third-party-rate-limit", "text": "A big send hits the per-second limit." },
+        { "id": "spam", "event": null, "text": "Poor reputation sends receipts to junk folders." }
+      ],
+      "icon": "Envelope with a small paper-plane arrow leaving its top right."
+    },
+    {
+      "id": "sms-provider", "code": "ss", "name": "SMS provider", "category": "external", "kind": "external", "managed": true,
+      "description": "Sends text messages for sign-in codes and alerts.",
+      "goodAt": ["Reaching anyone with a phone", "Sign-in codes"],
+      "tradeoff": "Works everywhere, but under a cent per US text adds up, throughput is limited, and bots can abuse it.",
+      "capacity": { "rps": 100, "unit": "messages per second (short code)", "note": "A single long number sends about 1 per second, approx." },
+      "latencyMs": { "p50": 1000, "p99": 5000, "note": "approx." },
+      "cost": { "perMillion": 8000, "note": "≈ $0.008 per US message segment; international is often much more." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "sender" },
+      "availability": 0.999,
+      "handles": ["notify", "login"],
+      "completes": ["notify", "login"],
+      "params": {},
+      "knobs": ["units", "timeoutMs", "retries", "backoff"],
+      "failureModes": [
+        { "id": "pumping", "event": "cost-blowout", "text": "Bots trigger thousands of codes to premium numbers." },
+        { "id": "throughput", "event": "third-party-rate-limit", "text": "An alert to a million people takes hours at 100 per second." }
+      ],
+      "icon": "Chat bubble with three dots inside, overlapping a small phone outline."
+    },
+    {
+      "id": "push-service", "code": "pu", "name": "Push notifications", "category": "external", "kind": "external", "managed": true,
+      "description": "Sends notifications to phones and browsers through the platforms' own push networks.",
+      "goodAt": ["Reaching app users instantly", "Free at any volume"],
+      "tradeoff": "Free and fast, but delivery is best-effort, tokens expire and bursts are throttled.",
+      "capacity": { "rps": 10000, "unit": "pushes per second per sender", "note": "Platforms throttle large bursts, approx." },
+      "latencyMs": { "p50": 500, "p99": 5000, "note": "approx." },
+      "cost": { "note": "Free from the platforms; you pay for your own sending servers." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "sender" },
+      "availability": 0.999,
+      "handles": ["notify"],
+      "completes": ["notify"],
+      "params": {},
+      "knobs": ["retries", "backoff"],
+      "failureModes": [
+        { "id": "burst", "event": "third-party-rate-limit", "text": "A push to 50 million people is spread over many minutes." },
+        { "id": "herd", "event": "thundering-herd", "text": "A push makes millions open the app at the same moment." }
+      ],
+      "icon": "Bell with a small upward arrow at its top right."
+    },
+    {
+      "id": "maps-api", "code": "mp", "name": "Maps API", "category": "external", "kind": "external", "managed": true,
+      "description": "Maps, address search, directions and travel times from a maps provider.",
+      "goodAt": ["Routing and travel times", "Turning addresses into coordinates"],
+      "tradeoff": "World-class maps without building them, at about $5 per thousand route requests, with quotas.",
+      "capacity": { "rps": 3000, "unit": "requests per second (quota)", "note": "approx." },
+      "latencyMs": { "p50": 150, "p99": 600, "note": "approx." },
+      "cost": { "perMillion": 5000, "note": "≈ $5 per 1,000 directions requests before volume discounts." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "account" },
+      "availability": 0.9995,
+      "handles": ["location", "search", "read"],
+      "completes": ["location", "search", "read"],
+      "params": {},
+      "knobs": ["timeoutMs", "retries", "backoff"],
+      "failureModes": [
+        { "id": "quota", "event": "third-party-rate-limit", "text": "Rush hour exceeds the quota." },
+        { "id": "bill", "event": "cost-blowout", "text": "Calling for every location ping instead of every trip multiplies the bill." }
+      ],
+      "icon": "Folded paper map with a location pin standing on it."
+    },
+    {
+      "id": "video-transcoder", "code": "vt", "name": "Video transcoder", "category": "external", "kind": "external", "managed": true,
+      "description": "Turns an uploaded video into many sizes and formats for smooth streaming on any screen.",
+      "goodAt": ["Adaptive streaming at many quality levels", "Thumbnails and previews"],
+      "tradeoff": "Pay per output minute, and every extra quality level adds cost; jobs take minutes.",
+      "capacity": { "rps": 50, "unit": "new videos started per second", "note": "approx." },
+      "latencyMs": { "p50": 120000, "p99": 900000, "note": "Minutes per 10-minute video, approx." },
+      "cost": { "perMillion": 1000000, "note": "≈ $0.015 to $0.03 per output minute per quality level; a 10-minute video in 5 levels ≈ $1." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "account" },
+      "availability": 0.999,
+      "handles": ["upload", "live", "batch"],
+      "completes": ["upload", "batch"],
+      "params": { "async": true },
+      "knobs": ["timeoutMs", "retries", "backoff"],
+      "failureModes": [
+        { "id": "backlog", "event": "viral-spike", "text": "An upload surge waits in line for hours." }
+      ],
+      "icon": "Film strip with two small arrows pointing outwards from its corners."
+    },
+    {
+      "id": "identity-verification", "code": "iv", "name": "ID verification", "category": "external", "kind": "external", "managed": true,
+      "description": "Checks a government ID and a selfie to confirm who someone is (know-your-customer).",
+      "goodAt": ["Bank and wallet sign-ups", "Age checks"],
+      "tradeoff": "Required for many money products at about $1 to $3 per check; slow and sometimes wrongly rejects people.",
+      "capacity": { "rps": 50, "unit": "checks per second", "note": "approx." },
+      "latencyMs": { "p50": 5000, "p99": 120000, "note": "Manual review can take minutes, approx." },
+      "cost": { "perMillion": 1500000, "note": "≈ $1.50 per check, approx." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "account" },
+      "availability": 0.999,
+      "handles": ["login", "write"],
+      "completes": ["login", "write"],
+      "params": {},
+      "knobs": ["timeoutMs", "retries", "backoff"],
+      "failureModes": [
+        { "id": "down", "event": "dependency-outage", "text": "New customers cannot sign up while it is down." }
+      ],
+      "icon": "ID card with a face outline on the left and a check mark on the right."
+    },
+    {
+      "id": "hosted-llm-api", "code": "ha", "name": "Hosted AI model", "category": "external", "kind": "external", "managed": true,
+      "description": "An AI model run by a provider and billed per token (piece of a word).",
+      "goodAt": ["Top-quality models without GPUs", "Starting fast"],
+      "tradeoff": "No GPUs to run, but you pay per token, share rate limits, and depend on someone else's uptime.",
+      "capacity": { "rps": 500, "unit": "replies per second per account tier", "note": "Limits are set in tokens per minute, approx." },
+      "latencyMs": { "p50": 3000, "p99": 12000, "note": "Full reply; first words in about 0.4 to 1 s, approx." },
+      "cost": { "perMillion": 3000, "note": "≈ $0.15 to $15 per million tokens by model; about 1,000 tokens per exchange on a mid model ≈ $0.003." },
+      "units": { "min": 1, "max": 10, "default": 1, "label": "tier" },
+      "availability": 0.999,
+      "handles": ["inference", "search"],
+      "completes": ["inference", "search"],
+      "params": {},
+      "knobs": ["units", "timeoutMs", "retries", "backoff"],
+      "failureModes": [
+        { "id": "429", "event": "third-party-rate-limit", "text": "Peak traffic exceeds the token-per-minute limit." },
+        { "id": "outage", "event": "dependency-outage", "text": "The provider has an outage." },
+        { "id": "bill", "event": "cost-blowout", "text": "Long prompts multiply tokens and the bill." }
+      ],
+      "icon": "Four-point sparkle inside a cloud outline."
+    },
+    {
+      "id": "third-party-api", "code": "tp", "name": "Third-party API", "category": "external", "kind": "external", "managed": true,
+      "description": "Any outside service you call: shipping rates, tax, weather, insurance eligibility, a partner bank.",
+      "goodAt": ["Buying a capability instead of building it"],
+      "tradeoff": "Fast to adopt, but their slowness, limits and outages become yours unless you plan for them.",
+      "capacity": { "rps": 200, "unit": "requests per second (their limit)", "note": "approx." },
+      "latencyMs": { "p50": 150, "p99": 1500, "note": "approx." },
+      "cost": { "perMillion": 500, "note": "≈ $0.0005 per call, varies widely." },
+      "units": { "min": 1, "max": 1, "default": 1, "label": "account" },
+      "availability": 0.999,
+      "handles": ["read", "write", "search", "payment", "location", "webhook", "batch", "login", "report"],
+      "completes": ["read", "write", "search", "payment", "location", "webhook", "batch", "login", "report"],
+      "params": {},
+      "knobs": ["timeoutMs", "retries", "backoff"],
+      "failureModes": [
+        { "id": "slow", "event": "slow-dependency", "text": "Their 3-second responses tie up your servers." },
+        { "id": "down", "event": "dependency-outage", "text": "They are down for an hour." },
+        { "id": "limit", "event": "third-party-rate-limit", "text": "Your peak exceeds their limit." }
+      ],
+      "icon": "Puzzle piece with a small arrow leaving its right side."
+    }
+  ]
+}
