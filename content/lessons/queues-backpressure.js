@@ -92,7 +92,7 @@ export default {
         "value": 0.01,
         "drain": true
       },
-      "hint": "Place a Queue and Background workers, so the path is servers, queue, workers, database. Then give the workers enough units for the normal 1,500 writes a second (about 10, at about 200 jobs a second each, approx.), or the line grows all day and work waits past its limit."
+      "hint": "Place a Queue and Background workers, so the path is servers, queue, workers, database. Then give the workers enough units for the normal 1,500 writes a second (about 10, at about 200 jobs a second each, approx.), or the line grows all day and work waits past its limit. The size M database handles ≈ 2,000 writes/s, so adding workers beyond that cannot raise completed drain. The burst brings ≈ 4,500 writes/s: the queue must wait for arrivals to fall, or you must increase database capacity or slow senders."
     },
     {
       "kind": "read",
@@ -120,7 +120,7 @@ export default {
         {
           "label": "1,500 arrivals and 2,000 completed a second",
           "value": "≈ 33 minutes to clear 1 million",
-          "how": "Arrivals minus service: 1,500 - 2,000 = -500 jobs a second. Net drain is 500/s, so 1,000,000 / 500 / 60 ≈ 33.3 minutes. At equal rates the backlog stays; with more arrivals it grows."
+          "how": "Net drain is service minus arrivals: 2,000 - 1,500 = 500 jobs a second. Time to clear = backlog / (service rate - arrival rate), so 1,000,000 / (2,000 - 1,500) / 60 ≈ 33.3 minutes. At equal rates the backlog stays; with more arrivals it grows."
         }
       ]
     },

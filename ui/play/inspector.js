@@ -102,7 +102,10 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
         control = sel;
       }
     }
-    const row = h('div', { class: 'pl-knob', 'data-knob': knob }, h('div', { class: 'pl-knob-top' }, h('span', { class: 'pl-knob-l', text: label })), control, h('div', { class: 'pl-knob-help', text: def.help || '' }));
+    const help = knob === 'mode'
+      ? (el.params?.modes?.includes('round-robin') ? 'Round robin sends requests to each server in turn. Least requests chooses the server with the fewest requests in progress, useful when some requests take longer.' : 'Choose how this part routes requests. ' + (el.description || ''))
+      : def.help || '';
+    const row = h('div', { class: 'pl-knob', 'data-knob': knob }, h('div', { class: 'pl-knob-top' }, h('span', { class: 'pl-knob-l', text: label })), control, h('div', { class: 'pl-knob-help', text: help }));
     row.querySelectorAll('button,input,select').forEach((n) => { n.disabled = !editable; });
     return row;
   }

@@ -14,7 +14,7 @@ export default {
     },
     {
       "kind": "demo",
-      "prompt": "One server cannot take about 3,000 requests a second at peak. Retries are off in this demo. Add a load balancer and more servers.",
+      "prompt": "This demo sends about 2,550 requests a second overnight and 3,000/s at the daytime peak, with small traffic fluctuations. Retries are off. One size M server handles ≈ 1,000/s. Add a load balancer and set App servers to 5 for headroom.",
       "setup": {
         "palette": [
           "regional-lb",
@@ -87,7 +87,7 @@ export default {
         "value": 0.99,
         "between": {"type": "regional-lb", "from": "users", "to": "app", "note": "The load balancer goes between the phone and the servers, so it can share requests out. Drop it onto that line."}
       },
-      "hint": "Drag Load balancer between the phone and the servers, then raise the servers to 4 or more."
+      "hint": "Drag Load balancer between the phone and the servers, then set App servers to 5 at size M. At peak, 3,000 ÷ (1,000 × 70%) ≈ 4.3, rounded up to 5 servers."
     },
     {
       "kind": "read",
@@ -106,6 +106,11 @@ export default {
           "label": "Health check every",
           "value": "≈ 30 s",
           "how": "a dead server is dropped within a minute, approx."
+        },
+        {
+          "label": "Servers for this demo",
+          "value": "≈ 5 at size M",
+          "how": "3,000 requests/s ÷ (1,000 requests/s per server × 70% busy) ≈ 4.3, rounded up to 5."
         },
         {
           "label": "One balancer",

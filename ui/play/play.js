@@ -13,6 +13,7 @@ import { createHints } from './hints.js';
 import { renderDebrief } from './debrief.js';
 import { renderEditorial } from './editorial.js';
 import { createTrafficPanel, DEFAULT_TRAFFIC } from './traffic-panel.js';
+import { queueDrainAdvice } from './lesson-queue.js';
 import { createRouteTrace } from './route-trace.js';
 import { renderCheckpointForm } from './correctness.js';
 import { introPathHolds } from './intro-path.js';
@@ -884,7 +885,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function goalGap(goal, st, v) {
     const g = graph();
     if (goal?.drain && !queuesHaveReaders()) return 'A queue has no workers wired after it, so nothing reads the line. Connect Background workers after the queue.';
-    if (!drained(goal, st)) return 'The line is growing faster than the workers empty it, so work would wait for hours. Give the workers more units.';
+    if (!drained(goal, st)) return queueDrainAdvice(g, st, catalog, S.problem.requirements.mix);
     if (!placedOk(goal)) return goal.between.note || 'The numbers look fine, but this part belongs in a different spot. Move it onto the line the hint names.';
     const loose = g.nodes.find((n) => !n.locked && !g.edges.some((e) => e.from === n.id || e.to === n.id));
     if (loose) return `${nameOf(loose.id)} is not connected to anything yet. Drop it onto a line, or use "Connect to…".`;
@@ -896,7 +897,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     return `${what}: ${fmt(v)} now, the goal is ${word} ${fmt(goal.value)}.`;
   }
   // In a lesson the page above already states the goal, so the chip on the canvas only reports progress.
-  const goalLabel = () => (mode === 'lesson' ? 'Working on the goal' : S.problem.brief || 'Reach the goal');
+  const goalLabel = () => (mode === 'lesson' ? 'Lesson goal: hold the current state' : S.problem.brief || 'Reach the goal');
   function checkGoal(st) {
     const goal = S.problem?.goal;
     if (!goal || S.goalMet) return;
@@ -939,7 +940,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (ok && S.goalMs >= need) {
       S.goalMet = true;
       goalChip.classList.add('pl-goal--done');
-      goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: 'Goal reached. Nicely done.' }));
+      goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: mode === 'lesson' ? 'Lesson goal reached for the current state. Day meters include earlier minutes.' : 'Goal reached. Nicely done.' }));
       snd('pass');
       // the goal is met: close the inspector and the parts sheet so the Continue button is never covered
       try { select(null); toolbar.el.classList.remove('pl-toolbar--open'); } catch { /* optional */ }
@@ -1154,7 +1155,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.lastDay = { availability: result.slo?.availability?.actual ?? 0, target: result.slo?.availability?.target ?? 0.99, passed: !!result.passed, cost: result.cost?.perMonth ?? result.metrics?.perMonth ?? result.perMonth ?? S.sim.state?.()?.cost?.perMonth ?? null };
     note('day-end', null);
     if (!stepped) {
-      later(() => { if (!S.destroyed) { S.sim.reset(); S.sim.start(); lessonLeadIn(); S.acc = 0; hud.resetHistory(); hud.setPhase('running'); } }, 600);
+      later(() => { if (!S.destroyed) { S.sim.reset(); S.sim.start(); S.goalMs = 0; S.lastClock = 0; lessonLeadIn(); S.acc = 0; hud.resetHistory(); hud.setPhase('running'); if (isLesson) showCaption('Restarting the example with your changes. This is a fresh trial: the clock and backlog reset; the previous backlog was not drained.', 12000); } }, 600);
       S.result = null;
       return;
     }

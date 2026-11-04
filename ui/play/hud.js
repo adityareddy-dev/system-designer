@@ -207,7 +207,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
       const lt = l.targetMs ?? tgt.latencyP99Ms?.default ?? 200;
       // the request type furthest from its own target right now, against that target
       const ty = l.typeId && Object.keys(tgt.mix || {}).length > 1 ? (catalog.requestById.get(l.typeId)?.plural || '').toLowerCase() : '';
-      meterSet('lat', { text: l.p99Ms != null ? fmtMs(l.p99Ms) : '–', sub: `${ty ? ty + ': ' : ''}target ${fmtMs(lt)}${l.shareOk != null ? ' · ' + fmtPct(l.shareOk, 0) + ' of minutes ok' : ''}`, frac: (l.p99Ms || 0) / (lt * 2), tick: 0.5, status: l.p99Ms == null || l.p99Ms <= lt ? 'ok' : 'bad' });
+      meterSet('lat', { text: l.p99Ms != null ? fmtMs(l.p99Ms) : '–', sub: `${ty ? ty + ': ' : ''}target ${fmtMs(lt)}${l.shareOk != null ? ' · ' + fmtPct(l.shareOk, 0) + (lesson ? ' of minutes ok since demo start' : ' of minutes ok') : ''}`, frac: (l.p99Ms || 0) / (lt * 2), tick: 0.5, status: l.p99Ms == null || l.p99Ms <= lt ? 'ok' : 'bad' });
       if (queued.length) {
         const ack = Math.max(0, ...queued.map((n) => n.p99Ms || 0));
         meterSet('lat', { text: `≈ ${fmtMs(ack)}`, sub: 'Queue hop only, before the job completes', status: 'ok' });

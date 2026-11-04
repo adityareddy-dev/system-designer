@@ -14,7 +14,7 @@ export default {
     },
     {
       "kind": "demo",
-      "prompt": "First, place a Read replica beside the SQL database. Connect SQL database to Read replica to copy changes. Next, connect App servers to Read replica to route reads, keeping App servers connected to SQL database for writes. Finally, select Read replica and increase its replica count to 4. Keep SQL database at or below 70 percent busy for a simulated minute. Open Hint for the sizing calculation.",
+      "prompt": "Keep App servers connected to SQL database for writes. Place Read replica beside the database, then connect SQL database to Read replica to copy changes. Next, connect App servers to Read replica for reads. Select Read replica and set its replica count to 4 at size M. At peak, 8,280 reads/s share 5 copies, each handling ≈ 8,000 reads/s; 720 writes/s stay on the primary at ≈ 2,000 writes/s capacity. Primary busy is ≈ 36% writes + 21% reads = 57%. Keep it below 70 percent for a simulated minute.",
       "setup": {
         "palette": [
           "sql-replica"
@@ -111,6 +111,11 @@ export default {
           "how": "simple queries, approx."
         },
         {
+          "label": "Primary load with 4 replicas",
+          "value": "≈ 57% busy at peak",
+          "how": "720 writes/s ÷ 2,000 + (8,280 reads/s ÷ 5 copies) ÷ 8,000 ≈ 36% + 21%. Keep the app-to-primary write link and both replica links."
+        },
+        {
           "label": "Writes",
           "value": "still only on the primary",
           "how": "replicas do not add write capacity"
@@ -154,5 +159,5 @@ export default {
       "why": "Every write still has to be applied by the primary."
     }
   ],
-  "takeaway": "Replicas scale reads. Asynchronous replicas can lag; synchronous replication waits for the required acknowledgements before confirming a write, trading latency for stronger guarantees."
+  "takeaway": "Replicas scale reads. Asynchronous replicas can lag behind the primary; synchronous replication waits for the required acknowledgements before confirming a write, trading latency for stronger guarantees."
 };
