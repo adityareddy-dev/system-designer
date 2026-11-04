@@ -3,6 +3,7 @@ import { M } from './route.js';
 import { nodeLabel } from './cost.js';
 import { joinNames } from './util.js';
 import { checkCompliance } from './events.js';
+import { traceRoute } from './trace.js';
 
 const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const lowerName = (s) => (/^[A-Z][A-Z]/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
@@ -58,8 +59,6 @@ function unservedMessage(S, t) {
   // a cache never finishes anything on its own: it needs a store behind it
   const finishersHere = nodes.filter((n) => n.kind !== 'source' && n.kind !== 'cache' && C(n.i, t)).map((n) => n.i);
   const stop = stops.find((u) => nodes[u].kind === 'compute') ?? stops[0];
-  const blocker = stop != null ? outAll[stop].filter((e) => e.kind === 'flow').map((e) => e.ti).find((v) => !H(v, t)) : undefined;
-  const handled = (u) => joinNames(catalog.requests.filter((rt, i) => i !== model.attackT && H(u, i)).map((rt) => rt.plural)) || 'nothing';
   const required = (S.problem.requires || {})[type.id] || [];
   if (required.length) {
     const path = required.map((group) => group.map((id) => lowerName(catalog.elementById.get(id)?.name || id)).join(' or ')).join(' and ');
@@ -68,11 +67,13 @@ function unservedMessage(S, t) {
     return { msg: `${cap1(plural)} stop at ${from}. Complete their path from ${from} through ${path}.${elsewhere ? ' The required part on another branch does not receive these requests.' : ''}`, nodeId: stop != null ? nodes[stop].id : undefined, elementId: required[0][0] };
   }
   if (finishersHere.length && stop != null) {
-    const f = finishersHere[0];
-    if (blocker != null) {
-      return { msg: `${cap1(plural)} stop at ${label(stop)}: ${label(blocker)} only passes on ${handled(blocker)}. Connect ${label(stop)} straight to ${label(f)} as well.`, nodeId: nodes[stop].id };
-    }
-    return { msg: `${cap1(plural)} stop at ${label(stop)}. Connect it to ${label(f)}, which finishes them.`, nodeId: nodes[stop].id };
+    const trace = traceRoute(model, type.id);
+    const hop = trace.rejected.find((h) => h.from === trace.repair?.from && /side call|does not handle|parking/i.test(h.reason))
+      || trace.rejected.find((h) => /Side calls return|does not handle|parking/.test(h.reason)) || trace.rejected[0];
+    const name = (id) => label(nodes.findIndex((n) => n.id === id));
+    const rejected = hop ? `${name(hop.from)} → ${name(hop.to)} is rejected: ${hop.reason} ` : '';
+    if (trace.repair) return { msg: `${cap1(plural)} have no usable route. ${rejected}Connect ${name(trace.repair.from)} to ${name(trace.repair.to)}. Complete path: ${trace.repair.path.map(name).join(' → ')}.`, nodeId: trace.repair.from };
+    return { msg: `${cap1(plural)} have no usable route. ${rejected}Trace a request to check each hop before adding a delivery connection.`, nodeId: hop?.from };
   }
   const ids = finishersFor(S, t);
   const names = ids.map((id) => catalog.elementById.get(id)?.name || id);

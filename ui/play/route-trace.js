@@ -17,7 +17,8 @@ export function createRouteTrace(root, catalog, scene) {
     scene.setTrace(trace.edgeIds);
     output.append(h('p', { text: trace.edgeIds.length ? 'Parts reached: ' + trace.nodeIds.map(name).join(', ') : 'No connections carry this request type.' }));
     for (const stop of trace.stops) output.append(h('p', { text: `${name(stop.nodeId)}: ${stop.reason}` }));
-    for (const hop of trace.rejected) output.append(h('p', { text: `${name(hop.from)} → ${name(hop.to)}: ${hop.reason}` }));
+    for (const hop of trace.rejected) output.append(h('p', { text: `${name(hop.from)} → ${name(hop.to)}: ${hop.reason} Carries: ${hop.carries.map((id) => catalog.requestById.get(id)?.plural || id).join(', ') || 'no request types with the current wiring'}. Path to this hop: ${hop.path.map(name).join(' → ')}.` }));
+    if (trace.repair) output.append(h('p', { text: `Connect ${name(trace.repair.from)} to ${name(trace.repair.to)}. Complete repair path: ${trace.repair.path.map(name).join(' → ')}. Side calls stay beside this delivery path.` }));
   }
   select.addEventListener('change', paint);
   el.addEventListener('toggle', paint);
