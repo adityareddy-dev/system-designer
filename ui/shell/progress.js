@@ -71,12 +71,14 @@ export function createProgress(store, bus) {
     },
 
     exportAll: () => ({ app: 'system-designer', v: 1, problems: probs, lessons }),
-    importAll(data) {
+    importAll(data, { preserveInterviews = false } = {}) {
       if (!data || data.app !== 'system-designer' || typeof data.problems !== 'object' || typeof data.lessons !== 'object') return false;
-      // Interview reports stay on this device when ordinary progress is synchronized.
       const incoming = { ...data.problems };
-      for (const [id, problem] of Object.entries(probs)) {
-        if (problem?.interview) incoming[id] = { ...(incoming[id] || problem), interview: problem.interview };
+      // Account sync keeps device-local reports; backup imports restore the saved reports.
+      if (preserveInterviews) {
+        for (const [id, problem] of Object.entries(probs)) {
+          if (problem?.interview) incoming[id] = { ...(incoming[id] || problem), interview: problem.interview };
+        }
       }
       probs = incoming;
       lessons = data.lessons;

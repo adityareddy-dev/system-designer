@@ -62,7 +62,7 @@ export function createAccount(ctx) {
     const next = mergeProgress(here, fromServer);
     if (JSON.stringify(sanitizeProgress(here)) !== JSON.stringify(next)) {
       store.set('bests', next.bests);
-      ctx.progress?.importAll?.({ app: 'system-designer', v: 1, problems: next.problems, lessons: next.lessons });
+      ctx.progress?.importAll?.({ app: 'system-designer', v: 1, problems: next.problems, lessons: next.lessons }, { preserveInterviews: true });
     }
     S.lastJson = JSON.stringify(sanitizeProgress(local()));
   }

@@ -861,7 +861,7 @@
 @media(max-width:719px){
  .pl-interview-compare {grid-template-columns:1fr;gap:12px}
  .pl-interview-clock {font-size:11px;padding:4px;max-width:100px}
- .pl-root[data-interview=true] .pl-panel {padding-bottom:24px;top:56px;bottom:8px}
+ .pl-root[data-interview=true] .pl-panel {padding-bottom:24px;top:calc(var(--pl-top-end, 56px) + 6px);bottom:8px}
  .pl-defense-card h3 {font-size:20px}
  .pl-root[data-interview=true] .pl-tool--fit {display:none}
  .pl-root:has(.pl-overview:not([hidden])) .pl-toolbar:not(.pl-toolbar--open) .pl-tb-grab {top:-112px;bottom:auto;height:44px}

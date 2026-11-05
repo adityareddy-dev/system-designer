@@ -226,7 +226,7 @@ function eventStory(ev, i, result, catalog) {
   const lines = st ? [st.headline, ev.durations ? st.hurt?.replace(/in the first (\S+) (minutes?)/, 'during $1 $2 of the observation window') : st.hurt, st.helped, st.fix] : [fill(t.headline, vars), fill(t.hurt, vars), fill(t.helped, vars), fill(t.fix, vars)];
   // An event the design never met still teaches: say what it would have done to a design that was exposed to it.
   const unreached = !!(st && (st.none || !lines[1] || (Array.isArray(ev.hurt) && ev.hurt.length === 0)));
-  const would = unreached && def ? [ev.description || eventDescription(def, vars), def.lesson].filter(Boolean).join(' ') : '';
+  const would = unreached && def ? [eventDescription(def, vars, ev.description), def.lesson].filter(Boolean).join(' ') : '';
   const missing = st && !st.fix && !unreached ? [] : (ev.counters || def?.counters || []).filter((c) => c.element && !inGraph.has(c.element));
   const card = h('article', { class: 'pl-story', id: 'pl-ev-' + i, tabindex: '-1' },
     h('header', { class: 'pl-story-head' }, iconEl('ev.' + ev.id, 28, 'pl-ic pl-story-ic'),

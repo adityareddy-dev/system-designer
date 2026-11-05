@@ -17,24 +17,40 @@ const interviewReport = structuredClone(progress.get('legacy').interview);
 const merged = mergeProgress(sanitizeProgress(progress.exportAll()), {
   problems: { legacy: { attempts: 4, bestScore: 900, stars: 2 }, remote: { attempts: 1, bestScore: 700 } }, lessons: { caching: Date.now() },
 });
-progress.importAll({ app: 'system-designer', problems: merged.problems, lessons: merged.lessons });
+progress.importAll({ app: 'system-designer', problems: merged.problems, lessons: merged.lessons }, { preserveInterviews: true });
 assert.deepEqual(progress.get('legacy').interview, interviewReport);
 assert.equal(progress.get('legacy').bestScore, 900);
 assert.equal(progress.get('remote').bestScore, 700);
-progress.importAll({ app: 'system-designer', problems: {}, lessons: {} });
-assert.deepEqual(progress.get('legacy').interview, interviewReport, 'imports without this problem also preserve its local report');
+progress.importAll({ app: 'system-designer', problems: {}, lessons: {} }, { preserveInterviews: true });
+assert.deepEqual(progress.get('legacy').interview, interviewReport, 'syncs without this problem also preserve its local report');
+const backup = structuredClone(progress.exportAll());
+progress.reset();
+progress.recordInterview('legacy', { covered: 1, total: 10, score: 100 });
+progress.recordInterview('local-only', { covered: 1, total: 10, score: 100 });
+assert.equal(progress.importAll(backup), true);
+assert.deepEqual(progress.get('legacy').interview, interviewReport, 'backup restores attempts, latest report and both best records over a newer local report');
+assert.equal(progress.get('local-only'), null, 'backup replaces progress rather than retaining unrelated local reports');
+assert.deepEqual(data.progress.legacy.interview, interviewReport, 'restored reports are saved through the store');
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
 const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
 const base = process.argv[2] || 'http://localhost:8765/';
 const click = text => page.evaluate(text => { const el = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === text && b.checkVisibility()); assertButton(el); function assertButton(el) { if (!el) throw new Error('Missing visible button: ' + text); el.click(); } }, text);
 try {
-  for (const width of [1366,390]) {
-    await page.setViewport({ width, height: width === 390 ? 844 : 800 });
+  for (const width of [1366,390,320]) {
+    await page.setViewport({ width, height: width < 720 ? 844 : 800 });
     await page.goto(base);
     await page.evaluate(() => localStorage.setItem('hotpath.v1.progress', JSON.stringify({ 'observability-platform': { attempts: 3, bestScore: 100, stars: 0 } })));
     await page.goto(base + '?interview-check=' + width + '#/practice/observability-platform?interview=1');
     await page.waitForSelector('.pl-defense-field textarea');
+    await page.waitForFunction(() => {
+      const clock = document.querySelector('.pl-interview-clock');
+      const r = clock.getBoundingClientRect();
+      const toolbar = document.querySelector('.pl-top').getBoundingClientRect();
+      const panel = document.querySelector('.pl-panel').getBoundingClientRect();
+      return clock.checkVisibility() && r.width > 0 && r.top >= 0 && r.bottom <= innerHeight
+        && panel.top >= Math.max(r.bottom, toolbar.bottom);
+    });
     const requirementsVisible = () => page.$eval('.pl-req', e => e.checkVisibility());
     assert.equal(await requirementsVisible(), false, 'requirements are hidden before committing questions');
     const ax = await page.createCDPSession();
@@ -113,7 +129,7 @@ try {
   });
   assert.match(proofs.ordinary, /Add and connect|Connect Backups|Draw the key connection/);
   assert.doesNotMatch(proofs.safe, /Add and connect|Connect Backups|Draw the key connection|Example:/);
-  const headings = await page.evaluate(async () => {
+  const rendered = await page.evaluate(async () => {
     const { loadCatalog } = await import('./sim/catalog.js');
     const { createSim } = await import('./sim/engine.js');
     const { problemById } = await import('./content/problems/index.js');
@@ -122,10 +138,36 @@ try {
     const sim = createSim({ catalog, problem }); sim.loadGraph(problem.editorial.designs[0].graph); sim.start(); sim.advance(86400000);
     const host = document.createElement('div');
     renderDebrief(host, { result: sim.result(), problem, catalog, ctx: { content: { lessons: [] } }, reduced: true });
-    return [...host.querySelectorAll('.pl-story-head b')].map(e => e.textContent);
+    const headings = [...host.querySelectorAll('.pl-story-head b')].map(e => e.textContent);
+    const descriptions = [];
+    for (const id of ['notification-service', 'bulk-sms-campaigns']) {
+      const base = problemById.get(id);
+      const authored = 'A receipt may be delivered twice after the carrier reconnects.';
+      for (const description of [undefined, authored]) {
+        const problem = { ...base, events: base.events.map(e => e.id === 'duplicate-delivery'
+          ? { ...e, params: { ...e.params, share: 0.03 }, ...(description ? { text: { ...e.text, description } } : {}) } : e) };
+        const sim = createSim({ catalog, problem }); sim.loadGraph(problem.editorial.designs[0].graph); sim.start(); sim.advance(86400000);
+        const host = document.createElement('div');
+        renderDebrief(host, { result: sim.result(), problem, catalog, ctx: { content: { lessons: [] } }, reduced: true });
+        const index = sim.result().events.findIndex(e => e.id === 'duplicate-delivery');
+        const story = host.querySelector('#pl-ev-' + index);
+        const would = [...story.querySelectorAll('p')].find(p => p.textContent.startsWith('What it would have done'))?.textContent;
+        descriptions.push({ headline: story.querySelector('.pl-story-1').textContent, would, authored: description });
+      }
+    }
+    return { headings, descriptions };
   });
-  assert(headings.includes('Dashboard rush'), 'debrief headings preserve resolved event names');
-  assert(!headings.includes('Thundering herd'));
+  assert(rendered.headings.includes('Dashboard rush'), 'debrief headings preserve resolved event names');
+  assert(!rendered.headings.includes('Thundering herd'));
+  for (const { headline, would, authored } of rendered.descriptions) {
+    assert.match(headline, /3 percent/);
+    assert(would, 'protected duplicate deliveries still explain what would have happened');
+    if (authored) assert(would.includes(authored), 'authored event descriptions survive rendering');
+    else {
+      assert.match(would, /redelivers 3 percent/);
+      assert.doesNotMatch(would, /1 percent|payment/);
+    }
+  }
   await page.goto(base + '#/practice/bank-ledger?interview=1');
   await page.waitForSelector('.pl-defense-field textarea');
   await page.type('.pl-defense-field textarea', 'How many writes arrive? How long must records survive?');
@@ -149,5 +191,5 @@ try {
   assert.match(proofPreflight, /required compliance check has no proof/);
   assert.doesNotMatch(proofPreflight, /wiring guidance|Add |Connect |Put |Set /);
   assert.deepEqual(errors, []);
-  console.log('Interview preparation, typed estimates, one locked run, graph-specific defense and legacy progress passed at both sizes.');
+  console.log('Interview preparation, visible clock, typed estimates, one locked run, defense, sync and backup restoration passed at all sizes.');
 } finally { await browser.close(); }
