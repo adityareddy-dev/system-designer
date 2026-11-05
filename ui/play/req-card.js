@@ -10,7 +10,7 @@ const SAFETY = {
   'best-effort': 'Best effort: small losses are tolerated',
 };
 
-export function createReqCard(host, { catalog, problem }) {
+export function createReqCard(host, { catalog, problem, advice = true }) {
   const r = problem.requirements || {};
   const world = catalog.world;
   const regionName = (id) => world.regions.find((x) => x.id === id)?.name || id;
@@ -74,8 +74,8 @@ export function createReqCard(host, { catalog, problem }) {
         'audit-log': 'An audit trail receives a copy of sensitive actions through a tap connection. Example: users → app server → SQL database, plus app server → Audit log. SQL database → Audit log is also accepted. Keep the main request path connected to the database.',
         backups: 'Connect Backups to every store holding customer data. Example: Backups → SQL database. This is a control connection beside the request path.',
       }[id];
-      if (example) details.append(h('p', { text: example }));
-      else if (def) details.append(h('p', { text: 'Add and connect ' + def.satisfiedBy.map((el) => catalog.elementById.get(el)?.name || el).join(' or ') + ' to provide this proof.' }));
+      if (advice && example) details.append(h('p', { text: example }));
+      else if (advice && def) details.append(h('p', { text: 'Add and connect ' + def.satisfiedBy.map((el) => catalog.elementById.get(el)?.name || el).join(' or ') + ' to provide this proof.' }));
       proofs.append(details);
     }
     rows.append(row('ui.shield', 'Must prove', proofs));

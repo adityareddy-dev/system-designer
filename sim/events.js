@@ -1,6 +1,7 @@
 // Traffic-day events: builds the schedule, resolves target selectors and applies every op in events.json.
 import { parseClock } from './util.js';
 import { guidedEvent } from './event-guidance.js';
+import { upstreamDns } from './paths.js';
 
 const AUDIT_SHOW_SEC = 60; // how long an instant event (audit, bad migration) stays on the banner
 const ELECTION_SEC = 5; // a consensus database elects new leaders for a lost node's shards in seconds, approx.
@@ -332,13 +333,7 @@ function startFail(S, inst, ef) {
     const n = nodes[u];
     let downSec = base;
     if (inst.id === 'dns-misconfig') {
-      const seen = new Set(), stack = [u], ttl = [];
-      while (stack.length) {
-        const v = stack.pop(); if (seen.has(v)) continue; seen.add(v);
-        const upstream = nodes[v];
-        if (['dns', 'geo-dns'].includes(upstream.el.id) && upstream.ttlSec > 0) ttl.push(upstream.ttlSec);
-        for (const e of S.model.inAll[v]) if (e.kind === 'flow') stack.push(e.fi);
-      }
+      const ttl = [...upstreamDns(S, u)].map(v => nodes[v].ttlSec).filter(v => v > 0);
       if (ttl.length) downSec = Math.min(base, Math.max(...ttl));
     }
     if (mode === 'down' && n.kind === 'store' && !n.el.params?.consensus && n.keyed && !n.elastic && Math.round(S.unitsCur[u]) > 1 && n.failoverSec != null) {

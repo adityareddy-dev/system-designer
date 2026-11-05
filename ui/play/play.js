@@ -293,7 +293,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       'cache-no-origin': 'Cache misses have no origin on this path.',
       'compliance-missing': 'A required compliance check has no proof in this graph.',
     };
-    return (S.issues || []).map(i => ({ level: i.level, code: i.code, nodeId: i.nodeId, type: i.type,
+    return (S.issues || []).map(i => ({ level: i.level, code: i.code, nodeId: i.nodeId, type: i.type, source: i.source,
       message: [i.nodeId, i.type && catalog.requestById.get(i.type)?.plural, facts[i.code] || 'A design check is unresolved.'].filter(Boolean).join(': ') }));
   }
   function paintIssues() {
@@ -1177,13 +1177,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       return getState();
     }
     if (S.sim.phase === 'build' && stepped) {
-      const errs = (S.issues || []).filter((i) => i.level === 'error' || (i.code === 'disconnected' && i.source));
-      const proofs = (S.issues || []).filter((i) => i.code === 'compliance-missing');
+      const issues = diagnosticIssues();
+      const errs = issues.filter((i) => i.level === 'error' || (i.code === 'disconnected' && i.source));
+      const proofs = issues.filter((i) => i.code === 'compliance-missing');
       if (errs.length || proofs.length) {
         modal.replaceChildren(h('div', { class: 'pl-modal-card', style: { maxHeight: '100%', overflowY: 'auto' } },
           h('div', { class: 'pl-ed-top' }, h('b', { text: errs.length ? 'Some requests have nowhere to go' : 'Some required proofs are missing' })),
           h('ul', { class: 'pl-list' }, mergeByCause(errs).slice(0, 4).map((m) => h('li', { text: m }))),
-          proofs.length ? h('div', {}, h('b', { text: 'Missing proofs' }), h('ul', { class: 'pl-list' }, proofs.map((i) => h('li', { text: i.message }))), h('p', { class: 'pl-muted', text: 'Open each Must prove requirement for wiring guidance. Missing proofs prevent a pass and reduce Data safety points.' })) : null,
+          proofs.length ? h('div', {}, h('b', { text: 'Missing proofs' }), h('ul', { class: 'pl-list' }, proofs.map((i) => h('li', { text: i.message }))), h('p', { class: 'pl-muted', text: (interview ? '' : 'Open each Must prove requirement for wiring guidance. ') + 'Missing proofs prevent a pass and reduce Data safety points.' })) : null,
           h('p', { class: 'pl-muted', text: (errs.length ? 'Those requests will fail all day. ' : '') + 'Start anyway, or keep drawing?' }),
           h('div', { class: 'pl-actions' },
             h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: () => { modal.hidden = true; } }, 'Keep drawing'),
@@ -1543,7 +1544,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const sug = suggestedParts(S.problem);
     toolbar.setSuggested(interview ? null : sug?.list || null, interview ? '' : sug?.title);
     reqCard?.el.remove();
-    if (stepped) reqCard = createReqCard(right, { catalog, problem: S.problem });
+    if (stepped) reqCard = createReqCard(right, { catalog, problem: S.problem, advice: !interview });
     syncInterviewRequirements();
     right.prepend(...(reqCard ? [reqCard.el] : []));
     hud.setPhase('build'); hud.setSpeed(S.speed);

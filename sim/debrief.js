@@ -4,6 +4,7 @@ import { fmtNum, fmtClock, withCommas, joinNames } from './util.js';
 import { nodeLabel } from './cost.js';
 import { responseSec } from './events.js';
 import { validateModel } from './validate.js';
+import { sourceFlow, upstreamDns } from './paths.js';
 
 const NOTHING = 'Nothing in your design';
 const autoOn = (n) => n.kind === 'compute' && !!(n.autoscaleKnob || n.autoscaler >= 0);
@@ -116,6 +117,7 @@ function helpersFor(S, inst, hurtIdx) {
   // never saw that rush, so it is not listed as having helped.
   const T = S.T;
   const st0 = inst.stats && inst.stats.N === model.N ? inst.stats : null;
+  const dnsPath = inst.id === 'dns-misconfig' ? new Set(inst.effects.flatMap(e => (e.targets || []).flatMap(u => [...upstreamDns(S, u)]))) : null;
   const onRushPath = (u) => {
     const k = model.nodes[u].kind;
     if (k === 'observer' || k === 'control' || k === 'source') return true;
@@ -125,6 +127,7 @@ function helpersFor(S, inst, hurtIdx) {
   };
   const inReach = (u, scope = 'any') => {
     const node = model.nodes[u];
+    if (dnsPath && ['dns', 'geo-dns'].includes(node.el.id) && !dnsPath.has(u)) return false;
     if (node.hasCap && st0 && !(st0.maxLoad[u] > 0)) return false;
     if (inst.id === 'duplicate-delivery') return !reach || reach.up.has(u) || reach.near.has(u) || reach.seeds.has(u);
     if (!reach) return inst.def.group !== 'traffic' || onRushPath(u);
@@ -468,7 +471,7 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
         if (!mainNode || !mainNode.keyed || S.unitsCur[mainNode.i] <= 1) hurt = `${vars.node} overloaded on the hot item and ${vars.failed} requests failed.`;
         break;
       case 'thundering-herd':
-        hurt = `${vars.node} was overwhelmed by the reconnect wave and ${vars.failed} requests failed.`;
+        hurt = t.hurt ? fillT(t.hurt, vars) : `${vars.node} was overwhelmed by the reconnect wave and ${vars.failed} requests failed.`;
         break;
       case 'retry-storm':
         if (vars.minutes === '0') hurt = `Retries hit ${vars.node} hard and ${vars.failed} requests failed.`;
@@ -504,6 +507,21 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
     const fo = inst.id === 'db-failover' ? inst.effects.find((e) => e.op === 'fail') : null;
     if (fo && fo.st.failover) hurt = `No visible damage: ${fo.st.failover === 'consensus' ? 'the cluster re-elected a leader and kept serving' : fo.st.failover === 'shard' ? "the shard's standby took over while the other shards kept serving" : 'the standby took over quickly'}.`;
     fix = null;
+  }
+
+  // A typed traffic surge cannot explain losses confined to another workload's path.
+  let unaffectedPath = false;
+  const types = inst.effects.filter(e => e.op === 'traffic').flatMap(e => e.params.types || []);
+  if (dmg.any && types.length && inst.stats) {
+    const path = new Set(types.flatMap(id => {
+      const t = catalog.typeIndex.get(id);
+      return t != null && S.mixArr[t] > 0 ? [...sourceFlow(S, t).reached] : [];
+    }));
+    const elsewhere = model.nodes.filter(n => !path.has(n.i) && inst.stats.nodeFail[n.i] >= 1);
+    if (elsewhere.length) {
+      unaffectedPath = !model.nodes.some(n => path.has(n.i) && inst.stats.nodeFail[n.i] >= 1);
+      hurt = `${vars.failed} requests failed in this window across the design. Failed work was recorded on a separate path at ${joinNames(elsewhere.map(nodeLabel))}. ${unaffectedPath ? 'No failures were recorded on the affected traffic path.' : 'Failures were also recorded on the affected traffic path; this total includes both paths.'}`;
+    }
   }
 
   // A crowd that did not overload the part that failed is not what failed it: an outage that overlapped did.
@@ -642,12 +660,7 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
       fix = gap ? `Fix the routing gap first: ${gap.message}` : root ? `Fix the failures at ${nodeLabel(root)} first. The slow dependency caused none of these failures.` : null;
     }
   }
-  const authored = S.problem.events.find(e => e.id === inst.id && e.text)?.text?.debrief;
-  if (authored) {
-    if (authored.headline) headline = fillT(authored.headline, vars);
-    if (authored.hurt) hurt = fillT(authored.hurt, vars);
-    if (authored.fix) fix = fillT(authored.fix, vars);
-  }
+  if (unaffectedPath) { fix = null; helped = null; }
   return { headline: tidy(headline), hurt: tidy(hurt), helped: tidy(helped), fix: tidy(fix) };
 }
 

@@ -230,7 +230,7 @@ function eventStory(ev, i, result, catalog) {
   const missing = st && !st.fix && !unreached ? [] : (ev.counters || def?.counters || []).filter((c) => c.element && !inGraph.has(c.element));
   const card = h('article', { class: 'pl-story', id: 'pl-ev-' + i, tabindex: '-1' },
     h('header', { class: 'pl-story-head' }, iconEl('ev.' + ev.id, 28, 'pl-ic pl-story-ic'),
-      h('div', {}, h('b', { text: def?.name || ev.id }), h('div', { class: 'pl-muted pl-small', text: `${clockLabel(ev.atMs)} to ${clockLabel(ev.endMs || ev.atMs)}` }))),
+      h('div', {}, h('b', { text: ev.name || def?.name || ev.id }), h('div', { class: 'pl-muted pl-small', text: `${clockLabel(ev.atMs)} to ${clockLabel(ev.endMs || ev.atMs)}` }))),
     h('div', { class: 'pl-story-body' },
       ev.durations ? h('p', { class: 'pl-muted', text: `Ramp: ${duration(ev.durations.rampSec)}. Spike duration at peak: ${duration(ev.durations.spikeSec)}. Traffic recovery duration: ${duration(ev.durations.recoverySec)} to return to normal. Overload duration: ≈ ${Math.round(ev.durations.overloadSec / 60)} min on the most overloaded part during the ${Math.round(ev.durations.observedSec / 60)} min observation window, including up to 10 min after the event. Recovery of your design may take longer.` }) : null,
       lines[0] && h('p', { class: 'pl-story-1', text: lines[0] }),

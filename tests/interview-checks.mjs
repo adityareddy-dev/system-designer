@@ -70,6 +70,12 @@ try {
     assert.doesNotMatch(diagnosticText, /Time-series database|Data lake|raise|Add |Connect |Set |autoscaling|bigger size/);
     assert.equal(await page.$('.pl-issue-fix'), null);
     assert.equal(await page.$eval('.pl-trace', e => e.checkVisibility()), false, 'interview draw has no route repair tool');
+    await click('Start day');
+    const preflight = await page.$eval('.pl-modal-card', e => e.textContent);
+    assert.match(preflight, /no usable route/);
+    assert.doesNotMatch(preflight, /Time-series database|Data lake|Add |Connect |wiring guidance/);
+    assert.equal(await page.evaluate(() => window.__game.getState().phase), 'build');
+    await click('Keep drawing');
     await page.evaluate(() => {
       const g = window.__game, app = g.getState().nodes.find(n => n.type === 'vm-fleet');
       const store = g.placeComponent('timeseries-db',180,180); g.setKnob(store,'units',100); g.connect(app.id,store);
@@ -95,6 +101,53 @@ try {
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('hotpath.v1.progress'))['observability-platform'].interview);
     assert(saved.latest.covered > 0); assert(saved.bestDay); assert(saved.bestCoverage);
   }
+  const proofs = await page.evaluate(async () => {
+    const { createReqCard } = await import('./ui/play/req-card.js');
+    const { loadCatalog } = await import('./sim/catalog.js');
+    const catalog = await loadCatalog();
+    const problem = { title: 'Proof check', requirements: { mix: {}, compliance: ['encryption', 'audit-log', 'backups', 'access-control'] } };
+    const host = document.createElement('div');
+    const safe = createReqCard(host, { catalog, problem, advice: false }).el.textContent;
+    const ordinary = createReqCard(host, { catalog, problem }).el.textContent;
+    return { safe, ordinary };
+  });
+  assert.match(proofs.ordinary, /Add and connect|Connect Backups|Draw the key connection/);
+  assert.doesNotMatch(proofs.safe, /Add and connect|Connect Backups|Draw the key connection|Example:/);
+  const headings = await page.evaluate(async () => {
+    const { loadCatalog } = await import('./sim/catalog.js');
+    const { createSim } = await import('./sim/engine.js');
+    const { problemById } = await import('./content/problems/index.js');
+    const { renderDebrief } = await import('./ui/play/debrief.js');
+    const catalog = await loadCatalog(), problem = problemById.get('observability-platform');
+    const sim = createSim({ catalog, problem }); sim.loadGraph(problem.editorial.designs[0].graph); sim.start(); sim.advance(86400000);
+    const host = document.createElement('div');
+    renderDebrief(host, { result: sim.result(), problem, catalog, ctx: { content: { lessons: [] } }, reduced: true });
+    return [...host.querySelectorAll('.pl-story-head b')].map(e => e.textContent);
+  });
+  assert(headings.includes('Dashboard rush'), 'debrief headings preserve resolved event names');
+  assert(!headings.includes('Thundering herd'));
+  await page.goto(base + '#/practice/bank-ledger?interview=1');
+  await page.waitForSelector('.pl-defense-field textarea');
+  await page.type('.pl-defense-field textarea', 'How many writes arrive? How long must records survive?');
+  await click('Commit questions'); await click('Write requirements');
+  await page.type('.pl-defense-field textarea', 'Keep a durable audit trail and authenticated access for every transfer.');
+  await click('Commit requirements'); await click('Estimate the workload');
+  await page.$$eval('.pl-panel input[type=number]', els => els.forEach(el => { el.value = 100; el.dispatchEvent(new Event('input')); }));
+  await click('Commit estimates'); await click('Start drawing');
+  await page.$$eval('.pl-req details', els => els.forEach(el => el.open = true));
+  const requirementText = await page.$eval('.pl-req', el => el.textContent);
+  assert.match(requirementText, /Every store that holds customer data is backed up/);
+  assert.doesNotMatch(requirementText, /Example:|Draw the key connection|Add and connect|Connect Backups/);
+  await page.evaluate(() => {
+    const g = window.__game, sources = g.getState().nodes;
+    const app = g.placeComponent('vm-fleet', 0, 0), db = g.placeComponent('sql-primary', 180, 0);
+    for (const source of sources) g.connect(source.id, app);
+    g.connect(app, db);
+  });
+  await click('Start day');
+  const proofPreflight = await page.$eval('.pl-modal-card', el => el.textContent);
+  assert.match(proofPreflight, /required compliance check has no proof/);
+  assert.doesNotMatch(proofPreflight, /wiring guidance|Add |Connect |Put |Set /);
   assert.deepEqual(errors, []);
   console.log('Interview preparation, typed estimates, one locked run, graph-specific defense and legacy progress passed at both sizes.');
 } finally { await browser.close(); }

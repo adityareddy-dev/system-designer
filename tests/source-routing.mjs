@@ -27,6 +27,19 @@ assert.equal(reflectionCorrect(target, target.id, target.percent), true);
 assert.equal(reflectionCorrect(target, 'not-the-cause', target.percent), false);
 const rush = isolated.result().events.find(e => e.id === 'thundering-herd');
 assert.match(rush.name, /Dashboard/); assert.doesNotMatch(JSON.stringify(rush.story), /sign-in|reconnect/);
+assert.match(rush.story.hurt, /No visible damage/);
+assert.equal(rush.story.fix, null, 'authored advice cannot override a no-damage result');
+const brokenIngest = play(p);
+brokenIngest.setKnob('dist', 'units', 1);
+brokenIngest.start(); brokenIngest.advance(86400000);
+const ingestResult = brokenIngest.result();
+assert.equal(ingestResult.nodes.find(n => n.id === 'qry').failed, 0);
+assert(ingestResult.nodes.find(n => n.id === 'dist').failed > 0);
+const ingestRush = ingestResult.events.find(e => e.id === 'thundering-herd');
+assert.match(ingestRush.story.hurt, /separate path/);
+assert(ingestRush.story.hurt.includes(catalog.elementById.get('container-cluster').name));
+assert.match(ingestRush.story.hurt, /No failures were recorded on the affected traffic path/);
+assert.equal(ingestRush.story.fix, null, 'unrelated ingest failures cannot justify query advice');
 assert.equal(duration(10), '10 seconds');
 for (const p of problems) {
   for (const d of p.editorial.designs) {
@@ -59,5 +72,24 @@ function dnsTrial(ttl, loose = false) {
 const longDns = dnsTrial(3600), shortDns = dnsTrial(60);
 assert(shortDns.slo.availability.actual > longDns.slo.availability.actual, 'short TTL fixes the modeled cache lifetime');
 assert.equal(dnsTrial(60,true).slo.availability.actual, longDns.slo.availability.actual, 'a disconnected low-TTL resolver does not help');
+function dnsBranchTrial(kind, ttl = 60) {
+  const problem = { id: 'dns-branch', requirements: { peakRps: 100, mix: { read: 1 }, latencyP99Ms: { default: 1000 } },
+    traffic: { curve: 'flat', sources: { 'web-browser': 1 } }, events: [{ id: 'dns-misconfig', at: '12:00' }] };
+  if (kind === 'ineligible') problem.traffic.sourceTypes = { active: ['read'], unused: ['write'] };
+  const sim = createSim({ catalog, problem });
+  for (const [id, type] of [['active', 'web-browser'], ['lb', 'regional-lb'], ['app', 'vm-fleet'], ['db', 'sql-primary']]) sim.addNode(type, 0, 0, { id });
+  sim.connect('active', 'lb'); sim.connect('lb', 'app'); sim.connect('app', 'db');
+  if (kind !== 'none') {
+    sim.addNode('dns', 0, 0, { id: 'dns', knobs: { ttlSec: ttl } }); sim.connect('dns', 'lb');
+    if (kind === 'ineligible') { sim.addNode('web-browser', 0, 0, { id: 'unused' }); sim.connect('unused', 'dns'); }
+    if (kind === 'used') sim.connect('active', 'dns');
+  }
+  sim.start(); sim.advance(86400000); return sim.result();
+}
+const noDns = dnsBranchTrial('none'), unusedDns = dnsBranchTrial('dangling');
+assert.equal(unusedDns.slo.availability.actual, noDns.slo.availability.actual, 'an unused DNS ancestor cannot shorten the outage');
+assert.equal(dnsBranchTrial('ineligible').slo.availability.actual, noDns.slo.availability.actual, 'a source emitting no positive workload cannot activate DNS');
+assert(!unusedDns.events.find(e => e.id === 'dns-misconfig').helpers.includes('dns'), 'unused DNS gets no recovery credit');
+assert(dnsBranchTrial('used').slo.availability.actual > noDns.slo.availability.actual, 'DNS on a used branch limits the outage');
 console.log('Per-source routing, reference isolation, causal advice, event overrides and decimal formatting passed.');
 
