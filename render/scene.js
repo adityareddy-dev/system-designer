@@ -678,6 +678,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (autoFit && graph?.nodes?.length) { autoFit = false; api.fit(80, false); }
     },
     setFlows(frameData, opts = {}) {
+      if (opts.nodeStates) for (const state of opts.nodeStates) { const v = nodes.views.get(state.id); if (v) { v.fleetUnits = state.units; v.availableUnits = state.availableUnits; v.motionActive = opts.speed > 0; } }
       if (opts && typeof opts.speed === 'number') speed = opts.speed;
       if (!!frameData !== !!flow) wake();
       if (!frameData) {
