@@ -150,7 +150,7 @@ section('Sizing uses the fleet at the measured peak');
     { id: 'd', type: 'kv-store', x: 200, y: 0, units: 100 }
   ], edges: [{ from: 'u', to: 'v' }, { from: 'v', to: 'd' }] };
   const { r } = runDay(p, graph);
-  check('sizing shows simultaneous load, active units, headroom and monthly cost', /Measured peak:.*requests\/s with.*active.*30 percent headroom.*0.70.*month/.test(r.nextStep.text), r.nextStep.text);
+  check('sizing shows simultaneous load, active units, headroom and monthly cost', /Measured peak at this part, including retries and repeat visits:.*requests\/s with.*active.*30 percent headroom.*0.70.*month/.test(r.nextStep.text), r.nextStep.text);
   const m = r.nextStep.text.match(/round up ([\d,]+) ÷ \(([\d,]+) × 0.70\) = ([\d,]+)/);
   check('suggested units follow the displayed capacity arithmetic', !!m && Math.abs(Math.ceil(Number(m[1].replaceAll(',', '')) / (Number(m[2].replaceAll(',', '')) * 0.7)) - Number(m[3].replaceAll(',', ''))) <= 1);
   if (m) {

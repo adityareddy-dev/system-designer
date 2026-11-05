@@ -309,6 +309,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const zoom = isPhone() ? { minZ: minZoom ?? (graph().nodes.length > 8 ? 0.18 : 0.45), maxZ: 0.9 } : { minZ: minZoom ?? 0.6, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
     // names sit under the parts and are about 80 px wide, so the sides keep room for half a name (never under 12 px) and the bottom for a name line
     const side = Math.max(pad, 46);
+    if (isPhone() && S.selected) { const z = scene.stats().zoom; Object.assign(zoom, { minZ: z, maxZ: z, focusId: S.selected }); }
     try { scene.fit({ l: a.l + side, t: a.t + pad, r: a.r + side, b: a.b + pad + 22 }, animate, zoom); } catch { try { scene.fit(); } catch { /* optional */ } }
   }
   function placeAtCentre(type) {

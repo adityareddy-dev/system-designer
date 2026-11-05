@@ -27,10 +27,10 @@ assert.equal(menus, 1);
 
 const connectSource = source.slice(source.indexOf('  function startConnect('), source.indexOf('  function cancelModes('));
 const fitSource = source.slice(source.indexOf('  function fitView('), source.indexOf('  function placeAtCentre('));
-let phone = true, folded = 0, hidden = 0, stopped = 0, fits = 0;
+let phone = true, folded = 0, hidden = 0, stopped = 0, fits = 0, lastFit;
 const context = vm.createContext({
-  S, isPhone: () => phone, inspector: { fold: () => { folded++; }, hide: () => { hidden++; } },
-  scene: { stopCamera: () => { stopped++; }, fit: () => { fits++; } },
+  S, graph: () => g, isPhone: () => phone, inspector: { fold: () => { folded++; }, hide: () => { hidden++; } },
+  scene: { stopCamera: () => { stopped++; }, fit: (padding, animate, opts) => { fits++; lastFit = opts; }, stats: () => ({ zoom: .9 }) },
   root: { classList: { add() {} } }, showCaption() {},
   freeArea: () => ({ l: 0, t: 100, r: 0, b: 240 }), mode: 'practice',
 });
@@ -50,6 +50,12 @@ assert.equal(fits, 1);
 S.connectFrom = null;
 vm.runInContext('fitView();', context);
 assert.equal(fits, 2);
+phone = true; S.selected = 'a';
+vm.runInContext('fitView();', context);
+assert.equal(lastFit.focusId, 'a');
+assert.equal(lastFit.minZ, .9);
+assert.equal(lastFit.maxZ, .9);
+S.selected = null;
 
 const camera = createCamera({ position: { set() {} }, scale: { set() {} } });
 camera.resize(390, 844);

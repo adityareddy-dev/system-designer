@@ -150,7 +150,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       groups.get(region).push(n);
     }
     const label = (text, x, y) => {
-      const t = new PIXI.Text({ text, style: { fontFamily: 'Inter', fontSize: 14, fill: P.text } });
+      const t = new PIXI.Text({ text, style: { fontFamily: 'Atkinson Hyperlegible', fontSize: 14, fill: P.text } });
       t.position.set(x, y); regionLayer.addChild(t);
     };
     for (const [region, ns] of groups) {
@@ -499,10 +499,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   }
 
   function updateTextRes(now) {
+    nodes.setLabelScale(camera.zoom);
     if (now - camera.lastZoomChange < 250) return;
     const r = Math.max(1, Math.min(4, Math.ceil(camera.zoom * resFor(level) * 2) / 2));
     if (r !== lastTextRes) { lastTextRes = r; nodes.setTextResolution(r); }
-    nodes.setLabelScale(camera.zoom);
   }
 
   function setLevel(lv) {
@@ -767,7 +767,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     setConnectCheck(fn) { connectCheck = typeof fn === 'function' ? fn : null; },
     // opts: { minZ, maxZ } keep a fitted view readable: a big graph is panned rather than shrunk past minZ.
     fit(padding = 80, animate = true, opts = {}) {
-      const b = nodes.bounds(graph);
+      const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
+      const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(graph);
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
       camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY, padding, animate && !reduced, opts);
     },
