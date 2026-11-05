@@ -338,13 +338,13 @@ export function createNodeLayer(PIXI, parent, env) {
       }
     },
     // Live values from the flow frame; pass live = false to hide them (build phase).
-    setLive(v, live, util = 0, status = 0, queue = 0, over = 0, pileType = -1, failRps = 0, failedType = '') {
+    setLive(v, live, util = 0, status = 0, queue = 0, over = 0, pileType = -1, failRps = 0) {
       const recovering = live && failRps < .5 && v.failRps > .5;
       if (recovering) v.recoverUntil = performance.now() + 1000;
       v.failRps = failRps;
       const recovered = performance.now() < (v.recoverUntil || 0);
       v.evidenceT.visible = live && (failRps > .5 || queue > 1 || recovered);
-      v.evidenceT.text = failRps > .5 ? util < .7 ? `× ${failedType || 'Request'} has no route` : `× ${Math.round(failRps).toLocaleString('en-US')}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Route recovered' : '';
+      v.evidenceT.text = failRps > .5 ? `× ${Math.round(failRps).toLocaleString('en-US')}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Requests recovered' : '';
       v.evidenceT.style.fill = failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
       if (!live) {
         if (v.live) {

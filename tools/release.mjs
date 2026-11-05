@@ -44,6 +44,7 @@ function copy(from, to, skip = () => false) {
 copy(path.join(root, 'catalog'), path.join(dist, 'catalog'));
 copy(path.join(root, 'content/data'), path.join(dist, 'content/data'));
 copy(path.join(root, 'assets'), path.join(dist, 'assets'), (f) => /\.(js|css)$/.test(f) || /preview\.html$/.test(f));
+copy(path.join(root, 'assets/fonts.css'), path.join(dist, 'assets/fonts.css'));
 for (const f of ['privacy.html', '404.html', 'd', 'p', 'LICENSE', 'CNAME', '.nojekyll']) if (fs.existsSync(path.join(root, f))) copy(path.join(root, f), path.join(dist, f));
 
 // All icons in one file (id → svg markup) so the workbench does not fetch them one by one.

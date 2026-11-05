@@ -434,7 +434,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         if (f > pileR) { pileR = f; pile = t; }
       }
       const over = fail > 0 && inn > 0 ? fail / (inn + fail) : 0;
-      nodes.setLive(v, true, util[i] || 0, status ? status[i] : 0, queue ? queue[i] || 0 : 0, over, pile >= 0 ? map.tex[pile] : -1, fail, pile >= 0 ? cat.requests.find(r => r.id === F.typeIds[pile])?.name || F.typeIds[pile] : '');
+      nodes.setLive(v, true, util[i] || 0, status ? status[i] : 0, queue ? queue[i] || 0 : 0, over, pile >= 0 ? map.tex[pile] : -1, fail);
       if (running && fail > 0 && inn <= 0) {
         map.srcAcc[i] += (fail * inv * dt) / 1000;
         if (map.srcAcc[i] >= 1) {

@@ -191,7 +191,7 @@ export function renderDrill(host, ctx) {
       h('header', { class: 'sh-page-head' }, h('div', null, h('p', { class: 'sh-eyebrow', text: S.daily ? `Today's set, ${today}` : 'Drill' }), h('h1', { class: 'sh-h1', text: 'Round done' }))),
       h('section', { class: 'sh-card sh-lp-card' },
         h('p', { class: 'sh-lp-text', text: `${S.right} of ${S.qs.length} right (${pct} percent). Longest run: ${S.bestStreak} in a row.${isBest && S.bestStreak > 1 ? ' That is a new best.' : ` Your best run is ${Math.max(prev.best || 0, S.bestStreak)}.`}` }),
-        run ? h('p', { class: 'sh-lp-text', text: `Drill day streak: ${run} ${run === 1 ? 'day' : 'days'}.${S.daily ? '' : ' Finish today's review to keep it going.'}` }) : null,
+        run ? h('p', { class: 'sh-lp-text', text: `Drill day streak: ${run} ${run === 1 ? 'day' : 'days'}.${S.daily ? '' : " Finish today's review to keep it going."}` }) : null,
         h('p', { class: 'sh-muted sh-drill-line', text: line }),
         h('div', { class: 'sh-lp-nav' },
           h('a', { class: 'sh-btn sh-btn--ghost', href: '#/learn' }, 'Back to lessons'),

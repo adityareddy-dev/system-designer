@@ -1008,6 +1008,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     inspection.addEventListener('toggle', () => top.classList.toggle('pl-top--tools-open', inspection.open));
     for (const event of ['pointerdown', 'pointerup', 'click', 'dblclick', 'wheel']) options.addEventListener(event, e => e.stopPropagation());
     inspection.append(options); tools.append(inspection);
+    if (stepped) options.append(h('button', { class: 'pl-btn pl-btn--small', type: 'button', onClick: () => {
+      inspection.open = false;
+      top.classList.remove('pl-top--tools-open');
+      hints.open();
+    } }, 'Hints'));
     const toggle = (label, action) => {
       let on = false;
       const button = h('button', { class: 'pl-btn pl-btn--small', type: 'button', 'aria-pressed': 'false', onClick: () => {
@@ -1447,7 +1452,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (d?.graph && (mode !== 'challenge' || d.seed === S.seed)) g = d.graph;
     }
     if (g) { try { S.sim.loadGraph(g); } catch (e) { toast('Could not restore that design: ' + (e.message || e), 'warn'); } }
-    if (isPhone() && graph().nodes.length <= 8) for (const n of phoneLayout(graph())) S.sim.moveNode(n.id, n.x, n.y);
+    if (!g && isPhone() && graph().nodes.length <= 8) for (const n of phoneLayout(graph())) S.sim.moveNode(n.id, n.x, n.y);
     S.cur = JSON.stringify(graph());
     toolbar.setPalette(S.problem.palette || null);
     const sug = suggestedParts(S.problem);
