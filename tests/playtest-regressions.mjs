@@ -54,6 +54,7 @@ try {
     if (width < 719) await page.select('.pl-step-picker', 'draw');
     else await page.click('.pl-step[data-step="draw"]');
     await page.waitForFunction(() => document.querySelector('.pl-root').dataset.step === 'draw');
+    await delay(350);
     assert.equal(await page.$eval('.pl-reset', el => el.checkVisibility()), true, 'completed Draw exposes the reset control');
     await page.click('.pl-reset');
     assert.equal(await page.evaluate(() => window.__game.getState().phase), 'build');

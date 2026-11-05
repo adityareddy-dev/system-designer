@@ -74,4 +74,15 @@ camera.stop();
 camera.update(500);
 assert.deepEqual({ ...camera.center, zoom: camera.zoom }, before);
 assert.equal(camera.moving, false);
+const announcementSource = source.slice(source.indexOf('  let announcementTimer'), source.indexOf('  // ---- building actions'));
+const pending = new Map(), announced = { textContent: '' };
+let nextTimer = 0;
+vm.runInNewContext(announcementSource + "announce('Web browser'); announce('Load balancer'); announce('Connect to Cache?');", {
+  kbLive: announced, timers: new Set(),
+  clearTimeout: id => pending.delete(id),
+  later: fn => { const id = ++nextTimer; pending.set(id, fn); return id; },
+});
+assert.equal(pending.size, 1, 'superseded keyboard announcements are cancelled');
+for (const fn of pending.values()) fn();
+assert.equal(announced.textContent, 'Connect to Cache?', 'the live region describes the current target');
 console.log('Touch interaction checks passed.');

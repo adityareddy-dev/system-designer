@@ -397,7 +397,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (sp.x < a.l + 30 || sp.x > a.w - a.r - 30 || sp.y < a.t + 30 || sp.y > a.h - a.b - 30) later(() => { if (!S.destroyed && performance.now() >= (S.editUntil || 0)) fitView(true, null, true); }, 60);
     } catch { /* optional */ }
   }
-  function announce(text) { kbLive.textContent = ''; later(() => { kbLive.textContent = text; }, 30); }
+  let announcementTimer = null;
+  function announce(text) {
+    clearTimeout(announcementTimer); timers.delete(announcementTimer);
+    kbLive.textContent = '';
+    announcementTimer = later(() => { kbLive.textContent = text; }, 30);
+  }
 
   // ---- building actions
   function placeComponent(type, x, y, edgeId = null, opt = {}) {
