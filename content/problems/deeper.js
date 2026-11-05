@@ -1,4 +1,4 @@
-// Advanced problems. Each brief states the scored boundary and protocol obligations.
+// Advanced problems with source-specific workloads and explicit protocol boundaries.
 export default {
   "group": {
     "id": "devtools",
@@ -62,16 +62,25 @@ export default {
         },
         "homeRegion": "us",
         "notes": [
-          "At the flat planning rate, 1 chunk/s × 100 MB is about 8.64 TB/day and 259.2 TB over 30 days, before metadata and audit exceptions (approx.).",
+          "Each compressed chunk is about 100 MB. Plan 30 days of payload before metadata and audit exceptions. A broad scan reads one full day of chunks at 2 GB/s (approx.).",
           "The score measures durable chunk acceptance and small reads. It does not model label index construction, text scan work, tenant fairness or redaction.",
           "A catalog batch represents a 100 MB object upload, not one message sent through a standard queue. Object chunks are immutable. Stable chunk ids and sequence ranges make retries reconcilable; index publication follows durable upload.",
-          "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score."
+          "Sources emit only their assigned request types. The source rates below reproduce the aggregate workload; protocol guarantees still require the separate design checkpoint."
         ]
       },
       "traffic": {
         "curve": "flat",
         "sources": {
-          "partner-system": 1
+          "partner-system": 0.01,
+          "admin-console": 0.99
+        },
+        "sourceTypes": {
+          "clients": [
+            "batch"
+          ],
+          "query": [
+            "read"
+          ]
         }
       },
       "starter": {
@@ -80,9 +89,21 @@ export default {
             "ref": "clients",
             "type": "partner-system",
             "x": -660,
-            "y": 0,
+            "y": -100,
             "locked": true,
-            "label": "Collectors and query clients",
+            "label": "Chunk collectors",
+            "knobs": {
+              "retries": 2,
+              "backoff": "exponential-jitter"
+            }
+          },
+          {
+            "ref": "query",
+            "type": "admin-console",
+            "x": -660,
+            "y": 100,
+            "locked": true,
+            "label": "Query clients",
             "knobs": {
               "retries": 2,
               "backoff": "exponential-jitter"
@@ -102,7 +123,7 @@ export default {
           "role": "collector chunks"
         },
         {
-          "sourceRef": "clients",
+          "sourceRef": "query",
           "entryRef": "lb",
           "peakRps": 99,
           "mix": {
@@ -169,9 +190,9 @@ export default {
                   "ref": "clients",
                   "type": "partner-system",
                   "x": -660,
-                  "y": 0,
+                  "y": -100,
                   "locked": true,
-                  "label": "Collectors and query clients",
+                  "label": "Chunk collectors",
                   "knobs": {
                     "retries": 2,
                     "backoff": "exponential-jitter"
@@ -247,6 +268,18 @@ export default {
                   "type": "pager",
                   "x": 240,
                   "y": 320
+                },
+                {
+                  "ref": "query",
+                  "type": "admin-console",
+                  "x": -660,
+                  "y": 100,
+                  "locked": true,
+                  "label": "Query clients",
+                  "knobs": {
+                    "retries": 2,
+                    "backoff": "exponential-jitter"
+                  }
                 }
               ],
               "edges": [
@@ -285,6 +318,10 @@ export default {
                 [
                   "alerts",
                   "pager"
+                ],
+                [
+                  "query",
+                  "lb"
                 ]
               ]
             },
@@ -386,16 +423,25 @@ export default {
         },
         "homeRegion": "us",
         "notes": [
-          "Raw incoming spans are about 100 MB/s; 10% retention gives about 10 MB/s before compression. One catalog batch is 100 MB, so 0.1 retained blocks/s is the planning rate (approx.).",
-          "Seven days at that retained rate is about 6.048 TB, before indexes, replication and an error reserve (approx.).",
+          "Collectors see 10,000 traces/s with 20 spans/trace and 500 B/span. Retain 10% for seven days; a raw tail buffer holds spans for an assumed average of 30 seconds before selection (approx.).",
+          "One catalog batch is a 100 MB retained block. Raw collection and the selected-block workload have separate capacity boundaries.",
           "The reference starts with already selected and formed blocks. The API acknowledges only after object storage accepts them durably. Raw-span collection, sampling, durable collector spooling and index publication need separate capacity and failure tests.",
-          "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score."
+          "Sources emit only their assigned request types. The source rates below reproduce the aggregate workload; protocol guarantees still require the separate design checkpoint."
         ]
       },
       "traffic": {
         "curve": "flat",
         "sources": {
-          "partner-system": 1
+          "partner-system": 0.001,
+          "admin-console": 0.999
+        },
+        "sourceTypes": {
+          "clients": [
+            "batch"
+          ],
+          "query": [
+            "read"
+          ]
         }
       },
       "starter": {
@@ -404,9 +450,21 @@ export default {
             "ref": "clients",
             "type": "partner-system",
             "x": -660,
-            "y": 0,
+            "y": -100,
             "locked": true,
-            "label": "Collectors and query clients",
+            "label": "Chunk collectors",
+            "knobs": {
+              "retries": 2,
+              "backoff": "exponential-jitter"
+            }
+          },
+          {
+            "ref": "query",
+            "type": "admin-console",
+            "x": -660,
+            "y": 100,
+            "locked": true,
+            "label": "Query clients",
             "knobs": {
               "retries": 2,
               "backoff": "exponential-jitter"
@@ -426,7 +484,7 @@ export default {
           "role": "retained blocks after collector sampling"
         },
         {
-          "sourceRef": "clients",
+          "sourceRef": "query",
           "entryRef": "lb",
           "peakRps": 99.9,
           "mix": {
@@ -499,9 +557,9 @@ export default {
                   "ref": "clients",
                   "type": "partner-system",
                   "x": -660,
-                  "y": 0,
+                  "y": -100,
                   "locked": true,
-                  "label": "Collectors and query clients",
+                  "label": "Chunk collectors",
                   "knobs": {
                     "retries": 2,
                     "backoff": "exponential-jitter"
@@ -577,6 +635,18 @@ export default {
                   "type": "pager",
                   "x": 240,
                   "y": 320
+                },
+                {
+                  "ref": "query",
+                  "type": "admin-console",
+                  "x": -660,
+                  "y": 100,
+                  "locked": true,
+                  "label": "Query clients",
+                  "knobs": {
+                    "retries": 2,
+                    "backoff": "exponential-jitter"
+                  }
                 }
               ],
               "edges": [
@@ -615,6 +685,10 @@ export default {
                 [
                   "alerts",
                   "pager"
+                ],
+                [
+                  "query",
+                  "lb"
                 ]
               ]
             },
@@ -718,11 +792,11 @@ export default {
         },
         "homeRegion": "us",
         "notes": [
-          "At peak: 8,000 × 0.9 × 100 = 720,000 samples/s. Normal: 10 million ÷ 15 ≈ 667,000/s (approx.).",
-          "Storage planning uses the normal steady rate: 10 million/15 × 1.5 B × 86,400 × 14 days ≈ 1.2096 TB compressed payload, before indexes, recent WAL and replica copies (approx.).",
+          "Each telemetry request batches 100 samples. Normal load is 10 million active series sampled every 15 seconds. Budget 1.5 B/sample for 14 days of compressed payload, before indexes, recent WAL and replica copies (approx.).",
+          "Assume 100,000 active series per tenant at 2 KB of state per series, before sample buffers (approx.).",
           "The Time-series database element includes recent data and historical object blocks. The graph does not draw a fake store-to-store link.",
           "The shared API coordinates ingest and query requests. The sim does not model per-tenant weights, cardinality memory, new-series churn or cell assignment. The cardinality event affects the platform's own Metrics observer bill.",
-          "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score."
+          "Sources emit only their assigned request types. The source rates below reproduce the aggregate workload; protocol guarantees still require the separate design checkpoint."
         ]
       },
       "traffic": {
@@ -730,6 +804,15 @@ export default {
         "sources": {
           "iot-device": 0.9,
           "admin-console": 0.1
+        },
+        "sourceTypes": {
+          "agents": [
+            "telemetry"
+          ],
+          "query": [
+            "report",
+            "read"
+          ]
         }
       },
       "starter": {
@@ -1077,18 +1160,25 @@ export default {
         },
         "homeRegion": "us",
         "notes": [
-          "The catalog sync operation is about 1 KB. Peak accepted edit payload is 3,000 × 0.6 × 1 KB ≈ 1.8 MB/s, before replication (approx.).",
+          "Each sync operation carries about 1 KB. A notebook has 10,000 notes of about 2 KB each; one pull finds 50 changed notes. Keep tombstones for 90 days and support devices offline for 30 days (approx.).",
           "Under-a-second is a foreground connected-device goal. Background push and offline devices have eventual delivery. The scored notify path measures sender acceptance, not device receipt.",
           "The graph carries encrypted operations and small reads. It does not implement offline storage, conflict resolution, cursors, end-to-end encryption, recovery or tombstones. A traffic pass does not prove these properties.",
           "KMS and audit nodes protect server metadata and record content-free access/deletion receipts. They are not the end-to-end content key service.",
-          "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score.",
-          "The 900 ms target measures one request. Subsecond propagation needs an end-to-end budget across commit, change notification, pull and local application; a traffic pass does not verify it."
+          "The 900 ms target measures one request. Subsecond propagation needs an end-to-end budget across commit, change notification, pull and local application; a traffic pass does not verify it.",
+          "Sources emit only their assigned request types. The source rates below reproduce the aggregate workload; protocol guarantees still require the separate design checkpoint."
         ]
       },
       "traffic": {
         "curve": "consumer-evening",
         "sources": {
           "mobile-app": 1
+        },
+        "sourceTypes": {
+          "devices": [
+            "sync",
+            "read",
+            "notify"
+          ]
         }
       },
       "starter": {
@@ -1424,17 +1514,27 @@ export default {
         },
         "homeRegion": "us",
         "notes": [
-          "Cloud peak is a reconnect burst: 450 one-KB summaries/s, 40 small reads/s and 10 wake notifications/s. Normal opt-in uploads are at most 100,000 summaries/day ≈ 1.16/s; the daily curve is a conservative capacity drill, not the sparse average billing forecast (approx.).",
-          "One year of 100,000 × 1 KB/day summaries is about 36.5 GB before copies, encryption tags and metadata. Raw readings remain local; the sim storage figure is cloud summary payload only (approx.).",
+          "Local raw readings are 16 B each at one reading per second. Reserve fourteen offline days. Each of 100,000 opted-in devices uploads at most one 1 KB summary per day; raw readings remain local (approx.).",
+          "Cloud peak is a reconnect burst. Use the peak and mix to separate summary ingestion, account reads and wake requests. The daily curve is a conservative capacity drill, separate from the sparse average billing forecast.",
           "The scored no-loss target concerns acknowledged cloud summaries. The device log, fourteen-day outage reserve, consent, encryption keys and proof of deletion are worked protocol obligations.",
           "The sender target concerns push acceptance only. No cloud availability percentage is a guarantee of medical safety or survival of a destroyed device.",
-          "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score."
+          "Sources emit only their assigned request types. The source rates below reproduce the aggregate workload; protocol guarantees still require the separate design checkpoint."
         ]
       },
       "traffic": {
         "curve": "business-hours",
         "sources": {
-          "iot-device": 1
+          "iot-device": 0.9,
+          "mobile-app": 0.1
+        },
+        "sourceTypes": {
+          "devices": [
+            "telemetry"
+          ],
+          "account": [
+            "read",
+            "notify"
+          ]
         }
       },
       "starter": {
@@ -1443,9 +1543,21 @@ export default {
             "ref": "devices",
             "type": "iot-device",
             "x": -660,
-            "y": 0,
+            "y": -100,
             "locked": true,
             "label": "Consented wearable uploads",
+            "knobs": {
+              "retries": 2,
+              "backoff": "exponential-jitter"
+            }
+          },
+          {
+            "ref": "account",
+            "type": "mobile-app",
+            "x": -660,
+            "y": 100,
+            "locked": true,
+            "label": "Consented account access",
             "knobs": {
               "retries": 2,
               "backoff": "exponential-jitter"
@@ -1458,13 +1570,21 @@ export default {
         {
           "sourceRef": "devices",
           "entryRef": "lb",
-          "peakRps": 500,
+          "peakRps": 450,
           "mix": {
-            "telemetry": 0.9,
-            "read": 0.08,
-            "notify": 0.02
+            "telemetry": 1
           },
-          "role": "consented encrypted summaries and account sync; raw log is local"
+          "role": "consented encrypted summaries; raw log is local"
+        },
+        {
+          "sourceRef": "account",
+          "entryRef": "lb",
+          "peakRps": 50,
+          "mix": {
+            "read": 0.8,
+            "notify": 0.2
+          },
+          "role": "account reads and wake requests"
         }
       ],
       "events": [
@@ -1530,7 +1650,7 @@ export default {
                   "ref": "devices",
                   "type": "iot-device",
                   "x": -660,
-                  "y": 0,
+                  "y": -100,
                   "locked": true,
                   "label": "Consented wearable uploads",
                   "knobs": {
@@ -1617,6 +1737,18 @@ export default {
                   "type": "pager",
                   "x": 240,
                   "y": 320
+                },
+                {
+                  "ref": "account",
+                  "type": "mobile-app",
+                  "x": -660,
+                  "y": 100,
+                  "locked": true,
+                  "label": "Consented account access",
+                  "knobs": {
+                    "retries": 2,
+                    "backoff": "exponential-jitter"
+                  }
                 }
               ],
               "edges": [
@@ -1659,6 +1791,10 @@ export default {
                 [
                   "alerts",
                   "pager"
+                ],
+                [
+                  "account",
+                  "lb"
                 ]
               ]
             },
