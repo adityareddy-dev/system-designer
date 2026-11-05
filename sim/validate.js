@@ -106,7 +106,8 @@ export function validateModel(S) {
     const weights = sourceWeights(problem, model, t, tid);
     for (const [u, share] of weights) {
       if (share > 0 && !model.route[u * T + t]) {
-        add('error', 'source-type-unserved', `${nodeLabel(nodes[u])} sends ${type.plural}, but this source has no route to a part that finishes them. ${unservedMessage(S, t).msg}`, nodes[u].id, { type: tid });
+        const why = unservedMessage(S, t);
+        add('error', 'source-type-unserved', `${nodeLabel(nodes[u])} sends ${type.plural}, but this source has no route to a part that finishes them. ${why.msg}`, nodes[u].id, { type: tid, ...(why.elementId ? { elementId: why.elementId } : {}) });
       }
     }
     if (model.sources.length && !weights.length) {
