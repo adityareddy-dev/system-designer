@@ -101,7 +101,7 @@ export function mountShell(rootEl, ctx) {
     beat: (r) => ({ load: () => import('./challenge.js'), make: (m, host) => m.renderBeat(host, ctx, r) }),
     drill: (r) => ({ load: () => import('./drill.js'), prep: () => content.ensureLessons(), make: (m, host) => m.renderDrill(host, ctx, r) }),
     sandbox: (r) => ({ load: () => import('./sandbox.js'), make: (m, host) => m.renderSandbox(host, ctx, r) }),
-    settings: () => ({ load: () => import('./settings.js'), make: (m, host) => { m.renderSettings(host, ctx); return {}; } }),
+    settings: () => ({ load: () => import('./settings.js'), make: (m, host) => ({ destroy: m.renderSettings(host, ctx) }) }),
   };
   let seq = 0;
   let pending = Promise.resolve();

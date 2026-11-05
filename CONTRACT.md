@@ -10,7 +10,7 @@ Read `DESIGN.md` for the game itself and `catalog/*.json` for every element, req
 
 1. **Static files only.** No build step, no bundler, no npm in the app, no TypeScript. Plain modern JavaScript ES modules (`<script type="module">`), relative imports with the `.js` extension. Must run from GitHub Pages under a sub-path (never assume the site root; build URLs with `new URL(path, import.meta.url)`).
 2. **PixiJS v8** is loaded once by `index.html` as a classic script from `https://cdn.jsdelivr.net/npm/pixi.js@8.6.6/dist/pixi.min.js` and used through `globalThis.PIXI`. Only `render/` (and `compete/card.js` for its thumbnail, through the scene's snapshot) touches PIXI.
-3. **Google Fonts** (Sora, Inter, JetBrains Mono) are linked once by `index.html`. No other external requests, except the optional sign-in in `account/` (section 15): its service, and Google's sign-in script loaded only when the sign-in panel opens.
+3. **Fonts** (Atkinson Hyperlegible 400/700 and IBM Plex Mono 400) are self-hosted WOFF2 files under `assets/fonts/`, with their OFL licenses and `font-display: swap`. Their combined initial transfer stays below 120 KB. `index.html` links `assets/fonts.css` once. No other external requests, except the optional sign-in in `account/` (section 15): its service, and Google's sign-in script loaded only when the sign-in panel opens.
 4. **Work only in your own files** (section 1). Never edit another builder's file, including to "fix" it. Never edit `catalog/*.json` after Phase 0; request changes from the integrator.
 5. **No globals.** The only globals are `window.__game` and `window.__perf`, created by `main.js`.
 6. **Storage**: only through `ctx.store` (section 3), which wraps `localStorage` in try/catch. The game must work with storage blocked.
@@ -343,7 +343,7 @@ DebriefData = {
   events: [{ id, atMs, endMs, nodeIds, helpers: [elementId], hurt: [nodeId], vars: { factor, peakRps, failed, minutes, node, helper, lostWrites, duplicates, ... } }],
   nodes: [{ id, type, peakUtil, minutesOverloaded, failed, usd }],
   tradeoffs: [{ nodeId, type, text }],
-  nextStep: { text, nodeId?, elementId?, knob? },
+  nextStep: { text, nodeId?, elementId?, knob?, sizing?: { units, peakRps, activeUnits } },
   interventions,                                                      // knob changes during the day
   graph: Graph
 }
@@ -679,3 +679,14 @@ export function createAccount(ctx) → {
 - Share links and result cards use `ctx.account?.displayName()` before `settings.playerName`.
 - Progress sync writes only through `ctx.progress.importAll` and the `bests` store key, after merging with what is on the device (`account/merge.js`).
 - CSS prefix `.ac-`; panels render into `#overlay` just below dialogs.
+
+
+## 16. Measured checks and the signal bench
+
+- Lesson goals require at least one simulated tick with offered and served requests. Zero latency before traffic is not evidence of success. `goal.maxUtil?` bounds app-server utilization and `goal.maxTtlSec?` bounds cache TTL in addition to the named metric, placement and hold duration. The numbers lesson requires 25% spare capacity; the cache lesson requires answers no more than 60 seconds old.
+- `content/transfers.js` supplies a new situation, plausible plans and a numerical prediction for every non-intro lesson. A transfer check requires both the correct plan and a calculation within 5%. Lesson completion waits for that check. The written practice prediction is saved for comparison, not automatically graded. The visible Start action requires a plan and calculation check before the first practice run; repair buttons do not complete it. Traffic scores and deterministic reference replays retain their existing meaning.
+- A sizing action uses `nextStep.sizing.units`, calculated from the same peak interval and active fleet used in its prose. Internal demand includes retries and repeated visits; arriving user demand is labeled separately. Limits and a need to reduce work are stated explicitly. Autoscaling fixes raise the minimum and ceiling as well as the starting fleet.
+- The load-balancing pool is an explicitly labeled schematic. It shows per-server unfinished work, round-robin and least-requests allocation, a failed server being skipped, and recovery. Its illustrative clock never changes simulation results.
+- Modules share a rectangular face, category stripe, ports, capacity bar, attached caption and one labeled exception. Zoom never relocates captions to other nodes. Caption size updates during camera movement, independently of delayed text texture refresh. The optional renderer fit argument `focusId` centers a selected part at the existing zoom when opening a phone inspector. Small phone starter graphs flow top to bottom. A current-step select exposes all five workflow steps on phones. Only the active sheet occupies the bottom workspace slot.
+- Full motion uses short context-preserving entry and completion feedback. Packet counts are capped at 80 on phones and 160 on desktop independently of simulated traffic. Still flow bands, labels and instant values remain available with reduced motion. Pausing freezes decorative simulation motion too. Font, theme and category tokens apply to every screen and canvas.
+- Generated icon and palette modules follow the SVG/CSS sources. Run `tools/gen-bench-assets.mjs` for bench symbols and original shared-load, cached-read and draining-queue scenes, then `tools/gen-asset-modules.mjs`. The content JSON and module preload lists must also match their source modules.

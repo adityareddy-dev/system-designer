@@ -132,32 +132,14 @@ function bakeBody(PIXI, P, shape, tint, res) {
   const c = makeCanvas(size, size), g = c.getContext('2d');
   const o = size / 2;
   g.lineJoin = 'round'; g.lineCap = 'round';
-  tracePath(g, outline(shape, 6, 96).pts, k, o);
-  g.lineWidth = 3.6 * k; g.strokeStyle = rgba(P.text3, P.dark ? 0.16 : 0.13); g.stroke();
-  const pts = outline(shape, 0, 160).pts;
-  tracePath(g, pts, k, o);
-  g.fillStyle = hexStr(P.surfaceSolid); g.fill();
-  g.fillStyle = rgba(tint, P.dark ? 0.1 : 0.055); g.fill();
-  // soft top sheen for depth
-  const sheen = g.createLinearGradient(0, o - 36 * k, 0, o + 10 * k);
-  sheen.addColorStop(0, 'rgba(255,255,255,' + (P.dark ? 0.05 : 0.55) + ')');
-  sheen.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = sheen; g.fill();
-  const dashed = shape === 'dashed-square';
-  if (dashed) g.setLineDash([7 * k, 5 * k]);
-  g.lineWidth = (dashed ? 1.6 : 1.5) * k;
-  g.strokeStyle = rgba(tint, P.dark ? (dashed ? 0.75 : 0.6) : (dashed ? 0.65 : 0.5));
-  g.stroke();
-  g.setLineDash([]);
-  if (shape === 'double-square') {
-    tracePath(g, outline(shape, -5, 128).pts, k, o);
-    g.lineWidth = 1.2 * k; g.strokeStyle = rgba(tint, P.dark ? 0.5 : 0.4); g.stroke();
-  }
-  if (shape === 'cylinder') {
-    g.beginPath();
-    g.ellipse(o, o - 27 * k, 32 * k, 9 * k, 0, 0, Math.PI);
-    g.lineWidth = 1.3 * k; g.strokeStyle = rgba(tint, P.dark ? 0.5 : 0.42); g.stroke();
-  }
+  g.fillStyle = hexStr(P.border);
+  g.beginPath(); g.roundRect(o - 36*k, o - 34*k, 72*k, 72*k, 10*k); g.fill();
+  g.fillStyle = hexStr(P.surfaceSolid);
+  g.beginPath(); g.roundRect(o - 36*k, o - 36*k, 72*k, 72*k, 10*k); g.fill();
+  g.strokeStyle = hexStr(P.edgeIdle); g.lineWidth = 1.5*k; g.stroke();
+  g.fillStyle = hexStr(tint); g.fillRect(o - 25*k, o - 36*k, 50*k, 3*k);
+  g.fillStyle = hexStr(P.surfaceSolid); g.strokeStyle = hexStr(P.edgeIdle);
+  for (const x of [-36, 36]) { g.beginPath(); g.arc(o + x*k, o, 4*k, 0, Math.PI*2); g.fill(); g.stroke(); }
   return texFrom(PIXI, c, true);
 }
 

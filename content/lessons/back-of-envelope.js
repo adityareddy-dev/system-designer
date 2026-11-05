@@ -19,7 +19,7 @@ export default {
     },
     {
       "kind": "demo",
-      "prompt": "Peak is 9,000 requests a second. Size the servers so nothing fails.",
+      "prompt": "Peak is 9,000 requests a second. Serve it with at least 25% spare app capacity.",
       "setup": {
         "palette": [
           "vm-fleet"
@@ -86,9 +86,10 @@ export default {
         "holdSec": 60,
         "metric": "availability",
         "op": ">=",
-        "value": 0.99
+        "value": 0.99,
+        "maxUtil": 0.75
       },
-      "hint": "One server handles about 1,000 requests a second (approx.). 9,000 needs 9, so run about 12 to leave headroom."
+      "hint": "One server handles about 1,000 requests a second (approx.). Divide the peak by that capacity, then leave at least 25% spare for a slow server or a small burst."
     },
     {
       "kind": "numbers",

@@ -17,6 +17,20 @@ export function pathsThrough(graph, id) {
   return { nodes, edges };
 }
 
+// A top-to-bottom starter keeps small phone systems readable without shrinking captions.
+export function phoneLayout(graph) {
+  const incoming = new Set(graph.edges.filter(e => e.kind !== 'observe' && e.kind !== 'control').map(e => e.to));
+  const rank = new Map(graph.nodes.filter(n => !incoming.has(n.id)).map(n => [n.id, 0]));
+  for (let pass = 0; pass < graph.nodes.length; pass++) {
+    let changed = false;
+    for (const e of graph.edges) if (rank.has(e.from) && !rank.has(e.to)) { rank.set(e.to, rank.get(e.from) + 1); changed = true; }
+    if (!changed) break;
+  }
+  const rows = new Map();
+  for (const n of graph.nodes) { const r = rank.get(n.id) ?? 0; if (!rows.has(r)) rows.set(r, []); rows.get(r).push(n); }
+  return [...rows.entries()].flatMap(([r, nodes]) => nodes.map((n, i) => ({ id: n.id, x: (i - (nodes.length - 1) / 2) * 160, y: r * 144 })));
+}
+
 export function regionLayout(graph, area = null) {
   const groups = new Map();
   for (const node of graph.nodes) {

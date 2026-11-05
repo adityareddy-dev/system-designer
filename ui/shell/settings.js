@@ -114,7 +114,11 @@ export function renderSettings(hostEl, ctx) {
   const profile = card('Profile', row('Display name', 'Optional. It travels inside links you share.', name));
 
   // Data
-  const stats = progress.stats();
+  const statsText = () => {
+    const stats = progress.stats();
+    return `Everything stays in this browser. ${stats.solved} problems solved, ${stats.lessonsDone} lessons done, ${stats.stars} stars.`;
+  };
+  const statsSummary = h('p', { class: 'sh-muted', text: statsText() });
   const fileIn = h('input', { type: 'file', accept: 'application/json,.json', class: 'sh-hidden', 'aria-label': 'Import progress file' });
   fileIn.addEventListener('change', async () => {
     const f = fileIn.files && fileIn.files[0];
@@ -127,13 +131,13 @@ export function renderSettings(hostEl, ctx) {
     fileIn.value = '';
   });
   const data = card('Your data',
-    h('p', { class: 'sh-muted', text: `Everything stays in this browser. ${stats.solved} problems solved, ${stats.lessonsDone} lessons done, ${stats.stars} stars.` }),
+    statsSummary,
     h('div', { class: 'sh-btn-row' },
       h('button', { type: 'button', class: 'sh-btn', onclick: () => exportProgress(progress) }, ico('ui.download', 18), 'Export backup'),
       h('button', { type: 'button', class: 'sh-btn', onclick: () => fileIn.click() }, ico('ui.copy', 18), 'Import backup'),
       h('button', { type: 'button', class: 'sh-btn sh-btn--danger', onclick: async () => {
         const ok = await confirmDialog({ title: 'Reset all progress?', text: 'This clears stars, scores and finished lessons in this browser. It cannot be undone.', confirmLabel: 'Reset', danger: true });
-        if (ok) { progress.reset(); toast({ text: 'Progress cleared.', level: 'info' }); renderSettings(hostEl, ctx); }
+        if (ok) { progress.reset(); toast({ text: 'Progress cleared.', level: 'info' }); statsSummary.textContent = statsText(); }
       } }, ico('ui.delete', 18), 'Reset progress'),
       fileIn));
 
@@ -143,7 +147,11 @@ export function renderSettings(hostEl, ctx) {
 
   append(page, [h('h1', { class: 'sh-h1', text: 'Settings' }), appearance, motion, sound, shapesCard, profile, data, keysCard]);
   hostEl.append(page);
-  return () => {};
+  const off = ctx.bus.on('settings', ({ key, value }) => {
+    const label = { theme: 'Theme', reducedMotion: 'Reduced motion', quality: 'Graphics quality' }[key];
+    if (label) page.querySelectorAll(`[role="radiogroup"][aria-label="${label}"] [role="radio"]`).forEach(b => b.setAttribute('aria-checked', String(b.dataset.value === value)));
+  });
+  return off;
 }
 
 async function fillLegend(legend, ctx) {

@@ -14,7 +14,7 @@ export default {
     },
     {
       "kind": "demo",
-      "prompt": "The database is nearly full. Put a cache between the servers and the database.",
+      "prompt": "The database is nearly full. Repeated answers may be at most 60 seconds old. Reduce its load while keeping that freshness limit.",
       "setup": {
         "palette": [
           "cache"
@@ -79,6 +79,7 @@ export default {
       },
       "goal": {
         "holdSec": 60,
+        "maxTtlSec": 60,
         "metric": "util",
         "node": "db",
         "op": "<=",

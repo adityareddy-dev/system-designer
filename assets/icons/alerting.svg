@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>Alerting</title><g transform="scale(.5)" stroke-width="3.5"><style>.s{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.f{fill:currentColor;fill-opacity:.18}.d{fill:currentColor;stroke:none}</style><path class="s f" d="M15 33V23C15 17.5 18.8 13 24 13S33 17.5 33 23V33L36 37H12Z"/>
-<path class="s" d="M21 40.5A3 3 0 0 0 27 40.5"/>
-<path class="s" d="M24 9V13"/>
-<path class="s" d="M9 17Q5 24 9 31"/>
-<path class="s" d="M39 17Q43 24 39 31"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><title>alerting</title><path d="M5 17h14l-2-4V9a5 5 0 0 0-10 0v4zm5 3h4M12 7v4m0 3h.01"/></svg>

@@ -2,6 +2,8 @@
 import { h, ico, clear, append, lessonOf, buildHash } from './dom.js';
 import { mountPlayHost } from './playhost.js';
 import { modal } from './overlay.js';
+import { transferFor, transferCorrect } from '../../content/transfers.js';
+import { mountAllocation } from './allocation.js';
 
 function notFoundLesson() {
   return h('div', { class: 'sh-page sh-page--narrow sh-empty' },
@@ -60,7 +62,10 @@ export function renderLesson(host, ctx, route) {
   if (!lesson) { host.append(notFoundLesson()); return {}; }
   if (lesson.id === 'intro') { ctx.router.replace('#/intro'); return {}; }
 
-  const steps = lesson.steps || [];
+  const transfer = transferFor(lesson.id);
+  const steps = [...(lesson.steps || []), ...(transfer ? [transfer] : [])];
+  let transferDone = false;
+  let poolOff = null;
   const total = steps.length + 1; // last page is the takeaway
   let idx = Math.max(0, Math.min(total - 1, parseInt(route.query.step, 10) || 0));
   let play = null;
@@ -73,6 +78,7 @@ export function renderLesson(host, ctx, route) {
   host.append(wrap);
 
   function stopPlay() {
+    poolOff?.(); poolOff = null;
     if (goalOff) { goalOff(); goalOff = null; }
     if (play) { play.destroy(); play = null; }
   }
@@ -129,6 +135,8 @@ export function renderLesson(host, ctx, route) {
             h('td', { class: 'sh-num' }, h('span', { title: 'Approximate figure', text: approx(r.value) })),
             h('td', { class: 'sh-muted', text: r.how || '' })))))),
         navRow({}));
+    } else if (step.kind === 'transfer') {
+      drawTransfer(card, step);
     } else if (step.kind === 'quiz') {
       drawQuiz(card, step);
     } else if (step.kind === 'demo') {
@@ -227,6 +235,7 @@ export function renderLesson(host, ctx, route) {
       h('div', { class: 'sh-demo-prompt' }, ico('ui.sandbox', 20), h('p', { class: 'sh-lp-text', text: step.prompt })),
       hintBox);
     const stage = h('div', { class: 'sh-demo-stage' });
+    if (lesson.id === 'load-balancing') poolOff = mountAllocation(card, ctx);
     card.append(stage, h('div', { class: 'sh-lp-nav' },
       idx > 0 ? h('button', { type: 'button', class: 'sh-btn sh-btn--ghost', onclick: () => go(idx - 1) }, ico('ui.chevron-left', 18), 'Back') : h('span'),
       hintBtn, cont));
@@ -239,7 +248,36 @@ export function renderLesson(host, ctx, route) {
     goalOff = () => { o1(); o2(); };
   }
 
+  function drawTransfer(card, step) {
+    let choice = null;
+    const result = h('p', { role: 'status', class: 'sh-quiz-result' });
+    const input = h('input', { class: 'sh-input', type: 'number', step: 'any', required: true, 'aria-label': step.calculation });
+    const options = h('div', { class: 'sh-choices' });
+    step.choices.forEach((text, i) => {
+      const b = h('button', { type: 'button', class: 'sh-choice', 'aria-pressed': 'false', onclick: () => { choice = i; [...options.children].forEach((x,j) => x.setAttribute('aria-pressed', String(i === j))); } }, text);
+      options.append(b);
+    });
+    const form = h('form', { onsubmit: event => {
+      event.preventDefault();
+      if (transferCorrect(step, choice, input.value === '' ? NaN : Number(input.value))) {
+        transferDone = true;
+        result.textContent = `Prediction checked. ${step.why} The calculation gives ${step.value.toLocaleString('en-US')} ${step.unit}.`;
+        result.dataset.ok = '1';
+        next.disabled = false;
+        form.querySelector('button[type="submit"]').disabled = true;
+      } else {
+        result.textContent = choice == null ? 'Choose a plan and calculate its result first.' : choice !== step.answer ? `Reconsider the plan. ${step.why}` : 'Your plan fits. Recheck the calculation using the workload and units above.';
+        result.dataset.ok = '0';
+      }
+    } }, h('h2', { class: 'sh-h2', text: 'Try a new situation' }), h('p', { class: 'sh-lp-text', text: step.q }), options,
+      h('label', {}, h('p', { text: step.calculation }), input, h('span', { class: 'sh-muted', text: step.unit })),
+      h('button', { class: 'sh-btn', type: 'submit', text: 'Check my prediction' }), result);
+    const next = h('button', { class: 'sh-btn sh-btn--primary', type: 'button', disabled: true, onclick: () => go(steps.length) }, 'Finish lesson');
+    card.append(form, h('div', { class: 'sh-lp-nav' }, h('button', { class: 'sh-btn sh-btn--ghost', type: 'button', onclick: () => go(idx - 1) }, 'Back'), next));
+  }
+
   function drawTakeaway() {
+    if (transfer && !transferDone) { idx = steps.length - 1; drawHead(); const check = h('section', { class: 'sh-card sh-lp-card' }); body.append(check); drawTransfer(check, transfer); return; }
     ctx.progress.lessonDone(lesson.id);
     const all = ctx.content.lessons || [];
     const i = all.findIndex((l) => l.id === lesson.id);

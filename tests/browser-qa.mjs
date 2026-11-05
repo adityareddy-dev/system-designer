@@ -2,15 +2,17 @@
 // to the debrief, checks the challenge and share links, reads window.__perf and takes screenshots.
 // Run from the harness folder: node browser-qa.mjs [baseUrl] [outDir]
 import puppeteer from 'puppeteer-core';
+import os from 'node:os';
+import path from 'node:path';
 import fs from 'node:fs';
 
 const BASE = process.argv[2] || 'http://localhost:8765/';
-const OUT = process.argv[3] || '/root/work/sdgame-harness/qa';
+const OUT = process.argv[3] || path.join(os.tmpdir(), 'system-designer-browser-qa');
 fs.mkdirSync(OUT, { recursive: true });
 const report = { consoleErrors: [], pageErrors: [], failedRequests: [], problems: [], lessons: [], played: [], checks: {}, perf: null, shots: [] };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage();
 await page.setViewport({ width: 1366, height: 820, deviceScaleFactor: 1 });
 page.on('console', (m) => { if (m.type() === 'error') report.consoleErrors.push(m.text()); });

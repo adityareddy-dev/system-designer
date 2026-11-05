@@ -110,7 +110,7 @@ export function renderPractice(host, ctx, route) {
     renderResults();
   });
   sortSel.addEventListener('change', () => { st.o = sortSel.value; commit(true); });
-  filterBtn.addEventListener('click', () => { filtersOpen = !filtersOpen; syncFilterToggle(); });
+  filterBtn.addEventListener('click', () => { setsRow.hidden = filtersOpen; filtersOpen = !filtersOpen; syncFilterToggle(); });
 
   function syncFilterToggle() {
     panel.classList.toggle('is-open', filtersOpen);
@@ -233,7 +233,7 @@ export function renderPractice(host, ctx, route) {
     import('./decision.js').then((m) => m.openDecision(ctx, { pool: problems.filter(matches), onClose: () => { renderAll(); } }));
   }
 
-  function renderAll() { drawPanel(); drawSets(); drawUpNext(); renderResults(); }
+  function renderAll() { setsRow.hidden = !filtersOpen; drawPanel(); drawSets(); drawUpNext(); renderResults(); }
 
   const stats = ctx.progress.stats();
   const pct = problems.length ? (stats.solved / problems.length) * 100 : 0;
@@ -261,7 +261,7 @@ export function renderPractice(host, ctx, route) {
     h('label', { class: 'sh-search' }, ico('ui.search', 18), search),
     sortSel, filterBtn, randomBtn);
 
-  host.append(h('div', { class: 'sh-page' }, head, bar, upNext, tools, setsRow, panel, countEl, results));
+  host.append(h('div', { class: 'sh-page' }, head, bar, upNext, tools, panel, setsRow, countEl, results));
   renderAll();
 
   return {

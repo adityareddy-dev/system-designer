@@ -20,7 +20,7 @@ const problems = [
     mix: { read: 0.99, write: 0.01 }, latencyP99Ms: { default: 150 }, availability: 0.999,
     dataSafety: 'no-loss', readYourWrites: false, compliance: [], budgetPerMonth: 3000, storageTb: 1.5,
     userRegions: { us: 0.7, eu: 0.3 }, homeRegion: 'us',
-    notes: ['Short codes are 7 characters.', 'About 20 new links a second on average (≈ 50 million a month, approx.).', 'One app server handles about 1,000 requests a second (approx.).']
+    notes: ['Short codes are 7 characters. Each stored link uses about 0.5 KB including its metadata (approx.).', 'About 20 new links a second on average (≈ 50 million a month, approx.).', 'One app server handles about 1,000 requests a second (approx.).']
   },
   traffic: { curve: 'consumer-evening', sources: { 'web-browser': 0.6, 'mobile-app': 0.4 }, params: {} },
   requires: {}, palette: null,
@@ -146,7 +146,7 @@ const problems = [
   eventPool: ['hot-key', 'ddos-attack'],
   numbers: [
     { label: 'Writes per second at peak', value: 3000, unit: 'writes/s', how: '20,000 × 0.15', ask: true },
-    { label: 'Counter memory for all keys', value: 200, unit: 'MB', how: '2 million keys × 100 bytes (approx.)', ask: true },
+    { label: 'Counter memory for 2 million keys at 100 bytes each (approx.)', value: 200, unit: 'MB', how: '2 million keys × 100 bytes (approx.)', ask: true },
     { label: 'Limit check cost', value: 0.2, unit: 'ms', how: 'One in-memory counter update, about the speed of a cache hit (approx.)' }
   ],
   hints: [

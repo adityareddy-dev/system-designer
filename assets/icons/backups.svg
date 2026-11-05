@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>Backups</title><g transform="scale(.5)" stroke-width="3.5"><style>.s{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.f{fill:currentColor;fill-opacity:.18}.d{fill:currentColor;stroke:none}</style><path class="s f" d="M6 11V31C6 34.5 11.4 37 18 37S30 34.5 30 31V11"/>
-<ellipse class="s f" cx="18" cy="11" rx="12" ry="4"/>
-<path class="s" d="M6 21C6 24.5 11.4 27 18 27S30 24.5 30 21"/>
-<path class="s" d="M26 34A8 8 0 1 0 34 26"/>
-<path class="s" d="M37 22L34 26L37 30"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><title>Backups</title><ellipse cx="12" cy="5" rx="5" ry="2"/><path d="M7 5v7c0 1.100 2.200 2 5 2s5-.9 5-2V5"/><path d="M4 16a9 9 0 0 0 16 0"/><polyline points="17 17 20 16 21 19"/></svg>

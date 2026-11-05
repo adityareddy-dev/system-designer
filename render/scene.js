@@ -19,9 +19,9 @@ export { regionLayout } from './diagram.js';
 const EDGE_DROP_MIN = 64, EDGE_DROP_PX = 40, EDGE_DROP_MAX = 150;
 
 const QUALITY = {
-  high: { cap: 1500, glow: true, res: 2 },
-  medium: { cap: 800, glow: true, res: 1.5 },
-  low: { cap: 400, glow: false, res: 1 },
+  high: { cap: 160, glow: true, res: 2 },
+  medium: { cap: 120, glow: true, res: 1.5 },
+  low: { cap: 80, glow: false, res: 1 },
 };
 const LEVELS = ['low', 'medium', 'high'];
 const MAX_DOTS_PER_SEC = 12;      // busiest edge, DESIGN.md 9.5
@@ -36,7 +36,7 @@ function normalizeCatalog(c = {}) {
   return {
     elementById: c.elementById instanceof Map ? c.elementById : new Map(elements.map(e => [e.id, e])),
     categories,
-    shapeByCat: new Map(categories.map(k => [k.id, k.nodeShape])),
+    shapeByCat: new Map(categories.map(k => [k.id, 'rounded-square'])),
     requests,
     eventById: c.eventById instanceof Map ? c.eventById : new Map(events.map(e => [e.id, e])),
     regionShort: new Map((world.regions || []).map(r => [r.id, r.short || r.id.toUpperCase()])),
@@ -75,7 +75,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   let qualitySetting = QUALITY[quality] || quality === 'auto' ? quality : 'auto';
   // Start sharp on every screen (phones included); the auto-quality loop steps down only if frames run slow.
   let level = qualitySetting === 'auto' ? 'high' : qualitySetting;
-  const resFor = lv => Math.min(dpr, QUALITY[lv].res);
+  const resFor = lv => Math.min(dpr, coarse ? 1.5 : 2, QUALITY[lv].res);
   const bakeRes = Math.min(dpr, 2);
 
   let P = resolvePalette(palette, theme);
@@ -89,7 +89,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     highContrast: () => highContrast,
     pathEdge: id => !!pathFocus?.edges.has(id),
     element: type => cat.elementById.get(type),
-    shapeOf: catId => cat.shapeByCat.get(catId) || 'rounded-square',
+    shapeOf: () => 'rounded-square',
     regionShort: id => (id ? cat.regionShort.get(id) || String(id).toUpperCase() : ''),
   };
   // icon loads arrive asynchronously; views pick them up here
@@ -150,7 +150,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       groups.get(region).push(n);
     }
     const label = (text, x, y) => {
-      const t = new PIXI.Text({ text, style: { fontFamily: 'Inter', fontSize: 14, fill: P.text } });
+      const t = new PIXI.Text({ text, style: { fontFamily: 'Atkinson Hyperlegible', fontSize: 14, fill: P.text } });
       t.position.set(x, y); regionLayer.addChild(t);
     };
     for (const [region, ns] of groups) {
@@ -430,11 +430,11 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const b = i * T;
       for (let t = 0; t < T; t++) {
         const f = nf[b + t] || 0;
-        fail += f; inn += nodeIn[b + t];
+        if (F.typeIds[t] !== 'attack') fail += f; inn += nodeIn[b + t];
         if (f > pileR) { pileR = f; pile = t; }
       }
       const over = fail > 0 && inn > 0 ? fail / (inn + fail) : 0;
-      nodes.setLive(v, true, util[i] || 0, status ? status[i] : 0, queue ? queue[i] || 0 : 0, over, pile >= 0 ? map.tex[pile] : -1);
+      nodes.setLive(v, true, util[i] || 0, status ? status[i] : 0, queue ? queue[i] || 0 : 0, over, pile >= 0 ? map.tex[pile] : -1, fail);
       if (running && fail > 0 && inn <= 0) {
         map.srcAcc[i] += (fail * inv * dt) / 1000;
         if (map.srcAcc[i] >= 1) {
@@ -499,10 +499,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   }
 
   function updateTextRes(now) {
+    nodes.setLabelScale(camera.zoom);
     if (now - camera.lastZoomChange < 250) return;
     const r = Math.max(1, Math.min(4, Math.ceil(camera.zoom * resFor(level) * 2) / 2));
     if (r !== lastTextRes) { lastTextRes = r; nodes.setTextResolution(r); }
-    nodes.setLabelScale(camera.zoom);
   }
 
   function setLevel(lv) {
@@ -540,7 +540,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     edges.cull(x0, y0, x1, y1);
   }
 
+  let visualTime = 0;
   function draw(dt, now) {
+    if (!flow || speed > 0) visualTime += dt;
     const camMoved = camera.update(dt);
     const viewChanged = camMoved || camera.takeDirty();
     if (viewChanged) {
@@ -549,7 +551,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       emitter.emit('view', { zoom: camera.zoom, x: c.x, y: c.y });
     }
     updateTextRes(now);
-    nodes.update(dt, now, now);
+    nodes.update(dt, now, visualTime);
     const geo = edges.updateGeometry(nodes.views);
     if (viewChanged || geo) cull();
     const m = applyFlows(dt, now);
@@ -566,7 +568,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         edges: m ? m.carrying : null,
         speed: flow ? speed : 1,
         zoom: camera.zoom,
-        cap: QUALITY[level].cap,
+        cap: Math.min(QUALITY[level].cap, hostEl.clientWidth < 768 ? 80 : 160),
         size: particleSize(),
         colorBad: P.bad,
         colorHit: P.accent2,
@@ -765,7 +767,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     setConnectCheck(fn) { connectCheck = typeof fn === 'function' ? fn : null; },
     // opts: { minZ, maxZ } keep a fitted view readable: a big graph is panned rather than shrunk past minZ.
     fit(padding = 80, animate = true, opts = {}) {
-      const b = nodes.bounds(graph);
+      const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
+      const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(graph);
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
       camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY, padding, animate && !reduced, opts);
     },

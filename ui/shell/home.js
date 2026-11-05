@@ -20,8 +20,8 @@ function heroArt(ctx) {
   ];
   const nodeSvg = nodes.map((n) => {
     const inner = hasIcon(n.id) ? iconInner(n.id) : '';
-    return `<g transform="translate(${n.x} ${n.y})"><rect width="72" height="72" rx="18" fill="var(--surface-solid)" stroke="var(--border-strong)"/>
-      <g transform="translate(20 20) scale(1.35)" style="color:${n.c}" fill="none" stroke="currentColor">${inner}</g></g>`;
+    return `<g transform="translate(${n.x} ${n.y})"><rect width="72" height="72" rx="10" fill="var(--surface-solid)" stroke="var(--border-strong)"/>
+      <path d="M12 2h48" stroke="${n.c}" stroke-width="3"/><path d="M12 61h48" stroke="var(--border)" stroke-width="4"/><path d="M12 61h32" stroke="${n.c}" stroke-width="4"/><circle cy="36" r="4" fill="var(--surface-solid)" stroke="var(--edge-idle)"/><circle cx="72" cy="36" r="4" fill="var(--surface-solid)" stroke="var(--edge-idle)"/><g transform="translate(20 16) scale(1.35)" style="color:${n.c}" fill="none" stroke="currentColor">${inner}</g></g>`;
   }).join('');
   const edgeSvg = paths.map((d, i) => `<path id="sh-hp-${i}" d="${d}" fill="none" stroke="var(--edge-idle)" stroke-width="2.5" stroke-linecap="round"/>`).join('');
   let dots = '';
@@ -53,7 +53,7 @@ export function nextProblem(ctx, afterId) {
   // after 3 or more results, lean on the concept the player is weakest at
   try {
     const weak = weakestConcept(ctx, afterId || null);
-    if (weak) {
+    if (weak && ctx.progress.stats().solved >= 3) {
       const order = (a, b) => DIFF_ORDER[a.difficulty] - DIFF_ORDER[b.difficulty];
       const p = [...weak.open].sort(order)[0];
       if (p) return Object.assign({ ...p }, { weakConcept: weak.title });
@@ -62,7 +62,7 @@ export function nextProblem(ctx, afterId) {
   const probs = ctx.content.problems || [];
   const gi = new Map((ctx.content.groups || []).map((g, i) => [g.id || g.group?.id, i]));
   const sorted = [...probs].sort((a, b) =>
-    (gi.get(groupIdOf(ctx, a)) ?? 99) - (gi.get(groupIdOf(ctx, b)) ?? 99) || DIFF_ORDER[a.difficulty] - DIFF_ORDER[b.difficulty]);
+    DIFF_ORDER[a.difficulty] - DIFF_ORDER[b.difficulty] || (gi.get(groupIdOf(ctx, a)) ?? 99) - (gi.get(groupIdOf(ctx, b)) ?? 99) || DIFF_ORDER[a.difficulty] - DIFF_ORDER[b.difficulty]);
   if (afterId) {
     const i = sorted.findIndex((p) => p.id === afterId);
     const rest = [...sorted.slice(i + 1), ...sorted.slice(0, i)];

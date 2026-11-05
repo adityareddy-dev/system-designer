@@ -1,4 +1,4 @@
-// Generates assets/requests, assets/events, assets/ui SVG files, favicon and social preview.
+// Generates assets/requests, assets/ui SVG files, favicon and social preview. Event icons in assets/events are drawn by hand.
 // Run from the app folder: node tools/gen-assets.mjs
 import fs from 'node:fs';
 import path from 'node:path';
@@ -44,45 +44,7 @@ const requests = {
 for (const [id, [title, inner]] of Object.entries(requests)) out(`assets/requests/${id}.svg`, solid(inner, title));
 
 // ---------- event icons (stroke, 24x24) ----------
-const events = {
-  'viral-spike': p('M4 15l5-5 4 4 7-8') + p('M15 6h5v5') + p('M5 19.5h3M10.5 19.5h3M16 19.5h3'),
-  'flash-crowd': [[4, 5], [7, 9], [4, 13], [7, 17]].map(([x, y]) => c(x, y, 1.5, F)).join('') + p('M10 12h5M13 9.5l2.5 2.5-2.5 2.5') + p('M18.5 4v5.5M18.5 14.5V20'),
-  'deadline-surge': fp('M4 6h16v14H4z') + p('M4 10.5h16M8 3.5v4M16 3.5v4') + p('M12 18.2v-5M9.7 15.3L12 13l2.3 2.3'),
-  'hot-key': c(8, 15, 3.8, F) + p('M10.8 12.2L19 4M16 7l2.2 2.2M18 5l2 2') + p('M5 4c-1 1 1 1.6 0 3M9 3c-1 1 1 1.6 0 3'),
-  'celebrity-fanout': c(7, 12, 3.8, ' fill="currentColor" fill-opacity=".35"') + p('M10.8 12h7.7M10.4 10.2l7.2-4M10.4 13.8l7.2 4') + c(20, 12, 1.3) + c(19.3, 5.4, 1.3) + c(19.3, 18.6, 1.3),
-  'cache-stampede': p('M11 2.5L5 12.5h5.5') + p('M13.5 11.5H19l-6 10') + p('M17.5 3v5M15.5 6l2 2 2-2'),
-  'db-failover': fp('M3 6.5c0-1.1 1.3-2 3-2s3 .9 3 2-1.3 2-3 2-3-.9-3-2zM3 6.5v9c0 1.1 1.3 2 3 2s3-.9 3-2v-9') + fp('M15 6.5c0-1.1 1.3-2 3-2s3 .9 3 2-1.3 2-3 2-3-.9-3-2zM15 6.5v9c0 1.1 1.3 2 3 2s3-.9 3-2v-9') + p('M9.5 20.5c2 .8 4 .8 5.5 0M13 18.5l2 2-2.2 1.6'),
-  'replication-lag': c(6.5, 12, 4.6, F) + c(17.5, 12, 4.6) + p('M6.5 9.3V12l2.1 1.4M17.5 9.3V12h-2'),
-  'zone-outage': p('M2.5 20V10h5v10M9.5 20V6h5v14M16.5 20V10h5v10M2 20h20') + p('M9.5 8l5 10M14.5 8l-5 10'),
-  'region-outage': c(12, 12, 9) + p('M3 12h18M12 3c3.2 3 3.2 15 0 18M12 3c-3.2 3-3.2 15 0 18') + p('M5 5l14 14', ' stroke-width="2.4"'),
-  'slow-dependency': fp('M3 19h13c2.5 0 4-1.3 4-3.5V14M3 19c0-3 2-5 5-5') + c(9.5, 11, 4, F) + p('M9.5 11.5a1.2 1.2 0 1 0-1.2-1.2') + c(18.5, 5.5, 2.6) + p('M18.5 4.3v1.4l1 .6'),
-  'dependency-outage': fp('M5 5h5a2 2 0 1 1 4 0h5v5a2 2 0 1 0 0 4v5H5z') + p('M12 9l-2 3.2 3.2 1-1.6 3.8'),
-  'retry-storm': p('M15 12a3 3 0 1 1-3-3M18 12a6 6 0 1 1-6-6M21 12a9 9 0 1 1-9-9') + p('M10.5 7.5L12 9l-1.5 1.5M10.5 4.5L12 6l-1.5 1.5'),
-  'thundering-herd': p('M3 3l6.5 6.5M9.5 6v3.5H6M21 3l-6.5 6.5M14.5 6v3.5H18M3 21l6.5-6.5M9.5 18v-3.5H6M21 21l-6.5-6.5M14.5 18v-3.5H18') + c(12, 12, 1.8, ' fill="currentColor"'),
-  'cost-blowout': c(10, 14, 6.5, F) + c(10, 14, 3) + p('M16 9l5-5.5M16.8 3.5h4.2v4.2'),
-  'compliance-audit': rect(4, 4.5, 12, 16, 2) + p('M8.5 3h5v3h-5z') + p('M7.5 10.5l1.8 1.8 3.2-3.4') + c(16.5, 16.5, 3.6, BG) + p('M19.2 19.2L22 22'),
-  'ddos-attack': fp('M12 22c4-1.5 6-4 6-8v-3.5l-6-2.5-6 2.5V14c0 4 2 6.5 6 8z') + p('M3.5 2.5l3 3m0-3l-3 3M10.5 1.5l3 3m0-3l-3 3M17.5 2.5l3 3m0-3l-3 3'),
-  'bot-scraping': rect(3, 7.5, 11, 9, 2.2) + p('M8.5 7.5V4.5') + c(8.5, 3.8, 0.9) + dot(6.3, 11.5, 1.1) + dot(10.7, 11.5, 1.1) + p('M6.3 14h4.4') + c(17, 16, 3.3) + p('M19.5 18.5L22 21'),
-  'bad-deploy': fp('M12 3l8 4v10l-8 4-8-4V7z') + p('M4 7l8 4 8-4M12 11v10') + c(18.5, 18.5, 4, BG) + p('M18.5 16.2v2.6M18.5 20.6h.01'),
-  'bad-config-push': p('M3 9.5h18M3 14.5h18M3 19.5h18') + c(8, 9.5, 2, F) + c(13, 14.5, 2, F) + c(19.5, 19.5, 2, ' fill="currentColor"') + p('M19 2l3 5.3h-6z') + p('M19 4.4v1.2'),
-  'noisy-neighbor': fp('M2 20v-7l3.5-3.5L9 13v7z') + fp('M15 20v-7l3.5-3.5L22 13v7z') + p('M10.8 12c1 1 1 3.4 0 4.4M12.6 10.6c1.7 1.6 1.7 5.2 0 6.8'),
-  'memory-leak': rect(2.5, 4.5, 15, 7, 1.5) + p('M5.5 11.5v2M8.5 11.5v2M11.5 11.5v2M14.5 11.5v2M5.5 8h3M11 8h3') + fp('M19 13.5c-1.6 2-2.5 3.2-2.5 4.3a2.5 2.5 0 0 0 5 0c0-1.1-.9-2.3-2.5-4.3z'),
-  'disk-full': rect(3, 5.5, 18, 13, 2.5) + p('M6 9.5h12', ' stroke-width="2.6"') + p('M6 15h6') + dot(17, 15, 1.2),
-  'cold-start': p('M8 3v12M2.8 6l10.4 6M2.8 12l10.4-6') + p('M6.5 3.8L8 5.3l1.5-1.5M6.5 14.2L8 12.7l1.5 1.5') + fp('M18.5 11l-3.5 5.5h3.2l-1.7 5.5 5-7.5h-3.2z'),
-  'poison-message': rect(2.5, 5.5, 19, 13, 2) + p('M2.8 7.5L12 14l9.2-6.5') + p('M18 11.5l4.2 7.5h-8.4z', BG) + p('M18 14.4v2.2M18 18h.01'),
-  'duplicate-delivery': p('M7 6h12a1.5 1.5 0 0 1 1.5 1.5V15') + rect(3, 9, 14, 10, 1.8) + p('M3.3 10.8L10 15.5l6.7-4.7'),
-  'network-partition': c(5, 12, 3, F) + c(19, 12, 3, F) + p('M8 12h2.8l1-3.2M12.2 15.2l1-3.2H16'),
-  'cert-expiry': rect(3, 3.5, 18, 12.5, 2) + p('M7 7.5h10M7 11h5M8 16v5l2-1.4 2 1.4v-5') + c(17.5, 17.5, 4, BG) + p('M17.5 15.2v2.3'),
-  'dns-misconfig': p('M12 3v18M8.5 21h7') + fp('M19 5H8L5 8l3 3h11z') + p('M14 14.5l4 4m0-4l-4 4'),
-  'third-party-rate-limit': p('M4 17.5a8 8 0 1 1 16 0') + p('M12 17.5l4.2-5.2M17.6 8.4a8 8 0 0 1 2.4 9.1', ' stroke-width="2.4"') + c(12, 17.5, 1.1, ' fill="currentColor"') + p('M7 21h10M7 6.5l1.4 1.4M12 4.5v2'),
-  'data-corruption': fp('M5 6c0-1.7 3.1-3 7-3s7 1.3 7 3-3.1 3-7 3-7-1.3-7-3zM5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6') + p('M13.5 9l-3.5 4.2 3.5 1-2.2 5.8'),
-  'cardinality-explosion': p('M3 3v18h18') + p('M5.5 17.5L10 13') + p('M10 13L19 5M10 13l10-1M10 13l9 5M10 13l6-8M10 13l9-3.5M10 13l7 7'),
-  'key-leak': rect(3, 10.5, 11, 10, 2) + p('M6 10.5V7.5a3.3 3.3 0 0 1 6.2-1.6') + p('M8.5 14.6v2.2') + c(19, 12, 2.4) + p('M19 14.4v6.1M19 17.5h2.5M19 20.5h2'),
-  'gpu-shortage': rect(2.5, 7, 13, 10, 2) + p('M6 4v3M9 4v3M12 4v3M6 17v3M9 17v3M12 17v3') + c(9, 12, 2.4) + rect(18, 8, 3.5, 8, 1, ' stroke-dasharray="2 2.4"'),
-  'schema-migration-lock': rect(3, 4, 16, 14, 2) + p('M3 9h16M3 13.5h16M9.5 4v14') + rect(14, 15, 8, 6, 1.5, BG) + p('M16 15v-1.5a2 2 0 0 1 4 0V15'),
-  'overseas-launch': c(8, 16.5, 4.8, F) + p('M3.2 16.5h9.6M8 11.7c1.6 2 1.6 7.6 0 9.6M8 11.7c-1.6 2-1.6 7.6 0 9.6') + p('M21 3l-8 13-2.2-5.3L5.5 8.5z') + p('M10.8 10.7L21 3'),
-};
-for (const [id, inner] of Object.entries(events)) out(`assets/events/${id}.svg`, stroke(inner, id.replace(/-/g, ' ')));
+const eventIds = JSON.parse(fs.readFileSync(path.join(root, 'catalog/events.json'), 'utf8')).events.map((e) => e.id);
 
 // ---------- ui glyphs ----------
 const ui = {
@@ -206,5 +168,5 @@ ${node(120, 480, 26, '#94A3B8')}${node(430, 380, 30, '#2DD4BF')}${node(700, 440,
 </svg>
 `);
 
-out('assets/assets-index.json', JSON.stringify({ requests: Object.keys(requests), events: Object.keys(events), ui: Object.keys(ui), favicon: 'assets/favicon.svg', social: 'assets/social-preview.svg' }, null, 1) + '\n');
-console.log(Object.keys(requests).length, Object.keys(events).length, Object.keys(ui).length);
+out('assets/assets-index.json', JSON.stringify({ requests: Object.keys(requests), events: eventIds, ui: Object.keys(ui), favicon: 'assets/favicon.svg', social: 'assets/social-preview.svg' }, null, 1) + '\n');
+console.log(Object.keys(requests).length, eventIds.length, Object.keys(ui).length);
