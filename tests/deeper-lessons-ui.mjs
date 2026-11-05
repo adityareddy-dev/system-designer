@@ -16,13 +16,19 @@ try {
     // Existing progress must survive completion of the new tracks.
     localStorage.setItem('staff-progress-sentinel','old progress survives');
   });
-  for (const [width,theme] of [[1280,'light'],[390,'dark']]) {
+  for (const [width,theme] of [[1280,'light'],[1280,'dark'],[390,'light'],[390,'dark']]) {
     await page.setViewport({width,height:900,isMobile:width<500,hasTouch:width<500});
     for (const lesson of lessons.slice(-17)) {
       await page.goto(base+'#/learn/'+lesson.id, {waitUntil:'domcontentloaded'});
       await page.waitForSelector('.sh-lp-card');
       assert.equal(await page.$eval('html',el=>el.dataset.motion),'reduce');
       await page.evaluate(theme => { document.documentElement.dataset.theme=theme; },theme);
+      if (process.env.QA_SHOTS && ['consistent-hashing','leader-consensus','metrics-systems','device-sync','lead-interview','running-migrations'].includes(lesson.id)) {
+        await page.evaluate(() => document.fonts.ready);
+        await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running'));
+        fs.mkdirSync(process.env.QA_SHOTS,{recursive:true});
+        await page.screenshot({path:`${process.env.QA_SHOTS}/${lesson.id}-${width}-${theme}-art.png`,fullPage:true});
+      }
       for (const [i,step] of lesson.steps.entries()) {
         await page.waitForFunction(i => (new URLSearchParams(location.hash.split('?')[1]).get('step') || '0') === String(i),{},i);
         if (step.kind === 'quiz') {
@@ -37,7 +43,7 @@ try {
           assert(await page.$eval('input[type=checkbox]',el=>el.checked));
           if (process.env.QA_SHOTS && i === 5) {
             fs.mkdirSync(process.env.QA_SHOTS,{recursive:true});
-            await page.screenshot({path:`${process.env.QA_SHOTS}/${lesson.id}-${width}.png`,fullPage:true});
+            await page.screenshot({path:`${process.env.QA_SHOTS}/${lesson.id}-${width}-${theme}.png`,fullPage:true});
           }
         }
         assert(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth+1),lesson.id+' fits '+width);
@@ -64,5 +70,5 @@ try {
   }
   assert.equal(await page.evaluate(()=>localStorage.getItem('staff-progress-sentinel')),'old progress survives');
   assert.deepEqual(errors,[]);
-  console.log('All 17 new lessons completed on desktop/light and phone/dark, including defenses and transfers.');
+  console.log('All 17 new lessons completed on desktop and phone in both themes, including defenses and transfers.');
 } finally { await browser.close(); }

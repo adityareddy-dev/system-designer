@@ -5,6 +5,7 @@ import { sceneMarkup } from '../../assets/scenes/index.js';
 const TRACK_ICON = {
   'Start': 'ui.play', 'Scale the front': 'ui.speed', 'Scale the data': 'ui.units', 'Work later': 'ui.clock',
   'Stay correct': 'ui.safety', 'Stay up': 'ui.shield', 'Business': 'ui.budget',
+  'Go deeper': 'ui.search', 'Lead the design': 'ui.users',
 };
 
 export function renderLearn(host, ctx) {
