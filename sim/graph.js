@@ -61,6 +61,7 @@ function flowAllowed(a, b) {
 
 function refuseReason(a, b) {
   const A = a.name, B = b.name;
+  if (a.kind === 'queue' && b.kind === 'external') return `${A} holds work until a consumer reads it. Connect ${A} to Background workers, then connect the workers to ${B}.`;
   if (b.kind === 'source') return `${B} is where requests start, so nothing connects into it. Connect ${B} to ${A} instead.`;
   if (flowAllowed(b, a)) return `${A} does not send requests to ${B}. Connect ${B} to ${A} instead.`;
   if (a.kind === 'store' && b.kind === 'store') {

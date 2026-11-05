@@ -35,3 +35,15 @@ const busy = run({ ...base, requirements: { ...base.requirements, peakRps: 10000
 assert.ok(busy.events.some(e => e.durations?.overloadSec > 0));
 console.log('Debrief request measurements and observed overload passed.');
 
+
+// The action and prose must use the same measured demand, including retry amplification.
+const weak = createSim({ catalog, problem: base, seed: 'reported-sizing' });
+const app = weak.addNode('vm-fleet', 0, 0, { units: 2 });
+const db = weak.addNode('sql-primary', 200, 0);
+for (const n of weak.getGraph().nodes.filter(n => catalog.elementById.get(n.type).kind === 'source')) weak.connect(n.id, app);
+weak.connect(app, db); weak.start(); weak.advance(86400000);
+const sizing = weak.result().nextStep;
+assert.equal(sizing.sizing.units, 55);
+assert.match(sizing.text, /= 55 servers/);
+assert.match(sizing.text, /including retries and repeat visits/);
+assert.match(weak.canConnect('queue', 'third-party-api').reason, /Background workers/);

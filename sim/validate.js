@@ -60,7 +60,7 @@ function unservedMessage(S, t) {
   const finishersHere = nodes.filter((n) => n.kind !== 'source' && n.kind !== 'cache' && C(n.i, t)).map((n) => n.i);
   const stop = stops.find((u) => nodes[u].kind === 'compute') ?? stops[0];
   const required = (S.problem.requires || {})[type.id] || [];
-  if (required.length) {
+  if (required.length && required.some(group => !nodes.some(n => seen[n.i] && group.includes(n.el.id)))) {
     const path = required.map((group) => group.map((id) => lowerName(catalog.elementById.get(id)?.name || id)).join(' or ')).join(' and ');
     const from = stop != null ? label(stop) : 'your servers';
     const elsewhere = nodes.some((n) => required.some((g) => g.includes(n.el.id)) && !seen[n.i]);

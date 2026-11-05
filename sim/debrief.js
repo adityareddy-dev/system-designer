@@ -699,7 +699,7 @@ function sizingAdvice(S, n) {
   const avg = S.counters.elapsedSec > 0 ? S.counters.unitSec[u] / S.counters.elapsedSec : n.units;
   const delta = (need - avg) * price;
   const scaling = n.autoscaleKnob || n.autoscaler >= 0;
-  return ` Measured peak: ≈ ${withCommas(requests)} requests/s with ${withCommas(units)} ${unitsWord(n)} active${scaling ? ' under autoscaling' : ''}. Effective capacity for this request mix: ≈ ${withCommas(perServer)} requests/s per unit. With 30 percent headroom (70 percent busy), round up ${withCommas(requests)} ÷ (${withCommas(perServer)} × 0.70) = ${withCommas(needed)} ${unitsWord(n)}.${need < needed ? ` The limit is ${withCommas(need)}; reduce load or use a bigger size too.` : ''} ${scaling ? `Set the autoscaling minimum to ${withCommas(need)} before the peak; new servers take 2 to 4 minutes to start. ` : ''}Keeping ${withCommas(need)} all day costs ≈ $${withCommas(need * price)}/month for units, ≈ $${withCommas(Math.abs(delta))}/month ${delta >= 0 ? 'more' : 'less'} than this run's average fleet (usage costs may change).`;
+  return ` Measured peak at this part, including retries and repeat visits: ≈ ${withCommas(requests)} requests/s with ${withCommas(units)} ${unitsWord(n)} active${scaling ? ' under autoscaling' : ''}. Effective capacity for this request mix: ≈ ${withCommas(perServer)} requests/s per unit. With 30 percent headroom (70 percent busy), round up ${withCommas(requests)} ÷ (${withCommas(perServer)} × 0.70) = ${withCommas(needed)} ${unitsWord(n)}.${need < needed ? ` The limit is ${withCommas(need)}; reduce load or use a bigger size too.` : ''} ${scaling ? `Set the autoscaling minimum to ${withCommas(need)} before the peak; new servers take 2 to 4 minutes to start. ` : ''}Keeping ${withCommas(need)} all day costs ≈ $${withCommas(need * price)}/month for units, ≈ $${withCommas(Math.abs(delta))}/month ${delta >= 0 ? 'more' : 'less'} than this run's average fleet (usage costs may change).`;
 }
 
 function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
@@ -886,6 +886,12 @@ function lessonOfStep(S, step) {
 function nextStepOf(S, score, metrics, nodesOut, eventsOut) {
   const step = nextStepCore(S, score, metrics, nodesOut, eventsOut);
   const [kind] = nextKind(S, score, metrics);
+  const node = S.model.nodes.find(n => n.id === step.nodeId);
+  if (node?.kind === 'compute' && /Measured peak/.test(step.text)) {
+    const i = node.i;
+    step.sizing = { units: Math.min(node.el.units.max, Math.ceil(S.peakUtil[i] * S.peakUnits[i] / 0.7)),
+      peakRps: S.peakRequests[i], activeUnits: S.peakUnits[i] };
+  }
   step.kind = kind;
   const lesson = lessonOfStep(S, step);
   if (lesson) step.lesson = lesson;
