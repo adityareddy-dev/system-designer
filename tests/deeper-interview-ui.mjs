@@ -55,6 +55,8 @@ try {
     const result = await page.evaluate(() => window.__game.step(86400000));
     assert.equal(result.phase, 'done'); assert(result.score.passed, id + ' interview reference passes');
     await page.waitForSelector('.pl-defense-card');
+    assert.equal(await page.$eval('.hp-defense-answer', answer => getComputedStyle(answer).fontSize), '16px', 'phone writing stays readable');
+    assert.equal(await page.$eval('.hp-defense-model h3', heading => getComputedStyle(heading).fontSize), '20px', 'shared model heading');
     await page.$$eval('.pl-defense-card', cards => cards.forEach(card => {
       const answer = card.querySelector('textarea');
       answer.value = 'Use the measured peak and surviving units. Test durable recovery and bound retries before increasing traffic.';

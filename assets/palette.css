@@ -213,8 +213,11 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; margin: 0; }
 :root[data-theme="dark"] { --on-accent: #10213C; }
 
 /* Shared written defense controls. */
+.hp-defense-form,.hp-defense-model {font:16px/1.5 var(--font-ui)}
 .hp-defense-form {display:grid;gap:16px;min-width:0}
-.hp-defense-answer {display:block;width:100%;min-height:150px;height:auto;padding:12px;resize:vertical;font:16px/1.5 var(--font-ui)}
+.hp-defense-form > label {display:block;margin:0;font-weight:700}
+.hp-defense-form .hp-defense-answer {display:block;width:100%;min-height:150px;height:auto;padding:12px;resize:vertical;font:16px/1.5 var(--font-ui)}
+.hp-defense-model > h3:first-child {font:700 20px/1.3 var(--font-display);margin:0 0 16px}
 .hp-defense-help {color:var(--text-2);font-size:15px;line-height:1.5}
 .hp-defense-model {margin-top:20px;padding:16px;border-left:3px solid var(--cat-compute);background:var(--bg);line-height:1.5}
 .hp-defense-model[hidden] {display:none}
