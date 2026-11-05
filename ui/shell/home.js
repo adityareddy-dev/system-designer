@@ -20,8 +20,8 @@ function heroArt(ctx) {
   ];
   const nodeSvg = nodes.map((n) => {
     const inner = hasIcon(n.id) ? iconInner(n.id) : '';
-    return `<g transform="translate(${n.x} ${n.y})"><rect width="72" height="72" rx="10" fill="var(--surface-solid)" stroke="var(--border-strong)"/>
-      <path d="M12 2h48" stroke="${n.c}" stroke-width="3"/><path d="M12 61h48" stroke="var(--border)" stroke-width="4"/><path d="M12 61h32" stroke="${n.c}" stroke-width="4"/><circle cy="36" r="4" fill="var(--surface-solid)" stroke="var(--edge-idle)"/><circle cx="72" cy="36" r="4" fill="var(--surface-solid)" stroke="var(--edge-idle)"/><g transform="translate(20 16) scale(1.35)" style="color:${n.c}" fill="none" stroke="currentColor">${inner}</g></g>`;
+    return `<g data-part="${n.id}-${n.y}" transform="translate(${n.x} ${n.y})"><rect width="72" height="72" rx="10" fill="var(--surface-solid)" stroke="var(--border-strong)"/>
+      <path d="M12 2h48" stroke="${n.c}" stroke-width="3"/><path d="M12 61h48" stroke="var(--border)" stroke-width="4"/><path class="sh-demo-capacity" d="M12 61h32" stroke="${n.c}" stroke-width="4"/><circle cy="36" r="4" fill="var(--surface-solid)" stroke="var(--edge-idle)"/><circle cx="72" cy="36" r="4" fill="var(--surface-solid)" stroke="var(--edge-idle)"/><g transform="translate(20 16) scale(1.35)" style="color:${n.c}" fill="none" stroke="currentColor">${inner}</g>${n.id === 'el.vm-fleet' && n.y === 28 ? '<path class="sh-demo-cross" d="M16 16l40 40m0-40L16 56" fill="none" stroke="var(--bad)" stroke-width="3"/>' : ''}</g>`;
   }).join('');
   const edgeSvg = paths.map((d, i) => `<path id="sh-hp-${i}" d="${d}" fill="none" stroke="var(--edge-idle)" stroke-width="2.5" stroke-linecap="round"/>`).join('');
   let dots = '';
@@ -30,12 +30,30 @@ function heroArt(ctx) {
       for (let k = 0; k < 3; k++) {
         const shape = k === 1 ? '<rect x="-4" y="-4" width="8" height="8" rx="2" fill="var(--req-write)"/>' : '<circle r="4.5" fill="var(--req-read)"/>';
         const b = (k * 0.8 + i * 0.17).toFixed(2);
-        dots += `<g opacity="0"><set attributeName="opacity" to="1" begin="${b}s"/>${shape}<animateMotion dur="${2.4 + (i % 3) * 0.3}s" begin="${b}s" repeatCount="indefinite"><mpath href="#sh-hp-${i}"/></animateMotion></g>`;
+        dots += `<g data-stream="${i}" opacity="0"><set attributeName="opacity" to="1" begin="${b}s"/>${shape}<animateMotion dur="${2.4 + (i % 3) * 0.3}s" begin="${b}s" repeatCount="indefinite"><mpath href="#sh-hp-${i}"/></animateMotion></g>`;
       }
     });
   }
-  const el = h('div', { class: 'sh-hero-art', 'aria-hidden': 'true' });
+  const el = h('div', { class: 'sh-hero-art', 'aria-label': 'Try a capacity experiment' });
   el.innerHTML = `<svg viewBox="0 0 540 270" role="presentation" focusable="false">${edgeSvg}${nodeSvg}${dots}</svg>`;
+  const out = h('p', { class: 'sh-hero-evidence', role: 'status' });
+  const controls = h('div', { class: 'sh-hero-controls', role: 'group', 'aria-label': 'Experiment workload' });
+  const phases = [
+    { label: 'Steady load', rate: '1,800/s', busy: 60, text: 'Three replicas share 1,800 requests/s. Each has 40% spare.', state: 'steady' },
+    { label: 'Double traffic', rate: '3,600/s', busy: 120, text: 'First limit: compute. Each replica gets 1,200/s but can serve about 1,000/s. About 600/s are rejected.', state: 'overload' },
+    { label: 'Lose a replica', rate: '1,800/s', busy: 90, text: 'One replica is down. The other two now carry 900/s each. Routing recovers, but headroom falls to 10%.', state: 'failure' },
+  ];
+  function show(phase) {
+    el.dataset.state = phase.state;
+    el.querySelectorAll('.sh-demo-capacity').forEach(path => {
+      const compute = path.closest('[data-part]')?.dataset.part.startsWith('el.vm-fleet');
+      if (compute) { path.style.transformOrigin = '12px 61px'; path.style.transform = `scaleX(${Math.min(1, phase.busy / 100) * 1.5})`; path.style.stroke = phase.busy > 100 ? 'var(--bad)' : 'var(--cat-compute)'; }
+    });
+    out.replaceChildren(h('b', { text: phase.rate + ' · ' }), phase.text);
+    [...controls.children].forEach((b,i) => b.setAttribute('aria-pressed', String(phases[i] === phase)));
+  }
+  phases.forEach(phase => controls.append(h('button', { type: 'button', class: 'sh-btn', onclick: () => show(phase), text: phase.label })));
+  el.append(controls, out, h('small', { class: 'sh-muted', text: 'Approx. capacity illustration. Travel time is schematic.' })); show(phases[0]);
   return el;
 }
 

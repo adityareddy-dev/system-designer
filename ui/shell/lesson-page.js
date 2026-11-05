@@ -3,6 +3,7 @@ import { h, ico, clear, append, lessonOf, buildHash } from './dom.js';
 import { mountPlayHost } from './playhost.js';
 import { modal } from './overlay.js';
 import { transferFor, transferCorrect } from '../../content/transfers.js';
+import { sceneMarkup } from '../../assets/scenes/index.js';
 import { mountAllocation } from './allocation.js';
 
 function notFoundLesson() {
@@ -116,6 +117,10 @@ export function renderLesson(host, ctx, route) {
     if (!step) return drawTakeaway();
     const card = h('section', { class: 'sh-card sh-lp-card', 'aria-live': 'polite' });
     body.append(card);
+    if (step.kind === 'read' && !step.tap) {
+      card.classList.add('sh-lp-card--illustrated');
+      card.append(h('figure', { class: 'sh-concept-plate', 'aria-label': `${lesson.title}: a diagram of the mechanism`, html: sceneMarkup(lesson.id) }));
+    }
     if (step.kind === 'read' && step.tap) {
       drawTap(card, step);
     } else if (step.kind === 'read') {
