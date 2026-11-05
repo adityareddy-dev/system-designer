@@ -4,6 +4,18 @@ const svg = (tag, attrs = {}, ...kids) => { const el = document.createElementNS(
 import { iconInner } from '../../assets/icons/index.js';
 import { pathsThrough } from '../../render/diagram.js';
 
+export function victoryMetric(result, before) {
+  const availability = result.slo.availability;
+  if (before && before.availability >= availability.target) {
+    const cost = result.cost?.perMonth, budget = result.slo.cost?.budget ?? result.cost?.budget;
+    if (before.cost > budget && cost < before.cost) return { value: cost, from: before.cost, label: 'Cost / month', format: n => '≈ $' + Math.round(n).toLocaleString('en-US') };
+    const p99 = result.slo.latency?.p99Ms;
+    if (before.p99 > p99 * 1.01) return { value: p99, from: before.p99, label: 'p99 latency', format: n => Math.round(n).toLocaleString('en-US') + ' ms' };
+  }
+  return { value: availability.actual * 100, from: before?.availability != null ? before.availability * 100 : null,
+    target: availability.target * 100, label: 'Requests served', format: n => n.toFixed(2) + '%' };
+}
+
 export function showVictory(host, { result, before, original, catalog, reduced }) {
   const graph = result.graph;
   if (!graph?.nodes?.length) return;
@@ -37,17 +49,16 @@ export function showVictory(host, { result, before, original, catalog, reduced }
     art.append(g);
   });
   const clean = result.stars >= 3 && result.score.total >= 950;
-  const value = result.slo.availability.actual * 100;
-  const from = before?.availability != null ? before.availability * 100 : null;
-  const metric = h('strong', { text: `${value.toFixed(2)}%` });
+  const { value, from, target, label, format } = victoryMetric(result, before);
+  const metric = h('strong', { text: format(value) });
   const root = h('section', { class: 'pl-victory' + (clean ? ' pl-victory--sweep' : ''), 'aria-label': 'What earned this pass' },
     h('div', { class: 'pl-victory-copy' }, h('span', { class: 'pl-small', text: clean ? 'All targets held · clean sweep' : 'All targets held · passed' }),
       h('div', { class: 'pl-victory-marks', 'aria-hidden': 'true' }, ...(clean ? [0,1,2] : [0]).map(i => h('span', { style: { animationDelay: `${700 + i * 100}ms` }, text: clean ? '★' : '✓' }))),
       h('h3', { text: clean ? 'Clean sweep' : changes.length ? 'Your repair carried the day' : 'Your path held through the day' }),
       h('p', { text: changes.length ? changes.map(n => catalog.elementById.get(n.type)?.name || n.type).join(' · ') : 'Follow the surviving request path.' }),
       h('div', { class: 'pl-victory-numbers' },
-        from != null ? h('span', null, h('small', { text: 'Previous day' }), h('b', { text: `${from.toFixed(2)}%` })) : h('span', null, h('small', { text: 'Served target' }), h('b', { text: `${(result.slo.availability.target * 100).toFixed(2)}%` })),
-        h('span', { text: '→', 'aria-hidden': 'true' }), h('span', null, h('small', { text: 'This day served' }), metric))), art);
+        from != null ? h('span', null, h('small', { text: 'Previous day' }), h('b', { text: format(from) })) : h('span', null, h('small', { text: 'Served target' }), h('b', { text: format(target) })),
+        h('span', { text: '→', 'aria-hidden': 'true' }), h('span', null, h('small', { text: label }), metric))), art);
   const summary = host.querySelector('.pl-verdict-sec');
   if (summary) summary.insertBefore(root, summary.querySelector('.pl-score-row'));
   if (reduced) return;
@@ -57,8 +68,8 @@ export function showVictory(host, { result, before, original, catalog, reduced }
     if (!root.isConnected) return;
     const elapsed = now - start, k = Math.min(1, Math.max(0, (elapsed - 400) / 450));
     const beforeNumber = root.querySelector('.pl-victory-numbers b');
-    if (beforeNumber) beforeNumber.textContent = `${((from ?? result.slo.availability.target * 100) * Math.min(1, Math.max(0, elapsed - 250) / 350)).toFixed(2)}%`;
-    metric.textContent = `${((from ?? result.slo.availability.target * 100) + (value - (from ?? result.slo.availability.target * 100)) * k).toFixed(2)}%`;
+    if (beforeNumber) beforeNumber.textContent = format((from ?? target) * Math.min(1, Math.max(0, elapsed - 250) / 350));
+    metric.textContent = format((from ?? target) + (value - (from ?? target)) * k);
     const landing = Math.min(1, Math.max(0, (elapsed - 850) / 400));
     if (score) score.textContent = Math.round(total * landing).toLocaleString('en-US');
     if (arc) { const c = 2 * Math.PI * 54; arc.setAttribute('stroke-dasharray', `${total * landing / 1000 * c} ${c}`); }

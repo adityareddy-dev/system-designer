@@ -900,6 +900,7 @@
 .pl-victory-marks {display:flex;gap:8px;color:var(--ok);font-size:25px;line-height:1;margin-top:12px}
 .pl-victory-marks span {animation:pl-mark-earned 260ms cubic-bezier(.2,.8,.2,1) both}
 .pl-victory--sweep .pl-victory-marks {color:var(--cat-data);font-size:32px}
+.pl-verdict-sec:has(.pl-victory--sweep) .pl-score-side>.pl-stars {display:none}
 @keyframes pl-mark-earned {from {opacity:0;transform:translateY(10px) scale(.7)}to {opacity:1;transform:translateY(0) scale(1)}}
 @keyframes pl-route-earned {from {opacity:.12;transform:translateY(6px)}to {opacity:1;transform:translateY(0)}}
 .pl-focus-map {display:none}

@@ -389,8 +389,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     for (const [dx, dy] of cand) if (!overlaps(x + dx, y + dy, skip)) return { x: x + dx, y: y + dy };
     return { x, y };
   }
-  // Inserting into a line A to B: the new part goes halfway; when A and B are too close, B and everything past it
-  // moves along to make room.
+  // Insertion keeps the source anchored and pushes only faces that need room.
   function makeRoomOnEdge(edgeId) {
     const layout = insertionLayout(graph(), edgeId);
     if (!layout) return null;
@@ -1293,7 +1292,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.winBefore = S.lastDayProblem === S.problem.id ? S.lastDay : null;
     S.winOriginal = S.lastDayProblem === S.problem.id ? S.previousRunGraph : S.entryGraph;
     S.previousRunGraph = result.graph; S.lastDayProblem = S.problem.id;
-    S.lastDay = { availability: result.slo?.availability?.actual ?? 0, target: result.slo?.availability?.target ?? 0.99, passed: !!result.passed, cost: result.cost?.perMonth ?? result.metrics?.perMonth ?? result.perMonth ?? S.sim.state?.()?.cost?.perMonth ?? null };
+    S.lastDay = { availability: result.slo?.availability?.actual ?? 0, target: result.slo?.availability?.target ?? 0.99, passed: !!result.passed, p99: result.slo?.latency?.p99Ms ?? null, cost: result.cost?.perMonth ?? result.metrics?.perMonth ?? result.perMonth ?? S.sim.state?.()?.cost?.perMonth ?? null };
     note('day-end', null);
     if (!stepped) {
       if (mode === 'intro') return;
@@ -1719,10 +1718,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }));
 
   // ---- state for tests
-  const LABEL_MAX_K = 4.5; // same cap as render/nodes.js setLabelScale
+  const LABEL_MAX_K = 8; // same cap as render/nodes.js setLabelScale
   // Camera zoom and the free canvas area, for tests: the on-screen label size is 12 px times the label scale times the zoom.
   function viewInfo() {
-    try { const z = scene.stats().zoom; return { zoom: z, labelPx: 12 * (z < 1 ? Math.min(LABEL_MAX_K, 1 / Math.max(0.1, z)) : 1) * z, free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
+    try { const z = scene.stats().zoom; return { zoom: z, labelPx: 12 * Math.max(1, Math.min(LABEL_MAX_K, (z < .5 ? 10.5 : 13) / (12 * Math.max(.1, z)))) * z, free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
   }
   function getState() {
     const sim = S.sim;
