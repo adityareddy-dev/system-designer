@@ -49,7 +49,7 @@ function knobNodes(S, knob, inst) {
       case 'readFrom': ok = n.el.id === 'document-db' && n.readFrom === 'primary'; break;
       case 'autoscale': ok = !!(n.autoscaleKnob || n.autoscaler >= 0); break;
       case 'ttlSec': ok = n.el.id === 'dns' && n.ttlSec != null && n.ttlSec <= 60; break;
-      case 'retentionDays': ok = n.kind === 'store' && n.retentionDays && n.retentionDays < 7; break;
+      case 'retentionDays': ok = inst?.id !== 'disk-full' && n.kind === 'store' && n.retentionDays && n.retentionDays < 7; break;
       case 'warmPool': ok = n.warmPool > 0; break;
       case 'units': {
         const st = inst && inst.stats;
@@ -642,6 +642,12 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
       fix = gap ? `Fix the routing gap first: ${gap.message}` : root ? `Fix the failures at ${nodeLabel(root)} first. The slow dependency caused none of these failures.` : null;
     }
   }
+  const authored = S.problem.events.find(e => e.id === inst.id && e.text)?.text?.debrief;
+  if (authored) {
+    if (authored.headline) headline = fillT(authored.headline, vars);
+    if (authored.hurt) hurt = fillT(authored.hurt, vars);
+    if (authored.fix) fix = fillT(authored.fix, vars);
+  }
   return { headline: tidy(headline), hurt: tidy(hurt), helped: tidy(helped), fix: tidy(fix) };
 }
 
@@ -659,7 +665,7 @@ function blockedOf(S) {
   }
   let issues = [];
   try { issues = validateModel(S); } catch { issues = []; }
-  const blocking = issues.filter((i) => i.level === 'error' && i.type && (i.code === 'type-unserved' || i.code === 'requires-missing' || i.code === 'no-source-type'));
+  const blocking = issues.filter((i) => i.level === 'error' && i.type && (i.code === 'source-type-unserved' || i.code === 'type-unserved' || i.code === 'requires-missing' || i.code === 'no-source-type'));
   const types = [...new Set(blocking.map((i) => i.type))];
   const share = failAll > 0 ? types.reduce((a, t) => a + (typeFail.get(t) || 0), 0) / failAll : 0;
   const top = blocking.slice().sort((a, b) => (typeFail.get(b.type) || 0) - (typeFail.get(a.type) || 0))[0] || null;
@@ -783,6 +789,9 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
         if (!n.autoscaleKnob && n.autoscaler < 0 && (n.el.knobs || []).includes('autoscale')) return { text: `${name(n)} ran out of room${busy}. Add ${unitsWord(n)} and turn on autoscaling.${more2}`, nodeId: n.id, knob: 'autoscale' };
         return { text: `${name(n)} ran out of room${busy}. Add ${unitsWord(n)} so it peaks under about 70 percent busy.${more2}`, nodeId: n.id, knob: 'units' };
       }
+    }
+    if (['compute', 'store', 'cache', 'lookaside', 'router', 'filter'].includes(n.kind) && (S.peakUtil[worst] <= 1 || !(S.overTicks[worst] > 0))) {
+      return { text: `${name(n)} lost requests without exhausting its capacity (peak ≈ ${busyPct(S.peakUtil[worst])} percent busy). Check the source routes, failed dependencies and event evidence before adding capacity.`, nodeId: n.id };
     }
     if (n.kind === 'lookaside' && (n.el.knobs || []).includes('units')) {
       const peak = S.peakUtil[n.i];
@@ -1087,6 +1096,7 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
     const vars = varsFor(S, inst, hurt, helpers);
     return {
       id: inst.id, name: inst.name, severity: inst.severity, atMs: inst.atMs, endMs: inst.endMs,
+      description: inst.def.description, counters: inst.def.counters,
       nodeIds: inst.nodeIds,
       helpers: helpers.map((x) => x.id),
       hurt: hurt.map((u) => model.nodes[u].id),
@@ -1107,6 +1117,8 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
   const nodesOut = model.nodes.map((n) => ({
     id: n.id, type: n.el.id,
     peakUtil: Math.round(Math.min(S.peakUtil[n.i], 10) * 1000) / 1000,
+    peakRequests: Math.round(S.peakRequests[n.i]), peakUnits: S.peakUnits[n.i],
+    effectiveRpsPerUnit: S.peakUtil[n.i] > 0 ? S.peakRequests[n.i] / (S.peakUtil[n.i] * S.peakUnits[n.i]) : 0,
     minutesOverloaded: Math.round((S.overTicks[n.i] * S.dt) / 60),
     failed: Math.round(S.failedSum[n.i]),
     usd: Math.round((cost.perNode[n.i] || 0) * 100) / 100,
@@ -1132,6 +1144,7 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
       cost: { perMonth: cost.perMonth, budget: cost.budget, lines: cost.lines },
     },
     timeline,
+    firstFailure: S.firstBreak ? { ...S.firstBreak } : null,
     minuteSuccess,
     events: eventsOut,
     nodes: nodesOut,

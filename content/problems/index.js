@@ -14,6 +14,7 @@ import calibration from './calibration.js';
 import { applyCalibration } from './calibrate.js';
 import twists from './twists.js';
 import { twistEvents } from './twist-events.js';
+import { applyEvidence } from './evidence.js';
 import correctness from './correctness.js';
 
 // Industry groups in display order (CONTRACT 11.1).
@@ -116,7 +117,7 @@ for (const file of files) {
   for (const p of file.problems || []) {
     if (!p || !p.id || problemById.has(p.id)) continue;
     const gid = GROUP_OF[p.id] || (known.has(file.group?.id) ? file.group.id : 'core');
-    const prob = { ...spaced(applyCalibration(applyCalibration(p, fixes[p.id]), calibration[p.id])), group: gid };
+    const prob = { ...spaced(applyEvidence(applyCalibration(applyCalibration(p, fixes[p.id]), calibration[p.id]))), group: gid };
     if (correctness[p.id]) prob.correctness = correctness[p.id];
     // the "new twist" replay: the same problem with its events moved and one more added (tools/gen-twists.mjs)
     const tw = twists[p.id];

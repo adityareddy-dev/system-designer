@@ -1,4 +1,5 @@
 // Build-phase checks: plain-words validation issues and the "will it hold at peak?" estimate.
+import { sourceWeights } from './sources.js';
 import { M } from './route.js';
 import { nodeLabel } from './cost.js';
 import { joinNames } from './util.js';
@@ -102,6 +103,16 @@ export function validateModel(S) {
     if (!(share > 0)) continue;
     const t = catalog.typeIndex.get(tid);
     const type = catalog.requests[t];
+    const weights = sourceWeights(problem, model, t, tid);
+    for (const [u, share] of weights) {
+      if (share > 0 && !model.route[u * T + t]) {
+        add('error', 'source-type-unserved', `${nodeLabel(nodes[u])} sends ${type.plural}, but this source has no route to a part that finishes them. ${unservedMessage(S, t).msg}`, nodes[u].id, { type: tid });
+      }
+    }
+    if (model.sources.length && !weights.length) {
+      add('error', 'no-source-type', `No source is assigned to send ${type.plural}. Check the traffic sources.`, undefined, { type: tid });
+      continue;
+    }
     if (model.sources.length && !nodes.some((n) => n.kind === 'source' && model.H(n.i, t))) {
       add('error', 'no-source-type', `None of your request sources send ${type.plural}. Add a source that does.`, undefined, { type: tid });
       continue;

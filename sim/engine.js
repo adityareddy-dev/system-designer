@@ -2,6 +2,7 @@
 import { hashSeed, mulberry32 } from './rng.js';
 import { SimError, connectRule, coerceKnob, makeNode, normalizeGraphInput } from './graph.js';
 import { compile, refreshKnobs, KIND, M } from './route.js';
+import { sourceWeights } from './sources.js';
 import { traceRoute } from './trace.js';
 import { prepareNode, forwardPass, backwardPass, queueReturns, computeEdgeRtt } from './flow.js';
 import { makeInstance, startEvent, applyEffects, checkCompliance } from './events.js';
@@ -355,13 +356,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     const srcMap = prob.traffic.sources || {};
     for (let t = 0; t < T; t++) {
       if (t === S.attackT) continue;
-      const list = nodes.filter((n) => n.kind === 'source' && m.H(n.i, t));
-      if (!list.length) continue;
-      const counts = new Map();
-      for (const n of list) counts.set(n.el.id, (counts.get(n.el.id) || 0) + 1);
-      let sum = 0;
-      const w = list.map((n) => { const v = (srcMap[n.el.id] || 0) / counts.get(n.el.id); sum += v; return v; });
-      for (let k = 0; k < list.length; k++) S.srcShare[list[k].i * T + t] = sum > 0 ? w[k] / sum : 1 / list.length;
+      const weights = sourceWeights(prob, m, t, catalog.requests[t].id);
+      for (const [u, share] of weights) S.srcShare[u * T + t] = share;
     }
     let anySum = 0;
     for (const n of nodes) if (n.kind === 'source') { S.srcAny[n.i] = (srcMap[n.el.id] || 0) + 1e-6; anySum += S.srcAny[n.i]; }
@@ -978,7 +974,14 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     X.hourOff[hour] += off * dt; X.hourSucc[hour] += succ * dt;
     if (p99Now > 0) { X.hourP99[hour] += p99Now * off * dt; X.hourW[hour] += off * dt; }
     if (p99Now > X.worstP99) X.worstP99 = p99Now;
-    if (!X.firstBreak && off > 0 && succ / off < 0.95) X.firstBreak = { atMs: X.clock };
+    if (!X.firstBreak && off > 0 && succ / off < 0.95) {
+      const gap = validateModel(X).find(i => i.level === 'error' && i.type);
+      const limiting = m.nodes.filter(n => n.kind !== 'source' && X.rho[n.i] > 1 && X.failedNow[n.i] > 0)
+        .sort((a,b) => X.rho[b.i] - X.rho[a.i])[0];
+      const failed = limiting || m.nodes.filter(n => n.kind !== 'source' && X.failedNow[n.i] > 0).sort((a,b) => X.failedNow[b.i] - X.failedNow[a.i])[0];
+      X.firstBreak = { atMs: X.clock, nodeId: gap?.nodeId || failed?.id || null,
+        kind: gap ? 'routing' : limiting ? 'capacity' : 'dependency', util: gap?.nodeId ? Math.round(X.rho[m.idx.get(gap.nodeId)] * 1000) / 1000 : failed ? Math.round(X.rho[failed.i] * 1000) / 1000 : 0 };
+    }
 
     // safety ledger
     // stale read-backs only matter where people must see their own change at once
@@ -1489,6 +1492,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     if (S.clock >= dayMs) st.clockLabel = '24:00';
     st.nodes = m.nodes.map((n) => ({
       id: n.id, type: n.el.id,
+      incomingRps: Math.round(S.realIn[n.i]),
+      availableUnits: Math.max(0, Math.round(S.unitsCur[n.i] * (S.down[n.i] ? 0 : S.capFactor[n.i]))),
       util: Math.round(Math.min(S.rho[n.i], UTIL_SHOW_MAX) * 1000) / 1000,
       status: ['ok', 'warn', 'hot', 'overload', 'down'][S.status[n.i]],
       p99Ms: Math.round(S.hop99[n.i] * 10) / 10,
