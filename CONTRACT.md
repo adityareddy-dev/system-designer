@@ -572,6 +572,8 @@ Groups (id: title), in display order: `core`: Core building blocks · `media`: M
 ```
 Rules: every element id, event id, request type, curve and compliance id must exist in the catalog. Numbers must be sensible approximations and say so. Time strings are 'HH:MM' on the simulated clock. Editorial `expect` values are filled from real sim runs during Phase 3.
 
+Advanced problems may include `workloadPlan: [{ sourceRef, entryRef, peakRps, mix, role? }]` as descriptive source-specific traffic for a future engine. Rates sum to `requirements.peakRps` and reproduce its aggregate mix. It is not an engine input in this version. Every source still enters a legitimate shared front door in the measured reference. Notes and editorials state the scored boundary and the protocol obligations outside it. The catalog's `batch` represents 100 MB, `telemetry` represents 1 KB or a time-series batch of 100 samples, and observers do not implement storage platforms.
+
 ### 11.2 Lesson files: `content/lessons/<lessonId>.js`
 ```js
 export default {

@@ -15,6 +15,8 @@ import { applyCalibration } from './calibrate.js';
 import twists from './twists.js';
 import { twistEvents } from './twist-events.js';
 import correctness from './correctness.js';
+import deeper from './deeper.js';
+import conceptLinks from './concept-links.js';
 
 // Industry groups in display order (CONTRACT 11.1).
 const GROUPS = [
@@ -50,9 +52,11 @@ const GROUP_OF = {
   'shopping-cart': 'commerce', 'flash-sale-inventory': 'commerce', 'login-sso': 'core', 'clickstream-analytics': 'devtools', 'otp-sms-delivery': 'telecom', 'call-routing': 'telecom', 'object-storage': 'core',
   'black-friday-marketplace': 'commerce', 'bulk-sms-campaigns': 'telecom',
   'ci-cd-pipeline': 'devtools', 'feature-flag-service': 'devtools', 'observability-platform': 'devtools',
+  'logs-platform': 'devtools', 'tracing-platform': 'devtools', 'tenant-metrics': 'devtools',
+  'device-notes': 'productivity', 'wearable-health': 'health',
 };
 
-const files = [...mediaSocial, money, healthGovEdu, realWorld, platformsDev, moreEasy, hardPicks, coverage, hardMore, hardMoreTelecom];
+const files = [...mediaSocial, money, healthGovEdu, realWorld, platformsDev, moreEasy, hardPicks, coverage, hardMore, hardMoreTelecom, deeper];
 
 // Request sources stacked in one column sit at least 140 px apart, so their names never overlap on the canvas.
 function spaceSources(graph) {
@@ -117,6 +121,7 @@ for (const file of files) {
     if (!p || !p.id || problemById.has(p.id)) continue;
     const gid = GROUP_OF[p.id] || (known.has(file.group?.id) ? file.group.id : 'core');
     const prob = { ...spaced(applyCalibration(applyCalibration(p, fixes[p.id]), calibration[p.id])), group: gid };
+    if (conceptLinks[p.id]) prob.concepts = [...new Set([...prob.concepts, ...conceptLinks[p.id]])];
     if (correctness[p.id]) prob.correctness = correctness[p.id];
     // the "new twist" replay: the same problem with its events moved and one more added (tools/gen-twists.mjs)
     const tw = twists[p.id];
