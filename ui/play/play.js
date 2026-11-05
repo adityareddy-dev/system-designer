@@ -278,6 +278,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       const traceBox = box(root.querySelector('.pl-trace'));
       if (traceBox) t = Math.max(t, traceBox.bottom - r.top);
       if (tb) t = Math.max(t, tb.bottom - r.top);
+      for (const el of [caption, goalChip]) { const overlay = box(el); if (overlay && overlay.top < r.top + r.height / 2) t = Math.max(t, overlay.bottom - r.top + 4); }
       b = 72;
       // an open parts drawer, and the Add component button riding on its edge, are not free canvas either
       const tbBox = box(toolbar.el);

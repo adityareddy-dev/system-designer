@@ -32,7 +32,9 @@ try {
   const fresh = await page.evaluate(id => { window.__game.setKnob(id, 'ttlSec', 60); window.__game.step(120000); return { done: document.querySelector('.pl-goal').classList.contains('pl-goal--done'), text: document.querySelector('.pl-goal').textContent }; }, state.cache);
   assert.equal(fresh.done, true, fresh.text);
   await page.evaluate(() => window.__game.loadProblem('url-shortener'));
-  await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); });
+  await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(3600000); });
+  assert.equal(await page.$eval('[data-meter=avail] .pl-m-l', el => el.textContent), 'Day served');
+  await page.evaluate(() => window.__game.step(82800000));
   await delay(1000);
   const hint = await page.$('.pl-overlay--debrief .pl-actions button:nth-child(2)');
   await hint.click();

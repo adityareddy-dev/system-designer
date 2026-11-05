@@ -9,7 +9,7 @@ let pass = 0, fail = 0;
 const check = (name, ok, detail = '') => { if (ok) pass++; else fail++; console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${name}${detail !== '' ? '  (' + detail + ')' : ''}`); };
 const errors = [];
 
-const browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 async function openPage(view) {
   const page = await browser.newPage();
   await page.setViewport(view);
@@ -43,9 +43,10 @@ await sleep(600);
 {
   await ev(() => window.__game.loadLesson('load-balancing'));
   await sleep(400);
-  const r = await ev(() => {
+  const r = await ev(async () => {
     const st = window.__game.getState();
     const id = window.__game.placeComponent('regional-lb', -390, 0);
+    await new Promise(resolve => setTimeout(resolve, 260));
     const after = window.__game.getState();
     return { phase: st.phase, after: after.phase, id, n0: st.nodes.length, n1: after.nodes.length };
   });
@@ -89,7 +90,7 @@ for (const wired of [false, true]) {
     const chip = document.querySelector('.pl-goal');
     return { chip: chip?.innerText || '', why: chip?.title || '' };
   }, wired);
-  if (wired) check('queues lesson: queue, workers, database reaches the goal', /Goal reached/.test(r.chip), r.chip.slice(0, 80));
+  if (wired) check('queues lesson: queue, workers, database reaches the goal', /Check passed now/.test(r.chip), r.chip.slice(0, 80));
   else check('queues lesson: no "goal reached" while the workers are not connected', !/Goal reached/.test(r.chip) && /no workers/.test(r.why), `${r.chip.slice(0, 50)} | ${r.why.slice(0, 70)}`);
 }
 
@@ -102,6 +103,7 @@ console.log('\nBuild status and empty designs');
   const r = await ev(() => { window.__game.startTraffic(); const s = window.__game.step(86400000); return s.score; });
   check('an empty design scores almost nothing', r && r.total <= 60 && !r.passed, JSON.stringify(r));
   await sleep(500);
+  await ev(() => { const details = document.querySelector('.pl-score-details'); if (details) details.open = true; });
   const txt = await ev(() => document.querySelector('.pl-overlay--debrief')?.innerText || '');
   const bad = (txt.match(/[^.\n]*\b0 minutes[^.\n]*/) || [''])[0];
   check('its debrief does not praise speed or cost', /Nothing was served/.test(txt) && !bad && /nothing served/.test(txt), bad || txt.slice(0, 80));
@@ -225,7 +227,7 @@ await sleep(900);
     return { onTop: g.contains(hit), hit: hit?.className || '', res: cv ? cv.width / cv.clientWidth : 0, overflow: document.documentElement.scrollWidth > innerWidth + 1 };
   });
   check('"Add component" is not covered by the brief', r.onTop, r.hit);
-  check('the canvas renders at the screen’s full resolution', r.res >= 1.9, String(r.res));
+  check('the phone canvas uses the 1.5 pixel-ratio cap', r.res >= 1.49 && r.res <= 1.51, String(r.res));
   check('no sideways scrolling', !r.overflow);
   const n0 = await pev(() => window.__game.getState().nodes.length);
   await phone.tap('.pl-tb-grab');
@@ -248,6 +250,8 @@ await sleep(900);
     for (const n of d.graph.nodes) { if (have.has(n.ref)) continue; const nid = window.__game.placeComponent(n.type, n.x, n.y); idOf.set(n.ref, nid); for (const [k, v] of Object.entries(n.knobs || {})) window.__game.setKnob(nid, k, v); }
     for (const e of d.graph.edges) { const [a, b] = Array.isArray(e) ? e : String(e).split('>'); window.__game.connect(idOf.get(a), idOf.get(b)); }
     window.__game.startTraffic();
+    const checkpoint = document.querySelector('form.pl-modal-card');
+    if (checkpoint) { checkpoint.querySelectorAll('select').forEach(s => { s.value = '0'; }); const line = checkpoint.querySelector('input'); if (line) line.value = 'Use one operation key and an atomic charge.'; checkpoint.requestSubmit(); }
     window.__game.step(13 * 3600000);
   });
   await sleep(600);

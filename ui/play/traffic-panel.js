@@ -11,7 +11,7 @@ const CURVE_NAMES = {
   'market-hours': 'Market hours', 'global-follow-sun': 'Follows the sun', 'night-batch': 'Night batch', deadline: 'Deadline rush', drop: 'Ticket drop',
 };
 
-export const DEFAULT_TRAFFIC = { rps: { read: 600, write: 100, login: 50, search: 150 }, curve: 'consumer-evening', regions: { us: 0.7, eu: 0.3 } };
+export const DEFAULT_TRAFFIC = { rps: { read: 600, write: 100 }, curve: 'consumer-evening', regions: { us: 0.7, eu: 0.3 } };
 
 export function createTrafficPanel(host, { catalog, initial = DEFAULT_TRAFFIC, onChange, onFire }) {
   const state = { rps: { ...initial.rps }, curve: initial.curve, regions: { ...initial.regions } };
@@ -21,6 +21,7 @@ export function createTrafficPanel(host, { catalog, initial = DEFAULT_TRAFFIC, o
 
   const types = catalog.requests.filter((r) => r.id !== 'attack');
   const sliders = h('div', { class: 'pl-tp-list' });
+  const advanced = h('details', { class: 'pl-tp-advanced' }, h('summary', { text: 'Advanced request types' }));
   for (const rt of types) {
     const val = h('b', { class: 'pl-mono' });
     const inp = h('input', { class: 'pl-range', type: 'range', min: '0', max: String(POS_MAX), value: String(rpsToPos(state.rps[rt.id] || 0)), 'aria-label': `${rt.name} requests per second` });
@@ -29,9 +30,10 @@ export function createTrafficPanel(host, { catalog, initial = DEFAULT_TRAFFIC, o
     show();
     const shape = h('span', { class: 'pl-tp-shape', style: { color: `var(--req-${rt.family})` }, 'aria-hidden': 'true' });
     try { shape.innerHTML = shapeSvg(rt.shape, { size: 14, fill: 'currentColor' }); } catch { /* optional */ }
-    sliders.append(h('label', { class: 'pl-tp-row', title: rt.description }, h('span', { class: 'pl-tp-top' }, shape, h('span', { text: rt.name }), val), inp));
+    (['read', 'write'].includes(rt.id) ? sliders : advanced).append(h('label', { class: 'pl-tp-row', title: rt.description }, h('span', { class: 'pl-tp-top' }, shape, h('span', { text: rt.name }), val), inp));
   }
 
+  sliders.append(advanced);
   const curveSel = h('select', { class: 'pl-select', 'aria-label': 'Traffic over the day' });
   Object.keys(catalog.world.curves).filter((k) => k !== 'note').forEach((k) => curveSel.append(h('option', { value: k, text: CURVE_NAMES[k] || k })));
   curveSel.value = state.curve;

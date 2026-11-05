@@ -19,7 +19,7 @@ export function createGrid(PIXI, parent, env) {
 
   // Dot spacing in world units: 20, 40, 80 ... so dots stay at least 18 px apart on screen.
   function stepFor(z) {
-    let step = 20;
+    let step = 24;
     while (step * z < 18) step *= 2;
     return step;
   }

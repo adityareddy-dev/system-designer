@@ -132,6 +132,7 @@ export function renderChallenge(host, ctx, route0) {
     const quickPlay = h('a', { class: 'sh-btn sh-btn--primary sh-btn--lg sh-quickplay', href: playHref, 'data-quick': '1' }, ico('ui.play', 20), playLabel);
 
     const scenario = h('section', { class: 'sh-card sh-scenario' },
+      h('img', { class: 'sh-bench-scene', src: new URL('../../assets/scenes/' + ((problem.concepts || []).includes('queues-backpressure') ? 'draining-queue' : (problem.concepts || []).includes('caching') ? 'cached-reads' : 'shared-load') + '.svg', import.meta.url).href, alt: 'A small system with calibrated capacity bars and visible request paths' }),
       h('div', { class: 'sh-scenario-top' }, diffBadge(problem.difficulty), h('span', { class: 'sh-muted', text: problem.like || '' })),
       h('h2', { class: 'sh-scenario-title', text: problem.title }),
       h('p', { class: 'sh-lp-text', text: problem.brief || '' }),
@@ -186,7 +187,7 @@ export function renderChallenge(host, ctx, route0) {
     if (ctx.account?.leaderboardCard) mountBoard();
     else if (ctx.bus?.on) offAttach = ctx.bus.on('account:attached', () => { if (offAttach) { offAttach(); offAttach = null; } mountBoard(); updateService(); });
 
-    append(host, [h('div', { class: 'sh-page' }, head, nav, diffRow, hardNudge, quickPlay, h('div', { class: 'sh-two-col' }, scenario, stack))]);
+    append(host, [h('div', { class: 'sh-page sh-challenge-page' }, head, nav, diffRow, hardNudge, quickPlay, h('div', { class: 'sh-two-col' }, scenario, stack))]);
   }
 
   draw(route0);

@@ -4,7 +4,7 @@ import { lutAt } from './geom.js';
 import { P_SHAPE } from './textures.js';
 
 export const MAX_PARTICLES = 1500;
-const PER_EDGE = 48;
+const PER_EDGE = 8;
 const SCREEN_SPEED = 240;   // px per second at 1x
 const EASE_IN_MS = 80;
 

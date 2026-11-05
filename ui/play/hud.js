@@ -28,7 +28,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
   const cvS = h('canvas', { class: 'pl-spark', 'aria-hidden': 'true' });
   const cvL = h('canvas', { class: 'pl-spark', 'aria-hidden': 'true' });
   const spark = h('div', { class: 'pl-sparks' },
-    h('div', { class: 'pl-spark-box' }, h('div', { class: 'pl-spark-l' }, 'Success ', h('b', { class: 'pl-mono pl-sp-s', text: '–' })), cvS),
+    h('div', { class: 'pl-spark-box' }, h('div', { class: 'pl-spark-l' }, 'Latest interval ', h('b', { class: 'pl-mono pl-sp-s', text: '–' })), cvS),
     h('div', { class: 'pl-spark-box' }, h('div', { class: 'pl-spark-l' }, 'p99 ', h('b', { class: 'pl-mono pl-sp-l', text: '–' })), cvL));
 
   // meters
@@ -46,9 +46,9 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     meters.append(el);
   }
   if (sandbox) {
-    meter('avail', 'ui.availability', 'Success rate'); meter('lat', 'ui.latency', 'p99 now'); meter('cost', 'ui.cost', 'Cost / mo'); meter('busy', 'ui.hot', 'Busiest element');
+    meter('avail', 'ui.availability', 'Served now'); meter('lat', 'ui.latency', 'p99 now'); meter('cost', 'ui.cost', 'Cost / mo'); meter('busy', 'ui.hot', 'Busiest part');
   } else {
-    meter('avail', 'ui.availability', lesson ? 'Success now' : 'Uptime'); meter('lat', 'ui.latency', 'Speed (p99)'); meter('safe', 'ui.safety', 'Data safety'); meter('cost', 'ui.cost', 'Cost / mo');
+    meter('avail', 'ui.availability', lesson ? 'Served now' : 'Day served'); meter('lat', 'ui.latency', 'Speed (p99)'); meter('safe', 'ui.safety', 'Data safety'); meter('cost', 'ui.cost', 'Cost / mo');
   }
   const buildNote = h('div', { class: 'pl-buildnote' });
   if (lesson) {
@@ -201,7 +201,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
         M.safe.el.querySelector('.pl-m-l').textContent = queued.length ? 'Expiry risk' : 'Data safety';
         M.lat.el.querySelector('.pl-m-l').textContent = queued.length ? 'Acceptance p99' : 'Speed (p99)';
       }
-      if (M.avail) M.avail.el.querySelector('.pl-m-l').textContent = queued.length ? 'Accepted' : 'Success now';
+      if (M.avail) M.avail.el.querySelector('.pl-m-l').textContent = queued.length ? 'Accepted now' : lesson ? 'Served now' : 'Day served';
       meterSet('avail', { text: fmtPct(aVal), sub: queued.length ? (waiting > 0 ? `${fmtNum(waiting)} jobs waiting in line (approx.)` : `target ${fmtPct(aTgt)}`) : `target ${fmtPct(aTgt)}`, frac: aVal, tick: aTgt, status: aOk ? 'ok' : (queued.length && aVal > 0.9 ? 'warn' : 'bad') });
       const l = slo.latency || {};
       const lt = l.targetMs ?? tgt.latencyP99Ms?.default ?? 200;

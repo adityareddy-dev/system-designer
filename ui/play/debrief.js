@@ -306,7 +306,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const tryText = result.nextStep?.text || (missedKeys.length ? TRY[missedKeys[0]] : null);
   const tryNext = !result.passed && !result.reference && tryText
     ? h('div', { class: 'pl-try' + (near ? ' pl-try--near' : ''), 'data-act': 'try-next' }, iconEl('ui.hint', 20),
-      h('div', { class: 'pl-try-body' }, h('b', { text: near ? 'One change to pass' : 'Try this next' }), h('p', { text: tryText })),
+      h('div', { class: 'pl-try-body' }, h('b', { text: 'Next experiment' }), h('p', { text: tryText.split(/(?<=\.)\s+/).slice(0, 2).join(' ') }), h('details', { class: 'pl-sizing-detail' }, h('summary', { text: 'Evidence and sizing assumptions' }), h('p', { text: tryText }))),
       (result.nextStep?.elementId || result.nextStep?.nodeId) ? h('div', { class: 'pl-try-btns' },
         h('button', { class: 'pl-btn', type: 'button', onClick: () => handlers.onShowNext?.(result.nextStep) }, 'Show me'),
         (() => { const f = handlers.nextFix?.(result.nextStep); return f ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', 'data-act': 'set-servers', onClick: () => handlers.onSetNext?.(f) }, f.label) : null; })()) : null)
@@ -392,6 +392,14 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   if (!(result.events || []).length) stories.append(h('p', { class: 'pl-muted', text: 'No events hit this day. Smooth traffic is the easy part.' }));
   (result.events || []).forEach((ev, i) => stories.append(eventStory(ev, i, result, catalog)));
   root.append(stories);
+  const evidence = root.querySelector('.pl-sec:has(.pl-tl)');
+  const summary = root.querySelector('.pl-verdict-sec');
+  if (evidence) summary.after(evidence, stories);
+  if (tryNext) summary.after(tryNext);
+  const details = h('details', { class: 'pl-score-details' }, h('summary', { text: 'Score details and calculations' }), cards);
+  root.querySelector('.pl-learn')?.after(details);
+  if (!details.isConnected) root.append(details);
+  if (!result.passed) { const row = root.querySelector('.pl-score-row'); if (row) details.append(row); summary.append(h('p', { class: 'pl-small pl-muted', text: `Traffic score: ${Math.round(sc.total).toLocaleString('en-US')} / 1,000. Full score details below.` })); }
 
   // 6: trade-offs
   const tr = h('section', { class: 'pl-sec' }, h('h3', { text: 'Trade-offs you made' }));

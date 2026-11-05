@@ -143,7 +143,11 @@ export function renderSettings(hostEl, ctx) {
 
   append(page, [h('h1', { class: 'sh-h1', text: 'Settings' }), appearance, motion, sound, shapesCard, profile, data, keysCard]);
   hostEl.append(page);
-  return () => {};
+  const off = ctx.bus.on('settings', ({ key, value }) => {
+    const label = { theme: 'Theme', reducedMotion: 'Reduced motion', quality: 'Graphics quality' }[key];
+    if (label) page.querySelectorAll(`[role="radiogroup"][aria-label="${label}"] [role="radio"]`).forEach(b => b.setAttribute('aria-checked', String(b.dataset.value === value)));
+  });
+  return off;
 }
 
 async function fillLegend(legend, ctx) {

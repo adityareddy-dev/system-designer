@@ -576,3 +576,117 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
   [data-immersive="1"] > .sh-toasts { width: auto; max-width: calc(100vw - 32px); justify-items: center; }
   [data-immersive="1"] .sh-toast { padding: 6px 12px; font-size: 13px; border-radius: 999px; }
 }
+/* Signal bench: solid paper, calibrated instruments and restrained elevation. */
+.sh-shell { --sh-bar-h:56px; background:var(--bg); font-size:16px;line-height:1.5; }
+.sh-topbar { background:var(--surface-solid);backdrop-filter:none; }
+.sh-brand-mark {filter:none}
+.sh-page {max-width:1120px;padding:32px}
+.sh-card {border-radius:12px;box-shadow:none;background:var(--surface);border-color:var(--border)}
+.sh-btn,.sh-icon-btn,.sh-seg-btn {border-radius:8px;min-height:44px}
+.sh-btn--primary,.sh-btn--primary:hover {background:var(--accent);color:var(--on-accent);box-shadow:none}
+.sh-nav,.sh-tab {border-radius:8px}
+.sh-tab[aria-current=page] {box-shadow:none;background:var(--selected,var(--accent-soft))}
+.sh-h1 {font-size:32px;line-height:1.18;letter-spacing:-.025em}
+.sh-h2 {font-size:24px;line-height:1.25}
+.sh-lead {max-width:65ch}
+.sh-eyebrow,.sh-kicker {text-transform:none;letter-spacing:.03em;font-family:var(--font-mono);font-size:12px}
+.sh-hero-title {font-size:clamp(32px,4vw,52px);line-height:1.05}
+.sh-hero-art {border-radius:12px;box-shadow:none;background:var(--canvas);backdrop-filter:none;padding:16px;border-color:var(--border-strong)}
+.sh-hero-art::before {content:'Signal bench / 01';display:block;font:12px var(--font-mono);color:var(--text-3);padding-bottom:12px;border-bottom:1px solid var(--border)}
+.sh-hero-art::after {content:'One route. Spare capacity. A way to recover.';display:block;font:13px var(--font-mono);color:var(--text-2);padding-top:12px;border-top:1px solid var(--border)}
+.sh-section-ico,.sh-lesson-ico,.sh-lp-hero-ico {border-radius:8px;background:none;border:1px solid var(--border);color:var(--cat-compute)}
+.sh-section-card {border-top:3px solid var(--cat-compute)}
+.sh-section-card:nth-child(2) {border-top-color:var(--cat-data)}
+.sh-section-card:nth-child(3) {border-top-color:var(--cat-edge)}
+.sh-section-card:nth-child(4) {border-top-color:var(--cat-messaging)}
+.sh-lesson {border-left:3px solid var(--cat-edge)}
+.sh-lesson-sum {font-size:15px}
+.sh-track .sh-h2 {display:flex;gap:12px;align-items:center}
+.sh-bench-scene {display:block;width:100%;max-height:150px;object-fit:contain;object-position:left;margin-bottom:12px;border-radius:8px}
+.sh-lp-card {animation:bench-enter 220ms cubic-bezier(.2,.8,.2,1) both}
+.sh-lp-card:has(.is-ok) .sh-lp-hero-ico {animation:bench-goal 600ms ease-out both}
+.sh-lp-card--demo {padding:0;border:none;background:none;box-shadow:none;gap:8px}
+.sh-lp-card--demo .sh-demo-prompt {padding:8px 12px;border-left:3px solid var(--cat-compute);background:var(--surface)}
+.sh-lp-card--demo .sh-lp-nav {box-shadow:none;border:1px solid var(--border);border-radius:8px}
+.sh-demo-stage {border-radius:12px;min-height:560px}
+.sh-dots::before {content:attr(aria-label);font:12px var(--font-mono);white-space:nowrap;color:var(--text-3);margin-right:12px}
+.sh-allocation {border:1px solid var(--border);padding:12px;border-radius:12px;background:var(--surface)}
+.sh-pool {display:flex;gap:12px;margin-top:8px;align-items:center}
+.sh-pool-slot {flex:1;border:1px solid var(--border-strong);border-top:3px solid var(--cat-compute);padding:8px;border-radius:8px;transition:transform 120ms,background 120ms;font:13px var(--font-mono)}
+.sh-pool-slot.is-arrival {transform:translateY(-3px);background:var(--accent-soft)}
+.sh-pool-slot.is-down {border-color:var(--bad);color:var(--bad)}
+.sh-pool-slot b {display:block;font-size:20px}
+@keyframes bench-enter {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes bench-goal {0%{transform:scale(.96);opacity:.4}45%{transform:scale(1.04);opacity:1}100%{transform:none}}
+@media(max-width:719px){
+ .sh-page {padding:24px 16px}
+ .sh-lesson-grid {gap:8px}
+ .sh-lesson {display:grid;grid-template-columns:52px 1fr;gap:2px 12px;padding:12px;min-height:112px;width:100%}
+ .sh-lesson-top {grid-column:1;grid-row:1/4;display:flex;flex-direction:column;gap:8px}
+ .sh-lesson-title,.sh-lesson-sum,.sh-lesson>.sh-badge {grid-column:2}
+ .sh-lesson-sum {font-size:14px;line-height:1.35}
+ .sh-lesson .sh-bench-scene {display:none}
+ .sh-lp-head {gap:4px;margin-bottom:8px}
+ .sh-lp-title .sh-eyebrow {display:none}
+ .sh-lp-title .sh-h1 {font-size:20px}
+ .sh-lp-card {padding:16px;gap:12px}
+ .sh-lp-card--demo {padding:0}
+ .sh-lp-head .sh-dots li {display:none}
+ .sh-lesson-page:has(.sh-demo-stage) {padding:8px}
+ .sh-demo-stage {height:640px;min-height:640px}
+ .sh-demo-prompt .sh-lp-text {font-size:15px;line-height:1.3}
+ .sh-lp-card--demo .sh-lp-nav {position:sticky;bottom:0}
+}
+:root[data-motion=reduce] .sh-lp-card,:root[data-motion=reduce] .sh-lp-hero-ico {animation:none}
+:root[data-motion=reduce] .sh-pool-slot {transition:none;transform:none}
+@media(max-width:719px){
+ .sh-shell:has(.sh-lp-card--demo) .sh-nav {display:none}
+ .sh-shell:has(.sh-lp-card--demo) .sh-main {padding-bottom:0}
+ .sh-lesson-page:has(.sh-demo-stage) .sh-lp-head {display:flex;justify-content:space-between;align-items:center;min-height:32px;margin-bottom:4px}
+ .sh-lesson-page:has(.sh-demo-stage) .sh-lp-title {display:none}
+ .sh-lesson-page:has(.sh-demo-stage) .sh-demo-prompt {max-height:60px;overflow:auto;padding:6px 10px}
+ .sh-lesson-page:has(.sh-demo-stage) .sh-demo-stage {height:calc(100dvh - 200px);min-height:0}
+ .sh-lesson-page:has(.sh-demo-stage) .sh-lp-nav {height:56px;padding:4px 8px;margin:0;position:fixed;bottom:0;left:0;right:0;z-index:30;background:var(--surface-solid)}
+ .sh-lesson-page:has(.sh-demo-stage) .sh-allocation {display:none}
+ .sh-lp-card--demo {gap:4px}
+ .sh-choice[aria-pressed=true] {border-color:var(--accent);background:var(--accent-soft)}
+}
+.sh-lp-card form {display:grid;gap:16px}
+.sh-choice[aria-pressed=true] {border-color:var(--accent);background:var(--accent-soft)}
+.sh-allocation summary {cursor:pointer;font-weight:700;min-height:32px}
+.sh-allocation[open]>summary {margin-bottom:8px}
+@media(max-width:719px){
+ .sh-lesson-page:has(.sh-demo-stage) .sh-allocation {display:block;font-size:13px;padding:4px 10px}
+ .sh-lesson-page:has(.sh-allocation) .sh-demo-stage {height:calc(100dvh - 240px)}
+ .sh-allocation[open] {position:fixed;z-index:25;bottom:60px;left:8px;right:8px;box-shadow:var(--shadow-2)}
+ .sh-allocation .sh-small {font-size:12px;line-height:1.3}
+ .sh-allocation .sh-btn-row {flex-wrap:nowrap}
+}
+/* A pool experiment sits beside its live system on wide screens. */
+@media(min-width:1000px){
+ .sh-lesson-page:has(.sh-allocation) {max-width:1200px}
+ .sh-lp-card--demo:has(.sh-allocation) {grid-template-columns:minmax(0,1fr) 260px;align-items:start}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-prompt {grid-column:1/-1}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-stage {grid-column:1;grid-row:2}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-allocation {grid-column:2;grid-row:2}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-lp-nav {grid-column:1/-1}
+ .sh-allocation .sh-pool {flex-direction:column;align-items:stretch}
+ .sh-allocation .sh-btn-row {flex-direction:column}
+}
+@media(max-width:719px){.sh-lp-card--demo .sh-lp-nav {flex-wrap:nowrap;gap:4px}.sh-lp-card--demo .sh-lp-nav .sh-btn {padding-inline:8px;font-size:13px}}
+.sh-eyebrow {text-transform:none}
+.sh-sets[hidden],.sh-filters:not(.is-open) {display:none}
+.sh-filter-toggle {display:inline-flex}
+.sh-challenge-page .sh-scenario {border-top:3px solid var(--cat-edge)}
+@media(max-width:719px){
+ .sh-challenge-page .sh-streak {display:flex;padding:6px 10px;gap:8px;min-height:32px;border-radius:8px}
+ .sh-challenge-page .sh-streak .sh-ico {width:16px;height:16px}
+ .sh-challenge-page .sh-head-side {margin-top:0}
+ .sh-challenge-page .sh-page-head {gap:8px;margin-bottom:12px}
+ .sh-challenge-page .sh-diff-row,.sh-challenge-page .sh-quickplay {display:none}
+ .sh-challenge-page .sh-scenario {padding:16px;gap:10px}
+ .sh-challenge-page .sh-scenario-title {grid-row:1}
+ .sh-challenge-page .sh-scenario-top {font-size:13px}
+ .sh-challenge-page .sh-scenario .sh-bench-scene {max-height:110px;margin-bottom:0}
+ .sh-challenge-page .sh-scenario .sh-lp-text {font-size:15px;line-height:1.4}
+}

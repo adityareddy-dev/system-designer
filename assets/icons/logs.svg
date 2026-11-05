@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>Logs</title><g transform="scale(.5)" stroke-width="3.5"><style>.s{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.f{fill:currentColor;fill-opacity:.18}.d{fill:currentColor;stroke:none}</style><rect class="s f" x="9" y="5" width="30" height="38" rx="5"/>
-<circle class="d" cx="15" cy="13" r="1.8"/><path class="s" d="M20 13H34"/>
-<circle class="d" cx="15" cy="20" r="1.8"/><path class="s" d="M20 20H34"/>
-<circle class="d" cx="15" cy="27" r="1.8"/><path class="s" d="M20 27H34"/>
-<circle class="d" cx="15" cy="34" r="1.8"/><path class="s" d="M20 34H27"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><title>logs</title><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8m-8 4h8m-8 4h5"/></svg>

@@ -19,12 +19,15 @@ export function createSteps(host, { onGo }) {
     btns[id] = b;
     list.append(h('li', {}, b));
   });
-  nav.append(list);
+  const picker = h('select', { class: 'pl-step-picker', 'aria-label': 'Current step and all problem steps', onChange: () => onGo(picker.value) }, STEPS.map(([id, label], i) => h('option', { value: id }, `${i + 1} · ${label}`)));
+  nav.append(list, picker);
   host.append(nav);
   return {
     el: nav,
     // reached: which steps can be clicked right now
     set(step, reached = {}) {
+      picker.value = step;
+      [...picker.options].forEach((o, i) => { o.disabled = !(reached[o.value] ?? (i <= 2)); });
       const idx = STEPS.findIndex((s) => s[0] === step);
       STEPS.forEach(([id], i) => {
         const b = btns[id];

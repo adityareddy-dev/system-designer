@@ -4,8 +4,9 @@ import { outline, HALF } from './geom.js';
 import { statusColor, severityColor } from './theme.js';
 import { P_SHAPE, BODY_BOX } from './textures.js';
 
-const FONT_UI = 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
-const FONT_MONO = '"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace';
+const FONT_UI = 'Atkinson Hyperlegible, Arial, sans-serif';
+const FONT_MONO = 'IBM Plex Mono, monospace';
+const nowForStatus = () => performance.now();
 const K = 320, C = 24;              // placement spring (≈ 6 % overshoot, settles in ≈ 300 ms)
 const SHADOW = 114;               // shadow sprite size; its baked box comes out at about 68 units
 const PILE = [[-47, -6], [-47, 6], [-55, 0], [-55, -12], [-55, 12], [-63, -6]];
@@ -70,7 +71,8 @@ export function createNodeLayer(PIXI, parent, env) {
     const shape = env.shapeOf(cat);
     const v = {
       id: n.id, type: n.type, el, cat, shape, kind: el?.kind || 'compute',
-      x: n.x, y: n.y, tx: n.x, ty: n.y, vx: 0, vy: 0, s: env.reduced() ? 1 : 0.6, vs: 0, fade: 0,
+      x: n.x, y: n.y, tx: n.x, ty: n.y, vx: 0, vy: 0, s: env.reduced() ? 1 : 0.96, vs: 0, fade: 0,
+      appearAt: env.reduced() ? 0 : performance.now() + ([...views.values()].some(o => Math.abs(o.x - n.x) < 90 && Math.abs(o.y - n.y) < 90) ? 160 : 0),
       drag: null, dragUntil: 0, removing: false,
       live: false, tu: 0, du: 0, drawnU: -1, drawnColor: -1, status: 0, down: false, queue: 0, drawnQ: -1, over: 0, pileType: -1,
       units: 1, zones: 1, region: null, locked: false, label: '',
@@ -83,7 +85,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.glow = new PIXI.Sprite(kit.fx.glow); v.glow.anchor.set(0.5); v.glow.visible = false;
     v.pulse = new PIXI.Sprite(kit.fx.ring); v.pulse.anchor.set(0.5); v.pulse.visible = false;
     v.shadow = new PIXI.Sprite(kit.fx.shadow); v.shadow.anchor.set(0.5); v.shadow.width = v.shadow.height = SHADOW; v.shadow.y = 5;
-    v.shadow.tint = P.shadow; v.shadow.alpha = P.shadowAlpha;
+    v.shadow.tint = P.shadow; v.shadow.alpha = 0;
     v.body = new PIXI.Sprite(kit.bodyTex[cat]); v.body.anchor.set(0.5); v.body.width = v.body.height = BODY_BOX;
     v.select = new PIXI.Sprite(kit.selectTex[shape]); v.select.anchor.set(0.5); v.select.width = v.select.height = BODY_BOX; v.select.visible = false;
     v.icon = new PIXI.Sprite(kit.icons.get('el.' + n.type, P.cat[cat] ?? P.text3) || PIXI.Texture.EMPTY);
@@ -104,6 +106,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, HALF + 6);
     v.labelT = makeText('', 12, P.text2, false, '500', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
+    v.evidenceT = makeText('', 10, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
     v.regionC = new PIXI.Container(); v.regionC.y = -HALF - 12; v.regionC.visible = false;
     v.regionBg = new PIXI.Graphics(); v.regionC.addChild(v.regionBg);
     v.regionT = null;
@@ -112,7 +115,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
     c.addChild(v.glow, v.pulse, v.shadow, v.body, v.select, v.icon, v.busy, v.qbar, v.pile, v.statusG, v.valid, v.lock,
-      v.chip, v.zonesG, v.labelT, v.regionC, v.badge);
+      v.chip, v.zonesG, v.labelT, v.regionC, v.badge, v.evidenceT);
     c.alpha = 0;
     c.scale.set(v.s);
     parent.addChild(c);
@@ -177,38 +180,11 @@ export function createNodeLayer(PIXI, parent, env) {
 
   function drawBusy(v, P) {
     const g = v.busy;
-    const u = v.du;
+    const u = Math.min(1, Math.max(0, v.du));
     const color = v.down ? P.bad : statusColor(P, v.status);
-    const hc = env.highContrast();
-    const width = hc ? 5.6 : 3.8;
-    const { pts, n } = v.outline;
-    g.clear();
-    let upto = 0;
-    if (v.down || u >= 1) {
-      g.poly(Array.from(pts), true).stroke({ width, color, join: 'round' });
-      upto = n;
-    } else if (u > 0.004) {
-      const k = u * n;
-      const whole = Math.floor(k);
-      g.moveTo(pts[0], pts[1]);
-      for (let i = 1; i <= whole && i < n; i++) g.lineTo(pts[i * 2], pts[i * 2 + 1]);
-      const f = k - whole, i0 = whole % n, i1 = (whole + 1) % n;
-      g.lineTo(pts[i0 * 2] + (pts[i1 * 2] - pts[i0 * 2]) * f, pts[i0 * 2 + 1] + (pts[i1 * 2 + 1] - pts[i0 * 2 + 1]) * f);
-      g.stroke({ width, color, cap: 'round', join: 'round' });
-      upto = whole;
-    }
-    if (hc && upto > 0) {
-      // high contrast: cross-hatch ticks so the filled part reads without colour
-      for (let i = 2; i < upto; i += 4) {
-        const a = ((i - 1 + n) % n) * 2, b = ((i + 1) % n) * 2;
-        let tx = pts[b] - pts[a], ty = pts[b + 1] - pts[a + 1];
-        const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l;
-        const x = pts[i * 2], y = pts[i * 2 + 1], h = width / 2 - 0.6;
-        g.moveTo(x - ty * h - tx * 1.2, y + tx * h - ty * 1.2).lineTo(x + ty * h + tx * 1.2, y - tx * h + ty * 1.2);
-      }
-      g.stroke({ width: 1.3, color: P.mark, alpha: 0.85 });
-    }
-    v.drawnU = u; v.drawnColor = color;
+    g.clear().roundRect(-26, 25, 52, 4, 2).fill({ color: P.border, alpha: .5 });
+    if (u > .004) g.roundRect(-26, 25, Math.max(3, 52 * u), 4, 2).fill({ color });
+    v.drawnU = v.du; v.drawnColor = color;
   }
 
   function drawQueue(v, P) {
@@ -220,6 +196,7 @@ export function createNodeLayer(PIXI, parent, env) {
   }
 
   function step(v, dt, now, P, reduced, time) {
+    if (now < v.appearAt && !reduced) { v.c.alpha = 0; return; }
     // placement spring
     if (v.drag) {
       v.x = v.drag.x; v.y = v.drag.y; v.vx = v.vy = 0;
@@ -258,7 +235,7 @@ export function createNodeLayer(PIXI, parent, env) {
       const over = v.down || v.tu > 1 || v.status >= 3;
       if (over && !reduced) {
         const k = 0.5 + 0.5 * Math.sin(time * 0.001 * Math.PI * 2 * 1.2);
-        v.busy.alpha = 0.55 + 0.45 * k;
+        v.busy.alpha = 1;
       } else v.busy.alpha = 1;
       if (v.kind === 'queue' && Math.abs(Math.min(1, Math.log10(1 + v.queue) / 7) - v.drawnQ) > 0.01) drawQueue(v, P);
       // waiting pile at the input of an overloaded element
@@ -279,7 +256,7 @@ export function createNodeLayer(PIXI, parent, env) {
     const isSel = selected === v.id;
     if (over) {
       const k = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 0.001 * Math.PI * 2 * 1.2);
-      v.glow.visible = true; v.glow.tint = P.bad;
+      v.glow.visible = false; v.glow.tint = P.bad;
       v.glow.alpha = (P.dark ? 0.32 : 0.22) + k * (P.dark ? 0.3 : 0.18);
       v.glow.width = v.glow.height = 150 + k * 18;
     } else if (v.event) {
@@ -288,13 +265,16 @@ export function createNodeLayer(PIXI, parent, env) {
       v.glow.width = v.glow.height = 156;
     } else if (isSel) {
       const k = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 0.0025);
-      v.glow.visible = true; v.glow.tint = P.accent;
+      v.glow.visible = false; v.glow.tint = P.accent;
       v.glow.alpha = (P.dark ? 0.3 : 0.18) + k * 0.08;
       v.glow.width = v.glow.height = 150;
     } else v.glow.visible = false;
     v.glow.blendMode = P.dark ? 'add' : 'normal';
 
-    if (v.event) {
+    if (!reduced && over && now - (v.statusAt || 0) < 320) {
+      const progress = Math.max(0, (now - v.statusAt) / 320);
+      v.pulse.visible = true; v.pulse.tint = P.bad; v.pulse.alpha = 1 - progress; v.pulse.width = v.pulse.height = 100 + progress * 20;
+    } else if (v.event) {
       v.pulse.visible = true; v.pulse.tint = v.event.color;
       if (reduced) { v.pulse.alpha = 0.7; v.pulse.width = v.pulse.height = 118; }
       else {
@@ -346,22 +326,8 @@ export function createNodeLayer(PIXI, parent, env) {
       const P = env.kit().P;
       const reduced = env.reduced();
       for (const v of list) step(v, dt, now, P, reduced, time);
-      // Names grow when zoomed out. Stack colliding names below nearby parts.
-      const labels = [];
-      for (const v of list) {
-        if (!v.c.visible || !v.labelT.visible) continue;
-        const width = v.labelT.width, height = v.labelT.height;
-        let y = v.y + HALF + 10;
-        const x = v.x - width / 2;
-        for (let tries = 0; tries < list.length * 2; tries++) {
-          const hit = labels.find((b) => x < b.x + b.w + 8 && x + width + 8 > b.x && y < b.y + b.h + 6 && y + height + 6 > b.y)
-            || list.filter((n) => n !== v && n.c.visible).map((n) => ({ x: n.x - HALF, y: n.y - HALF, w: HALF * 2, h: HALF * 2 })).find((b) => x < b.x + b.w + 8 && x + width + 8 > b.x && y < b.y + b.h + 6 && y + height + 6 > b.y);
-          if (!hit) break;
-          y = hit.y + hit.h + 8;
-        }
-        v.labelT.y = y - v.y;
-        labels.push({ x, y, w: width, h: height });
-      }
+      // Captions always belong to their module. Spacing is handled by graph layout, never by moving captions.
+      for (const v of list) v.labelT.y = HALF + 10;
       for (let i = dying.length - 1; i >= 0; i--) {
         const v = dying[i];
         v.fade += dt;
@@ -372,7 +338,14 @@ export function createNodeLayer(PIXI, parent, env) {
       }
     },
     // Live values from the flow frame; pass live = false to hide them (build phase).
-    setLive(v, live, util = 0, status = 0, queue = 0, over = 0, pileType = -1) {
+    setLive(v, live, util = 0, status = 0, queue = 0, over = 0, pileType = -1, failRps = 0, failedType = '') {
+      const recovering = live && failRps < .5 && v.failRps > .5;
+      if (recovering) v.recoverUntil = performance.now() + 1000;
+      v.failRps = failRps;
+      const recovered = performance.now() < (v.recoverUntil || 0);
+      v.evidenceT.visible = live && (failRps > .5 || queue > 1 || recovered);
+      v.evidenceT.text = failRps > .5 ? util < .7 ? `× ${failedType || 'Request'} has no route` : `× ${Math.round(failRps).toLocaleString('en-US')}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Route recovered' : '';
+      v.evidenceT.style.fill = failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
       if (!live) {
         if (v.live) {
           v.live = false; v.busy.clear(); v.drawnU = -1; v.drawnColor = -1; v.statusG.visible = false;
@@ -380,16 +353,17 @@ export function createNodeLayer(PIXI, parent, env) {
         }
         return;
       }
-      if (!v.live) { v.live = true; v.qbar.visible = v.kind === 'queue'; v.drawnQ = -1; v.statusG.visible = true; }
+      if (!v.live) { v.live = true; v.qbar.visible = v.kind === 'queue'; v.drawnQ = -1; v.statusG.visible = status > 0; }
       v.tu = util;
       const down = status === 4;
       if (status !== v.status || down !== v.down) {
-        v.status = status; v.down = down;
+        v.status = status; v.down = down; v.statusAt = nowForStatus();
         v.statusG.context = env.kit().glyphs.status[Math.min(4, status)];
         v.icon.alpha = down ? 0.4 : 1;
         v.body.alpha = down ? 0.7 : 1;
       }
-      v.statusG.alpha = status === 0 ? 0.75 : 1;
+      v.statusG.visible = status > 0;
+      v.statusG.alpha = 1;
       v.queue = queue; v.over = over; v.pileType = pileType;
     },
     setSelection(id) {
@@ -436,7 +410,7 @@ export function createNodeLayer(PIXI, parent, env) {
       const P = kit.P;
       for (const v of [...list, ...dying]) {
         v.glow.texture = kit.fx.glow; v.pulse.texture = kit.fx.ring;
-        v.shadow.texture = kit.fx.shadow; v.shadow.tint = P.shadow; v.shadow.alpha = P.shadowAlpha;
+        v.shadow.texture = kit.fx.shadow; v.shadow.tint = P.shadow; v.shadow.alpha = 0;
         v.shadow.width = v.shadow.height = SHADOW;
         v.body.texture = kit.bodyTex[v.cat]; v.body.width = v.body.height = BODY_BOX;
         v.select.texture = kit.selectTex[v.shape]; v.select.width = v.select.height = BODY_BOX;
@@ -467,7 +441,7 @@ export function createNodeLayer(PIXI, parent, env) {
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
       if (Math.abs(k - labelK) < 0.03) return;
       labelK = k;
-      for (const v of list) v.labelT.scale.set(k);
+      for (const v of list) { v.labelT.scale.set(k); v.evidenceT.scale.set(k); }
     },
     setTextResolution(r) {
       if (r === textRes) return;

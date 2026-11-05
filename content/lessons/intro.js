@@ -83,7 +83,7 @@ export default {
       "beats": [
         {
           "at": 0,
-          "caption": "System Designer: you build the back end of an app, then keep it standing through a day of real traffic. Every moving dot is someone tapping \"open\" in your app. It is free, with no sign-up."
+          "caption": "Build the back end of an app, then see what holds under traffic. Each moving dot is a request from a person using your app."
         },
         {
           "at": 0,
