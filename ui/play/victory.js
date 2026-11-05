@@ -37,7 +37,7 @@ export function showVictory(host, { result, before, original, catalog, reduced }
   route.forEach((e, i) => {
     const a = graph.nodes.find(n => n.id === e.from), b = graph.nodes.find(n => n.id === e.to);
     if (!a || !b) return;
-    art.append(svg('path', { d: `M${a.x} ${a.y}L${b.x} ${b.y}`, class: 'pl-victory-wire', style: `--beat:${Math.min(i, 5) * 100}ms` }));
+    art.append(svg('path', { d: `M${a.x} ${a.y}L${b.x} ${b.y}`, class: 'pl-victory-wire', style: `--beat:${220 + Math.min(i, 5) * 100}ms` }));
   });
   graph.nodes.forEach(n => {
     const g = svg('g', { transform: `translate(${n.x} ${n.y})`, class: changes.some(c => c.id === n.id) ? 'pl-victory-part is-repaired' : 'pl-victory-part' });

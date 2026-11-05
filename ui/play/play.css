@@ -922,3 +922,7 @@
 }
 :root[data-motion=reduce] .pl-root *, :root[data-motion=reduce] .pl-victory-wire {animation:none!important;transition:none!important}
 @media(max-width:719px){.pl-root[data-mode=lesson] .pl-goal--done {max-height:72px}}
+
+/* Keep the earned route visible throughout its sequence. */
+.pl-root[data-outcome=pass][data-phase=done] .pl-overlay--debrief {animation:pl-panel-settle 220ms cubic-bezier(.2,.8,.2,1) both}
+:root[data-motion=reduce] .pl-root[data-outcome=pass][data-phase=done] .pl-overlay--debrief {animation:none}
