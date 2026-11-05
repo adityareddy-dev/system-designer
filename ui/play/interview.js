@@ -1,5 +1,6 @@
 // Candidate-led preparation, graph-specific defense and an honest local interview record.
 import { h, fmtNum, fmtUsd } from './util.js';
+import { mountDefense } from '../defense.js';
 
 const STOP = new Set('about after again also are can could does each for from have how into many more must need our should that the their them there these this what when where which who why will with would your'.split(' '));
 export function questionCoverage(text, questions) {
@@ -24,7 +25,7 @@ export function defenseQuestions(problem, graph, result, catalog) {
     questions.push({ q: `You drew ${pool.units} units of ${name(pool)}${routed ? ' behind a router' : ' without a separate router'}. How does one request choose a replica, and what happens when one fails?`, model: `The simulation treats a pool as one aggregate endpoint with internal distribution. ${routed ? 'Your router provides a visible entry point.' : 'Your graph leaves that routing implicit.'} A real deployment needs discovery, health checks and a distribution policy. With one replica gone, the remaining units receive more work; calculate N/(N−1) times the previous load and include detection delay.`, checklist: ['State where discovery and routing live', 'Explain health detection and redistribution', 'Calculate surviving capacity and account for delay'] });
   }
   if (store) questions.push({ q: `What key would you use to partition ${name(store)}? Your largest customer grows tenfold. What happens?`, model: 'Choose a key from the workload, describe its distribution and show how one large tenant can exhaust a shard. Compare splitting a tenant across buckets with the extra read fanout and coordination. More nodes do not automatically split a single hot key.', checklist: ['Name a concrete partition key', 'Describe skew for the largest tenant', 'Explain mitigation and its read or consistency cost'] });
-  if (event) questions.push({ q: `At ${new Date(event.atMs).toISOString().slice(11,16)}, ${event.name} hit. Which part failed first, and what evidence distinguishes capacity from routing or dependency failure?`, model: `${event.story?.headline || ''} ${event.story?.hurt || ''} ${result.nextStep?.text || ''} Correlate the event time with overloaded minutes and failed requests; a busy part alone is not proof of cause.`, checklist: ['Identify the affected path and time', 'Quote a measured utilization or failure metric', 'Distinguish the initiating cause from a downstream symptom'] });
+  if (event) questions.push({ q: `At ${new Date(event.atMs).toISOString().slice(11,16)}, ${event.name} hit. Which part, if any, failed first, and what evidence distinguishes capacity from routing or dependency failure?`, model: `${event.story?.headline || ''} ${event.story?.hurt || ''} ${result.nextStep?.text || ''} Correlate the event time with overloaded minutes and failed requests; a busy part alone is not proof of cause.`, checklist: ['Identify the affected path and time', 'Quote a measured utilization or failure metric', 'Distinguish the initiating cause from a downstream symptom'] });
   else if (measured) questions.push({ q: `${name(graph.nodes.find(n => n.id === measured.id))} peaked at ${Math.round(measured.peakUtil * 100)}% busy. What extra workload would invalidate your design?`, model: 'Use spare capacity at the busiest hop, then account for the request mix and retries. A new workload may move the bottleneck. Verify it with a new load test rather than assuming linear scaling.', checklist: ['Use the observed peak', 'Name a workload change', 'Explain how to verify the new limit'] });
   const cost = result.slo.cost.perMonth;
   questions.push({ q: `This costs about ${fmtUsd(cost)}/month. Remove 30%, about ${fmtUsd(cost * .3)}. What do you cut, and what breaks?`, model: `Start with the largest cost line: ${[...result.slo.cost.lines].sort((a,b) => (b.usd || b.perMonth || 0) - (a.usd || a.perMonth || 0))[0]?.label || 'inspect the cost breakdown'}. Compare reducing idle units, retained data and usage. Preserve the required durability and show the loss of burst or failure headroom. State the metric you would watch before keeping the saving.`, checklist: ['Identify a real cost line and saving', 'Name a resulting reliability, speed or data tradeoff', 'Describe a measurement and rollback threshold'] });
@@ -78,26 +79,42 @@ function implication(q) {
 
 export function renderInterviewResult(host, problem, state, result, catalog, save) {
   const questions = defenseQuestions(problem, result.graph, result, catalog);
-  host.replaceChildren(h('div', { class: 'pl-debrief pl-interview-result' }, h('div', { class: 'pl-kicker', text: 'Interview mode · Defend your design' }), h('h2', { class: 'pl-h2', text: result.passed ? 'The system held. Explain the tradeoffs.' : 'The day found a limit. Explain the evidence.' }), h('p', { text: `${result.score.total}/1,000 · ${Math.round(result.slo.availability.actual * 1000) / 10}% served · ${fmtUsd(result.slo.cost.perMonth)}/month` }), h('p', { text: 'This is an honest self-check. Writing is required before each reveal. Checklist coverage is your assessment, separate from the simulated score.' })));
-  const root = host.firstChild;
+  const root = h('div', { class: 'pl-debrief pl-interview-result' },
+    h('div', { class: 'pl-kicker', text: 'Interview mode · Defend your design' }),
+    h('h2', { class: 'pl-h2', text: result.passed ? 'The system held. Explain the tradeoffs.' : 'The day found a limit. Explain the evidence.' }),
+    h('p', { text: result.score.total + '/1,000 · ' + fmtUsd(result.slo.cost.perMonth) + '/month' }),
+    h('p', { text: 'Write before each reveal. Checklist coverage is your assessment, separate from the simulated score.' }));
+  host.replaceChildren(root);
   const report = h('section', { class: 'pl-sec pl-interview-report', hidden: '' });
+  const controls = [];
   const update = () => {
     if (!questions.every((_, i) => state.defense[i]?.revealed)) return;
-    const covered = state.defense.reduce((a,d) => a + d.checked.filter(Boolean).length, 0);
-    const total = questions.reduce((a,q) => a + q.checklist.length, 0);
+    const covered = state.defense.reduce((a, d) => a + d.checked.filter(Boolean).length, 0);
+    const total = questions.reduce((a, q) => a + q.checklist.length, 0);
+    const saveButton = button(state.complete ? 'Interview report saved' : 'Save interview report', () => {
+      if (state.complete) return;
+      save({ questionCount: state.coverage.filter(Boolean).length, questionsTotal: problem.clarify.length,
+        estimates: state.estimates, scope: state.requirements, questions: state.questions,
+        defense: state.defense, covered, total, score: result.score.total, passed: result.passed });
+      state.complete = true;
+      controls.forEach(control => control.lock());
+      update();
+    });
+    saveButton.disabled = state.complete;
     report.hidden = false;
-    report.replaceChildren(h('h3', { text: 'Your interview report' }), h('p', { text: `Questions found: ${state.coverage.filter(Boolean).length}/${problem.clarify.length}. Defense coverage, self-assessed: ${covered}/${total}. Day score: ${result.score.total}/1,000.` }), h('p', { text: state.requirements }), ...problem.numbers.map((n,i) => h('p', { text: `${n.label}: estimated ${fmtNum(state.estimates[i])}, worked ≈ ${fmtNum(n.value)} ${n.unit}.` })), button('Save interview report', () => { state.complete = true; save({ questionCount: state.coverage.filter(Boolean).length, questionsTotal: problem.clarify.length, estimates: state.estimates, scope: state.requirements, questions: state.questions, defense: state.defense, covered, total, score: result.score.total, passed: result.passed }); report.append(h('p', { role: 'status', text: 'Saved on this device. Best coverage and best day score are kept separately.' })); }), h('a', { class: 'pl-btn', href: '#/practice/' + problem.id + '?interview=1', onClick: () => location.reload(), text: 'New interview' }));
+    report.replaceChildren(h('h3', { text: 'Your interview report' }),
+      h('p', { text: 'Questions found: ' + state.coverage.filter(Boolean).length + '/' + problem.clarify.length + '. Defense coverage, self-assessed: ' + covered + '/' + total + '. Day score: ' + result.score.total + '/1,000.' }),
+      h('p', { text: state.requirements }),
+      ...problem.numbers.map((n, i) => h('p', { text: n.label + ': estimated ' + fmtNum(state.estimates[i]) + ', worked ≈ ' + fmtNum(n.value) + ' ' + n.unit + '.' })), saveButton,
+      ...(state.complete ? [h('p', { role: 'status', text: 'Saved on this device. Best coverage and best day score are kept separately.' })] : []),
+      h('a', { class: 'pl-btn', href: '#/practice/' + problem.id + '?interview=1', onClick: () => location.reload(), text: 'New interview' }));
   };
-  questions.forEach((q,i) => {
+  questions.forEach((q, i) => {
     const d = state.defense[i] ||= { answer: '', revealed: false, checked: q.checklist.map(() => false) };
-    const section = h('section', { class: 'pl-sec pl-defense-card' }, h('span', { class: 'pl-kicker', text: `Follow-up ${i + 1} of ${questions.length}` }), h('h3', { text: q.q }));
-    const answer = writing('Your defense', d.answer, v => d.answer = v);
-    const model = h('div', { class: 'pl-defense-model', hidden: d.revealed ? null : '' });
-    model.append(h('b', { text: 'One strong answer' }), h('p', { text: q.model }), ...q.checklist.map((point,j) => h('label', { class: 'pl-defense-check' }, h('input', { type: 'checkbox', checked: d.checked[j] ? '' : null, onChange: e => { d.checked[j] = e.target.checked; update(); } }), h('span', { text: point }))));
-    const status = h('p', { role: 'status' });
-    const reveal = button('Reveal model answer and checklist', () => { if (d.answer.trim().length < 20) { status.textContent = 'Write your reasoning first, at least 20 characters.'; return; } d.revealed = true; model.hidden = false; answer.querySelector('textarea').readOnly = true; reveal.hidden = true; update(); });
-    if (d.revealed) { reveal.hidden = true; answer.querySelector('textarea').readOnly = true; }
-    section.append(answer, reveal, status, model); root.append(section);
+    const section = h('section', { class: 'pl-sec pl-defense-card' },
+      h('span', { class: 'pl-kicker', text: 'Follow-up ' + (i + 1) + ' of ' + questions.length }), h('h3', { text: q.q }));
+    controls.push(mountDefense(section, q, d, { id: 'pl-defense-' + i, locked: state.complete, onReveal: update, onChange: update }));
+    root.append(section);
   });
   root.append(report); update();
 }

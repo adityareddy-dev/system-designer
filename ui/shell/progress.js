@@ -27,7 +27,7 @@ export function createProgress(store, bus) {
     recordInterview(problemId, report) {
       const prev = probs[problemId] || { attempts: 0, bestScore: 0, stars: 0, hintsUsed: 0, solvedAt: null, lastResultAt: null };
       const old = prev.interview || {};
-      const entry = { ...report, at: Date.now() };
+      const entry = { ...JSON.parse(JSON.stringify(report)), at: Date.now() };
       const ratio = x => x?.total > 0 ? x.covered / x.total : -1;
       probs[problemId] = { ...prev, interview: { attempts: (old.attempts || 0) + 1, latest: entry,
         bestCoverage: ratio(entry) > ratio(old.bestCoverage) ? entry : old.bestCoverage,

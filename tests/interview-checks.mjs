@@ -7,6 +7,12 @@ import { mergeProgress, sanitizeProgress } from '../account/merge.js';
 assert.deepEqual(questionCoverage('How many users? How long do we keep data?', [{ q: 'How many users are there?' }, { q: 'How long do we keep data?' }]), [true,true]);
 const data = { progress: { legacy: { attempts: 2, bestScore: 800, stars: 1 } } };
 const progress = createProgress({ get: (k, f) => data[k] || f, set: (k,v) => data[k] = v }, { emit() {} });
+const draft = { covered: 1, total: 3, score: 400, estimates: { 0: 12 }, defense: [{ answer: 'A durable answer', checked: [true, false, false] }] };
+progress.recordInterview('snapshot', draft);
+draft.estimates[0] = 999;
+draft.defense[0].checked[0] = false;
+assert.equal(progress.get('snapshot').interview.latest.estimates[0], 12);
+assert.equal(progress.get('snapshot').interview.latest.defense[0].checked[0], true);
 progress.recordInterview('legacy', { covered: 3, total: 10, score: 600 });
 progress.recordInterview('legacy', { covered: 8, total: 10, score: 500 });
 assert.equal(progress.get('legacy').bestScore, 800);
@@ -116,6 +122,11 @@ try {
     await click('Save interview report');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('hotpath.v1.progress'))['observability-platform'].interview);
     assert(saved.latest.covered > 0); assert(saved.bestDay); assert(saved.bestCoverage);
+    assert(await page.$$eval('.pl-defense-card input[type=checkbox]', boxes => boxes.every(box => box.disabled)), 'saved checklist locks');
+    assert(await page.$eval('.pl-interview-report button', button => button.disabled), 'save locks');
+    await page.$$eval('.pl-defense-card input[type=checkbox]', boxes => boxes.forEach(box => box.click()));
+    await page.$eval('.pl-interview-report button', button => button.click());
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('hotpath.v1.progress'))['observability-platform'].interview), saved, 'second click cannot change the snapshot or attempt count');
   }
   const proofs = await page.evaluate(async () => {
     const { createReqCard } = await import('./ui/play/req-card.js');
