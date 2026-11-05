@@ -1292,7 +1292,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.winBefore = S.lastDayProblem === S.problem.id ? S.lastDay : null;
     S.winOriginal = S.lastDayProblem === S.problem.id ? S.previousRunGraph : S.entryGraph;
     S.previousRunGraph = result.graph; S.lastDayProblem = S.problem.id;
-    S.lastDay = { availability: result.slo?.availability?.actual ?? 0, target: result.slo?.availability?.target ?? 0.99, passed: !!result.passed, p99: result.slo?.latency?.p99Ms ?? null, cost: result.cost?.perMonth ?? result.metrics?.perMonth ?? result.perMonth ?? S.sim.state?.()?.cost?.perMonth ?? null };
+    S.lastDay = { availability: result.slo?.availability?.actual ?? 0, target: result.slo?.availability?.target ?? 0.99, passed: !!result.passed, p99: result.slo?.latency?.worstP99Ms ?? null, cost: result.slo?.cost?.perMonth ?? result.cost?.perMonth ?? result.metrics?.perMonth ?? result.perMonth ?? S.sim.state?.()?.cost?.perMonth ?? null };
     note('day-end', null);
     if (!stepped) {
       if (mode === 'intro') return;

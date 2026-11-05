@@ -7,10 +7,10 @@ import { pathsThrough } from '../../render/diagram.js';
 export function victoryMetric(result, before) {
   const availability = result.slo.availability;
   if (before && before.availability >= availability.target) {
-    const cost = result.cost?.perMonth, budget = result.slo.cost?.budget ?? result.cost?.budget;
+    const cost = result.slo.cost?.perMonth, budget = result.slo.cost?.budget;
     if (before.cost > budget && cost < before.cost) return { value: cost, from: before.cost, label: 'Cost / month', format: n => '≈ $' + Math.round(n).toLocaleString('en-US') };
-    const p99 = result.slo.latency?.p99Ms;
-    if (before.p99 > p99 * 1.01) return { value: p99, from: before.p99, label: 'p99 latency', format: n => Math.round(n).toLocaleString('en-US') + ' ms' };
+    const p99 = result.slo.latency?.worstP99Ms;
+    if (before.p99 > p99 * 1.01) return { value: p99, from: before.p99, label: 'Worst p99', format: n => Math.round(n).toLocaleString('en-US') + ' ms' };
   }
   return { value: availability.actual * 100, from: before?.availability != null ? before.availability * 100 : null,
     target: availability.target * 100, label: 'Requests served', format: n => n.toFixed(2) + '%' };
