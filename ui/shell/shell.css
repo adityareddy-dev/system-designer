@@ -753,4 +753,107 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 @media(min-width:768px){.sh-lp-card:has(.sh-tap-lane) {gap:12px}.sh-tap-lane {min-height:160px}}
 
 .sh-demo-cross {display:none}.sh-hero-art[data-state=failure] .sh-demo-cross {display:block}.sh-hero-art[data-state=failure] [data-part="el.vm-fleet-28"] {opacity:1}.sh-hero-art[data-state=failure] [data-stream="1"],.sh-hero-art[data-state=failure] [data-stream="4"] {display:none}
+/* The field book: oversized plates, numbered chapters, and quiet lists of experiments. */
+.sh-home-page {max-width:1240px}
+.sh-home-page .sh-hero {grid-template-columns:1fr 1.15fr;gap:48px;padding:48px 0 40px;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
+.sh-home-page .sh-display {font-size:clamp(46px,5.1vw,72px);line-height:.98;letter-spacing:-2.7px;max-width:9.8ch;margin:16px 0 24px}
+.sh-home-page .sh-lead {font-size:18px;line-height:1.55;max-width:44ch}
+.sh-home-page .sh-hero-art {border:0;border-radius:0;background:transparent;padding:24px 0;box-shadow:none;align-self:center}
+.sh-home-page .sh-hero-art>svg {min-height:290px;width:100%;max-height:none}
+.sh-home-page .sh-section-grid {gap:0;border-top:2px solid var(--text);border-bottom:1px solid var(--border);margin-top:24px}
+.sh-home-page .sh-section-card {border:0;border-right:1px solid var(--border);border-radius:0;background:transparent;padding:24px;box-shadow:none}
+.sh-home-page .sh-section-card:last-child {border-right:0}
+.sh-home-page .sh-section-title {font-size:27px;letter-spacing:-.7px}
+.sh-home-page .sh-section-ico {background:none;border:0;padding:0;justify-content:start}
+.sh-home-page .sh-home-extras .sh-card {border:0;border-radius:0;border-bottom:1px solid var(--border);background:transparent;box-shadow:none}
+.sh-learn-page>.sh-page-head {padding:20px 0 16px;align-items:end}
+.sh-learn-page .sh-h1,.sh-practice-page>.sh-page-head .sh-h1 {font-size:clamp(40px,4.5vw,62px);line-height:1.02;letter-spacing:-1.8px;max-width:12ch}
+.sh-learn-page .sh-lead {max-width:58ch}
+.sh-chapter {margin:0;padding:32px 0;border-bottom:1px solid var(--border)}
+.sh-chapter-toggle {width:100%;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:48px;border:0;background:none;color:var(--text);text-align:left;padding:0;cursor:pointer}
+.sh-chapter-copy {display:flex;flex-direction:column;align-items:start;gap:16px}
+.sh-chapter-index {font:12px var(--font-mono);color:var(--accent)}
+.sh-chapter h2 {font-size:clamp(30px,3vw,44px);letter-spacing:-1px;line-height:1.05;margin:0}
+.sh-chapter .sh-track-progress {margin:0;font-size:13px}
+.sh-chapter-action {display:flex;gap:16px;align-items:center;min-height:44px;font-size:14px;font-weight:700;border-bottom:2px solid var(--accent)}
+.sh-chapter-action svg {transition:transform 240ms ease}
+.sh-chapter.is-open .sh-chapter-action svg {transform:rotate(180deg)}
+.sh-chapter-art {width:100%;height:auto;max-height:280px;object-fit:contain;border-radius:12px}
+.sh-chapter:nth-child(even) .sh-chapter-copy {padding-left:32px}
+.sh-chapter .sh-lesson-grid {display:grid;grid-template-columns:1fr 1fr;gap:0 40px;padding:20px 0 0;list-style:none;counter-reset:lesson}
+.sh-chapter .sh-lesson-grid[hidden] {display:none}
+.sh-chapter .sh-lesson-grid>li {counter-increment:lesson}
+.sh-chapter .sh-lesson {display:grid;grid-template-columns:28px 1fr auto;gap:6px 12px;border:0;border-radius:0;border-bottom:1px solid var(--border);background:none;box-shadow:none;padding:20px 0;min-height:130px}
+.sh-chapter .sh-lesson::before {content:counter(lesson,decimal-leading-zero);font:12px var(--font-mono);color:var(--accent);grid-column:1;grid-row:1/4;padding-top:4px}
+.sh-chapter .sh-lesson-title {grid-column:2;grid-row:1;font-size:20px;line-height:1.2}
+.sh-chapter .sh-lesson-top {grid-column:3;grid-row:1;align-items:start}
+.sh-chapter .sh-lesson-ico {display:none}
+.sh-chapter .sh-lesson-sum {grid-column:2/4;grid-row:2;font-size:15px;line-height:1.45}
+.sh-chapter .sh-lesson .sh-badge {grid-column:2/4;grid-row:3;justify-self:start}
+.sh-chapter .sh-lesson:hover {transform:translateX(4px);color:var(--accent)}
+.sh-chapter .sh-lesson-grid:not([hidden])>li {animation:sh-page-settle 320ms cubic-bezier(.2,.8,.2,1) both}
+.sh-chapter .sh-lesson-grid>li:nth-child(2n) {animation-delay:60ms}
+.sh-industry-art {display:block;width:100%;height:auto;border-radius:12px;grid-column:1/-1;margin-bottom:20px}
+.sh-practice-page .sh-group {display:grid;grid-template-columns:minmax(260px, .85fr) 1.6fr;gap:40px;padding:40px 0;border-top:1px solid var(--border);margin:24px 0}
+.sh-practice-page .sh-group-head {display:grid;grid-template-columns:24px 1fr;gap:0 12px;align-content:start;margin:0}
+.sh-practice-page .sh-group-head .sh-h2 {font-size:28px;line-height:1.1;letter-spacing:-.7px;margin-bottom:12px}
+.sh-practice-page .sh-group-head>.sh-ico {margin-top:4px}
+.sh-practice-page .sh-group .sh-prob-grid {display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+.sh-practice-page .sh-group:nth-child(even) {grid-template-columns:1.6fr minmax(260px,.85fr)}
+.sh-practice-page .sh-group:nth-child(even) .sh-group-head {grid-column:2;grid-row:1}
+.sh-practice-page .sh-group:nth-child(even) .sh-prob-grid {grid-column:1;grid-row:1}
+.sh-practice-page .sh-prob {border:0;border-radius:0;border-top:1px solid var(--border);background:none;box-shadow:none;padding:20px 0}
+.sh-practice-page .sh-prob-title {font-size:21px;line-height:1.15;letter-spacing:-.4px}
+.sh-practice-page .sh-prob-like {font-size:14px}
+.sh-practice-page .sh-prob-tags {margin-top:4px;gap:6px}
+.sh-practice-page .sh-tag {background:none;border:0;border-radius:0;padding:0;color:var(--text-2);font-size:12px}
+.sh-practice-page .sh-tag+.sh-tag::before {content:'·';padding-right:6px}
+.sh-practice-page .sh-upnext {border:0;border-radius:0;border-left:4px solid var(--accent);background:var(--accent-soft);box-shadow:none;padding:24px}
+.sh-lp-card,.sh-lp-nav,.sh-modal,.sh-filters.is-open,.sh-score-details[open]>*:not(summary) {animation:sh-page-settle 260ms cubic-bezier(.2,.8,.2,1) both}
+@keyframes sh-page-settle {from {opacity:.2;transform:translateY(12px)}to {opacity:1;transform:translateY(0)}}
+@media(max-width:719px) {
+ .sh-home-page .sh-hero {grid-template-columns:1fr;padding:24px 0;gap:8px}
+ .sh-home-page .sh-display {font-size:52px;letter-spacing:-2px;max-width:10ch;margin:12px 0 20px}
+ .sh-home-page .sh-lead {font-size:16px;line-height:1.5}
+ .sh-home-page .sh-hero-art {padding:12px 0}
+ .sh-home-page .sh-hero-art>svg {min-height:190px}
+ .sh-home-page .sh-section-grid {grid-template-columns:1fr 1fr}
+ .sh-home-page .sh-section-card {padding:20px 12px;border-bottom:1px solid var(--border)}
+ .sh-home-page .sh-section-title {font-size:24px}
+ .sh-home-page .sh-section-text {font-size:13px}
+ .sh-home-page .sh-section-stat {font-size:11px}
+ .sh-home-page .sh-section-go {right:8px;top:20px}
+ .sh-learn-page>.sh-page-head {padding-top:12px}
+ .sh-learn-page .sh-h1 {font-size:46px;max-width:10ch}
+ .sh-chapter {padding:24px 0}
+ .sh-chapter-toggle {grid-template-columns:1fr;gap:18px}
+ .sh-chapter-copy {display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center}
+ .sh-chapter h2 {grid-column:1/-1;font-size:36px;grid-row:2}
+ .sh-chapter-index {grid-column:1;grid-row:1}
+ .sh-chapter .sh-track-progress {grid-column:2;grid-row:1;font-size:11px}
+ .sh-chapter-action {grid-column:1/-1;grid-row:3;justify-self:start;min-height:36px}
+ .sh-chapter-art {max-height:210px;grid-row:2}
+ .sh-chapter:nth-child(even) .sh-chapter-copy {padding-left:0}
+ .sh-chapter .sh-lesson-grid {grid-template-columns:1fr;padding-top:8px}
+ .sh-chapter .sh-lesson {min-height:0;padding:18px 0;grid-template-columns:24px 1fr auto}
+ .sh-chapter .sh-lesson-title {font-size:19px}
+ .sh-chapter .sh-lesson-sum {font-size:14px}
+ .sh-practice-page .sh-group,.sh-practice-page .sh-group:nth-child(even) {grid-template-columns:1fr;gap:16px;padding:24px 0}
+ .sh-practice-page .sh-group:nth-child(even) .sh-group-head,.sh-practice-page .sh-group:nth-child(even) .sh-prob-grid {grid-column:auto;grid-row:auto}
+ .sh-practice-page .sh-group .sh-prob-grid {grid-template-columns:1fr}
+ .sh-industry-art {max-height:230px;object-fit:contain}
+ .sh-practice-page .sh-group-head .sh-h2 {font-size:30px}
+}
+:root[data-motion=reduce] .sh-chapter *, :root[data-motion=reduce] .sh-lp-card,:root[data-motion=reduce] .sh-lp-nav,:root[data-motion=reduce] .sh-modal,:root[data-motion=reduce] .sh-filters {animation:none!important;transition:none!important}
 @media(max-width:719px){.sh-problem:has(.sh-interview-toggle) .sh-problem-bar>.sh-diff {display:none}}
+
+@media(max-width:719px){
+ .sh-home-page .sh-hero {display:flex;flex-direction:column;align-items:stretch}
+ .sh-home-page .sh-hero-copy {display:contents}
+ .sh-home-page .sh-eyebrow {order:0;margin-bottom:0}
+ .sh-home-page .sh-display {order:1;font-size:44px;max-width:15ch;letter-spacing:-1.5px;margin:8px 0}
+ .sh-home-page .sh-hero-art {order:2}
+ .sh-home-page .sh-lead {order:3;margin:12px 0}
+ .sh-home-page .sh-cta-row {order:4}
+ .sh-home-page .sh-fine {order:5}
+}

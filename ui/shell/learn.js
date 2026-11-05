@@ -1,12 +1,6 @@
 // Learn view: lessons grouped by track, with done marks and a suggested path.
 import { h, ico } from './dom.js';
-import { sceneMarkup } from '../../assets/scenes/index.js';
-
-const TRACK_ICON = {
-  'Start': 'ui.play', 'Scale the front': 'ui.speed', 'Scale the data': 'ui.units', 'Work later': 'ui.clock',
-  'Stay correct': 'ui.safety', 'Stay up': 'ui.shield', 'Business': 'ui.budget',
-  'Go deeper': 'ui.search', 'Lead the design': 'ui.users',
-};
+const TRACK_SCENE = ['intro', 'load-balancing', 'sharding', 'queues-backpressure', 'idempotency-retries', 'multi-region', 'cost', 'storage-engine', 'lead-interview'];
 
 export function renderLearn(host, ctx) {
   const lessons = ctx.content.lessons || [];
@@ -41,17 +35,29 @@ export function renderLearn(host, ctx) {
         h('span', { class: 'sh-lesson-top' },
           h('span', { class: 'sh-lesson-ico' }, ico(isDone ? 'ui.check' : (l.icon || l.steps?.find((s) => s.icon)?.icon || 'ui.learn'), 22)),
           h('span', { class: 'sh-lesson-min' }, ico('ui.clock', 14), `${l.minutes || 3} min`)),
-        h('div', { class: 'sh-bench-scene', 'aria-hidden': 'true', html: sceneMarkup(l.id) }),
+        
         h('span', { class: 'sh-lesson-title', text: l.title }),
         h('span', { class: 'sh-lesson-sum', text: l.summary || '' }),
         isNext ? h('span', { class: 'sh-badge', text: 'Suggested next' }) : isDone ? h('span', { class: 'sh-badge sh-badge--ok', text: 'Done' }) : null));
     }));
-    return h('section', { class: 'sh-track', 'aria-labelledby': 'sh-track-' + ti },
-      h('h2', { class: 'sh-h2', id: 'sh-track-' + ti }, ico(TRACK_ICON[t.name] || 'ui.learn', 20), t.name, h('small', { class: 'sh-track-progress', text: `${t.items.filter(l => ctx.progress.isLessonDone(l.id)).length}/${t.items.length} explored` })),
-      grid);
+    const count = `${t.items.filter(l => ctx.progress.isLessonDone(l.id)).length}/${t.items.length} explored`;
+    const section = h('section', { class: 'sh-track sh-chapter', 'aria-labelledby': 'sh-track-' + ti, dataset: { chapter: String(ti + 1) } });
+    const button = h('button', { class: 'sh-chapter-toggle', type: 'button', 'aria-expanded': String(ti === 0), 'aria-controls': 'sh-track-list-' + ti },
+      h('span', { class: 'sh-chapter-copy' }, h('span', { class: 'sh-chapter-index', text: `Field notes / ${String(ti + 1).padStart(2, '0')}` }),
+        h('h2', { id: 'sh-track-' + ti, text: t.name }), h('span', { class: 'sh-track-progress', text: count }),
+        h('span', { class: 'sh-chapter-action' }, ti === 0 ? 'Close track' : 'Open track', ico('ui.chevron-down', 20))),
+      h('img', { class: 'sh-chapter-art', src: new URL('../../assets/scenes/' + TRACK_SCENE[ti] + '.svg', import.meta.url).href, loading: ti ? 'lazy' : 'eager', decoding: 'async', width: 440, height: 240, alt: '' }));
+    grid.id = 'sh-track-list-' + ti; grid.hidden = ti !== 0;
+    section.classList.toggle('is-open', ti === 0);
+    button.addEventListener('click', () => {
+      const open = button.getAttribute('aria-expanded') !== 'true';
+      button.setAttribute('aria-expanded', String(open)); grid.hidden = !open; section.classList.toggle('is-open', open);
+      button.querySelector('.sh-chapter-action').firstChild.textContent = open ? 'Close track' : 'Open track';
+    });
+    section.append(button, grid); return section;
   });
 
   const empty = lessons.length ? null : h('p', { class: 'sh-muted', text: 'Lessons are on their way.' });
-  host.append(h('div', { class: 'sh-page' }, head, bar, empty, sections));
+  host.append(h('div', { class: 'sh-page sh-learn-page' }, head, bar, empty, sections));
   return { title: 'Learn' };
 }
