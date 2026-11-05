@@ -28,7 +28,7 @@ fs.mkdirSync('assets/scenes', { recursive: true });
 let i = 0;
 for (const [id, drawing] of Object.entries(subject)) {
   const [title, first, last] = labels[id];
-  const module = (x,y,type,label,color) => `<g transform="translate(${x} ${y})">${rect(0,3,84,64,8,'#C7D1D0')}${rect(0,0,84,64,8)}${path('M12 2h60',color,3)}<g transform="translate(28 13) scale(1.15)" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconInner('el.'+type)}</g>${path('M12 54h60','#C7D1D0',4)}${path('M12 54h36',teal,4)}${text(0,84,label,11)}</g>`;
+  const module = (x,y,type,label,color) => `<g transform="translate(${x} ${y})">${rect(0,3,84,64,8,'#C7D1D0')}${rect(0,0,84,64,8)}${path('M12 2h60',color,3)}<g transform="translate(28 13) scale(1.15)" fill="none" color="${color}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconInner('el.'+type)}</g>${path('M12 54h60','#C7D1D0',4)}${path('M12 54h36',teal,4)}${text(0,84,label,11)}</g>`;
   const body = `${text(24,28,`BENCH / ${String(++i).padStart(2,'0')}`,10,blue)}${text(24,251,title,16)}${path('M236 48h180M236 218h180M236 43v10m180-10v10','#C7D1D0',1)}${path('M194 133h38V95h34m-34 38v42h34',blue)}${module(272,60,id === 'fintech' ? 'sql-primary' : id === 'iot' || id === 'civic' ? 'queue' : 'cache',first,ochre)}${module(318,156,id === 'devtools' ? 'worker-pool' : 'vm-fleet',last,teal)}${path('M314 124v18h46v14',blue)}${disk(224,133)}${disk(254,95)}${drawing}`;
   fs.writeFileSync(`assets/scenes/industry-${id}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 280"><title>${title}</title><rect width="440" height="280" rx="12" fill="#F5F2E9"/>${body}</svg>\n`);
 }
