@@ -66,6 +66,10 @@ function unservedMessage(S, t) {
     const elsewhere = nodes.some((n) => required.some((g) => g.includes(n.el.id)) && !seen[n.i]);
     return { msg: `${cap1(plural)} stop at ${from}. Complete their path from ${from} through ${path}.${elsewhere ? ' The required part on another branch does not receive these requests.' : ''}`, nodeId: stop != null ? nodes[stop].id : undefined, elementId: required[0][0] };
   }
+  const limiter = stops.find(u => nodes[u].el.id === 'rate-limiter');
+  if (limiter != null && ['read', 'write'].includes(type.id)) {
+    return { msg: `${cap1(plural)} reach ${label(limiter)}, but no data store sits behind it. It admits or rejects requests and cannot finish a read or write. Connect ${label(limiter)} to Key-value store on this path. A limit shared across servers also needs shared, atomic per-key counter updates.`, nodeId: nodes[limiter].id, elementId: 'kv-store' };
+  }
   if (finishersHere.length && stop != null) {
     const trace = traceRoute(model, type.id);
     const hop = trace.rejected.find((h) => h.from === trace.repair?.from && /side call|does not handle|parking/i.test(h.reason))
