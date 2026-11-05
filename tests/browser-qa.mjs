@@ -54,6 +54,14 @@ for (const id of ids) {
 const lessonIds = await ev(async () => (await import('./content/lessons/index.js')).lessons.map((l) => l.id));
 for (const id of lessonIds) {
   try {
+    const worked = await ev(async id => !(await import('./content/lessons/index.js')).lessonById.get(id).steps.some(s => s.kind === 'demo' || s.kind === 'script'), id);
+    if (worked) {
+      await ev(id => { location.hash = '#/learn/' + id; }, id);
+      await page.waitForFunction(id => location.hash === '#/learn/' + id && !!document.querySelector('.sh-lp-card'), {}, id);
+      const title = await ev(() => document.querySelector('.sh-lp-title h1')?.textContent);
+      report.lessons.push({ id, ok: !!title, mode: 'worked', runtimeErrors: 0 });
+      continue;
+    }
     const st = await ev((lid) => window.__game.loadLesson(lid), id);
     await sleep(150);
     const st2 = await ev(() => window.__game.getState());

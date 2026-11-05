@@ -572,6 +572,8 @@ Groups (id: title), in display order: `core`: Core building blocks · `media`: M
 ```
 Rules: every element id, event id, request type, curve and compliance id must exist in the catalog. Numbers must be sensible approximations and say so. Time strings are 'HH:MM' on the simulated clock. Editorial `expect` values are filled from real sim runs during Phase 3.
 
+Advanced problems may include `workloadPlan: [{ sourceRef, entryRef, peakRps, mix, role? }]` as descriptive source-specific traffic for a future engine. Rates sum to `requirements.peakRps` and reproduce its aggregate mix. It is not an engine input in this version. Every source still enters a legitimate shared front door in the measured reference. Notes and editorials state the scored boundary and the protocol obligations outside it. The catalog's `batch` represents 100 MB, `telemetry` represents 1 KB or a time-series batch of 100 samples, and observers do not implement storage platforms.
+
 ### 11.2 Lesson files: `content/lessons/<lessonId>.js`
 ```js
 export default {
@@ -592,6 +594,16 @@ export default {
 }
 ```
 `intro` follows DESIGN.md section 8 and may use `{ kind: 'script', beats: [...] }` steps with `{ at: secondsOrTrigger, caption, highlight: elementId, waitFor: { action: 'place' | 'connect' | 'knob', type?, knob? } }`.
+
+Advanced lessons may use a worked example in a `read` step instead of a `demo` when the engine does not model the mechanism. The `Go deeper` and `Lead the design` tracks follow Business; their lessons take 5 to 8 minutes and contain a numbers step, at least three reasoning quizzes, a transfer case and two or three defend steps.
+
+```js
+{ kind: 'defend', q: 'A sharp colleague asks you to justify a choice. What fails next?',
+  checklist: ['A concrete failure case', 'The cost of the chosen guarantee'],
+  model: 'A model answer in plain words, including the follow-up.' }
+```
+
+A defend step requires a nonblank typed answer before revealing the model and checklist. Continue becomes available on reveal. Players tick points they covered; zero ticks is a valid self review, not a failed quiz. Answers and ticks remain in memory while navigating the mounted lesson and are never added to saved or synced progress. Native textarea, button and checkbox controls support keyboard and touch, with visible labels and focus. Existing lesson ids and progress records keep their meaning.
 
 ---
 

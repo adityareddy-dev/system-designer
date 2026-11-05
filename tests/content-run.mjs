@@ -87,7 +87,10 @@ const lessonRows = [];
 for (const l of lessons) {
   if (!Array.isArray(l.steps) || !l.steps.length) bad(l.id, 'no steps');
   const quizzes = l.steps.filter((s) => s.kind === 'quiz');
-  if (quizzes.length !== 3) bad(l.id, 'quiz count ' + quizzes.length);
+  if (quizzes.length < 3) bad(l.id, 'quiz count ' + quizzes.length);
+  for (const s of l.steps.filter(s => s.kind === 'defend')) {
+    if (!s.q || !s.model || !Array.isArray(s.checklist) || !s.checklist.length || s.checklist.some(p => typeof p !== 'string' || !p.trim())) bad(l.id, 'invalid defend step');
+  }
   for (const q of quizzes) if (!(q.answer >= 0 && q.answer < q.choices.length)) bad(l.id, 'quiz answer out of range');
   l.steps.forEach((s, i) => {
     if (s.kind !== 'demo' && s.kind !== 'script') return;

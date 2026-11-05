@@ -5,6 +5,7 @@ import { modal } from './overlay.js';
 import { transferFor, transferCorrect } from '../../content/transfers.js';
 import { sceneMarkup } from '../../assets/scenes/index.js';
 import { mountAllocation } from './allocation.js';
+import { drawDefend } from './defend.js';
 
 function notFoundLesson() {
   return h('div', { class: 'sh-page sh-page--narrow sh-empty' },
@@ -66,6 +67,7 @@ export function renderLesson(host, ctx, route) {
   const transfer = transferFor(lesson.id);
   const steps = [...(lesson.steps || []), ...(transfer ? [transfer] : [])];
   let transferDone = false;
+  const defenses = new Map();
   let poolOff = null;
   const total = steps.length + 1; // last page is the takeaway
   let idx = Math.max(0, Math.min(total - 1, parseInt(route.query.step, 10) || 0));
@@ -144,6 +146,9 @@ export function renderLesson(host, ctx, route) {
       drawTransfer(card, step);
     } else if (step.kind === 'quiz') {
       drawQuiz(card, step);
+    } else if (step.kind === 'defend') {
+      if (!defenses.has(idx)) defenses.set(idx, {});
+      drawDefend(card, step, defenses.get(idx), navRow({}));
     } else if (step.kind === 'demo') {
       drawDemo(card, step);
     } else {
