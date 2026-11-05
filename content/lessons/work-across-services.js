@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "work-across-services",
   "title": "Work across services",
@@ -44,22 +44,22 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "The relay publishes an outbox event and crashes before marking it sent. What makes replay safe?",
+      "q": "An outbox relay publishes, then crashes before marking the row sent. What protects a consumer's local effect on replay?",
       "choices": [
-        "Assume the broker never duplicates",
-        "Publish with a fresh event id each time",
-        "Consumer deduplication committed with the local effect"
+        "Producer-side broker deduplication alone",
+        "A consumer cache of seen ids updated before the database mutation",
+        "A unique event id committed with the effect and saved result"
       ],
       "answer": 2,
-      "why": "The outbox closes the database-to-broker gap, but a relay can publish more than once."
+      "why": "A relay can republish, and a consumer can crash too. The deduplication record and local effect must commit together."
     },
     {
       "kind": "defend",
       "q": "Why not use two-phase commit for checkout? Follow-up: are sagas equally atomic?",
       "checklist": [
-        "Explain participant support and prepared-state blocking",
-        "Admit visible intermediate states in a saga",
-        "Describe compensation and irreversibility"
+        "Check provider participation and locks held by prepared transactions",
+        "Name pending payment and refund states visible during a saga",
+        "Explain why a refund cannot undo fees or a shipment already sent"
       ],
       "model": "Our payment provider does not participate in our transaction, and holding inventory locks across a network failure is expensive. A saga fits local ownership, but it is not equally atomic: people may see an order waiting or a refund pending. I would define those states with product and finance, use stable keys, and reconcile unknown outcomes. If a closed set of databases provides a supported distributed transaction with acceptable availability, two-phase commit may still be a reasonable choice."
     },
@@ -70,35 +70,35 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "A charge times out after the provider accepts it. What state should checkout show?",
+      "q": "Checkout times out while calling a provider that may have accepted the charge. What should it do?",
       "choices": [
-        "Pending while reconciling with the same payment key",
-        "Definitely failed; retry with a new key",
-        "Definitely paid because a timeout is success"
+        "Show pending and reconcile using the same payment key",
+        "Mark failed and submit a new key so the customer can retry",
+        "Release the order and treat a later provider success as unrelated"
       ],
       "answer": 0,
-      "why": "Timeout is an unknown outcome. A stable key and reconciliation avoid a second logical charge."
+      "why": "A timeout leaves an unknown outcome. Preserve the logical payment identity and handle a late success explicitly."
     },
     {
       "kind": "defend",
       "q": "Where exactly is the idempotency key stored? Follow-up: the worker crashes between checking the key and applying the change.",
       "checklist": [
-        "Enforce durable uniqueness in the authoritative store",
-        "Commit the key and local mutation together",
-        "Handle external effects with provider support and reconciliation"
+        "Enforce event-key uniqueness in the inventory authority",
+        "Commit deduplication, stock mutation and saved result together",
+        "Persist external intent and reconcile with the same provider key"
       ],
-      "model": "A separate cache check leaves a race. For a local inventory change I insert the unique event key, reserve stock and save the result in one transaction. A duplicate returns that result. External effects need the provider to accept the same logical key or offer a status lookup. I persist an intent before the call and reconcile its outcome after a crash. No local table alone makes an unsupported external call exactly once."
+      "model": "A separate cache check leaves a race. For a local inventory change I insert the unique event key, reserve stock and save the result in one transaction. A duplicate returns that result. For external effects I reuse the same provider idempotency key and use status lookup to reconcile. A negative lookup alone does not rule out an original request still in flight, so it cannot make blind resubmission safe. I persist an intent before the call and reconcile its outcome after a crash. No local table alone makes an unsupported external call exactly once."
     },
     {
       "kind": "quiz",
-      "q": "Workers recover at 250/s while new work arrives at 300/s. When does the backlog clear?",
+      "q": "Workers handle 250/s while arrivals stay at 300/s. No work expires or is shed. What happens to the backlog?",
       "choices": [
-        "As soon as the workers restart",
-        "It keeps growing until capacity exceeds arrivals or admissions fall",
-        "In backlog divided by 250 seconds"
+        "It drains at 250/s because all workers are running",
+        "It grows by 50/s until service or admissions change",
+        "It stops growing once retries use stable operation ids"
       ],
       "answer": 1,
-      "why": "Drain rate is service minus arrivals. A nonpositive net rate never clears the line."
+      "why": "Deduplication avoids repeated effects, but unique arrivals still exceed service by 50/s."
     }
   ],
   "takeaway": "Commit locally, publish through an outbox, and make every later effect safe to repeat or reconcile."

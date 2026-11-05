@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "leader-consensus",
   "title": "Agreeing on one leader",
@@ -15,7 +15,7 @@ export default {
     {
       "kind": "read",
       "title": "Raft in plain words",
-      "text": "Raft keeps a replicated sequence of decisions. A follower that stops hearing heartbeats becomes a candidate in a new term and asks for votes. Each voter persists at most one vote per term and only votes for a candidate whose log is sufficiently up to date. A majority elects a leader. The leader appends entries and replicates them; it can advance commit by counting a majority for an entry from its current term, which also commits the preceding log. Followers apply committed decisions in order. Elections alone are not consensus: log rules preserve decisions through later elections. This assumes crash faults, not malicious voters."
+      "text": "Raft keeps a replicated sequence of decisions. A follower whose randomized election timeout expires without valid leader contact becomes a candidate in a new term and asks for votes. Each voter persists at most one vote per term and only votes for a candidate whose log is sufficiently up to date. A majority elects a leader. The leader appends entries and replicates them; it can advance commit by counting a majority for an entry from its current term, which also commits the preceding log. Servers apply committed decisions in order. A linearizable read also needs a current-term committed entry, confirmation of current authority, and application through the read index; a stale leader cannot safely answer from memory alone. Elections alone are not consensus: log rules preserve decisions through later elections. This assumes crash faults, not malicious voters."
     },
     {
       "kind": "read",
@@ -44,61 +44,61 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "A five-voter cluster splits into groups of three and two. What may the two-node side do safely?",
+      "q": "Five fixed Raft voters split into groups of three and two. What can the two-node side promise without contacting the other side?",
       "choices": [
-        "Elect itself with both votes",
-        "Serve arbitrary latest reads as leader",
-        "Reject or defer operations requiring a majority"
+        "Latest reads from its previously elected leader, while pausing writes",
+        "New commits after both surviving voters agree on a higher term",
+        "Only explicitly stale reads; majority operations must wait or fail"
       ],
       "answer": 2,
-      "why": "A minority cannot establish a new committed order. Cached reads need an explicit weaker promise."
+      "why": "Two voters cannot form a majority of five. An old leader cannot infer current authority from local state."
     },
     {
       "kind": "defend",
       "q": "We have a majority election. How could we still send an invoice twice? Follow-up: the provider does not accept fencing tokens.",
       "checklist": [
-        "Distinguish leader selection from external effects",
-        "Use stable operation keys and reconciliation",
-        "Admit the boundary when a provider offers no deduplication"
+        "Show how a paused old leader can still call the invoice provider",
+        "Persist one operation and reuse its provider key across leaders",
+        "State what remains ambiguous without provider deduplication"
       ],
-      "model": "A paused previous leader can send a delayed call. I would fence writes in our own store and persist one invoice operation with an outbox. A provider idempotency key should stay the same across leaders and retries. If the provider has neither idempotency nor a status lookup, we cannot prove exactly-once external sending from our election alone. We must choose and explain the duplicate-versus-missing risk and reconcile it."
+      "model": "A paused old leader can still send a delayed provider call after a new leader takes over. I would fence our local state and persist one invoice intent with an outbox. Every leader and retry reuses the same provider idempotency key. A status lookup helps reconcile, but a negative result alone cannot rule out a request still in flight. Without provider deduplication or another atomic acceptance rule, election alone cannot guarantee exactly one external effect. I would document the duplicate-versus-missing risk and the manual reconciliation path."
     },
     {
       "kind": "read",
       "title": "Make stale ownership harmless",
-      "text": "Give each ownership grant a durable increasing fencing token. The resource that accepts a write stores the highest accepted token and rejects older ones. If owner 41 pauses and owner 42 writes, a later request carrying 41 is rejected by the resource. A check in the old process is insufficient. A coordination service is useful for small shared decisions: membership, leases and ownership maps. It is a poor place for every user record or high-volume event. If a database transaction, a unique constraint or a managed queue already owns the invariant, use that instead. Keep the coordination cluster independent enough to survive the failures it must resolve."
+      "text": "Give each ownership grant a durable increasing fencing token. The resource that accepts a write atomically compares the token, records the highest accepted token and performs the write, rejecting older tokens. If owner 41 pauses and owner 42 writes, a later request carrying 41 is rejected by the resource. A check in the old process is insufficient. A coordination service is useful for small shared decisions: membership, leases and ownership maps. It is a poor place for every user record or high-volume event. If a database transaction, a unique constraint or a managed queue already owns the invariant, use that instead. Keep the coordination cluster independent enough to survive the failures it must resolve."
     },
     {
       "kind": "quiz",
-      "q": "The old worker checks its lease, then pauses before writing. What closes the race?",
+      "q": "A worker checks its lease, then pauses. A new owner writes before it resumes. What rejects the delayed old write?",
       "choices": [
-        "A fencing check at the storage resource",
-        "A shorter lease alone",
-        "A local boolean saying leader"
+        "An atomic token comparison and write at the storage resource",
+        "Renewing the lease immediately before sending the write",
+        "Checking the current token in a separate storage request before writing"
       ],
       "answer": 0,
-      "why": "Only the receiver can reject a delayed request after ownership changes."
+      "why": "A separate check leaves another pause window. The receiver must enforce fencing atomically with the effect."
     },
     {
       "kind": "defend",
       "q": "Should every request consult the coordination service? Follow-up: its quorum is down for ten minutes.",
       "checklist": [
-        "Keep coordination off the high-volume data path",
-        "Define cached decisions and expiry rules",
-        "Prefer bounded unavailability over conflicting ownership"
+        "Use the coordinator for ownership changes rather than every user request",
+        "Specify when cached authority expires and where fencing is enforced",
+        "Stop exclusive operations when valid authority cannot be renewed"
       ],
       "model": "I would cache a versioned owner map and use the coordinator for changes. Existing owners can work only within the protocol's valid authority, with receiver-side fencing. If fresh authority cannot be obtained, operations that require exclusive ownership stop. Public cached reads may continue under a separate promise. Losing a quorum should not silently create two owners. I would consider whether an existing transactional store could own this small decision more simply."
     },
     {
       "kind": "quiz",
-      "q": "A SQL unique constraint already prevents two owners claiming one invoice. What justifies a new coordination cluster?",
+      "q": "SQL already enforces exclusive invoice ownership. Which requirement could justify an additional coordination service?",
       "choices": [
-        "Any feature with more than one process",
-        "A separate cross-process invariant that the database cannot reasonably own",
-        "Reducing the number of failure modes automatically"
+        "Electing a worker so provider calls no longer need idempotency",
+        "Coordinating ownership of resources outside that database transaction",
+        "Caching the SQL owner row so expired ownership is always safe to reuse"
       ],
       "answer": 1,
-      "why": "A new distributed service adds operational work. Start with the invariant and the existing authoritative store."
+      "why": "A separate invariant may need coordination. Election does not deduplicate external effects or make cached authority permanent."
     }
   ],
   "takeaway": "Consensus preserves one committed order; fencing carries that authority to the resource."

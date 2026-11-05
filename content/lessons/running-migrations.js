@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "running-migrations",
   "title": "Changing a running system",
@@ -15,7 +15,7 @@ export default {
     {
       "kind": "read",
       "title": "Expand, move, contract",
-      "text": "Expand by adding compatible fields and readers before removing anything. Establish one authoritative write path. If you must dual write, record a durable intent or use a transactional outbox or change-data capture to avoid one store succeeding while the other fails. Make replay idempotent and versioned so an old backfill cannot overwrite a fresh write. Backfill in bounded batches with checkpoints, throttling and reconciliation. Shadow reads compare results without changing user responses; redact sensitive differences. Cut over a small cohort, then increase gradually while watching correctness and SLOs. Contract by deleting the old path only after clients, replay, backups and the rollback window no longer require it."
+      "text": "Expand by adding compatible fields and readers before removing anything. Establish one authoritative write path. If you must dual write, record a durable intent or use a transactional outbox or change-data capture so a committed source change can eventually reach the target after partial failure. This does not make both stores update atomically. Make replay idempotent and versioned so an old backfill cannot overwrite a fresh write. Backfill in bounded batches with checkpoints, throttling and reconciliation. Shadow reads compare results without changing user responses; redact sensitive differences. Cut over a small cohort, then increase gradually while watching correctness and SLOs. Contract by deleting the old path only after clients, replay, backups and the rollback window no longer require it."
     },
     {
       "kind": "read",
@@ -44,22 +44,22 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "A backfill reads version 5, then a live write creates version 6. What prevents regression?",
+      "q": "A backfill reads version 5, then a live write creates version 6. What prevents the delayed copy from regressing the target?",
       "choices": [
-        "Apply version 5 unconditionally later",
-        "Use conditional version checks or ordered replay so older data cannot win",
-        "Pause monitoring during backfill"
+        "A unique backfill job id used for deduplication",
+        "An atomic version check, or snapshot-and-log replay ordered through cutover",
+        "A later ingestion timestamp on whichever copy arrives last"
       ],
       "answer": 1,
-      "why": "Idempotency prevents duplicates; version ordering also prevents stale overwrite."
+      "why": "Deduplication prevents repeated application of one job. Version checks or correctly ordered replay also prevent stale overwrite."
     },
     {
       "kind": "defend",
       "q": "Why not write to both databases in the request handler? Follow-up: the first write succeeds and the second times out.",
       "checklist": [
-        "Identify partial success and unknown outcome",
-        "Use a durable change record and idempotent replay",
-        "Define authority and reconciliation"
+        "Treat a timed-out second write as an unknown outcome",
+        "Atomically capture source changes and replay versioned target writes",
+        "Name one write authority and compare both stores before cutover"
       ],
       "model": "Two independent writes leave an ambiguous state. I would keep one authority and atomically record its change with an outbox or capture its committed log. The target applies versioned changes idempotently and exposes lag. A timeout is reconciled rather than treated as proof of failure. During cutover I would compare the stores and keep a documented source of truth. A second successful API reply alone does not prove the databases contain the same state."
     },
@@ -70,35 +70,35 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "The canary accepts a new enum old code cannot parse. Is reverting the binary a safe rollback?",
+      "q": "A canary writes a new enum that old code cannot parse. What must be addressed before reverting the binary?",
       "choices": [
-        "Always",
-        "Only if the deployment system is fast",
-        "No, compatibility or a data recovery plan is needed"
+        "Only restore the old configuration before deploying the old binary",
+        "Only stop new canary traffic; its committed data is unaffected by rollback",
+        "Preserve old-readable data or test a recovery transform for the new writes"
       ],
       "answer": 2,
-      "why": "New data can outlive the binary that wrote it. Rollback must include read and write compatibility."
+      "why": "New data survives the deployment. Reverting code alone leaves unreadable rows in place."
     },
     {
       "kind": "defend",
       "q": "The backfill takes one day. Why did you ask for three weeks? Follow-up: who can stop the rollout?",
       "checklist": [
-        "Separate byte-copy time from verification and compatibility",
-        "Budget canary and rollback observation",
-        "Name owners and stop thresholds"
+        "Separate copy time from live-write catch-up and verification",
+        "Require representative canaries and a tested rollback window",
+        "Name the rollout lead and concrete stop thresholds"
       ],
-      "model": "The copy floor excludes throttling, catching live changes, verifying results, representative canaries and a rollback window. Old clients and backup restores may need the old schema longer. I would give application, data and on-call owners shared stop criteria such as mismatch rate, replication lag or p99 regression, with one named rollout lead. Product and support need to agree the user states and deprecation deadline. We can shorten the calendar only by explicitly changing that evidence or compatibility requirement."
+      "model": "The copy floor excludes throttling, catching live changes, verifying results, representative canaries and a rollback window. Old clients and backup restores may need the old schema longer. I would give application, data and on-call owners shared stop criteria such as mismatch rate, replication lag or p99 regression, with one named rollout lead. For example, stop on any unexplained lost address field, lag beyond the allowed catch-up window, or p99 above the agreed target; choose thresholds from this workload rather than copying them blindly. Product and support need to agree the user states and deprecation deadline. We can shorten the calendar only by explicitly changing that evidence or compatibility requirement."
     },
     {
       "kind": "quiz",
-      "q": "A 1% canary passes for thirty seconds on a low-volume service. What is missing?",
+      "q": "A 1% canary passes for thirty seconds on a low-volume service. What evidence is still missing?",
       "choices": [
-        "Enough time, representative tenants and correctness coverage",
-        "A larger percentage label alone",
-        "Deleting the old schema immediately"
+        "Representative paths and tenants observed long enough to exercise delayed work",
+        "A 25% canary for the same thirty seconds, regardless of request mix",
+        "A successful deployment health check in every zone"
       ],
       "answer": 0,
-      "why": "A small sample can miss rare paths and slow background failures."
+      "why": "More traffic or healthy processes alone can miss rare paths, scheduled jobs and delayed correctness failures."
     }
   ],
   "takeaway": "Migrate through compatible states and prove that rollback still understands the data."

@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "slos-error-budgets",
   "title": "SLOs and error budgets",
@@ -44,22 +44,22 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "The last hour burned at 20 but the last five minutes burned at 0.2. Does the example fast AND policy page now?",
+      "q": "The fast alert requires burn above 14.4 in both windows. The hour shows 20 and five minutes shows 0.2. Does this rule fire?",
       "choices": [
-        "Yes, the hour alone is enough",
-        "No, the recent window says the fast failure is no longer active",
-        "Only if CPU exceeds 90%"
+        "Yes; the long window has already established budget impact",
+        "No; its recent window is below the threshold",
+        "Yes; averaging the two windows preserves the long-window breach"
       ],
       "answer": 1,
-      "why": "Both windows must exceed 14.4. A long window alone can keep paging after recovery."
+      "why": "The rule uses AND. A healthy recent window stops this fast alert after recovery; other alert policies are evaluated separately."
     },
     {
       "kind": "defend",
       "q": "Why is 99.99% not automatically the right target? Follow-up: product says every failure matters.",
       "checklist": [
-        "Tie the SLI and target to user harm",
-        "Estimate the tighter budget and operational cost",
-        "Agree release policy and important cohorts"
+        "Define an eligible user outcome and the harm of missing it",
+        "Show that 99.99% permits one tenth the failures of 99.9%",
+        "Assign reliability work and release policy to important user cohorts"
       ],
       "model": "Every failure can matter without making every operation equally critical. Moving from 99.9% to 99.99% reduces the allowed bad fraction tenfold. I would identify the journeys where that cost is justified, separate critical cohorts, and estimate the redundancy and on-call work required. The target should lead to a funded decision policy. A promise the team cannot sustain encourages exclusions and noisy pages rather than better user outcomes."
     },
@@ -77,28 +77,28 @@ export default {
         "6"
       ],
       "answer": 2,
-      "why": "Divide 0.006 by the allowed fraction 0.001, keeping units consistent."
+      "why": "0.006 ÷ 0.001 = 6. Use the allowed bad fraction, not the success target."
     },
     {
       "kind": "defend",
       "q": "Why use two windows instead of paging on every error spike? Follow-up: could that miss a short severe outage?",
       "checklist": [
-        "Explain impact and recent confirmation",
-        "Quantify budget use",
-        "Add a justified fast path for severe user harm"
+        "Explain long-window impact and short-window confirmation",
+        "Calculate budget use and fast-alert detection delay",
+        "Define a separate fast path if severe harm requires it"
       ],
-      "model": "A long window avoids paging on tiny blips, and a short window confirms the problem is current. At burn 14.4, an hour spends roughly 2% of a steady 30-day budget. A short total outage may deserve an independent synthetic or availability fast path if its user harm is high. I would test detection delay on real incident shapes, keep pages deduplicated and make every page lead to an action. Multi-window rules are a tool, not a reason to ignore severe brief failures."
+      "model": "A long window avoids paging on tiny blips, and a short window confirms the problem is current. At burn 14.4, an hour spends roughly 2% of a steady 30-day budget. At steady traffic, a 100% outage burns at 1,000, so it can push a previously healthy one-hour average above 14.4 in about 52 seconds. The rule does not wait a full hour to act. A shorter total outage may deserve an independent synthetic or availability fast path if its user harm is high. I would test detection delay on real incident shapes, keep pages deduplicated and make every page lead to an action. Multi-window rules are a tool, not a reason to ignore severe brief failures."
     },
     {
       "kind": "quiz",
-      "q": "A service has ten requests and one failure. What should an alert designer consider?",
+      "q": "A low-traffic service has ten requests and one failure. Which alert design accounts for the small denominator?",
       "choices": [
-        "Small denominators and minimum-impact or synthetic checks",
-        "Changing the failure to success",
-        "Copying a high-volume threshold without review"
+        "Use user impact, event counts and independent synthetic checks",
+        "Page on the same percentage-only threshold used for a million-request service",
+        "Require a large minimum count for every alert, even a complete outage"
       ],
       "answer": 0,
-      "why": "Ten percent is a large ratio but little evidence. Pair the statistic with actual user impact and detection needs."
+      "why": "A ratio alone can be noisy. A blanket event minimum can also hide a severe low-volume outage."
     }
   ],
   "takeaway": "Choose a measurable user promise, then page when its budget is being spent fast enough to need action."

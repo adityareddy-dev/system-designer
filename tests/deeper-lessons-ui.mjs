@@ -12,7 +12,7 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem('hotpath.v1.seenIntro','true');
-    localStorage.setItem('hotpath.v1.settings',JSON.stringify({soundMuted:true,motion:'reduce'}));
+    localStorage.setItem('hotpath.v1.settings',JSON.stringify({soundMuted:true,reducedMotion:'reduce'}));
     // Existing progress must survive completion of the new tracks.
     localStorage.setItem('staff-progress-sentinel','old progress survives');
   });
@@ -21,6 +21,7 @@ try {
     for (const lesson of lessons.slice(-17)) {
       await page.goto(base+'#/learn/'+lesson.id, {waitUntil:'domcontentloaded'});
       await page.waitForSelector('.sh-lp-card');
+      assert.equal(await page.$eval('html',el=>el.dataset.motion),'reduce');
       await page.evaluate(theme => { document.documentElement.dataset.theme=theme; },theme);
       for (const [i,step] of lesson.steps.entries()) {
         await page.waitForFunction(i => (new URLSearchParams(location.hash.split('?')[1]).get('step') || '0') === String(i),{},i);
@@ -40,6 +41,12 @@ try {
           }
         }
         assert(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth+1),lesson.id+' fits '+width);
+        // Center the control above the phone's fixed navigation before a pointer click.
+        await page.$eval('.sh-lp-nav .sh-btn--primary',el=>el.scrollIntoView({block:'center',behavior:'instant'}));
+        assert(await page.$eval('.sh-lp-nav .sh-btn--primary',el=>{
+          const box=el.getBoundingClientRect();
+          return el.contains(document.elementFromPoint(box.x+box.width/2,box.y+box.height/2));
+        }),lesson.id+' continue is reachable at '+width);
         await page.click('.sh-lp-nav .sh-btn--primary');
       }
       const transfer=transferFor(lesson.id);

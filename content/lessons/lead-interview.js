@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "lead-interview",
   "title": "How to lead a design interview",
@@ -20,7 +20,7 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: choose the deep question",
-      "text": "Assume 10 million users receive 3 notifications/day. That is 30 million/day, or about 347/s average. With a 10 times burst, plan about 3,470/s. At an assumed 1 KB payload, raw events add about 30 GB/day, before replicas and delivery attempts. If the provider admits only 2,000/s, an extra app fleet cannot erase the downstream limit. A five-minute 3,470/s burst creates about 441,000 queued notifications if service stays at 2,000/s. That calculation suggests going deep on admission, deadlines and recovery. It is a worked design exercise, not a sim run."
+      "text": "Assume 10 million users receive 3 notifications/day. That is 30 million/day, or about 347/s average. With a 10 times burst, plan about 3,470/s. At an assumed 1 KB payload, raw events add about 30 GB/day, before replicas and delivery attempts. If the provider admits only 2,000/s, an extra app fleet cannot erase the downstream limit. Using the unrounded burst rate of about 3,472/s, a five-minute burst creates about 441,667 queued notifications if service stays at 2,000/s. That calculation suggests going deep on admission, deadlines and recovery. It is a worked design exercise, not a sim run."
     },
     {
       "kind": "numbers",
@@ -37,31 +37,31 @@ export default {
         },
         {
           "label": "Five-minute backlog",
-          "value": "≈ 441,000",
-          "how": "(3,470 - 2,000)/s × 300 seconds"
+          "value": "≈ 442,000",
+          "how": "(30 million ÷ 86,400 × 10 - 2,000)/s × 300 s; round at the end"
         }
       ]
     },
     {
       "kind": "quiz",
-      "q": "Eight minutes in, nobody knows if delivery can wait. What should you do?",
+      "q": "Eight minutes in, the delivery deadline is still unknown. Which next step best resolves the queue policy?",
       "choices": [
-        "Draw more provider boxes",
-        "State the ambiguity and agree a deadline before choosing the queue policy",
-        "Assume every notification is urgent"
+        "Choose an unbounded durable queue now and settle delivery timing later",
+        "Agree deadlines by message class before choosing buffering and expiry",
+        "Use the provider's acknowledgement latency as the delivery deadline"
       ],
       "answer": 1,
-      "why": "The delivery deadline changes buffering, cost and failure behavior."
+      "why": "Acceptance latency does not define user delivery. The deadline determines whether buffering, expiry or admission is acceptable."
     },
     {
       "kind": "defend",
       "q": "Why did you spend time on numbers before choosing services? Follow-up: your traffic estimate is wrong by ten times.",
       "checklist": [
-        "Connect estimates to bottlenecks and guarantees",
-        "Show sensitivity rather than false precision",
-        "Keep the scope and unknowns explicit"
+        "Compare assumed arrival rates with the provider ceiling and deadline",
+        "Calculate how the design changes across a tenfold traffic range",
+        "Label assumed inputs and name the measurement that could change the design"
       ],
-      "model": "The estimates tell us whether a single store, provider or network path is plausible. I would mark them as assumptions and test a tenfold range. If the provider is already the bottleneck at the lower end, the core design needs admission and buffering regardless of extra app servers. If only the upper end requires partitioning, I can present a simple first design and a measured trigger for changing it. Numbers guide decisions; they are not a claim to know future traffic exactly."
+      "model": "With 30 million events/day, average traffic is about 347/s and the assumed tenfold burst is about 3,472/s. A 2,000/s provider is already the peak bottleneck. If the estimate is ten times lower, the roughly 347/s peak fits; ten times higher gives about 34,722/s, where buffering and quotas dominate. I would ask how long delivery may wait and verify sustained account quotas. Those measurements determine whether admission, another provider or a narrower promise is needed. Extra app servers cannot raise a downstream ceiling."
     },
     {
       "kind": "read",
@@ -70,35 +70,35 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "The provider limit is unknown. Which response is strongest?",
+      "q": "The provider limit is unknown and could change the design. What supports the next decision?",
       "choices": [
-        "Assert a precise number without evidence",
-        "Ignore the limit",
-        "State a range, derive sensitivity and say what to measure"
+        "Use the published maximum as sustained account capacity without verification",
+        "Size only the average rate and defer provider limits until after launch",
+        "State a plausible range, test both ends and name the needed measurement"
       ],
       "answer": 2,
-      "why": "A transparent assumption lets the discussion test whether it changes the architecture."
+      "why": "A published maximum may not be an account's safe sustained capacity. Test whether the uncertainty changes admission or buffering."
     },
     {
       "kind": "defend",
       "q": "I disagree with your choice of deep dive. How do you respond? Follow-up: there are only fifteen minutes left.",
       "checklist": [
-        "Restate the requirement the choice serves",
-        "Invite a concrete alternative risk",
-        "Reallocate time and close with decisions"
+        "Tie the current deep dive to the delivery promise at risk",
+        "Ask which competing failure could invalidate the design sooner",
+        "Allocate the last fifteen minutes and reserve time to record decisions"
       ],
-      "model": "I would explain the risk I was trying to resolve and ask which requirement the alternative threatens more. If the concern changes the design, I would shift the remaining time and state what will stay at a high level. I would leave a few minutes to summarize the invariant, the chosen path and unresolved questions. The goal is a shared, defensible decision, not defending my original agenda at any cost."
+      "model": "I chose provider admission because it may break the delivery deadline even when our app has spare capacity. I would ask which requirement the alternative deep dive puts at greater risk. If it changes the main design, I would switch. With fifteen minutes left, I would propose ten minutes on that failure, three on recovery and operations, and two to record decisions and unresolved risks. I would keep the rest at a stated high level so we leave with a design we can assess."
     },
     {
       "kind": "quiz",
-      "q": "You have ten minutes left and four unexplored topics. What leads the design?",
+      "q": "Ten minutes remain. Provider overload may violate delivery deadlines; three other topics are unexplored. How should you use the time?",
       "choices": [
-        "Choose the highest-risk constraint, test it and summarize the remaining risks",
-        "Rush through every component at equal depth",
-        "Start over with a larger architecture"
+        "Test that bottleneck and its failure policy, then record the remaining risks",
+        "Give each of the four topics equal time regardless of user impact",
+        "Add a second provider without checking its quota or duplicate-delivery behavior"
       ],
       "answer": 0,
-      "why": "Depth should follow the requirement most likely to invalidate the design."
+      "why": "Use remaining depth to test the constraint most likely to invalidate the user promise. Extra providers need their own failure analysis."
     }
   ],
   "takeaway": "Lead with a user promise, make assumptions testable and spend depth where it can change the design."

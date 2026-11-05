@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "metrics-systems",
   "title": "How metrics systems work",
@@ -15,7 +15,7 @@ export default {
     {
       "kind": "read",
       "title": "The ingest and storage path",
-      "text": "Authenticate a tenant before accepting writes. Validate label counts, sizes and allowed dimensions. A distributor hashes tenant and series identity onto an ingest ring with several replicas across zones. Acknowledged writes need durable WAL records according to the chosen protocol. Ingesters keep recent data in memory and flush compressed immutable blocks to object storage. Indexes map labels and times to series and blocks. Compaction joins small blocks and removes expired data. Downsampling retains summaries for older ranges, but destroys some detail. Preserve count and sum when computing averages; averaging averages can lie. Counters and histogram aggregates require semantics-aware summaries."
+      "text": "Authenticate a tenant before accepting writes. Validate label counts, sizes and allowed dimensions. One design sends each series to a replicated ingester set with a WAL. Another appends to a replicated durable log first, then lets ingesters consume it. Mimir supports classic ingester replication and an ingest-storage architecture with Kafka-backed durability; do not assume both acknowledge at the same boundary. Prometheus alone uses a local TSDB and WAL, not this distributed ring. Recent samples become compressed immutable blocks; a distributed backend can upload them to object storage. Indexes select series and blocks. Compaction rewrites blocks, while retention removes expired data. Downsampling is an optional separate policy, not an automatic Mimir or Prometheus retention feature. Preserve count and sum for combined averages, and use semantics-aware summaries for counters and histograms."
     },
     {
       "kind": "read",
@@ -44,61 +44,61 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "You add a user id label while keeping samples/s fixed. Why can memory still rise?",
+      "q": "Samples/s stays fixed, but a new user-id label creates many short-lived series. Why can memory rise?",
       "choices": [
-        "More distinct series need more active metadata",
-        "Compressed samples always grow to 1 MB each",
-        "Queries no longer need an index"
+        "Per-series metadata and churn grow independently of sample count",
+        "The same sample count must consume the same memory after compression",
+        "Only historical object storage grows; active memory depends solely on samples/s"
       ],
       "answer": 0,
-      "why": "Sample payload and per-series state are separate cost dimensions."
+      "why": "Samples and active-series state are separate costs. Churn also creates WAL and index work."
     },
     {
       "kind": "defend",
       "q": "Why does the bill rise when the sample count barely changes? Follow-up: which tenant limit do you add first?",
       "checklist": [
-        "Distinguish samples, active series and churn",
-        "Estimate per-series state and replicated payload",
-        "Use several tenant limits with explicit rejection feedback"
+        "Separate samples/s, active-series count and new-series rate",
+        "Calculate 20 GB for ten million series at assumed 2 KB each",
+        "Cap active series first, then churn, and expose rejection reasons"
       ],
-      "model": "I would look at active series and new-series rate as well as samples/s. A request id can turn reused series into short-lived ones, increasing metadata, index and WAL work. If active metadata is about 2 KB, ten million series already need about 20 GB before sample buffers. I would cap active series and churn per tenant, reject with a reason, and show quota usage. Query scanned work needs separate limits. One universal requests/s limit cannot represent these costs."
+      "model": "I would look at active series and new-series rate as well as samples/s. A request id can turn reused series into short-lived ones, increasing metadata, index and WAL work. If active metadata is about 2 KB, ten million series already need about 20 GB before sample buffers. For this memory incident I would cap active series first, then bound new-series rate to control churn. I would return a rejection reason and show quota usage. Query scanned work needs separate limits. One universal requests/s limit cannot represent these costs."
     },
     {
       "kind": "read",
       "title": "Do not let queries starve writes",
-      "text": "A query frontend splits long time ranges into bounded pieces and schedules them across workers. Each worker selects relevant blocks and series, then merges partial results. Cache immutable time-range results with tenant and query identity in the key. Fresh ranges need a short TTL or an explicit cutoff. Limit query concurrency, scanned bytes, range length, samples and wall time per tenant, independently of ingest limits. Limit active series, new-series rate and samples/s on writes. Fair queues let a small tenant make progress beside an expensive scan. Replication multiplies recent write work; object storage durability is a separate mechanism. Measure both query p99 and data freshness, since acknowledging buffered writes is not the same as making them queryable."
+      "text": "A query frontend splits long time ranges into bounded pieces and schedules them across workers. Each worker selects relevant blocks and series, then merges partial results. Cache historical results with tenant, authorization scope and full query semantics in the key. Immutable blocks do not guarantee immutable results: late data, deletions, lookback windows and query evaluation times can change them. Use a stable-data cutoff, invalidation or a bounded TTL. Fresh ranges need a short TTL or an explicit cutoff. Limit query concurrency, scanned bytes, range length, samples and wall time per tenant, independently of ingest limits. Limit active series, new-series rate and samples/s on writes. Fair queues let a small tenant make progress beside an expensive scan. Replication multiplies recent write work; object storage durability is a separate mechanism. Measure both query p99 and data freshness, since acknowledging buffered writes is not the same as making them queryable."
     },
     {
       "kind": "quiz",
-      "q": "Two windows contain 10 requests averaging 10 ms and 90 requests averaging 100 ms. What preserves the combined average?",
+      "q": "One window has 10 requests averaging 10 ms; another has 90 averaging 100 ms. What is the combined mean?",
       "choices": [
-        "Average 10 and 100 to get 55 ms",
-        "Keep only the faster window",
-        "Keep sum and count; combined average is 91 ms"
+        "55 ms, averaging the two window means",
+        "100 ms, using the larger window's mean for the whole period",
+        "91 ms, using total duration divided by total count"
       ],
       "answer": 2,
-      "why": "The windows carry different numbers of observations. Their averages cannot be weighted equally."
+      "why": "(10 × 10 + 90 × 100) ÷ 100 = 91 ms. Keep sum and count when combining unequal windows."
     },
     {
       "kind": "defend",
-      "q": "Why keep both a WAL and object blocks? Follow-up: a node dies before its next flush.",
+      "q": "Why keep a durable recent-write log and object blocks? Follow-up: an ingester dies before its next flush.",
       "checklist": [
-        "Explain recent-write durability and replay",
-        "State acknowledgement and zone replication policy",
-        "Separate durable acceptance from query freshness"
+        "Recover accepted samples not yet published in verified object blocks",
+        "State log fsync and host or zone loss guarantees at acknowledgement",
+        "Measure replay time and query visibility lag separately"
       ],
-      "model": "The WAL recovers recent accepted data that has not reached an immutable block. A local WAL alone does not survive loss of that host or zone, so the acknowledgement policy must require durable copies in the promised failure domains. Blocks provide durable, cheap historical storage after upload and verification. Recovery replays WAL records without creating duplicate logical samples. I would measure replay time and visibility lag separately from ingest success."
+      "model": "Blocks arrive after ingestion, so accepted samples still need a durable recovery source until upload is complete and verified. That can be replicated ingester WALs or a separate replicated ingest log. I would state whether acknowledgement waits for fsync and which host or zone failures it survives. A WAL append alone may only reach an operating-system buffer. Recovery replays from a checkpoint without duplicating logical samples. I would measure replay time and query visibility separately: a sample can be durable before an ingester has consumed it."
     },
     {
       "kind": "quiz",
-      "q": "A tenant stays under ingest quotas but scans 30 days in 100 parallel queries. Which control addresses this?",
+      "q": "A tenant stays under ingest quotas but launches 100 wide queries. Which control bounds its read-side work?",
       "choices": [
-        "Only reduce WAL retention",
-        "Per-tenant query concurrency and scanned-work limits",
-        "Add request ids as indexed labels"
+        "A smaller active-series quota on newly ingested data alone",
+        "Per-tenant query concurrency, scanned work and execution deadlines",
+        "A global HTTP rate limit that counts each query as one request"
       ],
       "answer": 1,
-      "why": "Write admission cannot bound read-side work. Query fairness needs its own controls."
+      "why": "A wide query can cost far more than one write or lookup. Bound expensive work and schedule it fairly."
     }
   ],
   "takeaway": "Budget series, samples, replicated bytes and scanned query work separately."

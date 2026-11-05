@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "ordering-time",
   "title": "Ordering and time",
@@ -20,7 +20,7 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: concurrent edits",
-      "text": "Two devices start with vector [0,0]. Offline, laptop writes title A at [1,0]; phone writes title B at [0,1]. Neither vector dominates, so there is a conflict. After seeing both, a resolving edit can carry [2,1]. It includes both histories. Last-write-wins would silently discard one title unless a conflict copy is kept. A CRDT instead defines merge rules whose operations or states converge under stated delivery and causality assumptions. A grow-only counter can merge each device's component by maximum. Values [4,0] and [0,3] merge to [4,3], total 7. Do not sum repeated snapshots. The sim does not model these histories, so this is a worked example."
+      "text": "Two devices start with vector [0,0]. Offline, laptop writes title A at [1,0]; phone writes title B at [0,1]. Neither vector dominates, so there is a conflict. After seeing both, a resolving edit on the laptop can carry [2,1]. It includes both histories. Last-write-wins would silently discard one title unless a conflict copy is kept. A CRDT instead defines merge rules whose operations or states converge under stated delivery and causality assumptions. A grow-only counter can merge each device's component by maximum. Values [4,0] and [0,3] merge to [4,3], total 7. Do not sum repeated snapshots. The sim does not model these histories, so this is a worked example."
     },
     {
       "kind": "numbers",
@@ -44,22 +44,22 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "Lamport(A) is smaller than Lamport(B). What can you conclude?",
+      "q": "Lamport(A) is smaller than Lamport(B). What can the counters alone establish?",
       "choices": [
-        "A definitely caused B",
-        "A happened first on the real-world clock",
-        "The numbers alone do not establish causality"
+        "A is an ancestor in B's causal history",
+        "A occurred earlier in wall-clock time within clock-sync error",
+        "They do not distinguish causal order from concurrency"
       ],
       "answer": 2,
-      "why": "Causality implies increasing Lamport time, but increasing time does not imply causality."
+      "why": "Causality implies increasing Lamport time. Increasing Lamport time does not imply causality or wall-clock order."
     },
     {
       "kind": "defend",
       "q": "Why not use last-write-wins for notes? Follow-up: users rarely edit at the same time.",
       "checklist": [
-        "Name clock error and silent overwrite",
-        "Match complexity to conflict frequency and harm",
-        "Offer conflict copies or a constrained merge"
+        "Show how a fast device clock can discard a causally later edit",
+        "Compare the harm of losing a note with the measured conflict rate",
+        "Preserve conflict versions or define a tested field or text merge"
       ],
       "model": "It may be acceptable for a low-value preference with a clear timestamp rule. A note can hold irreplaceable work. Rare conflicts still hurt, and device clocks can make a causally later edit lose. I would retain conflicting versions or use a field or text merge suited to the editor, with a visible recovery path. I would measure conflicts before adopting a complex CRDT, but never equate a low conflict rate with permission to silently delete work."
     },
@@ -70,35 +70,35 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "Vectors [3,1] and [2,2] arrive for the same field. What do they show?",
+      "q": "Vectors [3,1] and [2,2] describe edits to one field. How should a causal merge classify them?",
       "choices": [
-        "Concurrent histories requiring a merge policy",
-        "The first is newer because 3 is largest",
-        "The second can be discarded without loss"
+        "Concurrent; neither vector includes the other history",
+        "The first is later because its largest component is larger",
+        "They describe the same version because both components sum to four"
       ],
       "answer": 0,
-      "why": "Each vector exceeds the other in one component. Neither contains the complete other history."
+      "why": "Each vector is larger in one component. Summing counters discards the participant information needed to compare histories."
     },
     {
       "kind": "defend",
       "q": "Do we need one global event order? Follow-up: payments and click counters share the stream.",
       "checklist": [
-        "Separate dependent operations from independent ones",
-        "Scope ordering by business key",
-        "Explain partition throughput and causal links"
+        "Separate account spending decisions from independent click counts",
+        "Scope authority and stream order to the account or other invariant key",
+        "Preserve event ids and causal links when workflows cross partitions"
       ],
       "model": "A payment account needs an authority for spending decisions, while independent click counters can merge. A single global order would couple unrelated tenants and limit throughput. I would partition by the invariant's key, retain stable event ids and causal references where workflows cross keys, and explicitly coordinate the few operations that require a shared decision. A stream's per-partition sequence is not a global transaction."
     },
     {
       "kind": "quiz",
-      "q": "A convergent counter tracks sold tickets. Does convergence alone prevent selling past capacity?",
+      "q": "Two disconnected sellers share a convergent sold-ticket counter but have no allocated rights. What prevents overselling?",
       "choices": [
-        "Yes, every CRDT protects all invariants",
-        "No, enforce rights or coordinate the bounded decrement",
-        "Yes, if clocks are synchronized"
+        "Merge the counters frequently enough that both sellers eventually agree",
+        "Coordinate admission or allocate bounded rights before disconnection",
+        "Check each local counter before admitting a sale, then merge by maximum"
       ],
       "answer": 1,
-      "why": "Agreement after merging can still agree on an oversold total."
+      "why": "Local checks can both spend the last seat. Convergence alone only reveals the oversold total later."
     }
   ],
   "takeaway": "Use clocks to express what is known, and choose an explicit policy for concurrent work."

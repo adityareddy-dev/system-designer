@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "simplest-design",
   "title": "The simplest thing that works",
@@ -20,7 +20,7 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: three years",
-      "text": "Assume loaded engineering cost of $180,000 per engineer-year. Building a specialized queue needs 0.5 engineer for year one and 0.2 for each of years two and three: 0.9 engineer-years, or $162,000. Add $2,000/month infrastructure for 36 months: $72,000. Total is about $234,000. Buying at $4,000/month costs $144,000. Add 0.1 engineer-year integration and 0.05/year operations for three years: $45,000, total $189,000. Buying is about $45,000 cheaper under these assumptions. A 50% vendor price rise would add $72,000 and reverse the result unless other costs change. This is a sensitivity exercise, not catalog pricing."
+      "text": "Assume loaded engineering cost of $180,000 per engineer-year. Building a specialized queue needs 0.5 engineer for year one and 0.2 for each of years two and three: 0.9 engineer-years, or $162,000. Add $2,000/month infrastructure for 36 months: $72,000. Total is about $234,000. Buying at $4,000/month costs $144,000. Add 0.1 engineer-year integration and 0.05/year operations for three years: $45,000, total $189,000. Buying is about $45,000 cheaper under these assumptions. A 50% vendor price rise applying to all 36 months would add $72,000 and reverse the result unless other costs change. This is a sensitivity exercise, not catalog pricing."
     },
     {
       "kind": "numbers",
@@ -44,61 +44,61 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "The managed service costs twice the raw VMs. What comparison is missing?",
+      "q": "A managed service costs twice the raw VMs. What is needed before comparing build and buy?",
       "choices": [
-        "Only the size of the logo",
-        "Three-year total ownership cost and the requirements each option meets",
-        "The number of API endpoints alone"
+        "VM costs plus initial implementation effort, excluding ongoing operations",
+        "A common ownership horizon including people, recovery and exit costs",
+        "Vendor fees versus VM cost after assuming equal maintenance effort"
       ],
       "answer": 1,
-      "why": "Staff time, upgrades, recovery and an exit plan can dominate raw VM cost."
+      "why": "Operating effort can differ substantially. Include it explicitly along with the guarantees each option meets."
     },
     {
       "kind": "defend",
       "q": "Your design seems too simple for year two. Follow-up: traffic grows tenfold.",
       "checklist": [
-        "Show measured present capacity and growth sensitivity",
-        "Define triggers and a credible migration path",
-        "Keep correctness and recovery in the initial scope"
+        "Test 200 requests/s and the 2,000/s growth case with the actual write mix",
+        "Set a measured ceiling and allow time to migrate before reaching it",
+        "Include tested backups, restore targets and authorization initially"
       ],
       "model": "I would show today's tested capacity, the tenfold case and where the first ceiling lies. At 200 requests/s, tenfold traffic is 2,000/s, which may still fit one well-indexed store depending on the write mix. I would avoid promising that without a benchmark. Stable keys, modular boundaries and exportable data leave room for a later split. I would fund the migration before measured headroom or recovery time crosses its trigger, while retaining backups and correctness from day one."
     },
     {
       "kind": "read",
       "title": "A plan with triggers",
-      "text": "Month one: one deployable service, a transactional store, backups with a restore test, and basic user-outcome monitoring. Month six: add a cache or background queue only if measured latency or workload justifies it; keep the invariant in one place. Year two: split ownership or shard when an observed ceiling, team boundary or recovery target demands it. Set triggers such as sustained write utilization above a tested safe level or restore time exceeding the recovery objective. Keep identifiers, APIs and export paths ready for change. Simpler is not an excuse to omit durability, authorization or a viable rollback. The minimum design must still satisfy every binding requirement."
+      "text": "Month one: one deployable service, a transactional store, backups with a restore test, and basic user-outcome monitoring. Month six: add a cache or background queue only if measured latency or workload justifies it; keep the invariant in one place. Year two: split ownership or shard when an observed ceiling, team boundary or recovery target demands it. Start migration before forecast write utilization crosses the tested safe level or restore time exceeds the recovery objective. Include the time to migrate and verify, so the trigger leaves enough headroom. Keep identifiers, APIs and export paths ready for change. Simpler is not an excuse to omit durability, authorization or a viable rollback. The minimum design must still satisfy every binding requirement."
     },
     {
       "kind": "quiz",
-      "q": "One store meets tested peak and recovery targets. What is a good sharding trigger?",
+      "q": "One store meets tested peak and recovery targets. Which evidence most directly justifies planning a shard migration?",
       "choices": [
-        "The diagram looks small",
-        "Another team uses shards",
-        "Measured headroom or recovery time crosses an agreed threshold"
+        "The dataset doubled even though its tested working set and write load remain safe",
+        "Adding stateless API replicas requires adding the same number of database shards",
+        "Forecast headroom or restore time will cross a tested limit before migration can finish"
       ],
       "answer": 2,
-      "why": "A real ceiling justifies migration work; anticipated prestige does not."
+      "why": "Use a measured ceiling and migration lead time. Data growth or API replica count alone does not establish a need to shard."
     },
     {
       "kind": "defend",
       "q": "Buying is cheaper in your table. Why might we still build? Follow-up: who owns it after launch?",
       "checklist": [
-        "Name a requirement that changes the cost decision",
-        "Include an accountable operating team",
-        "Recalculate risk and exit cost"
+        "Name a residency rule or missing guarantee that rules out the cheaper vendor",
+        "Assign a team capacity for upgrades, incidents and succession",
+        "Recalculate operating effort, migration-out cost and remaining risk"
       ],
       "model": "A hard residency rule, a missing guarantee or a core differentiating feature could rule out that vendor. I would make the requirement explicit and revise the comparison, including the cost of meeting it ourselves. A named team needs capacity for upgrades, incidents and succession after the original authors leave. If we cannot staff that ownership, a more expensive supported option or a narrower product may be the responsible decision."
     },
     {
       "kind": "quiz",
-      "q": "A single service is simple but has no restore test. Is it sufficient?",
+      "q": "A single service has backups but has never tested a restore. What is still unproven?",
       "choices": [
-        "No, simplicity still has to meet durability and recovery requirements",
-        "Yes, fewer services eliminate data loss",
-        "Yes, backups never need verification"
+        "Whether it can recover correct data within its recovery targets",
+        "Nothing, if every backup job reports success",
+        "Only recovery speed; a completed backup guarantees correct restoration"
       ],
       "answer": 0,
-      "why": "A minimal design must satisfy its promises, including restoration after failure."
+      "why": "Backup success does not establish restore correctness or duration. Test both against the recovery promise."
     }
   ],
   "takeaway": "Choose the smallest design that meets the promise, and attach measured triggers to future complexity."

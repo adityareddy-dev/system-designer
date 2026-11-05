@@ -1,4 +1,4 @@
-// Original advanced problems. Aggregate sim scope and protocol obligations are stated in each brief.
+// Advanced problems. Each brief states the scored boundary and protocol obligations.
 export default {
   "group": {
     "id": "devtools",
@@ -28,7 +28,7 @@ export default {
         },
         {
           "q": "What counts as an accepted chunk?",
-          "a": "A durable queue acknowledgement with a stable chunk id. Search visibility may lag by up to a minute. Collectors retain unacknowledged chunks and use backoff; an HTTP success is not proof that a chunk is already searchable."
+          "a": "The API verifies a stable tenant-scoped chunk id and checksum, durably uploads the chunk, then acknowledges it. Search visibility may lag by up to a minute while index metadata is published. Collectors retain unacknowledged chunks and retry the same identity with backoff."
         },
         {
           "q": "What is retained?",
@@ -63,8 +63,8 @@ export default {
         "homeRegion": "us",
         "notes": [
           "At the flat planning rate, 1 chunk/s × 100 MB is about 8.64 TB/day and 259.2 TB over 30 days, before metadata and audit exceptions (approx.).",
-          "The score measures chunk acceptance and small reads. It does not model label index construction, text scan work, tenant fairness or redaction.",
-          "The queue is a durable staging area; object chunks are immutable. Chunk ids and per-stream sequence metadata make retries reconcilable.",
+          "The score measures durable chunk acceptance and small reads. It does not model label index construction, text scan work, tenant fairness or redaction.",
+          "A catalog batch represents a 100 MB object upload, not one message sent through a standard queue. Object chunks are immutable. Stable chunk ids and sequence ranges make retries reconcilable; index publication follows durable upload.",
           "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score."
         ]
       },
@@ -154,15 +154,15 @@ export default {
       ],
       "hints": [
         "Choose the index from the normal query shape. Which labels keep stream count bounded?",
-        "Keep chunk ingest durable, immutable and separate from expensive query work. Limit scanned bytes and concurrency per tenant.",
-        "Use a shared front door, tenant limiter, durable queue and block-building workers to object storage. Cache immutable reads with tenant-aware keys. Budget the label index and query fan-out outside the simplified sim."
+        "Keep immutable chunk uploads durable and separate from expensive query work. Limit scanned bytes and concurrency per tenant.",
+        "Use an authenticated front door and admission limits. Upload complete chunks directly to object storage, then publish label-index metadata. Cache immutable chunk reads with tenant-aware keys. Budget label-index memory and query fan-out separately."
       ],
       "editorial": {
-        "summary": "Authenticate the tenant before admission. Build an index of bounded labels and time ranges that points to immutable compressed chunks. Ingest accepts stable chunk ids into durable staging, workers publish verified chunks, and query servers select only relevant chunks before scanning text. The reference measures staging and chunk retrieval; its API fleet stands for the query coordinator and label-index logic. It does not claim to simulate a full Loki implementation.",
+        "summary": "Authenticate tenants before admission. Collectors upload already compressed chunks through the API to object storage. Acknowledge only after durable object acceptance, then publish label and time metadata idempotently. Queries select chunks through that index before scanning text. The API fleet includes index publication, query coordination and reconciliation. The graph measures object uploads and small reads; it is a simplified label-indexed service, not a claim to reproduce Loki's ingest protocol.",
         "designs": [
           {
             "name": "Durable chunks and bounded label queries",
-            "why": "Batch writes can only reach the queue and workers; read lookups can only reach the cache and object storage. Both use the same real front door, so there is no collector-to-query-server workaround. The label index is a derived structure built by the service from committed chunk metadata. Rebuild and reconciliation preserve visibility after a crash; index sizing is a worked design obligation rather than an extra simulated store.",
+            "why": "Batch uploads go directly from the API to object storage; reads can use the cache. A 100 MB chunk is an object, not a standard queue message. The API publishes a derived label index only after the chunk is durable and exposes the indexing watermark. A reconciler finds uploaded chunks whose publication was interrupted. Chunk metadata must preserve enough information to rebuild the index.",
             "graph": {
               "nodes": [
                 {
@@ -210,27 +210,6 @@ export default {
                   }
                 },
                 {
-                  "ref": "queue",
-                  "type": "queue",
-                  "x": 60,
-                  "y": -120,
-                  "knobs": {
-                    "retentionDays": 4
-                  }
-                },
-                {
-                  "ref": "builders",
-                  "type": "worker-pool",
-                  "x": 240,
-                  "y": -120,
-                  "units": 6,
-                  "zones": 3,
-                  "knobs": {
-                    "retries": 2,
-                    "backoff": "exponential-jitter"
-                  }
-                },
-                {
                   "ref": "cache",
                   "type": "distributed-cache",
                   "x": 60,
@@ -245,7 +224,7 @@ export default {
                 {
                   "ref": "chunks",
                   "type": "object-storage",
-                  "x": 420,
+                  "x": 240,
                   "y": 0,
                   "knobs": {
                     "retentionDays": 30
@@ -285,14 +264,6 @@ export default {
                 ],
                 [
                   "api",
-                  "queue"
-                ],
-                [
-                  "queue",
-                  "builders"
-                ],
-                [
-                  "builders",
                   "chunks"
                 ],
                 [
@@ -326,11 +297,11 @@ export default {
         "tradeoffs": [
           "A label index avoids continuous full-text indexing cost, but broad word searches scan more chunk bytes. Bound them and show pending results.",
           "Never publish an index pointer before its immutable chunk is durable. Orphan chunks can be reconciled later; dangling pointers create missing results. Retries reuse chunk ids and sequence ranges.",
-          "Use tenant, authorization scope, labels, time bounds and query semantics in cache keys. Cache immutable ranges longer than the changing head.",
+          "Immutable chunk bytes can be cached by tenant, object identity and authorization scope. Query-result keys also need labels, time bounds and query semantics. Late uploads change historical query results, so use a watermark with invalidation or a bounded TTL.",
           "The rate limiter represents admission, not a proof of per-tenant fair queueing. Bound bytes/s, streams, new-stream rate, scan bytes and query concurrency, then use weighted queues or cells.",
           "The catalog prices storage and small request operations. The worked scan example adds CPU, decompression and object-read amplification that the score cannot price accurately."
         ],
-        "realWorld": "At roughly 100 MB/s compressed, thirty days hold about 259 TB before metadata. At the catalog's $0.023/GB-month, that payload alone is about $5,962/month. Index size, retained staging copies, replication, query scans and people add cost (approx.)."
+        "realWorld": "At roughly 100 MB/s compressed, thirty days hold about 259 TB before metadata. At the catalog's $0.023/GB-month, that payload alone is about $5,962/month. Index size, temporary uploads, replication, query scans and people add cost (approx.)."
       },
       "correctness": {
         "prompt": "A worker uploads a chunk, then crashes before publishing its label index entry. How do retries and readers avoid missing or duplicating logs?",
@@ -339,7 +310,7 @@ export default {
           {
             "label": "Publication order",
             "options": [
-              "Publish index pointer before upload",
+              "Publish the index when upload starts, then retry the object separately",
               "Verify durable chunk, then publish pointer idempotently"
             ],
             "correct": 1,
@@ -349,7 +320,7 @@ export default {
             "label": "Tenant budget",
             "options": [
               "Limit scanned bytes and concurrent queries per tenant",
-              "Only cap global HTTP requests/s"
+              "Give tenants equal HTTP request limits regardless of query width"
             ],
             "correct": 0,
             "explanation": "Wide scans consume far more work than small lookups; a global rate does not establish fairness."
@@ -377,7 +348,7 @@ export default {
       "clarify": [
         {
           "q": "What reaches the sampler?",
-          "a": "About 10,000 traces/s, 20 spans/trace and 500 bytes/span before compression. A tail decision window of 30 seconds requires at least 3 GB of raw buffering before overhead and redundancy (approx.)."
+          "a": "About 10,000 traces/s, 20 spans/trace and 500 bytes/span before compression. If average span residence is 30 seconds, budget about 3 GB of raw payload before overhead and redundancy. A 30-second decision timer alone does not establish residence time; span arrival patterns and decision caches also matter (approx.)."
         },
         {
           "q": "Must we keep every trace?",
@@ -417,7 +388,7 @@ export default {
         "notes": [
           "Raw incoming spans are about 100 MB/s; 10% retention gives about 10 MB/s before compression. One catalog batch is 100 MB, so 0.1 retained blocks/s is the planning rate (approx.).",
           "Seven days at that retained rate is about 6.048 TB, before indexes, replication and an error reserve (approx.).",
-          "The block queue is after sampling. It does not protect spans not yet selected. Durable collector spooling or an explicit loss budget is a separate decision.",
+          "The reference starts with already selected and formed blocks. The API acknowledges only after object storage accepts them durably. Raw-span collection, sampling, durable collector spooling and index publication need separate capacity and failure tests.",
           "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score."
         ]
       },
@@ -497,10 +468,10 @@ export default {
           "ask": true
         },
         {
-          "label": "Thirty-second raw tail buffer",
+          "label": "Illustrative raw tail buffer",
           "value": 3000,
           "unit": "MB",
-          "how": "100 MB/s × 30 seconds, before metadata and redundancy (approx.).",
+          "how": "100 MB/s × assumed 30-second average residence, before metadata and redundancy (approx.).",
           "ask": true
         },
         {
@@ -514,14 +485,14 @@ export default {
       "hints": [
         "Does the sampling decision need to know whether the request eventually failed?",
         "Head sampling saves network earlier but cannot see future errors. Tail sampling receives and buffers spans before choosing. Keep all spans of a trace on one decision group.",
-        "After the sampler, durable block staging and workers write object storage. Trace-id lookups use a cache. Budget and test collector memory, late decisions, raw ingest and error-priority overflow separately."
+        "After selection, collectors form blocks and upload them through the API to object storage, then publish trace-id lookup metadata. Cache immutable reads. Size raw collection, tail decisions, late spans and overflow separately."
       ],
       "editorial": {
-        "summary": "Collectors propagate trace context, redact sensitive attributes and group spans by trace id. Choose head sampling when early bandwidth control dominates; choose tail selection for outcome-based retention with bounded memory, a late-span policy and explicit overflow. Blocks in object storage and a trace-id index serve retrieval. The reference begins after the collector's sampling decision, so its traffic score is not evidence that the sampler can handle the raw stream.",
+        "summary": "Applications and collectors propagate trace context and redact sensitive attributes. Tail selection groups spans by trace id with a bounded decision window, a late-span policy and explicit overflow. The reference starts after selection and block formation: the API durably uploads blocks, then publishes trace-id lookup metadata. It measures neither raw collection nor the sampling guarantee. Tempo also supports attribute queries over columnar Parquet blocks; a trace-id lookup structure is not a description of all its search capabilities.",
         "designs": [
           {
-            "name": "Retained blocks with cached trace lookups",
-            "why": "The shared API accepts already selected blocks into a durable queue. Builders publish immutable blocks and a derived trace-id lookup structure. Small trace-id lookups read cached object/index data. The collector stays a distinct upstream protocol obligation, rather than an observer falsely placed on the request path. Source-specific roles are recorded for later engine support.",
+            "name": "Durable blocks with cached trace lookups",
+            "why": "The shared API durably uploads already selected immutable blocks and publishes lookup metadata idempotently. A crash after upload leaves an orphan that reconciliation can index. Cached object and index reads serve trace-id lookups; recent-query visibility requires a publication watermark. There is no 100 MB standard queue message. Real-time span reception and recent trace assembly sit before this scored boundary.",
             "graph": {
               "nodes": [
                 {
@@ -569,27 +540,6 @@ export default {
                   }
                 },
                 {
-                  "ref": "queue",
-                  "type": "queue",
-                  "x": 60,
-                  "y": -120,
-                  "knobs": {
-                    "retentionDays": 4
-                  }
-                },
-                {
-                  "ref": "builders",
-                  "type": "worker-pool",
-                  "x": 240,
-                  "y": -120,
-                  "units": 6,
-                  "zones": 3,
-                  "knobs": {
-                    "retries": 2,
-                    "backoff": "exponential-jitter"
-                  }
-                },
-                {
                   "ref": "cache",
                   "type": "distributed-cache",
                   "x": 60,
@@ -604,7 +554,7 @@ export default {
                 {
                   "ref": "chunks",
                   "type": "object-storage",
-                  "x": 420,
+                  "x": 240,
                   "y": 0,
                   "knobs": {
                     "retentionDays": 7
@@ -644,14 +594,6 @@ export default {
                 ],
                 [
                   "api",
-                  "queue"
-                ],
-                [
-                  "queue",
-                  "builders"
-                ],
-                [
-                  "builders",
                   "chunks"
                 ],
                 [
@@ -684,9 +626,9 @@ export default {
         ],
         "tradeoffs": [
           "Head sampling can discard the trace before an error occurs. Select consistently by trace id so services do not independently retain fragments.",
-          "Tail sampling can prioritize observed errors but must receive the raw stream and wait. A 30-second window needs about 3 GB raw state here; process overhead, replicas and long traces add more.",
+          "Tail selection receives the raw stream before choosing. At an assumed 30-second average residence, this example buffers about 3 GB raw payload; arrival timing, process overhead, replicas, decision caches and long traces change that estimate.",
           "At 100 MB/s raw, a hard 10 MB/s storage budget cannot keep every trace if errors dominate. Reserve capacity and prioritize, or declare a loss policy. Monitor dropped and incomplete traces.",
-          "A trace-id index is small compared with indexing every attribute. Arbitrary attribute search needs additional indexes or bounded block scans with its own budget.",
+          "A trace-id lookup path is cheaper than indexing every attribute. Attribute queries can use columnar block scans and selective indexes with a separate scanned-byte budget. Current Tempo supports TraceQL over Parquet; it is not limited to trace-id retrieval.",
           "Keep complete request metrics for SLI denominators. Outcome-biased retained traces cannot directly measure the population error rate. Exemplars link selected observations without making trace ids metric labels."
         ],
         "realWorld": "This example has about 200,000 spans/s before sampling. Ten percent baseline storage is about 864 GB/day before compression; actual retention rises when error-priority traces exceed the baseline. Collector buffering and query scans need separate measurements (approx.)."
@@ -698,7 +640,7 @@ export default {
           {
             "label": "Tail capacity",
             "options": [
-              "Size only for the kept 10%",
+              "Size the input collector for the retained baseline because unselected spans are discarded",
               "Receive raw spans and budget decision state before retention"
             ],
             "correct": 1,
@@ -882,14 +824,14 @@ export default {
       "hints": [
         "Separate series count from sample count. Which customer can exhaust memory without sending more bytes?",
         "Set tenant budgets for writes and reads independently, then schedule fairly. A limiter alone cannot prove fairness.",
-        "Use three-zone replicated ingestion and a WAL inside the time-series store, immutable object blocks, tenant-aware cached reads and an uncached alert path. Work through shuffle overlap and shared dependencies before claiming cell isolation."
+        "Choose replicated ingester WALs or a durable ingest log before object blocks. Use tenant-aware cached reads and a fresh alert path. Explain acknowledgement, visibility lag, shuffle overlap and shared dependencies; the catalog integrates storage internals."
       ],
       "editorial": {
-        "summary": "Hash tenant and series identity onto a replicated ingest ring and durably record the acknowledged data. Flush blocks to object storage, compact them and expire by policy. Split long queries into bounded tasks with fair scheduling. Enforce tenant limits before expensive allocation and again on actual query work. The reference uses the catalog's integrated time-series store. It measures aggregate headroom during capacity loss, not the correctness of tenant scheduling or cardinality accounting.",
+        "summary": "Choose and state the ingest architecture. Classic ingester replication hashes series onto replicas with WALs; Mimir's ingest-storage architecture instead commits writes to Kafka partitions before ingesters consume them. Both need a separate query-visibility policy. The catalog integrates recent storage and historical object blocks in one time-series element. Split queries into bounded, fairly scheduled tasks and enforce tenant limits before expensive allocation. The score measures aggregate headroom, not cardinality handling or tenant isolation.",
         "designs": [
           {
             "name": "Shared admission and a three-zone time-series fleet",
-            "why": "Both sources enter one authentic front door. The API contains distributors and query coordination; the integrated store contains WAL, recent samples and historical blocks. Read caching is tenant-aware by design; report/alert evaluations stay on the uncached path in this graph. No link connects agents to an unrelated query service to satisfy the current global mix.",
+            "why": "Both sources enter a shared authenticated API. Its distributors and query coordinators use the integrated time-series store. Repeated small reads can use a tenant-aware cache; report requests stay on the uncached path. In production, the store's acknowledged-write protocol, recent-data visibility and recovery must be specified separately. The graph abstracts those internals rather than reproducing one Mimir deployment.",
             "graph": {
               "nodes": [
                 {
@@ -1040,9 +982,9 @@ export default {
           }
         ],
         "tradeoffs": [
-          "R = W = 2 of a fixed three-replica set intersects, but version handling and a defined protocol are still required. Zone placement affects write latency and recovery bandwidth.",
+          "In a fixed-set quorum design, R = W = 2 of three replicas intersects, but reconciliation and the acknowledgement failure boundary still need a protocol. Mimir ingest storage uses Kafka durability rather than this ingester write quorum. Query visibility must account for consumer lag.",
           "A 100,000-series quota at an assumed 2 KB per active series is about 200 MB state per tenant before replication. Multiply only actual active series, not every tenant's unused quota reservation, unless the product guarantees reserved capacity.",
-          "Use tenant ids in cache keys and authorization checks. A cache improves repeated dashboard reads, but alert freshness needs a separate policy.",
+          "Use tenant identity, authorization scope, query semantics and evaluation time in result-cache keys. Late samples and deletions can change old results even when blocks are immutable. Use a stable-data cutoff or invalidation; alert evaluations need a separately enforced freshness policy.",
           "Shuffle sharding reduces repeated overlap; it does not remove overlap. With 2 of 10 workers, identical pairs occur with probability 1/45, but any overlap occurs with probability 17/45.",
           "Cells contain only failures whose dependencies remain cell-local. Independent storage, queues and staged deploys cost spare capacity but reduce reach. A common critical key service can still affect everyone."
         ],
@@ -1055,7 +997,7 @@ export default {
           {
             "label": "Write admission",
             "options": [
-              "Samples/s only",
+              "Samples/s and label-byte limits, without series or churn accounting",
               "Active series, churn, label size and samples/s"
             ],
             "correct": 1,
@@ -1065,7 +1007,7 @@ export default {
             "label": "Read fairness",
             "options": [
               "Bound and fairly schedule query work per tenant",
-              "Put every tenant in one unlimited FIFO"
+              "Give each tenant equal requests/s while all queries share one FIFO"
             ],
             "correct": 0,
             "explanation": "A single FIFO lets broad queries delay cheap work from other tenants."
@@ -1139,7 +1081,8 @@ export default {
           "Under-a-second is a foreground connected-device goal. Background push and offline devices have eventual delivery. The scored notify path measures sender acceptance, not device receipt.",
           "The graph carries encrypted operations and small reads. It does not implement offline storage, conflict resolution, cursors, end-to-end encryption, recovery or tombstones. A traffic pass does not prove these properties.",
           "KMS and audit nodes protect server metadata and record content-free access/deletion receipts. They are not the end-to-end content key service.",
-          "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score."
+          "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score.",
+          "The 900 ms target measures one request. Subsecond propagation needs an end-to-end budget across commit, change notification, pull and local application; a traffic pass does not verify it."
         ]
       },
       "traffic": {
@@ -1230,7 +1173,7 @@ export default {
         "Route encrypted operations through the API to a synchronous authority. Store a server outbox with each accepted change for later wake delivery, deduplicate wake jobs, preserve conflicts and keep tombstones. Explain key recovery and local search."
       ],
       "editorial": {
-        "summary": "Each device has an encrypted local database, a transactionally written outbox and a committed pull cursor. The server authenticates devices, deduplicates tenant-scoped operation ids, saves ciphertext and an event in one transaction, and returns a version. Connected clients pull deltas; a wake worker uses the durable server outbox and retries push. The reference models the authority and push sender as separate requests through the API. It does not pretend the sim verifies their transactional relationship.",
+        "summary": "Each device has an encrypted local database, a transactionally written outbox and a committed pull cursor. The server authenticates devices, deduplicates tenant-scoped operation ids, saves ciphertext and an event in one transaction, and returns the accepted version without moving the device's pull cursor past unseen remote edits. Connected clients pull deltas; a wake worker uses the durable server outbox and retries push. The reference models the authority and push sender as separate requests through the API. It does not pretend the sim verifies their transactional relationship.",
         "designs": [
           {
             "name": "Encrypted operations with a synchronous authority",
@@ -1387,7 +1330,7 @@ export default {
         "tradeoffs": [
           "Conflict copies are easier to explain and test than arbitrary text merging, but users must resolve them. A CRDT can reduce manual conflicts at the cost of metadata, compaction rules and editor-specific semantics.",
           "End-to-end encryption moves search and key handling to devices. Recovery needs an authorized device or a recovery secret; password reset alone cannot reconstruct content keys. Metadata still leaks timing and sizes.",
-          "Tombstones cannot expire independently of the supported offline horizon and replica repair. Devices returning beyond the horizon need a fresh snapshot, with unsynced work preserved and base versions validated.",
+          "Tombstones cannot expire independently of the supported offline horizon and replica repair. Devices returning beyond the horizon need a fresh snapshot, with unsynced work preserved and base versions validated. After tombstones expire, reject old epochs or unknown base versions; a fresh snapshot alone does not make stale queued uploads safe.",
           "A push acknowledgement is not device delivery. Durable cursors, retries and periodic or foreground pulls recover missed wakes. Batching reduces radio wakeups; attachment sync can prefer charging and Wi-Fi.",
           "Deletion jobs cover ciphertext versions, local indexes, caches, object attachments and backups under a stated deadline. Revoking a device cannot erase plaintext it already copied."
         ],
@@ -1395,13 +1338,13 @@ export default {
       },
       "correctness": {
         "prompt": "A month-old laptop uploads an edited note that the phone deleted. How do the cursor, base version and tombstone keep the deletion from silently disappearing?",
-        "discussion": "Keep a durable local edit and operation id while pulling server changes. A tombstone identifies the deleted note and version. The server validates the edit base version, then preserves a conflict or requests user resolution instead of treating an old snapshot as truth. If history expired, download a new snapshot without discarding local unsynced operations and rebase them explicitly. Use stable ids across retries. Commit cursor advancement with local application of the pulled changes. Content encryption and key recovery require separate endpoint tests.",
+        "discussion": "Keep a durable local edit and operation id while pulling server changes. A tombstone identifies the deleted note and version. The server validates the edit base version, then preserves a conflict or requests user resolution instead of treating an old snapshot as truth. If history expired, download a new snapshot without discarding local unsynced operations and rebase them explicitly. Use stable ids across retries. Commit cursor advancement with local application of the pulled changes. Content encryption and key recovery require separate endpoint tests. Upload acknowledgement and pull progress are separate. A server-assigned upload version is not evidence that earlier remote changes have been downloaded.",
         "fields": [
           {
             "label": "Local save",
             "options": [
               "Commit edit and outbox together before confirming local save",
-              "Send over the network, then hope the app remains open"
+              "Save the note locally, then create its outbox entry in a second transaction"
             ],
             "correct": 0,
             "explanation": "The outbox survives a crash or closed app before upload."
@@ -1409,7 +1352,7 @@ export default {
           {
             "label": "Concurrent edit policy",
             "options": [
-              "Keep only the greatest device timestamp",
+              "Apply last-write-wins using synchronized device wall clocks",
               "Preserve conflict versions or apply a specified tested merge"
             ],
             "correct": 1,
@@ -1482,7 +1425,7 @@ export default {
         "homeRegion": "us",
         "notes": [
           "Cloud peak is a reconnect burst: 450 one-KB summaries/s, 40 small reads/s and 10 wake notifications/s. Normal opt-in uploads are at most 100,000 summaries/day ≈ 1.16/s; the daily curve is a conservative capacity drill, not the sparse average billing forecast (approx.).",
-          "One year of 100,000 × 1 KB/day summaries is about 36.5 GB before copies and metadata. Raw readings remain local; the sim storage figure is cloud summary payload only (approx.).",
+          "One year of 100,000 × 1 KB/day summaries is about 36.5 GB before copies, encryption tags and metadata. Raw readings remain local; the sim storage figure is cloud summary payload only (approx.).",
           "The scored no-loss target concerns acknowledged cloud summaries. The device log, fourteen-day outage reserve, consent, encryption keys and proof of deletion are worked protocol obligations.",
           "The sender target concerns push acceptance only. No cloud availability percentage is a guarantee of medical safety or survival of a destroyed device.",
           "The current sim applies a global request mix. All source paths share a real authenticated front door. workloadPlan records source-specific rates for a later engine; it is descriptive and does not affect this score."
@@ -1730,7 +1673,7 @@ export default {
           "A saved local reading is protected against the stated software/network outage, not device destruction, power loss before flush or an unbounded disconnection. Define flush semantics and a visible low-space response.",
           "Daily 1 KB summaries minimize upload compared with about 1.38 MB/day raw data, but lose server-side detail and still reveal sensitive health trends. Optional exports require separate consent and expiry.",
           "Use device sequence order for deduplication; record capture-time uncertainty when clocks change. A late upload must not replace a newer summary without a version rule.",
-          "Revocation stops future authorized sync, not already copied plaintext. Deletion tracks active summaries, versions, caches, exports and backups, and restores must reapply deletion records before serving. Recovery cannot secretly bypass end-to-end content keys."
+          "Revocation stops future authorized sync, not already copied plaintext. Deletion tracks active summaries, versions, caches, exports and backups, and restores must reapply deletion records before serving. Recovery cannot secretly bypass end-to-end content keys. A disconnected device cannot receive a deletion command immediately. Erase managed cloud copies on the stated schedule, reject revoked device uploads, and state that endpoint deletion awaits reconnection or local action."
         ],
         "realWorld": "For 100,000 devices, one daily 1 KB summary is about 100 MB/day cloud payload. Uploading all assumed raw readings would be about 138 GB/day before overhead. Radio wakeups and tail energy matter as well as bytes, so batch uploads and measure on real devices (approx.)."
       },
@@ -1741,7 +1684,7 @@ export default {
           {
             "label": "Outage promise",
             "options": [
-              "Cloud uptime proves local capture durability",
+              "A volatile local buffer with cloud retries protects capture through reboot",
               "A tested device log and sufficient local reserve protect saved readings"
             ],
             "correct": 1,
@@ -1751,7 +1694,7 @@ export default {
             "label": "Cloud collection",
             "options": [
               "Only consented encrypted summaries and explicit exports",
-              "Every raw reading for possible future use"
+              "Encrypted raw readings with rotating pseudonyms and a server retention limit"
             ],
             "correct": 0,
             "explanation": "Local processing and sparse collection reduce the sensitive archive."

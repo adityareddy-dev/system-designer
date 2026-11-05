@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "team-boundaries",
   "title": "Designs that other teams must live with",
@@ -44,61 +44,61 @@ export default {
     },
     {
       "kind": "quiz",
-      "q": "Three teams write the same table and each thinks another owns recovery. What should the design settle?",
+      "q": "Three teams write one table and each assumes another owns recovery. What must their contract establish?",
       "choices": [
-        "Only the table name",
-        "Authoritative write rules, recovery owner and change process",
-        "Which diagram color is best"
+        "A shared on-call channel with no authority to settle conflicting writes",
+        "Allowed writers, invariant enforcement, recovery owner and change rules",
+        "One API schema while leaving direct table writes unrestricted"
       ],
       "answer": 1,
-      "why": "Ownership is behavior and operational responsibility, not a label alone."
+      "why": "A communication channel and schema are useful, but do not assign data authority or recovery decisions."
     },
     {
       "kind": "defend",
       "q": "Where would you split this service? Follow-up: another team needs to change independently.",
       "checklist": [
-        "Start with invariant and authoritative data ownership",
-        "Balance independent deployment against coordination cost",
-        "Assign on-call and contract responsibilities"
+        "Map writes that must commit together and assign their authority",
+        "Explain whether an API boundary can preserve the invariant",
+        "Assign versioning, dependency-failure behavior and recovery ownership"
       ],
       "model": "I would first map the writes that must commit together and who can operate them. A separate team can own a coherent capability through an API without directly mutating another team's tables. If that boundary splits an invariant, we need a redesigned workflow or must keep the transaction together. I would document data authority, versioning, failure behavior and on-call before treating independent deployment as a benefit. A module boundary may be enough until the operating case is clear."
     },
     {
       "kind": "read",
       "title": "Write a document people can disagree with",
-      "text": "Start with the problem, user promises, explicit non-goals and measured constraints. Show one request path, data ownership and the key invariant. Record alternatives and why they lost, then failures, costs, security boundaries, rollout and open questions. Ask reviewers to challenge a specific decision. API contracts need field semantics, error states, idempotency, rate limits and compatibility rules; data contracts need schema, meaning, freshness and deletion behavior. Prefer additive changes, tolerant readers where safe and explicit versions for incompatible meaning. Publish deprecation dates, contact owners, instrument use, offer a migration path and test old clients. Stop only with evidence that consumers have moved or an agreed exception policy. An empty dashboard is not proof if an annual job has not run."
+      "text": "Start with the problem, user promises, explicit non-goals and measured constraints. Show one request path, data ownership and the key invariant. Record alternatives and why they lost, then failures, costs, security boundaries, rollout and open questions. Ask reviewers to challenge a specific decision. API contracts need field semantics, error states, idempotency, rate limits and compatibility rules; data contracts need schema, meaning, freshness and deletion behavior. Prefer additive changes, tolerant readers where safe and explicit versions for incompatible meaning. Publish deprecation dates, contact owners, instrument use, offer a migration path and test old clients. Remove the old endpoint only with evidence that consumers have moved or under an agreed exception policy. An empty dashboard is not proof if an annual job has not run."
     },
     {
       "kind": "quiz",
-      "q": "Ninety percent of API callers migrated. Can the endpoint be removed?",
+      "q": "Ninety percent of callers migrated to a new API. What evidence supports removing the old endpoint?",
       "choices": [
-        "Yes, percentages define compatibility",
-        "Yes, if the website works",
-        "Only after remaining callers are identified and migrated or covered by agreed policy"
+        "No calls appeared in the last month, even though annual jobs exist",
+        "The website and newest mobile app pass their tests",
+        "Remaining callers are identified and migrated or covered by an agreed exception policy"
       ],
       "answer": 2,
-      "why": "A small number of important or infrequent consumers can still make removal unsafe."
+      "why": "Important infrequent or older consumers can remain after the most visible clients migrate."
     },
     {
       "kind": "defend",
       "q": "How will you deprecate an API used by teams you do not know? Follow-up: one annual caller never appears in the last month's logs.",
       "checklist": [
-        "Instrument caller identity and consult the owner registry",
-        "Provide compatibility, deadlines and migration support",
-        "Account for infrequent jobs and an exception process"
+        "Inventory caller identities through credentials, code and owners",
+        "Publish a replacement, support window and owner-tested migration",
+        "Account for annual jobs and record exceptions before removal"
       ],
       "model": "I would inventory consumers from credentials, code references, owners and telemetry, then publish the replacement and a support window. Usage logs are evidence, but a month misses annual jobs. I would ask identified owners to test the replacement and check schedules, run a controlled warning phase and keep an explicit exception owner. Removal needs a decision about the remaining risk. I would record that decision so a future on-call engineer does not have to reconstruct it during an outage."
     },
     {
       "kind": "quiz",
-      "q": "Two actions must preserve one local transaction invariant and are owned by one team. What is a reasonable starting boundary?",
+      "q": "Two actions share a required local transaction invariant and one operating team. What is a reasonable initial boundary?",
       "choices": [
-        "One cohesive module or service, unless another requirement justifies splitting",
-        "Separate services for each table by default",
-        "A shared writable database with no authority"
+        "One cohesive module or service that commits the invariant locally",
+        "Separate services with compensations assumed to preserve the same atomic visibility",
+        "Separate services that each update their own row without a shared decision"
       ],
       "answer": 0,
-      "why": "A network boundary adds failure and coordination. It should serve an actual ownership or scaling need."
+      "why": "Splitting the writes changes failure and visibility semantics. Keep the transaction local unless another requirement warrants redesigning it."
     }
   ],
   "takeaway": "Name the invariant, the owner and the compatibility promise before drawing a team boundary."

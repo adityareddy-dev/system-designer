@@ -1,4 +1,4 @@
-// Original lesson data. Worked figures are approximations, not engine measurements.
+// Lesson data. Worked figures are approximations, not engine measurements.
 export default {
   "id": "logs-traces",
   "title": "Logs and traces",
@@ -15,12 +15,12 @@ export default {
     {
       "kind": "read",
       "title": "Index a little or index the words",
-      "text": "A label-indexed log store maps bounded labels and time ranges to compressed chunks in object storage. It then scans selected chunks for words. Cheap ingestion and a small index suit known service and time filters; broad text searches may read many bytes. A full-text index maps words to matching records and speeds some searches, at the cost of index writes, storage and memory. Keep request ids as fields or structured metadata rather than creating millions of streams. Neither approach excuses access control or secret removal before export. Traces group spans by trace id and parent relationships; clocks can distort displayed duration, so causality is stronger than absolute timestamps."
+      "text": "A label-indexed log store maps bounded labels and time ranges to compressed chunks in object storage. It then scans selected chunks for words. Cheap ingestion and a small index suit known service and time filters; broad text searches may read many bytes. A full-text index maps words to matching records and speeds some searches, at the cost of index writes, storage and memory. Keep request ids as fields or structured metadata rather than creating millions of streams. Neither approach excuses access control or secret removal before export. Traces group spans by trace id and parent relationships; clock skew can distort cross-host placement and inferred latency. Measure a local span duration with a monotonic clock where possible; parent and link identities express relationships that wall-clock order cannot prove."
     },
     {
       "kind": "read",
       "title": "Worked example: sampling trade-offs",
-      "text": "Assume 10,000 traces/s, 20 spans/trace and 500 bytes/span before compression. Raw spans are about 100 MB/s or 8.64 TB/day. A 10% head sample keeps about 0.864 TB/day if chosen consistently for the whole trace. It cannot know that a later span will fail. Tail sampling waits for spans, then selects errors, slow traces and a baseline. A 30-second decision window holds roughly 3 GB of raw spans at this load, before metadata and replicas. Late or missing spans and collector failure can still yield incomplete traces. The sim does not implement sampling or trace assembly, so these are explicit worked assumptions."
+      "text": "Assume 10,000 traces/s, 20 spans/trace and 500 bytes/span before compression. Raw spans are about 100 MB/s or 8.64 TB/day. A 10% head sample keeps about 0.864 TB/day if chosen consistently for the whole trace. It cannot know that a later span will fail. Tail sampling waits for spans, then selects errors, slow traces and a baseline. For a sizing example, assume spans remain buffered for an average of 30 seconds. At this load that is roughly 3 GB of raw spans, before metadata and replicas. A 30-second decision timer alone does not establish average residence time: span arrival times, decision caches and late spans change memory use. Late or missing spans and collector failure can still yield incomplete traces. The sim does not implement sampling or trace assembly, so these are explicit worked assumptions."
     },
     {
       "kind": "numbers",
@@ -36,69 +36,69 @@ export default {
           "how": "100 MB/s × 86,400 × 0.1"
         },
         {
-          "label": "Tail buffer floor",
+          "label": "Illustrative tail buffer",
           "value": "≈ 3 GB",
-          "how": "100 MB/s × 30 s, before overhead and copies"
+          "how": "100 MB/s × assumed 30 s average residence, before overhead and copies"
         }
       ]
     },
     {
       "kind": "quiz",
-      "q": "A trace fails only at its last span. What can a 10% head sampler promise?",
+      "q": "A trace fails at its last span. A consistent uniform 10% head sampler is independent of outcome. What can it promise?",
       "choices": [
-        "It keeps every failed trace",
-        "It keeps roughly 10% if selection is independent of outcome",
-        "It uses no network bandwidth for selected traces"
+        "Retention of the failed trace because the last span can revise the head decision",
+        "About a 10% chance of retaining that trace, subject to delivery loss",
+        "A 10% chance per span, giving almost every failed trace at least one span"
       ],
       "answer": 1,
-      "why": "The decision is made before the outcome. Consistent trace-id selection avoids arbitrary partial traces."
+      "why": "Head selection happens before the outcome and should propagate one trace decision, rather than independently sampling spans."
     },
     {
       "kind": "defend",
       "q": "Why not index every log word? Follow-up: support needs broad searches once a week.",
       "checklist": [
-        "Weigh frequent query shape against index cost",
-        "Offer a bounded slower or separate search tier",
-        "Account for access controls and retention"
+        "Compare frequent narrow searches with the cost of indexing every word",
+        "Budget the weekly broad search as a bounded scan or short indexed tier",
+        "Enforce tenant authorization, redaction and retention on both paths"
       ],
       "model": "A full-text index may be worth it if arbitrary searches are central to the product. If most users know the service and time, a label index plus chunk scans can spend much less on continuous indexing. I would measure scanned bytes and weekly search latency, then offer a bounded asynchronous scan or a shorter indexed retention tier for support. Tenant isolation, redaction and deadlines apply to either path. The choice depends on query frequency and acceptable waiting, not a universal winner."
     },
     {
       "kind": "read",
       "title": "Retain by value",
-      "text": "Route all spans of a trace to the same tail decision group, bound memory and define the late-span policy. Head sampling protects the collector and network earlier; tail sampling can retain more failures but must first receive the data. A metric exemplar stores a link to a selected trace, not an entire label dimension. Propagate trace context across queues and mark asynchronous links where a parent-child tree is misleading. Retain security events and evidence of rare failures longer than routine debug output, under explicit policy. Record sampling probabilities so sampled counts are not mistaken for exact totals. Protect the underlying user SLI from bias: count all eligible requests in metrics even if only some traces survive."
+      "text": "Route all spans of a trace to the same tail decision group, bound memory and define the late-span policy. Head sampling protects the collector and network earlier; tail sampling can retain more failures but must first receive the data. A metric exemplar stores a link to a selected trace, not an entire label dimension. Propagate trace context across queues and mark asynchronous links where a parent-child tree is misleading. Retain security events and evidence of rare failures longer than routine debug output, under explicit policy. Record inclusion probabilities when they are known. A complex tail policy may not provide usable unbiased weights, so do not assume a configured baseline percentage corrects every sampled count. Protect the underlying user SLI from bias: count all eligible requests in metrics even if only some traces survive."
     },
     {
       "kind": "quiz",
-      "q": "Most log searches specify service and a narrow time range. Which storage trade-off is plausible?",
+      "q": "Most log searches specify a service and narrow time range. Which design avoids a continuous full-text indexing bill?",
       "choices": [
-        "Index bounded labels and scan relevant chunks",
-        "Index every request id as a new stream",
-        "Discard time metadata and scan all history"
+        "Index bounded stream labels and scan the selected chunks",
+        "Index request ids as stream labels to narrow every search",
+        "Index every token but reduce chunk compression to offset the write cost"
       ],
       "answer": 0,
-      "why": "Narrow label and time selection can reduce scanning without a full-text index."
+      "why": "Bounded labels and time reduce candidate chunks. Request-id streams grow cardinality; full-text indexing adds ongoing work."
     },
     {
       "kind": "defend",
       "q": "Tail sampling keeps all errors. What could still be missing? Follow-up: the collector restarts halfway through a trace.",
       "checklist": [
-        "Name pre-collector loss, decision windows and memory limits",
-        "Persist or accept an explicit sampling loss boundary",
-        "Keep complete metrics for rate calculations"
+        "Name upstream drops, late spans and buffer eviction as missing evidence",
+        "Explain what collector restart loses without durable replay",
+        "Use independent eligible-request counters for the error-rate SLI"
       ],
       "model": "It can keep all errors only among traces it receives and recognizes within its policy. Head-dropped spans, network loss, late spans or buffer eviction can hide the error. A collector restart loses in-memory assembly unless we provide durable buffering and replay. I would define these limits, route trace ids consistently, monitor sampling drops and keep an unbiased request counter outside the sampled trace path. Retaining an error trace is evidence, not proof that every error was observed."
     },
     {
       "kind": "quiz",
-      "q": "Tail sampling preferentially keeps errors. Can you compute an unbiased error rate from retained traces alone?",
+      "q": "Tail sampling keeps errors preferentially, and inclusion probabilities are unknown. What should supply the error-rate SLI?",
       "choices": [
-        "Yes, divide retained errors by retained traces",
-        "Yes, if the traces have timestamps",
-        "Only with the selection model and weights; use complete request metrics for the SLI"
+        "Retained error traces divided by all retained traces",
+        "Retained errors divided by the configured baseline sample fraction",
+        "Complete eligible-request counters measured independently"
       ],
       "answer": 2,
-      "why": "Outcome-dependent selection changes the sample. Retained traces alone do not represent all requests."
+      "why": "Outcome-dependent retention changes the denominator. A baseline fraction alone does not describe every trace's inclusion probability."
     }
   ],
   "takeaway": "Choose the index and sampling policy from the questions people need to answer."
