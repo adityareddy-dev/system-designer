@@ -70,6 +70,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const dpr = Math.max(1, Math.min(globalThis.devicePixelRatio || 1, 3));
   const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;
 
+  let failureLead = null;
   let reduced = !!reducedMotion;
   let highContrast = false;
   let qualitySetting = QUALITY[quality] || quality === 'auto' ? quality : 'auto';
@@ -175,6 +176,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   uiLayer.addChild(guides, portRing, band, target);
   let ringNode = null, ringHot = false;
   const bandLut = makeLut();
+  let previewPair = null;
 
   function drawPortRing() {
     portRing.clear();
@@ -200,6 +202,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       drawPortRing();
     },
     drawBand(from, x, y, to, ok) {
+      const pair = from.id + '>' + (to?.id || '');
+      if (pair !== previewPair) { previewPair = pair; emitter.emit('connect:preview', { from: from.id, to: to?.id || null, ok }); }
       band.visible = true;
       band.clear();
       const color = ok ? P.accent : P.bad;
@@ -220,7 +224,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         target.visible = false;
       }
     },
-    clearBand() { band.visible = false; band.clear(); target.visible = false; },
+    clearBand() { previewPair = null; emitter.emit('connect:preview', null); band.visible = false; band.clear(); target.visible = false; },
     drawGuides(lines) {
       guides.clear();
       for (const [x1, y1, x2, y2] of lines) {
@@ -423,6 +427,15 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     // nodes: busy level, status, queue, waiting pile; failures at nodes nothing flows into
     const util = F.nodeUtil, status = F.nodeStatus, queue = F.nodeQueue;
     const running = speed > 0 && !reduced;
+    if (!failureLead && speed > 0) {
+      let first = -1;
+      for (let i = 0; i < N; i++) if ((util[i] > 1 || status?.[i] === 4) && nodeView[i]?.kind !== 'source') { first = i; break; }
+      if (first >= 0) failureLead = { id: F.nodeIds[first], until: now + 1600 };
+    }
+    if (failureLead && now > failureLead.until) {
+      let overloaded = false; for (let i = 0; i < N; i++) if (util[i] > 1) { overloaded = true; break; }
+      if (!overloaded) failureLead = null;
+    }
     for (let i = 0; i < N; i++) {
       const v = nodeView[i];
       if (!v || v.removing) continue;
@@ -435,6 +448,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       }
       const over = fail > 0 && inn > 0 ? fail / (inn + fail) : 0;
       nodes.setLive(v, true, util[i] || 0, status ? status[i] : 0, queue ? queue[i] || 0 : 0, over, pile >= 0 ? map.tex[pile] : -1, fail);
+      if (failureLead && now < failureLead.until) {
+        if (v.id !== failureLead.id) v.evidenceT.visible = false;
+        else if (v.evidenceT.visible) v.evidenceT.text = 'First limit · ' + v.evidenceT.text;
+      }
       if (running && fail > 0 && inn <= 0) {
         map.srcAcc[i] += (fail * inv * dt) / 1000;
         if (map.srcAcc[i] >= 1) {
@@ -666,6 +683,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (!frameData) {
         if (flow) {
           flow = null; map = null;
+          failureLead = null;
           for (const v of nodes.list) nodes.setLive(v, false);
           for (const v of edges.list) { edges.setLoad(v, 0); if (v.rates) v.rates.fill(0); }
           edges.setGlows([], 0);
@@ -768,7 +786,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     // opts: { minZ, maxZ } keep a fitted view readable: a big graph is panned rather than shrunk past minZ.
     fit(padding = 80, animate = true, opts = {}) {
       const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
-      const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(graph);
+      const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(opts.nodeIds ? { ...graph, nodes: graph.nodes.filter(n => opts.nodeIds.includes(n.id)) } : graph);
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
       camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY, padding, animate && !reduced, opts);
     },

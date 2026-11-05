@@ -1,6 +1,6 @@
 // Intro insertion goals require both directed links and no original bypass.
 import assert from 'node:assert/strict';
-import { introPathHolds } from '../ui/play/intro-path.js';
+import { introPathHolds, repairInsertion } from '../ui/play/intro-path.js';
 import intro from '../content/lessons/intro.js';
 import { goalPassed } from '../ui/play/goal-feedback.js';
 import { createSim } from '../sim/engine.js';
@@ -50,3 +50,17 @@ assert.equal(goalPassed({ metric: 'util', op: '<=', value: 0.7 }, 0.42, 'SQL'),
   'Check passed now: SQL busy 42%, goal at most 70%.');
 assert.match(goalPassed({ metric: 'cost', op: '<=', value: 2000 }, 1500), /Cost \$1,500 a month, goal at most \$2,000/);
 console.log('Intro path and lesson feedback checks passed.');
+
+{
+  const sim = createSim({ catalog: createCatalog(Object.fromEntries(data)), problem: { id: 'repair', requirements: { peakRps: 100, mix: { read: 1 } }, traffic: { sources: { 'web-browser': 1 } } }, mode: 'intro' });
+  const source = sim.addNode('web-browser', -400, 0), app = sim.addNode('vm-fleet', 0, 0), db = sim.addNode('sql-primary', 300, 0);
+  const cache = sim.addNode('cache', -200, 0);
+  sim.connect(source, cache); sim.connect(cache, app); sim.connect(app, db);
+  const spec = { type: 'cache', path: [app, db] };
+  repairInsertion(sim, spec, () => ({ x: 150, y: 0 }));
+  assert(introPathHolds(sim.getGraph(), spec));
+  assert(sim.getGraph().edges.some(e => e.from === source && e.to === app), 'wrong-wire insertion restores the old route');
+  const inserted = sim.getGraph().nodes.find(n => n.type === 'cache'); sim.removeNode(inserted.id);
+  repairInsertion(sim, spec, () => ({ x: 150, y: 0 }));
+  assert(introPathHolds(sim.getGraph(), spec), 'retry restores the intended wire even after the misplaced part was deleted');
+}

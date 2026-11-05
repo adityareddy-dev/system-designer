@@ -37,7 +37,7 @@ try {
     return { cache, done: document.querySelector('.pl-goal').classList.contains('pl-goal--done'), text: document.querySelector('.pl-goal').textContent };
   });
   assert.equal(state.done, false); assert.match(state.text, /60 seconds old/);
-  const fresh = await page.evaluate(id => { window.__game.setKnob(id, 'ttlSec', 60); window.__game.step(120000); return { done: document.querySelector('.pl-goal').classList.contains('pl-goal--done'), text: document.querySelector('.pl-goal').textContent }; }, state.cache);
+  const fresh = await page.evaluate(id => { const unused = window.__game.placeComponent('cache', 0, 400); window.__game.setKnob(unused, 'ttlSec', 86400); window.__game.setKnob(id, 'ttlSec', 60); window.__game.step(120000); return { done: document.querySelector('.pl-goal').classList.contains('pl-goal--done'), text: document.querySelector('.pl-goal').textContent }; }, state.cache);
   assert.equal(fresh.done, true, fresh.text);
   await page.evaluate(() => window.__game.loadProblem('url-shortener'));
   await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(3600000); });
@@ -59,6 +59,12 @@ try {
     assert.equal(await page.evaluate(() => window.__game.getState().phase), 'build');
     const added = await page.evaluate(() => window.__game.placeComponent('cache', 0, 200));
     assert(added, 'reset makes drawing editable');
+    await page.click('[aria-label="Fit to screen (F)"]');
+    await delay(500);
+    assert(await page.evaluate(() => {
+      const { view } = window.__game.getState(), f = view.free;
+      return view.screen.every(n => n.x >= f.l && n.x <= f.w - f.r && n.y >= f.t && n.y <= f.h - f.b);
+    }), 'explicit Fit includes every part while one is selected');
     await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); });
     await page.waitForFunction(() => document.querySelector('.pl-root').dataset.step === 'debrief');
     assert.equal(await page.$eval('.pl-hud', el => el.checkVisibility()), false, 'debrief keeps the HUD hidden');

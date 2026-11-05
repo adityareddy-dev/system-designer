@@ -224,7 +224,7 @@ await sleep(900);
     const b = g.getBoundingClientRect();
     const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
     const cv = document.querySelector('.pl-stage canvas');
-    return { onTop: g.contains(hit), hit: hit?.className || '', res: cv ? cv.width / cv.clientWidth : 0, overflow: document.documentElement.scrollWidth > innerWidth + 1 };
+    return { onTop: g.contains(hit), hit: `${hit?.tagName || 'outside viewport'} ${hit?.className || ''} at ${Math.round(b.x)},${Math.round(b.y)} (${Math.round(b.width)}×${Math.round(b.height)}), scroll ${scrollY}`, res: cv ? cv.width / cv.clientWidth : 0, overflow: document.documentElement.scrollWidth > innerWidth + 1 };
   });
   check('"Add component" is not covered by the brief', r.onTop, r.hit);
   check('the phone canvas uses the 1.5 pixel-ratio cap', r.res >= 1.49 && r.res <= 1.51, String(r.res));

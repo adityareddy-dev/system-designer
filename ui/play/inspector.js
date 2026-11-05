@@ -160,6 +160,8 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
     refs.meter = meter; refs.status = h('span', { class: 'pl-live-status' }); refs.util = h('b', { class: 'pl-mono' });
     refs.sub = h('div', { class: 'pl-muted pl-small pl-mono' });
     const liveBox = h('div', { class: 'pl-live' }, h('div', { class: 'pl-live-top' }, refs.status, refs.util), meter, refs.sub);
+    refs.pool = el.kind === 'compute' ? h('div', { class: 'pl-replica-view', 'aria-label': 'Live replica view' }) : null;
+    if (refs.pool) liveBox.append(refs.pool);
     if (el.capacity == null) liveBox.append(h('div', { class: 'pl-muted pl-small', text: 'Not in the request path: it does not carry traffic itself.' }));
 
     // numbers
@@ -201,7 +203,7 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
         section('What it can do', facts),
         section('Cost a month', costLines(el, node)),
         el.failureModes?.length ? section('How it breaks', h('ul', { class: 'pl-list' }, el.failureModes.map((f) => h('li', { text: f.text })))) : null);
-      root.append(head, h('div', { class: 'pl-insp-scroll' }, actions, replicaCount, section('Settings', knobs), h('p', { class: 'pl-desc', text: el.description }), liveBox, more));
+      root.append(head, h('div', { class: 'pl-insp-scroll' }, el.kind === 'compute' ? liveBox : null, actions, replicaCount, section('Settings', knobs), h('p', { class: 'pl-desc', text: el.description }), el.kind !== 'compute' ? liveBox : null, more));
       const sc = root.querySelector('.pl-insp-scroll'); if (sc) sc.scrollTop = 0;
       paintLive();
       return;
@@ -227,6 +229,25 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
     if (!refs.meter?.isConnected) return;
     const s = live;
     const util = s.util ?? 0;
+    if (refs.pool && (s.units || getNode(curId)?.units || 1) > 1) {
+      const count = s.units || getNode(curId)?.units || 1;
+      const alive = s.availableUnits ?? count;
+      const buckets = Math.min(count, 6);
+      if (refs.pool.dataset.count !== String(count)) {
+        refs.pool.dataset.count = String(count);
+        refs.pool.replaceChildren(h('b', { text: 'Inside this pool' }), h('div', { class: 'pl-replica-cells' }, Array.from({ length: buckets }, (_,i) => h('div', { class: 'pl-replica-cell' }, h('span', { text: count <= 6 ? `Replica ${i + 1}` : `Group ${i + 1}` }), h('i')))), h('small', { class: 'pl-replica-summary' }));
+      }
+      const cells = refs.pool.querySelectorAll('.pl-replica-cell');
+      cells.forEach((cell,i) => {
+        const failed = count <= 6 ? i >= alive : alive < count && i === 0;
+        const load = failed ? 0 : Math.min(1, util * (1 + (i - (buckets - 1) / 2) * .025));
+        cell.dataset.failed = String(failed);
+        cell.querySelector('i').style.transform = `scaleX(${load})`;
+        cell.title = failed ? 'Unavailable capacity' : `${Math.round(load * 100)}% busy, schematic share`;
+      });
+      refs.pool.querySelector('small').textContent = `${alive}/${count} units available · ${fmtNum(s.incomingRps || 0)} requests/s shared across survivors. ${count > 6 ? 'Six groups summarize this fleet. ' : ''}Bars illustrate distribution, not separately simulated replicas. This box includes internal routing; production still needs discovery and health checks.`;
+      refs.pool.classList.toggle('is-flowing', !!s.incomingRps);
+    }
     const { name, text } = inspectorStatus(s);
     refs.status.replaceChildren(statusGlyph(name, 16), text);
     refs.status.title = 'Available means the process is up. Load and request failures are shown separately.';

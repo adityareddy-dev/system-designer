@@ -21,10 +21,12 @@ export function renderProblem(host, ctx, route) {
     h('a', { class: 'sh-back', href: '#/practice', 'aria-label': 'Back to all problems' }, ico('ui.chevron-left', 18), h('span', { class: 'sh-hide-sm', text: 'Problems' })),
     h('div', { class: 'sh-problem-title' }, h('h1', { class: 'sh-problem-h1', text: problem.title }), h('span', { class: 'sh-problem-like sh-hide-sm', text: problem.like || '' })),
     diffBadge(problem.difficulty), nextLink);
+  const interview = ['Medium', 'Hard'].includes(problem.difficulty) && route.query?.interview === '1';
+  if (['Medium', 'Hard'].includes(problem.difficulty)) bar.append(h('a', { class: 'sh-btn sh-interview-toggle', href: '#/practice/' + problem.id + (interview ? '' : '?interview=1'), 'aria-pressed': String(interview), text: interview ? 'Interview mode on' : 'Interview mode' }));
   wrap.append(bar);
   host.append(wrap);
 
-  const play = mountPlayHost(wrap, ctx, { mode: 'practice', problem, seed: 'practice' });
+  const play = mountPlayHost(wrap, ctx, { mode: 'practice', problem, seed: 'practice', interview });
   return {
     immersive: true,
     title: problem.title,

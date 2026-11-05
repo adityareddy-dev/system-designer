@@ -24,6 +24,17 @@ export function createProgress(store, bus) {
       bus.emit('progress:updated', { problemId });
     },
 
+    recordInterview(problemId, report) {
+      const prev = probs[problemId] || { attempts: 0, bestScore: 0, stars: 0, hintsUsed: 0, solvedAt: null, lastResultAt: null };
+      const old = prev.interview || {};
+      const entry = { ...report, at: Date.now() };
+      const ratio = x => x?.total > 0 ? x.covered / x.total : -1;
+      probs[problemId] = { ...prev, interview: { attempts: (old.attempts || 0) + 1, latest: entry,
+        bestCoverage: ratio(entry) > ratio(old.bestCoverage) ? entry : old.bestCoverage,
+        bestDay: !old.bestDay || entry.score > old.bestDay.score ? entry : old.bestDay } };
+      save(); bus.emit('progress:updated', { problemId });
+    },
+
     // Returns { first, improved } so callers can celebrate.
     record(problemId, debrief, hintsUsed = 0) {
       const total = Math.round(debrief?.score?.total ?? debrief?.total ?? 0);
