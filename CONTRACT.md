@@ -593,6 +593,16 @@ export default {
 ```
 `intro` follows DESIGN.md section 8 and may use `{ kind: 'script', beats: [...] }` steps with `{ at: secondsOrTrigger, caption, highlight: elementId, waitFor: { action: 'place' | 'connect' | 'knob', type?, knob? } }`.
 
+Advanced lessons may use a worked example in a `read` step instead of a `demo` when the engine does not model the mechanism. The `Go deeper` and `Lead the design` tracks follow Business; their lessons take 5 to 8 minutes and contain a numbers step, at least three reasoning quizzes, a transfer case and two or three defend steps.
+
+```js
+{ kind: 'defend', q: 'A sharp colleague asks you to justify a choice. What fails next?',
+  checklist: ['A concrete failure case', 'The cost of the chosen guarantee'],
+  model: 'A model answer in plain words, including the follow-up.' }
+```
+
+A defend step requires a nonblank typed answer before revealing the model and checklist. Continue becomes available on reveal. Players tick points they covered; zero ticks is a valid self review, not a failed quiz. Answers and ticks remain in memory while navigating the mounted lesson and are never added to saved or synced progress. Native textarea, button and checkbox controls support keyboard and touch, with visible labels and focus. Existing lesson ids and progress records keep their meaning.
+
 ---
 
 ## 12. DOM, CSS and naming ownership

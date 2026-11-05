@@ -217,6 +217,12 @@
 .sh-lp-hero-ico { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 20px; background: var(--accent-soft); color: var(--accent); }
 .sh-lp-hero-ico.is-ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
 .sh-lp-text { margin: 0; font-size: 17px; line-height: 1.55; max-width: 62ch; text-wrap: pretty; }
+.sh-defend-form, .sh-defend-comparison { display: grid; gap: 16px; min-width: 0; }
+.sh-defend-comparison[hidden] { display: none; }
+.sh-defend-answer { resize: vertical; min-height: 150px; font: inherit; line-height: 1.5; }
+.sh-defend-checklist { margin: 0; padding: 12px; border: 1px solid var(--border-strong); border-radius: 12px; min-width: 0; }
+.sh-defend-point { display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; cursor: pointer; line-height: 1.5; }
+.sh-defend-point input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); }
 .sh-lp-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .sh-lp-nav > .sh-btn--primary { margin-left: auto; }
 .sh-lp-nav > .sh-btn--primary.is-goal { animation: sh-pulse 1.6s var(--ease-in-out) infinite; }
