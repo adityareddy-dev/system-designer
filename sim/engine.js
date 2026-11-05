@@ -1493,7 +1493,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     st.nodes = m.nodes.map((n) => ({
       id: n.id, type: n.el.id,
       incomingRps: Math.round(S.realIn[n.i]),
-      availableUnits: Math.max(0, Math.round(S.unitsCur[n.i] * (S.down[n.i] ? 0 : S.capFactor[n.i]))),
+      availableUnits: phase === 'build' || S.clock === 0 ? Math.round(S.unitsCur[n.i]) : Math.max(0, Math.round(S.unitsCur[n.i] * (S.down[n.i] ? 0 : S.capFactor[n.i]))),
       util: Math.round(Math.min(S.rho[n.i], UTIL_SHOW_MAX) * 1000) / 1000,
       status: ['ok', 'warn', 'hot', 'overload', 'down'][S.status[n.i]],
       p99Ms: Math.round(S.hop99[n.i] * 10) / 10,

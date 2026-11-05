@@ -11,6 +11,7 @@ const p = problemById.get('observability-platform');
 assert(!p.editorial.designs[0].graph.edges.some(([a,b]) => a === 'dist' && b === 'qry'));
 const play = problem => { const sim = createSim({ catalog, problem, seed: 'practice' }); sim.loadGraph(p.editorial.designs[0].graph); return sim; };
 const isolated = play(p);
+assert(isolated.state().nodes.every(n => n.availableUnits === n.units), 'unmeasured pools are not presented as failed replicas');
 assert.equal(isolated.validate().filter(i => i.level === 'error').length, 0);
 isolated.start(); isolated.advance(86400000);
 assert.equal(isolated.result().passed, true, 'separate ingest and query paths pass');
