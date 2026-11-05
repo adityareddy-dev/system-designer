@@ -256,7 +256,7 @@ export function createToolbar(host, { catalog, palette = null, onArm, onPlace, o
       collapsed.clear(); query = ''; search.value = ''; render();
       const n = body.querySelector(`[data-el="${elementId}"]`);
       n?.classList.add('pl-item--pulse');
-      if (!narrow) n?.scrollIntoView({ block: 'nearest' });
+      if (!narrow && n) body.scrollTop = Math.max(0, n.offsetTop - body.offsetTop - 8);
     },
     destroy() { dragChip.remove(); root.remove(); },
   };

@@ -14,7 +14,7 @@ const subject = {
   health: rect(34,62,158,144)+path('M74 98h18V80h18v18h18v18h-18v18H92v-18H74z',teal)+path('M54 164h23l9-14 13 32 12-18h60',blue),
   civic: path('m26 106 90-48 90 48z',blue)+rect(40,112,152,14)+path('M56 126v66m38-66v66m44-66v66m38-66v66M32 196h168M28 210h176',blue,3),
   mobility: path('M30 178h170M45 150l28-52h92l28 52',blue)+rect(37,136,166,43)+`<circle cx="68" cy="180" r="15" fill="#FFFEFA" stroke="${ink}" stroke-width="3"/><circle cx="170" cy="180" r="15" fill="#FFFEFA" stroke="${ink}" stroke-width="3"/>`+path('M78 106v30m41-30v30m42-30v30M48 152h22m102 0h22',teal),
-  travel: rect(26,85,180,98)+path('M26 116h180M68 85v98M40 99h12M40 135h12M40 156h12M94 145h86M94 158h42',blue)+text(90,110,'SEAT 24',15),
+  travel: rect(26,85,180,98)+path('M26 116h180M68 85v98M40 99h12M40 135h12M40 156h12M94 145h86M94 158h42',blue)+text(90,110,'Seat 24',15),
   iot: path('M106 146V88m-28 56V98m56 46V98',teal,3)+rect(60,146,92,48)+disk(79,170)+path('M56 70q50-48 100 0M72 86q34-32 68 0M91 102q15-13 30 0',blue,3),
   ai: rect(36,66,162,132)+path('M52 100h126M52 132h126M52 164h126',blue)+text(52,91,'01')+text(52,123,'02')+text(52,155,'03')+path('M94 85h70M94 117h46M94 149h24',teal,6),
   games: rect(28,90,178,92,25)+path('M55 135h38m-19-19v38',blue,5)+disk(155,123)+disk(173,141)+path('M106 90V66h44',teal),
@@ -29,7 +29,7 @@ let i = 0;
 for (const [id, drawing] of Object.entries(subject)) {
   const [title, first, last] = labels[id];
   const module = (x,y,type,label,color) => `<g transform="translate(${x} ${y})">${rect(0,3,84,64,8,'#C7D1D0')}${rect(0,0,84,64,8)}${path('M12 2h60',color,3)}<g transform="translate(28 13) scale(1.15)" fill="none" color="${color}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconInner('el.'+type)}</g>${path('M12 54h60','#C7D1D0',4)}${path('M12 54h36',teal,4)}${text(0,84,label,11)}</g>`;
-  const body = `${text(24,28,`BENCH / ${String(++i).padStart(2,'0')}`,10,blue)}${text(24,251,title,16)}${path('M236 48h180M236 218h180M236 43v10m180-10v10','#C7D1D0',1)}${path('M194 133h38V95h34m-34 38v42h34',blue)}${module(272,60,id === 'fintech' ? 'sql-primary' : id === 'iot' || id === 'civic' ? 'queue' : 'cache',first,ochre)}${module(318,156,id === 'devtools' ? 'worker-pool' : 'vm-fleet',last,teal)}${path('M314 124v18h46v14',blue)}${disk(224,133)}${disk(254,95)}${drawing}`;
+  const body = `${text(24,28,`Bench / ${String(++i).padStart(2,'0')}`,10,blue)}${text(24,251,title,16)}${path('M236 48h180M236 218h180M236 43v10m180-10v10','#C7D1D0',1)}${path('M194 133h38V95h34m-34 38v42h34',blue)}${module(272,60,id === 'fintech' ? 'sql-primary' : id === 'iot' || id === 'civic' ? 'queue' : 'cache',first,ochre)}${module(318,156,id === 'devtools' ? 'worker-pool' : 'vm-fleet',last,teal)}${path('M314 124v18h46v14',blue)}${disk(224,133)}${disk(254,95)}${drawing}`;
   fs.writeFileSync(`assets/scenes/industry-${id}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 280"><title>${title}</title><rect width="440" height="280" rx="12" fill="#F5F2E9"/>${body}</svg>\n`);
 }
 console.log('Drew 15 original industry scenes');
