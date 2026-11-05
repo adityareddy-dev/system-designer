@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>Dashboards</title><g transform="scale(.5)" stroke-width="3.5"><style>.s{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.f{fill:currentColor;fill-opacity:.18}.d{fill:currentColor;stroke:none}</style><rect class="s f" x="6" y="6" width="16" height="16" rx="4"/>
-<path class="s" d="M10.5 18.5V15M14 18.5V11M17.5 18.5V13"/>
-<rect class="s f" x="26" y="6" width="16" height="16" rx="4"/>
-<path class="s" d="M30 18L34 14L37 16.5L39 12"/>
-<rect class="s f" x="6" y="26" width="16" height="16" rx="4"/>
-<circle class="d" cx="14" cy="34" r="3"/>
-<rect class="s f" x="26" y="26" width="16" height="16" rx="4"/>
-<path class="s" d="M30 36H38"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><title>Dashboards</title><path d="M4 10V6M9 10V3"/><rect x="14" y="3" width="7" height="7" rx="1.500"/><rect x="3" y="14" width="7" height="7" rx="1.500"/><polyline points="14 20 16.500 16.500 18.500 18.500 21 15"/></svg>

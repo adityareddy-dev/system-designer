@@ -45,34 +45,4 @@ for (const kind of ['shared-load', 'cached-reads', 'draining-queue']) {
 }
 console.log('Signal bench symbols and three scenes drawn.');
 
-const lessons = {
-  intro: ['First working path', 'mobile-app', 'vm-fleet', 'sql-primary', 'Ask', 'Process', 'Remember'],
-  'requests-and-latency': ['Distance is part of the wait', 'web-browser', 'vm-fleet', 'sql-primary', 'Europe', 'Europe', 'US: +80 ms'],
-  'back-of-envelope': ['Count usable capacity', 'vm-fleet', 'vm-fleet', 'vm-fleet', '1,000/s', '1,000/s', 'Spare room'],
-  'load-balancing': ['Share among healthy servers', 'web-browser', 'regional-lb', 'vm-fleet', 'One address', 'Choose a route', 'Healthy pool'],
-  caching: ['A hit skips the database', 'vm-fleet', 'cache', 'sql-primary', 'Ask once', 'Keep briefly', 'Misses only'],
-  cdn: ['Copies shorten the trip', 'web-browser', 'cdn', 'object-storage', 'Nearby user', 'Local copy', 'Origin'],
-  autoscaling: ['Capacity arrives later', 'metrics', 'autoscaler', 'vm-fleet', 'Load rises', 'Start more', 'Wait 3 min'],
-  'replication-lag': ['A copy can be behind', 'vm-fleet', 'sql-primary', 'sql-replica', 'Write', 'Primary', 'Copy: +2 s'],
-  sharding: ['The key chooses a shard', 'regional-lb', 'sharded-sql', 'kv-store', 'Customer ID', 'Split data', 'One shard'],
-  'hot-keys': ['One item carries the burst', 'web-browser', 'cache', 'kv-store', 'Popular item', 'Reuse it', 'Fewer reads'],
-  'search-indexing': ['Search follows the source', 'sql-primary', 'cdc-connector', 'search-index', 'Source record', 'Changes', 'Search copy'],
-  'storage-tiers': ['Keep recent data close', 'sql-primary', 'object-storage', 'cold-archive', 'Today', 'This month', 'Older records'],
-  'queues-backpressure': ['Waiting becomes visible', 'queue', 'worker-pool', 'sql-primary', '600/s in', '800/s out', 'Backlog falls'],
-  fanout: ['One post becomes many reads', 'vm-fleet', 'pubsub', 'kv-store', 'One post', 'Distribute', 'Many feeds'],
-  'realtime-connections': ['Connections stay open', 'mobile-app', 'websocket-gateway', 'vm-fleet', 'Connected', '40,000 sockets', 'Handle work'],
-  consistency: ['Choose the authority', 'vm-fleet', 'sql-primary', 'sql-replica', 'Confirm write', 'Truth', 'May be stale'],
-  'idempotency-retries': ['Same key, one effect', 'vm-fleet', 'idempotency-store', 'payment-processor', 'Retry key: 42', 'Seen before?', 'Charge once'],
-  'rate-limiting': ['Share the allowance', 'vm-fleet', 'rate-limiter', 'kv-store', 'Four servers', '100/s per key', 'Atomic counter'],
-  'circuit-breakers': ['Bound the waiting work', 'vm-fleet', 'circuit-breaker', 'third-party-api', 'Call', 'Open on failure', 'Slow service'],
-  'multi-region': ['Survivors absorb the load', 'global-lb', 'vm-fleet', 'vm-fleet', 'Reroute', 'Region A', 'Region B'],
-  observability: ['Measure the user path', 'vm-fleet', 'metrics', 'alerting', 'Real requests', 'p99 and errors', 'Act early'],
-  cost: ['Idle capacity has a price', 'vm-fleet', 'autoscaler', 'metrics', 'Spare capacity', 'Smaller floor', 'Watch delay'],
-  'security-compliance': ['Keep proof beside the work', 'vm-fleet', 'audit-log', 'backups', 'Who changed it', 'Evidence', 'Recover data'],
-  'ai-serving': ['Keep waiting within a deadline', 'queue', 'model-server', 'semantic-cache', 'Bound the line', 'Serve', 'Reuse answers'],
-};
-for (const [id, [title, ...parts]] of Object.entries(lessons)) {
-  const types = parts.slice(0, 3), labels = parts.slice(3);
-  const art = '<g fill="none" stroke="#657A87" stroke-width="2"><path d="M110 136h70m80 0h70"/></g>' + types.map((type, i) => module(30 + i*150, 100, type, labels[i], colors[i], [.7,.5,.3][i])).join('');
-  fs.writeFileSync(`assets/scenes/${id}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#F5F2E9"/>${art}<text x="24" y="38" font-family="monospace" font-size="14" fill="#182F40">${title}</text></svg>`);
-}
+// Lesson pictures in assets/scenes/<lesson id>.svg are drawn by hand.

@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>Embedding service</title><g transform="scale(.5)" stroke-width="3.5"><style>.s{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}.f{fill:currentColor;fill-opacity:.18}.d{fill:currentColor;stroke:none}</style><path class="s" d="M8 15H19M8 24H17M8 33H19"/>
-<path class="s" d="M22 24H28M25 21L28 24L25 27"/>
-<circle class="d" cx="34" cy="15" r="2.2"/>
-<circle class="d" cx="39" cy="21" r="2.2"/>
-<circle class="d" cx="33" cy="26" r="2.2"/>
-<circle class="d" cx="40" cy="31" r="2.2"/>
-<circle class="d" cx="35" cy="36" r="2.2"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><title>Embedding service</title><path d="M3 7h4M3 12h4M3 17h4M10 12h5m-2-2 2 2-2 2"/><circle cx="19" cy="6" r="1.250" fill="currentColor" stroke="none"/><circle cx="20.500" cy="12" r="1.250" fill="currentColor" stroke="none"/><circle cx="18" cy="18" r="1.250" fill="currentColor" stroke="none"/></svg>
