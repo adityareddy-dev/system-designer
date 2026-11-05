@@ -362,7 +362,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function fitAll() {
     S.manualViewUntil = performance.now() + 4000;
     if (isPhone()) { inspector.fold(true); toolbar.el.classList.remove('pl-toolbar--open'); reqCard?.toggle(false); trafficPanel?.fold(true); }
-    later(() => fitView(true, 0.15), 40);
+    later(() => fitView(true, 0), 40);
   }
   function placeAtCentre(type) {
     const a = freeArea();

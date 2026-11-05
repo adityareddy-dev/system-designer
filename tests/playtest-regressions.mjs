@@ -70,6 +70,29 @@ try {
     await page.waitForFunction(() => document.querySelector('.pl-root').dataset.step === 'debrief');
     assert.equal(await page.$eval('.pl-hud', el => el.checkVisibility()), false, 'debrief keeps the HUD hidden');
   }
+  await page.evaluate(async () => {
+    await window.__game.loadSandbox();
+    for (let i = 0; i < 12; i++) window.__game.placeComponent('vm-fleet', i * 200, 0);
+  });
+  await delay(500);
+  for (const fit of ['button', 'keyboard', 'double tap']) {
+    if (fit === 'button') await page.click('[aria-label="Fit to screen (F)"]');
+    else if (fit === 'keyboard') { await page.focus('.pl-kb'); await page.keyboard.press('f'); }
+    else {
+      const blank = await page.evaluate(() => {
+        const r = document.querySelector('.pl-stage canvas').getBoundingClientRect();
+        const f = window.__game.getState().view.free;
+        return { x: r.left + (f.l + f.w - f.r) / 2, y: r.top + f.t + 60 };
+      });
+      await page.mouse.click(blank.x, blank.y);
+      await delay(60);
+      await page.mouse.click(blank.x, blank.y);
+    }
+    await delay(500);
+    const view = await page.evaluate(() => window.__game.getState().view);
+    assert(view.zoom < 0.15, `${fit} Fit can shrink below the interactive minimum`);
+    assert(view.screen.every(n => n.x >= view.free.l && n.x <= view.free.w - view.free.r && n.y >= view.free.t && n.y <= view.free.h - view.free.b), `${fit} Fit frames the complete wide phone diagram`);
+  }
   await page.evaluate(() => { location.hash = '#/settings'; });
   await page.waitForSelector('[role="radiogroup"][aria-label="Theme"]');
   await page.click('#sh-theme-btn');

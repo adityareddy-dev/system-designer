@@ -47,7 +47,7 @@ function unservedMessage(S, t) {
   // follow every connection whose far end accepts this type; the last parts reached are where it stops
   const seen = new Uint8Array(nodes.length);
   const stack = [];
-  for (const s of model.sources) if (H(s, t)) stack.push(s);
+  for (const s of model.sources) if (model.sourceShare[s * model.T + t] > 0) stack.push(s);
   const stops = [];
   while (stack.length) {
     const u = stack.pop();

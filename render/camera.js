@@ -67,7 +67,8 @@ export function createCamera(world) {
       const P = typeof padding === 'number' ? { l: padding, t: padding, r: padding, b: padding } : { l: 0, t: 0, r: 0, b: 0, ...padding };
       const bw = Math.max(1, maxX - minX), bh = Math.max(1, maxY - minY);
       const pw = Math.max(40, w - P.l - P.r), ph = Math.max(40, h - P.t - P.b);
-      const tz = clampZ(Math.max(opts.minZ ?? 0, Math.min(pw / bw, ph / bh, opts.maxZ ?? 1.25)));
+      // Explicit whole-graph fits can opt below the interactive zoom minimum.
+      const tz = Math.min(ZOOM_MAX, Math.max(opts.minZ ?? 0, Math.min(pw / bw, ph / bh, opts.maxZ ?? 1.25)));
       // when the graph is wider or taller than the free area at this zoom, show its start (the users) instead of its middle
       const midX = bw * tz > pw ? minX + pw / 2 / tz : (minX + maxX) / 2;
       const midY = bh * tz > ph ? minY + ph / 2 / tz : (minY + maxY) / 2;

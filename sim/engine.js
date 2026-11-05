@@ -2,7 +2,6 @@
 import { hashSeed, mulberry32 } from './rng.js';
 import { SimError, connectRule, coerceKnob, makeNode, normalizeGraphInput } from './graph.js';
 import { compile, refreshKnobs, KIND, M } from './route.js';
-import { sourceWeights } from './sources.js';
 import { traceRoute } from './trace.js';
 import { prepareNode, forwardPass, backwardPass, queueReturns, computeEdgeRtt } from './flow.js';
 import { makeInstance, startEvent, applyEffects, checkCompliance } from './events.js';
@@ -309,7 +308,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   function ensureModel() {
     if (!dirty && S.model) return;
     const old = S.model ? { model: S.model, arrays: snapshotPersist() } : null;
-    const model = compile(catalog, graph, env);
+    const model = compile(catalog, graph, env, prob);
     for (const n of model.nodes) prepareNode(n, model);
     S.model = model;
     allocArrays(S, model.N, model.E);
@@ -351,14 +350,9 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     const m = S.model;
     const { nodes, N } = m;
     // source shares per type
-    S.srcShare = new Float64Array(N * T);
+    S.srcShare = m.sourceShare;
     S.srcAny = new Float64Array(N);
     const srcMap = prob.traffic.sources || {};
-    for (let t = 0; t < T; t++) {
-      if (t === S.attackT) continue;
-      const weights = sourceWeights(prob, m, t, catalog.requests[t].id);
-      for (const [u, share] of weights) S.srcShare[u * T + t] = share;
-    }
     let anySum = 0;
     for (const n of nodes) if (n.kind === 'source') { S.srcAny[n.i] = (srcMap[n.el.id] || 0) + 1e-6; anySum += S.srcAny[n.i]; }
     for (const n of nodes) if (anySum > 0) S.srcAny[n.i] /= anySum;
@@ -979,8 +973,10 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       const limiting = m.nodes.filter(n => n.kind !== 'source' && !X.down[n.i] && X.cap[n.i] > 0 && X.rho[n.i] > 1 && X.failedNow[n.i] > 0)
         .sort((a,b) => X.rho[b.i] - X.rho[a.i])[0];
       const failed = limiting || m.nodes.filter(n => n.kind !== 'source' && X.failedNow[n.i] > 0).sort((a,b) => X.failedNow[b.i] - X.failedNow[a.i])[0];
+      const cause = gap?.nodeId ? m.nodes[m.idx.get(gap.nodeId)] : failed;
+      const unavailable = cause?.hasCap && (X.down[cause.i] || X.cap[cause.i] <= 0);
       X.firstBreak = { atMs: X.clock, nodeId: gap?.nodeId || failed?.id || null,
-        kind: gap ? 'routing' : limiting ? 'capacity' : 'dependency', util: gap?.nodeId ? Math.round(X.rho[m.idx.get(gap.nodeId)] * 1000) / 1000 : failed ? Math.round(X.rho[failed.i] * 1000) / 1000 : 0 };
+        kind: gap ? 'routing' : limiting ? 'capacity' : 'dependency', util: unavailable ? null : cause ? Math.round(X.rho[cause.i] * 1000) / 1000 : 0 };
     }
 
     // safety ledger
