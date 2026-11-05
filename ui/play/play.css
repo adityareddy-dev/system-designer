@@ -776,16 +776,23 @@
 .pl-design-check {display:grid;gap:12px}
 .pl-design-check label {display:grid;gap:6px}
 .pl-design-check p {margin:0}
+.pl-measurements-toggle {display:none}
 @media(max-width:719px){
  .pl-root[data-mode=lesson] .pl-hud {top:8px;right:110px;display:flex;min-height:56px;align-items:center;padding:6px}
- .pl-root[data-mode=lesson] .pl-hud-mid,.pl-root[data-mode=lesson] .pl-buildnote {display:none}
+ .pl-root[data-mode=lesson] .pl-hud-mid {display:none;position:absolute;top:calc(100% + 6px);left:0;right:-102px;max-height:min(280px,50dvh);overflow:auto;overscroll-behavior:contain;padding:12px;background:var(--surface-solid);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-2)}
+ .pl-root[data-mode=lesson] .pl-buildnote {display:none}
+ .pl-root[data-mode=lesson] .pl-measurements-toggle {display:inline-flex;min-height:44px;padding:0 8px;font-size:12px}
+ .pl-root[data-mode=lesson] .pl-hud--expanded {z-index:calc(var(--z-drawer) + 1)}
+ .pl-root[data-mode=lesson] .pl-hud--expanded .pl-hud-mid {display:grid}
  .pl-root[data-mode=lesson] .pl-hud-ctl {width:100%;flex-wrap:wrap}
  .pl-root[data-mode=lesson] .pl-speed {display:none}
  .pl-root[data-mode=lesson] .pl-top {top:8px;left:auto;right:8px;z-index:21}
  .pl-root[data-mode=lesson] .pl-goal {top:72px;min-height:40px;padding:6px;max-height:48px}
  .pl-root[data-mode=lesson] .pl-tools .pl-icon-btn {width:40px}
  .pl-root[data-mode=lesson] .pl-toolbar:not(.pl-toolbar--open) .pl-tb-grab {bottom:auto}
- .pl-root[data-mode=lesson] .pl-meters {display:none}
+ .pl-root[data-mode=lesson] .pl-hud .pl-meters {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .pl-root[data-mode=lesson] .pl-hud .pl-meter:nth-child(n+3):not([hidden]) {display:block}
+ .pl-root[data-mode=lesson] .pl-hud .pl-m-sub {display:block}
  .pl-prediction {font-size:14px;padding:12px;border-left:3px solid var(--cat-compute);background:var(--surface)}
 }
 .pl-day-seal {position:absolute;z-index:45;left:50%;top:40%;transform:translate(-50%,-50%);padding:16px 24px;border:2px solid var(--ok);border-radius:12px;color:var(--ok);background:var(--surface-solid);text-align:center;pointer-events:none;animation:bench-seal 900ms ease-out both}

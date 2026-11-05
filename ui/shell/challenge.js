@@ -1,6 +1,7 @@
 // Challenge view (daily scenario, streak, history) and the "beat my design" landing.
 import { h, ico, clear, append, problemOf, diffBadge, scoreOf, buildHash, stars } from './dom.js';
 import { mountPlayHost } from './playhost.js';
+import { appUrl } from '../../core/urls.js';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -132,7 +133,7 @@ export function renderChallenge(host, ctx, route0) {
     const quickPlay = h('a', { class: 'sh-btn sh-btn--primary sh-btn--lg sh-quickplay', href: playHref, 'data-quick': '1' }, ico('ui.play', 20), playLabel);
 
     const scenario = h('section', { class: 'sh-card sh-scenario' },
-      h('img', { class: 'sh-bench-scene', src: new URL('../../assets/scenes/' + ((problem.concepts || []).includes('queues-backpressure') ? 'draining-queue' : (problem.concepts || []).includes('caching') ? 'cached-reads' : 'shared-load') + '.svg', import.meta.url).href, alt: 'A small system with calibrated capacity bars and visible request paths' }),
+      h('img', { class: 'sh-bench-scene', src: appUrl('assets/scenes/' + ((problem.concepts || []).includes('queues-backpressure') ? 'draining-queue' : (problem.concepts || []).includes('caching') ? 'cached-reads' : 'shared-load') + '.svg'), alt: 'A small system with calibrated capacity bars and visible request paths' }),
       h('div', { class: 'sh-scenario-top' }, diffBadge(problem.difficulty), h('span', { class: 'sh-muted', text: problem.like || '' })),
       h('h2', { class: 'sh-scenario-title', text: problem.title }),
       h('p', { class: 'sh-lp-text', text: problem.brief || '' }),

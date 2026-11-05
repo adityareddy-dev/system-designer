@@ -1,5 +1,6 @@
 // Learn view: lessons grouped by track, with done marks and a suggested path.
 import { h, ico } from './dom.js';
+import { appUrl } from '../../core/urls.js';
 
 const TRACK_ICON = {
   'Start': 'ui.play', 'Scale the front': 'ui.speed', 'Scale the data': 'ui.units', 'Work later': 'ui.clock',
@@ -39,7 +40,7 @@ export function renderLearn(host, ctx) {
         h('span', { class: 'sh-lesson-top' },
           h('span', { class: 'sh-lesson-ico' }, ico(isDone ? 'ui.check' : (l.icon || l.steps?.find((s) => s.icon)?.icon || 'ui.learn'), 22)),
           h('span', { class: 'sh-lesson-min' }, ico('ui.clock', 14), `${l.minutes || 3} min`)),
-        h('img', { class: 'sh-bench-scene', src: new URL('../../assets/scenes/' + l.id + '.svg', import.meta.url).href, alt: '', loading: 'lazy' }),
+        h('img', { class: 'sh-bench-scene', src: appUrl('assets/scenes/' + l.id + '.svg'), alt: '', loading: 'lazy' }),
         h('span', { class: 'sh-lesson-title', text: l.title }),
         h('span', { class: 'sh-lesson-sum', text: l.summary || '' }),
         isNext ? h('span', { class: 'sh-badge', text: 'Suggested next' }) : isDone ? h('span', { class: 'sh-badge sh-badge--ok', text: 'Done' }) : null));

@@ -61,7 +61,25 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
   const scaleEl = h('span', { class: 'pl-legend-scale' });
   legend.append(scaleEl, h('span', { class: 'pl-legend-types' }));
 
-  root.append(ctl, h('div', { class: 'pl-hud-mid' }, meters, spark, buildNote), legend);
+  const measurements = h('div', { class: 'pl-hud-mid', id: 'pl-live-measurements' }, meters, spark, buildNote);
+  if (lesson) {
+    const toggle = h('button', { class: 'pl-btn pl-measurements-toggle', type: 'button', 'aria-label': 'Live measurements', 'aria-expanded': 'false', 'aria-controls': measurements.id, onClick: () => {
+      const expanded = root.classList.toggle('pl-hud--expanded');
+      toggle.setAttribute('aria-expanded', String(expanded));
+    } }, 'Metrics');
+    ctl.append(toggle);
+    measurements.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      root.classList.remove('pl-hud--expanded');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.focus();
+      event.stopPropagation();
+    });
+    measurements.tabIndex = 0;
+    measurements.setAttribute('role', 'region');
+    measurements.setAttribute('aria-label', 'Live measurements');
+  }
+  root.append(ctl, measurements, legend);
 
   // event banner (lives in the stage, not the strip)
   const banner = h('div', { class: 'pl-banner', role: 'status', 'aria-live': 'polite', hidden: '' });

@@ -1,4 +1,4 @@
-// Exercise the release static-asset phase and resolve its font stylesheet and font files.
+// Exercise release asset packaging and font and scene URLs, including deployments under a sub-path.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -19,7 +19,22 @@ try {
   const fonts = [...css.matchAll(/url\(['"]?([^)'"\s]+)['"]?\)/g)];
   assert.equal(fonts.length, 3);
   for (const [, font] of fonts) assert(fs.statSync(path.resolve(path.dirname(stylesheet), font)).size > 0, 'release font URL resolves');
-  console.log('Release font packaging checks passed.');
+  const helper = fs.readFileSync(path.join(root, 'core/urls.js'), 'utf8')
+    .replace('export function', 'function').replace('import.meta.url', 'moduleUrl');
+  const scenes = fs.readdirSync(path.join(dist, 'assets/scenes')).filter(file => file.endsWith('.svg'));
+  assert(scenes.length >= 24, 'lesson and challenge scenes are packaged');
+  for (const appBase of ['https://example.com/', 'https://example.com/system-designer/']) {
+    for (const modulePath of ['core/urls.js', 'js/chunk.js']) {
+      const context = { URL, moduleUrl: new URL(modulePath, appBase).href };
+      vm.runInNewContext(helper, context);
+      for (const scene of scenes) {
+        const asset = 'assets/scenes/' + scene;
+        assert.equal(context.appUrl(asset), appBase + asset, 'scene stays inside the source or release app base');
+        assert(fs.statSync(path.join(dist, asset)).size > 0, 'scene URL has a release asset');
+      }
+    }
+  }
+  console.log('Release font and scene URL checks passed.');
 } finally {
   fs.rmSync(dist, { recursive: true, force: true });
 }
