@@ -73,7 +73,12 @@ export function createProgress(store, bus) {
     exportAll: () => ({ app: 'system-designer', v: 1, problems: probs, lessons }),
     importAll(data) {
       if (!data || data.app !== 'system-designer' || typeof data.problems !== 'object' || typeof data.lessons !== 'object') return false;
-      probs = data.problems;
+      // Interview reports stay on this device when ordinary progress is synchronized.
+      const incoming = { ...data.problems };
+      for (const [id, problem] of Object.entries(probs)) {
+        if (problem?.interview) incoming[id] = { ...(incoming[id] || problem), interview: problem.interview };
+      }
+      probs = incoming;
       lessons = data.lessons;
       save();
       bus.emit('progress:updated', {});

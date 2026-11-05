@@ -132,15 +132,15 @@ export function renderEditorial(host, { problem, catalog, passed, onLoad, onClos
           h('p', { text: `Event load: ${surge || 'use each scheduled failure and surge below'}. The table measures the full day, including retries and failed zones. Zones divide the installed units; they do not multiply them. Losing one of three zones leaves about two thirds. Replication adds latency and copy cost as modeled by each part; do not multiply throughput by the copy count.` }),
           h('div', { class: 'pl-sizing-scroll', tabindex: '0' }, h('table', { class: 'pl-table' },
             h('caption', { text: 'Approximate capacity measured in this exact design' }),
-            h('thead', {}, h('tr', {}, ['Part', 'Base read / write per unit', 'Measured peak / active units', 'Peak busy', 'Installed / zones', 'Units at 70% busy'].map(text => h('th', { scope: 'col', text })))),
+            h('thead', {}, h('tr', {}, ['Part', 'Base read / write per unit', 'Measured peak / active units', 'Peak busy', 'Installed / zones', 'Active / installed units at 70% busy'].map(text => h('th', { scope: 'col', text })))),
             h('tbody', {}, measured.rows.map(n => h('tr', {},
               h('th', { scope: 'row', text: `${n.id}: ${catalog.elementById.get(n.type)?.name}` }),
               h('td', { text: `${fmtNum(n.readsPerUnit)} / ${fmtNum(n.writesPerUnit)} req/s (${n.tier})` }),
               h('td', { text: `${fmtNum(n.peakRequests)} req/s / ${n.activeAtPeak}` }),
               h('td', { text: `${Math.round(n.peakUtil * 1000) / 10}%` }),
               h('td', { text: `${n.installed} / ${n.zones}` }),
-              h('td', { text: catalog.elementById.get(n.type)?.units?.max === 1 ? 'Managed capacity' : String(n.headroomUnits ?? 'See queue drain') })))))),
-          h('p', { text: 'The last column is peak work ÷ (measured effective capacity per active unit × 0.70), rounded up. Effective capacity includes the request mix and dependency waits. It is an independent sizing experiment, not a promise that every tier needs 30% spare. This reference may accept a short slow interval, use burst scaling, or keep more units for failure survival. Read its tradeoffs and check the allowed slow-time budget.' }),
+              h('td', { text: catalog.elementById.get(n.type)?.units?.max === 1 ? 'Managed capacity' : n.headroomUnits == null ? 'See queue drain' : `${n.headroomUnits} / ${n.installedForHeadroom}` })))))),
+          h('p', { text: 'The last column shows active units from peak work ÷ (measured effective capacity per active unit × 0.70), rounded up, then installed units needed to preserve the surviving share at that same peak. Effective capacity includes the request mix and dependency waits. This sizing experiment may exceed a part’s unit limit. The reference may accept a short slow interval or use burst scaling. Read its tradeoffs and check the allowed slow-time budget.' }),
           h('p', { text: `Measured result: ${measured.score}/1,000, ${measured.passed ? 'passes' : 'misses a target'}, ≈ ${fmtUsd(measured.cost)}/month. Stored data starts at ≈ ${r.storageTb} TB; the catalog prices storage according to each part’s model. Keep copies for safety, not as free write throughput.` })));
       }
     };

@@ -604,6 +604,7 @@ function applyEffect(S, ef, now) {
         if (rec && rec.shard) { S.err[u] = 1 - (1 - S.err[u]) * (1 - rec.share); continue; }
         if (rec && rec.consensus) {
           S.capFactor[u] *= 1 - rec.share;
+          S.aliveFactor[u] *= 1 - rec.share;
           // leaders on the lost node answer "try again" during the election; callers retry those
           if (now < rec.electUntil) addErr(S, u, Math.min(0.49, rec.share * Math.min(1, ELECTION_SEC / S.dt)));
           continue;
@@ -617,7 +618,7 @@ function applyEffect(S, ef, now) {
     case 'zoneDown': {
       for (const [u, rec] of st.perNode) {
         if (now < rec.until) S.down[u] = 1;
-        else S.capFactor[u] *= rec.alive;
+        else { S.capFactor[u] *= rec.alive; S.aliveFactor[u] *= rec.alive; }
         if (now < rec.errUntil) S.err[u] = 1 - (1 - S.err[u]) * (1 - rec.errShare);
       }
       break;

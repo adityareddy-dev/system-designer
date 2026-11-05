@@ -109,7 +109,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- scene
   const scene = await createScene(stage, { catalog, palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
   const routeTrace = createRouteTrace(root, catalog, scene);
-  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && S.step === 'draw' && S.sim?.phase === 'build'); }
+  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && !interview && S.step === 'draw' && S.sim?.phase === 'build'); }
 
   // ---- sim
   function makeSim(problem, graph) {
@@ -215,7 +215,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.est = est;
     try { scene.setValidation(issues); } catch { /* render optional */ }
     let sizes = []; try { sizes = riskyIssues().filter((i) => i.fix); } catch { /* optional */ }
-    hud.setBuild(est, issues, interview ? [] : sizes);
+    hud.setBuild(est, diagnosticIssues(), interview ? [] : sizes, { advice: !interview });
     paintIssues();
     let overview = root.querySelector('.pl-overview');
     if (!overview) { overview = h('div', { class: 'pl-overview' }); root.append(overview); }
@@ -258,27 +258,49 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     // a server group that is too small: name the setting and offer the count that would keep it near 70 percent busy
     const sizeFix = (n) => sizeFixFor(n.id, n.util);
     const out = arr.filter((n) => n.holds === false).map((n) => {
-      const fix = sizeFix(n);
+      const fix = interview ? null : sizeFix(n);
       const base = `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent at the normal peak. `;
       return { level: 'warn', code: 'peak-risk', nodeId: n.id, ...(fix ? { fix } : {}),
-        message: base + (fix ? `Open its ${fix.word} setting (now ${fix.now}) and raise it to about ${fix.units}. If Autoscale is on, raise "Never fewer than" too.` : lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')) };
+        message: base + (interview ? '' : fix ? `Open its ${fix.word} setting (now ${fix.now}) and raise it to about ${fix.units}. If Autoscale is on, raise "Never fewer than" too.` : lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')) };
     });
     const sp = S.est?.spike;
     if (!out.length && sp && !sp.holds) {
       const f = Math.round(sp.factor * 10) / 10;
       for (const n of sp.nodes || []) {
         out.push({ level: 'warn', code: 'spike-risk', nodeId: n.id,
-          message: `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent in the ${sp.name.toLowerCase()} (${f} times the traffic). ${lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')}` });
+          message: `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent in the ${sp.name.toLowerCase()} (${f} times the traffic).${interview ? '' : ' ' + lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')}` });
       }
       if (!out.length) out.push({ level: 'warn', code: 'spike-risk', message: `About ${Math.round((sp.successShare ?? 1) * 1000) / 10} percent of requests would succeed in the ${sp.name.toLowerCase()} (${f} times the traffic).` });
     }
     return out;
   }
+  function diagnosticIssues() {
+    if (!interview) return S.issues || [];
+    const facts = {
+      'no-source': 'No request sources are present.',
+      'no-source-type': 'No source emits this request type.',
+      'source-type-unserved': 'This source has no usable route for this request type.',
+      'type-unserved': 'This request type has no usable route.',
+      'requires-missing': 'This request type does not reach all required destinations.',
+      disconnected: 'This part has no connections.',
+      'zones-units': 'The configured zone count exceeds the unit count.',
+      'queue-no-consumer': 'This queue has no consumers.',
+      'replica-unattached': 'This replica has no primary connection.',
+      'observer-needs': 'This observer has an unmet connection requirement.',
+      'no-standby': 'This part has no replicated standby.',
+      'db-connections': 'Estimated connections exceed this part’s connection limit.',
+      'dr-same-region': 'The standby and protected parts use the same region.',
+      'cache-no-origin': 'Cache misses have no origin on this path.',
+      'compliance-missing': 'A required compliance check has no proof in this graph.',
+    };
+    return (S.issues || []).map(i => ({ level: i.level, code: i.code, nodeId: i.nodeId, type: i.type,
+      message: [i.nodeId, i.type && catalog.requestById.get(i.type)?.plural, facts[i.code] || 'A design check is unresolved.'].filter(Boolean).join(': ') }));
+  }
   function paintIssues() {
     issuesBox.replaceChildren();
     // errors first, then missing proof (it costs Data safety points), then the rest
     const rank = (i) => (i.level === 'error' ? 0 : i.code === 'compliance-missing' ? 1 : 2);
-    const all = [...(S.issues || []), ...riskyIssues()].map((i, k) => [i, k]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map((x) => x[0]);
+    const all = [...diagnosticIssues(), ...riskyIssues()].map((i, k) => [i, k]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map((x) => x[0]);
     const list = all.filter((i) => i.level !== 'info' || all.length < 5);
     if (!list.length) { issuesBox.hidden = true; return; }
     issuesBox.append(h('div', { class: 'pl-issues-h' }, iconEl('ui.warn', 16), h('b', { text: 'Heads up' }),
@@ -1104,7 +1126,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     closeMenu();
     debriefWrap.hidden = step !== 'debrief';
     showPanel(step === 'clarify' || step === 'numbers');
-    if (interview && step === 'clarify') renderInterviewPrep(panel, S.problem, interviewState, () => go('draw'));
+    if (interview && step === 'clarify') renderInterviewPrep(panel, S.problem, interviewState, () => go('draw'), syncInterviewRequirements);
     if (!interview && step === 'clarify') renderClarify(panel, { problem: S.problem, revealed: S.revealed, snd, warm: !!S.problem?.warmUp, onNext: () => go('numbers') });
     if (!interview && step === 'numbers') renderNumbers(panel, { problem: S.problem, guesses: S.guesses, snd, progress: ctx.progress, onBack: () => go('clarify'), onNext: () => go('draw') });
     if (step === 'draw') { toolbar.setEnabled(canStructure(), ''); }
@@ -1441,6 +1463,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   hud.el.querySelector('.pl-buildnote').addEventListener('click', () => { const rk = riskyIssues().find((i) => i.nodeId != null); if (rk && !S.issues?.some((i) => i.level === 'error')) select(rk.nodeId); if (S.issues?.length || riskyIssues().length) { paintIssues(); issuesBox.hidden = !issuesBox.hidden; } });
   let reqCard = null;
   let trafficPanel = null;
+  function syncInterviewRequirements() {
+    if (interview && reqCard) reqCard.el.hidden = ['questions', 'answers', 'requirements'].includes(interviewState.stage);
+  }
 
   // Easy problems open the palette with a short "start with these" list: the parts of the simplest reference design.
   // Medium and Hard problems get the usual starting parts plus what the brief says must be there (its required parts
@@ -1519,6 +1544,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     toolbar.setSuggested(interview ? null : sug?.list || null, interview ? '' : sug?.title);
     reqCard?.el.remove();
     if (stepped) reqCard = createReqCard(right, { catalog, problem: S.problem });
+    syncInterviewRequirements();
     right.prepend(...(reqCard ? [reqCard.el] : []));
     hud.setPhase('build'); hud.setSpeed(S.speed);
     S.hintsUsed = hints.used();

@@ -699,13 +699,15 @@ function sizingAdvice(S, n) {
   const requests = S.peakRequests[u], peak = S.peakUtil[u];
   if (!(requests > 0 && peak > 0)) return '';
   const perServer = requests / (peak * units);
-  const needed = Math.ceil(requests / (perServer * 0.7));
+  const activeNeeded = Math.ceil(requests / (perServer * 0.7));
+  const survival = units / S.peakInstalledUnits[u];
+  const needed = Math.ceil(activeNeeded / survival);
   const need = Math.min(n.el.units.max, needed);
   const price = (n.el.cost?.perUnit || 0) * n.tierCost;
   const avg = S.counters.elapsedSec > 0 ? S.counters.unitSec[u] / S.counters.elapsedSec : n.units;
   const delta = (need - avg) * price;
   const scaling = n.autoscaleKnob || n.autoscaler >= 0;
-  return ` Measured peak at this part, including retries and repeat visits: ≈ ${withCommas(requests)} requests/s with ${withCommas(units)} ${unitsWord(n)} active${scaling ? ' under autoscaling' : ''}. Effective capacity for this request mix: ≈ ${withCommas(perServer)} requests/s per unit. With 30 percent headroom (70 percent busy), round up ${withCommas(requests)} ÷ (${withCommas(perServer)} × 0.70) = ${withCommas(needed)} ${unitsWord(n)}.${need < needed ? ` The limit is ${withCommas(need)}; reduce load or use a bigger size too.` : ''} ${scaling ? `Set the autoscaling minimum to ${withCommas(need)} before the peak; new servers take 2 to 4 minutes to start. ` : ''}Keeping ${withCommas(need)} all day costs ≈ $${withCommas(need * price)}/month for units, ≈ $${withCommas(Math.abs(delta))}/month ${delta >= 0 ? 'more' : 'less'} than this run's average fleet (usage costs may change).`;
+  return ` Measured peak at this part, including retries and repeat visits: ≈ ${withCommas(requests)} requests/s with ${withCommas(units)} ${unitsWord(n)} active${scaling ? ' under autoscaling' : ''}. Effective capacity for this request mix: ≈ ${withCommas(perServer)} requests/s per unit. With 30 percent headroom (70 percent busy), round up ${withCommas(requests)} ÷ (${withCommas(perServer)} × 0.70) = ${withCommas(activeNeeded)} ${unitsWord(n)}.${survival < 1 ? ` Only ${withCommas(units)} of ${withCommas(S.peakInstalledUnits[u])} installed units survived at that peak. Keeping the same surviving share needs ${withCommas(needed)} installed units.` : ''}${need < needed ? ` The limit is ${withCommas(need)}; reduce load or use a bigger size too.` : ''} ${scaling ? `Set the autoscaling minimum to ${withCommas(need)} before the peak; new servers take 2 to 4 minutes to start. ` : ''}Keeping ${withCommas(need)} all day costs ≈ $${withCommas(need * price)}/month for units, ≈ $${withCommas(Math.abs(delta))}/month ${delta >= 0 ? 'more' : 'less'} than this run's average fleet (usage costs may change).`;
 }
 
 function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
@@ -898,7 +900,8 @@ function nextStepOf(S, score, metrics, nodesOut, eventsOut) {
   const node = S.model.nodes.find(n => n.id === step.nodeId);
   if (node?.kind === 'compute' && /Measured peak/.test(step.text)) {
     const i = node.i;
-    step.sizing = { units: Math.min(node.el.units.max, Math.ceil(S.peakUtil[i] * S.peakUnits[i] / 0.7)),
+    const activeNeeded = Math.ceil(S.peakUtil[i] * S.peakUnits[i] / 0.7);
+    step.sizing = { units: Math.min(node.el.units.max, Math.ceil(activeNeeded * S.peakInstalledUnits[i] / S.peakUnits[i])),
       peakRps: S.peakRequests[i], activeUnits: S.peakUnits[i] };
   }
   step.kind = kind;
@@ -1118,7 +1121,8 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
     id: n.id, type: n.el.id,
     peakUtil: Math.round(Math.min(S.peakUtil[n.i], 10) * 1000) / 1000,
     peakRequests: Math.round(S.peakRequests[n.i]), peakUnits: S.peakUnits[n.i],
-    effectiveRpsPerUnit: S.peakUtil[n.i] > 0 ? S.peakRequests[n.i] / (S.peakUtil[n.i] * S.peakUnits[n.i]) : 0,
+    peakInstalledUnits: S.peakInstalledUnits[n.i],
+    effectiveRpsPerUnit: S.peakUtil[n.i] > 0 && S.peakUnits[n.i] > 0 ? S.peakRequests[n.i] / (S.peakUtil[n.i] * S.peakUnits[n.i]) : 0,
     minutesOverloaded: Math.round((S.overTicks[n.i] * S.dt) / 60),
     failed: Math.round(S.failedSum[n.i]),
     usd: Math.round((cost.perNode[n.i] || 0) * 100) / 100,

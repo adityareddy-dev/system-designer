@@ -302,7 +302,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     return risky.length === 1 ? `${el?.name || 'One part'} may not hold at the normal peak` : `${risky.length} parts may not hold at the normal peak`;
   }
   // Build-step status: a green "holds" only for a design that serves every request type at peak with no open warnings.
-  function setBuild(est, issues, sizes) {
+  function setBuild(est, issues, sizes, { advice = true } = {}) {
     buildNote.replaceChildren();
     const list = issues || [];
     lastIssues = list;
@@ -322,7 +322,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
       if (phase === 'build') { playBtn.disabled = !built; playBtn.title = built ? '' : 'Add parts and connect them first'; }
       if (!built) chip = h('span', { class: 'pl-chip' }, iconEl('ui.info', 14), (globalThis.matchMedia?.('(max-width: 719px)').matches ? 'Nothing to test yet: tap Add component, then connect it' : 'Nothing to test yet: drag a part in from the left, then connect it'));
       else if (errors.length) chip = h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: 'Show what is missing' }, iconEl('ui.warn', 14), noPath.charAt(0).toUpperCase() + noPath.slice(1));
-      else if (risky.length) chip = h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: 'Show which parts' }, iconEl('ui.warn', 14), riskyText(risky, arr, sizes || []));
+      else if (risky.length) chip = h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: 'Show which parts' }, iconEl('ui.warn', 14), advice ? riskyText(risky, arr, sizes || []) : `${risky.length} part${risky.length === 1 ? '' : 's'} above estimated capacity at the normal peak`);
       else if (share < 0.999) chip = h('span', { class: 'pl-chip pl-chip--warn' }, iconEl('ui.warn', 14), `About ${fmtPct(share)} would succeed at the normal peak`);
       else {
         // the check runs at the busiest minute of a normal day, and again at the problem's biggest traffic event

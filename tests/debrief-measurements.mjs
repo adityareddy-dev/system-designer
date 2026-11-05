@@ -47,3 +47,28 @@ assert.equal(sizing.sizing.units, 55);
 assert.match(sizing.text, /= 55 servers/);
 assert.match(sizing.text, /including retries and repeat visits/);
 assert.match(weak.canConnect('queue', 'third-party-api').reason, /Background workers/);
+
+// A down fleet's zero-capacity utilization sentinel is not measured saturation.
+function outageTrial(units, zones, peakRps) {
+  const problem = { id: 'outage-evidence', requirements: { peakRps, mix: { read: 1 }, latencyP99Ms: { default: 1000 } },
+    traffic: { curve: 'flat', sources: { 'web-browser': 1 } }, events: [{ id: 'zone-outage', at: '12:00' }] };
+  const sim = createSim({ catalog, problem, seed: 'practice' });
+  const src = sim.addNode('web-browser', -200, 0), app = sim.addNode('vm-fleet', 0, 0, { units, zones });
+  const db = sim.addNode('sql-primary', 200, 0, { units: 50, zones: 3 });
+  sim.connect(src, app); sim.connect(app, db); sim.start(); sim.advance(86400000);
+  return { result: sim.result(), app };
+}
+const downFleet = outageTrial(2, 1, 100);
+assert.equal(downFleet.result.firstFailure.kind, 'dependency');
+assert.equal(downFleet.result.firstFailure.nodeId, downFleet.app);
+assert.equal(downFleet.result.firstFailure.atMs, 12 * 3600000);
+assert(downFleet.result.nodes.find(n => n.id === downFleet.app).peakUtil < 1);
+const saturatedFleet = outageTrial(2, 3, 10000);
+assert.equal(saturatedFleet.result.firstFailure.kind, 'capacity', 'available saturated capacity still qualifies');
+const metrics = problemById.get('observability-platform');
+const reference = createSim({ catalog, problem: metrics, seed: 'practice' });
+reference.loadGraph(metrics.editorial.designs[0].graph); reference.start(); reference.advance(86400000);
+const distributor = reference.result().nodes.find(n => n.id === 'dist');
+assert.equal(distributor.peakUnits, 28);
+assert.equal(distributor.peakInstalledUnits, 42);
+assert.equal(Math.round(distributor.effectiveRpsPerUnit), 1000);

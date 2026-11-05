@@ -40,9 +40,10 @@ export function createInterview(problem) {
 const button = (text, action, primary = true) => h('button', { class: 'pl-btn' + (primary ? ' pl-btn--primary' : ''), type: 'button', onClick: action }, text);
 const writing = (label, value, update) => h('label', { class: 'pl-defense-field' }, h('span', { text: label }), h('textarea', { class: 'pl-input', rows: 5, required: true, minlength: 20, maxlength: 6000, text: value, onInput: e => update(e.target.value) }));
 
-export function renderInterviewPrep(host, problem, state, ready) {
+export function renderInterviewPrep(host, problem, state, ready, onStage = () => {}) {
+  onStage(state.stage);
   host.replaceChildren(h('div', { class: 'pl-kicker', text: 'Interview mode · You lead' }), h('h2', { class: 'pl-h2', text: problem.title }), h('p', { class: 'pl-lead', text: problem.brief }));
-  const draw = () => renderInterviewPrep(host, problem, state, ready);
+  const draw = () => renderInterviewPrep(host, problem, state, ready, onStage);
   const notice = h('p', { role: 'status', class: 'pl-muted' });
   if (state.stage === 'questions') {
     host.append(h('p', { text: 'Ask your own questions before seeing the interviewer’s list. Include scale, scope and failure expectations. Matching checks shared keywords only; it cannot judge meaning.' }), writing('What would you ask?', state.questions, v => state.questions = v), notice,

@@ -14,10 +14,12 @@ for (const p of problems.filter(p => p.difficulty === 'Hard')) {
         const g = sim.getGraph().nodes.find(g => g.id === n.id), el = catalog.elementById.get(n.type);
         const tier = catalog.world.tiers[g.tier] || catalog.world.tiers.M;
         const factor = el.knobs.includes('tier') ? tier.capacity : 1;
+        const headroomUnits = n.effectiveRpsPerUnit > 0 ? Math.ceil(n.peakRequests / (n.effectiveRpsPerUnit * .7)) : null;
         return { id: n.id, type: n.type, installed: g.units, zones: g.zones, tier: g.tier,
           readsPerUnit: Math.round(el.capacity.rps * factor), writesPerUnit: Math.round((el.capacity.writeRps || el.capacity.rps) * factor),
-          peakRequests: n.peakRequests, activeAtPeak: n.peakUnits, peakUtil: n.peakUtil,
-          effectivePerUnit: Math.round(n.effectiveRpsPerUnit), headroomUnits: n.effectiveRpsPerUnit > 0 ? Math.ceil(n.peakRequests / (n.effectiveRpsPerUnit * .7)) : null };
+          peakRequests: n.peakRequests, activeAtPeak: n.peakUnits, installedAtPeak: n.peakInstalledUnits, peakUtil: n.peakUtil,
+          effectivePerUnit: Math.round(n.effectiveRpsPerUnit), headroomUnits,
+          installedForHeadroom: headroomUnits == null ? null : Math.ceil(headroomUnits * n.peakInstalledUnits / n.peakUnits) };
       }) };
   });
 }

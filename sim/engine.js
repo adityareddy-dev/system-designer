@@ -122,15 +122,15 @@ function statusOf(util, down, bands) {
 }
 
 const N_F64 = ['cap', 'capNom', 'rho', 'sv', 'sPrev', 'rhoPrev', 'rhoQacc', 'rhoQPrev', 'health', 'unhealthySince', 'extraNow', 'extraPrev', 'dNow',
-  'hop50', 'hop99', 'err', 'errSoft', 'addLat', 'cold', 'hot', 'flush', 'dup', 'lagEv', 'lag', 'cacheLag', 'capFactor', 'fan', 'limitCap',
+  'hop50', 'hop99', 'err', 'errSoft', 'addLat', 'cold', 'hot', 'flush', 'dup', 'lagEv', 'lag', 'cacheLag', 'capFactor', 'aliveFactor', 'fan', 'limitCap',
   'connErr', 'nodeCostMul', 'unitsCur', 'cbOpenUntil', 'cbDown', 'cbLat', 'loadEq', 'realIn', 'realInPrev', 'wrRate', 'wrRatePrev',
   'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'failedNow', 'llLoss', 'highSince', 'lowSince', 'nodeReq', 'nodeKb', 'nodeInKb', 'nodeWKb', 'atkIn', 'BIN',
-  'qAge', 'qOver', 'lateNow', 'unitsLo', 'unitsHi', 'peakUnits', 'peakCapacity', 'peakRequests'];
+  'qAge', 'qOver', 'lateNow', 'unitsLo', 'unitsHi', 'peakUnits', 'peakInstalledUnits', 'peakCapacity', 'peakRequests'];
 const N_U8 = ['down', 'blockW', 'poison', 'scaleBlocked', 'cbOpen', 'status', 'tmoAny'];
 const NL = ['IN', 'RIN', 'INJ', 'OKS', 'FAILR', 'DONE', 'HITS', 'PUa', 'SUCC', 'SOFT', 'LAT', 'TM', 'TV', 'EXTRA', 'PD', 'TMO', 'DD', 'BACK', 'DRAIN', 'RNEXT', 'RPEND', 'WNEXT', 'PQ'];
 const EL = ['W', 'ER', 'BACKE', 'DRAINE'];
 const PERSIST_N = ['unitsCur', 'sPrev', 'rhoPrev', 'rhoQPrev', 'health', 'unhealthySince', 'extraPrev', 'cbOpenUntil', 'cbDown', 'cbLat', 'realInPrev',
-  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'unitsLo', 'unitsHi', 'peakUnits', 'peakCapacity', 'peakRequests'];
+  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'unitsLo', 'unitsHi', 'peakUnits', 'peakInstalledUnits', 'peakCapacity', 'peakRequests'];
 const PERSIST_NL = ['BACK', 'RPEND', 'RNEXT', 'WNEXT', 'PQ'];
 const PERSIST_EL = ['BACKE'];
 // Every field the engine state ever holds, declared up front so the object keeps one fast shape in V8.
@@ -160,10 +160,10 @@ function blankState() {
     // per node (N)
     cap: null, capNom: null, rho: null, sv: null, sPrev: null, rhoPrev: null, rhoQacc: null, rhoQPrev: null, health: null, unhealthySince: null,
     extraNow: null, extraPrev: null, dNow: null, hop50: null, hop99: null, err: null, errSoft: null, addLat: null, cold: null, hot: null, flush: null,
-    dup: null, lagEv: null, lag: null, cacheLag: null, capFactor: null, fan: null, limitCap: null, connErr: null, nodeCostMul: null, unitsCur: null,
+    dup: null, lagEv: null, lag: null, cacheLag: null, capFactor: null, aliveFactor: null, fan: null, limitCap: null, connErr: null, nodeCostMul: null, unitsCur: null,
     cbOpenUntil: null, cbDown: null, cbLat: null, loadEq: null, realIn: null, realInPrev: null, wrRate: null, wrRatePrev: null, writesSoFar: null,
     peakUtil: null, overTicks: null, failedSum: null, failedNow: null, llLoss: null, highSince: null, lowSince: null,
-    nodeReq: null, nodeKb: null, nodeInKb: null, nodeWKb: null, atkIn: null, BIN: null, qAge: null, qOver: null, lateNow: null, unitsLo: null, unitsHi: null, peakUnits: null, peakCapacity: null, peakRequests: null,
+    nodeReq: null, nodeKb: null, nodeInKb: null, nodeWKb: null, atkIn: null, BIN: null, qAge: null, qOver: null, lateNow: null, unitsLo: null, unitsHi: null, peakUnits: null, peakInstalledUnits: null, peakCapacity: null, peakRequests: null,
     down: null, blockW: null, poison: null, scaleBlocked: null, cbOpen: null, status: null, tmoAny: null,
     // per node and lane (N x LN)
     IN: null, RIN: null, INJ: null, OKS: null, FAILR: null, DONE: null, HITS: null, PUa: null, SUCC: null, SOFT: null, LAT: null, TM: null, TV: null,
@@ -455,7 +455,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   function resetMods(X) {
     const N = X.model.N;
     X.err.fill(0); X.errSoft.fill(0); X.addLat.fill(0); X.cold.fill(0); X.hot.fill(0); X.dup.fill(0); X.lagEv.fill(0);
-    X.flush.fill(1); X.capFactor.fill(1); X.fan.fill(1); X.limitCap.fill(Infinity); X.connErr.fill(0); X.nodeCostMul.fill(1);
+    X.flush.fill(1); X.capFactor.fill(1); X.aliveFactor.fill(1); X.fan.fill(1); X.limitCap.fill(Infinity); X.connErr.fill(0); X.nodeCostMul.fill(1);
     X.down.fill(0); X.blockW.fill(0); X.poison.fill(0); X.scaleBlocked.fill(0);
     X.trafficMul.fill(1); X.fanTypes.fill(0);
     X.attackRate = 0; X.attackMask = 0; X.attackAppRate = 0; X.attackApp = 0; X.usageMul = 1; X.partition = false; X.retryAmp = false;
@@ -976,7 +976,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     if (p99Now > X.worstP99) X.worstP99 = p99Now;
     if (!X.firstBreak && off > 0 && succ / off < 0.95) {
       const gap = validateModel(X).find(i => i.level === 'error' && i.type);
-      const limiting = m.nodes.filter(n => n.kind !== 'source' && X.rho[n.i] > 1 && X.failedNow[n.i] > 0)
+      const limiting = m.nodes.filter(n => n.kind !== 'source' && !X.down[n.i] && X.cap[n.i] > 0 && X.rho[n.i] > 1 && X.failedNow[n.i] > 0)
         .sort((a,b) => X.rho[b.i] - X.rho[a.i])[0];
       const failed = limiting || m.nodes.filter(n => n.kind !== 'source' && X.failedNow[n.i] > 0).sort((a,b) => X.failedNow[b.i] - X.failedNow[a.i])[0];
       X.firstBreak = { atMs: X.clock, nodeId: gap?.nodeId || failed?.id || null,
@@ -1025,7 +1025,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       const down = n.hasCap && n.k !== KIND.source && X.cap[u] <= 0;
       if (!down && util > X.peakUtil[u]) {
         X.peakUtil[u] = util;
-        X.peakUnits[u] = X.unitsCur[u];
+        X.peakUnits[u] = Math.round(X.unitsCur[u] * X.aliveFactor[u] * 1e6) / 1e6;
+        X.peakInstalledUnits[u] = X.unitsCur[u];
         X.peakCapacity[u] = X.cap[u];
         X.peakRequests[u] = X.realIn[u];
       }
@@ -1493,7 +1494,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     st.nodes = m.nodes.map((n) => ({
       id: n.id, type: n.el.id,
       incomingRps: Math.round(S.realIn[n.i]),
-      availableUnits: phase === 'build' || S.clock === 0 ? Math.round(S.unitsCur[n.i]) : Math.max(0, Math.round(S.unitsCur[n.i] * (S.down[n.i] ? 0 : S.capFactor[n.i]))),
+      availableUnits: phase === 'build' || S.clock === 0 ? Math.round(S.unitsCur[n.i]) : Math.max(0, Math.round(S.unitsCur[n.i] * (S.down[n.i] ? 0 : S.aliveFactor[n.i]))),
       util: Math.round(Math.min(S.rho[n.i], UTIL_SHOW_MAX) * 1000) / 1000,
       status: ['ok', 'warn', 'hot', 'overload', 'down'][S.status[n.i]],
       p99Ms: Math.round(S.hop99[n.i] * 10) / 10,
