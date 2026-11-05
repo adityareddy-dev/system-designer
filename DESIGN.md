@@ -16,7 +16,7 @@ The name matches its home, https://systemdesigner.io (Adi bought the domain on N
 |---|---|
 | Never heard of a load balancer | The 3-minute intro and the Learn track, in plain words, with live demos |
 | Student or bootcamp grad | Easy problems that teach the building blocks one at a time |
-| Interview candidate | The clarify, numbers, draw, failure, cost habit on 77 problems with editorials |
+| Interview candidate | The clarify, numbers, draw, failure, cost habit on 82 problems with editorials |
 | Junior or senior engineer | Hard problems with real failure modes, real cost lines, and trade-offs to argue about |
 | Product person, curious non-engineer | Sandbox and Learn: see why "just add servers" is not the whole answer |
 | Friends | Daily challenge, personal bests, "beat my design" links and result cards |
@@ -41,7 +41,7 @@ Loop length: a first attempt takes 5 to 8 minutes; a retry about 3.
 
 ### 3.1 Learn
 
-24 short lessons, one concept each, 2 to 4 minutes. Every lesson uses the real engine in a small embedded canvas.
+41 lessons, one concept each. The original 24 take 2 to 4 minutes and use the real engine in a small embedded canvas. The 17 lessons in Go deeper and Lead the design take 5 to 8 minutes. They use worked examples where the engine cannot honestly show the mechanism, plus numbers, three reasoning quizzes, two written defenses and a transfer case.
 
 Lesson shape: **hook** (one real situation) → **see it** (a running mini-system that breaks) → **try it** (one change with a clear goal, such as "get the database under 70 percent busy") → **numbers** (two or three real-world approximations) → **one quiz question** → **takeaway** (one sentence).
 
@@ -56,12 +56,14 @@ All lessons are open; the suggested path is shown as tracks.
 | Stay correct | `consistency`: Which copy is the truth · `idempotency-retries`: Exactly once, on purpose |
 | Stay up | `rate-limiting`: Saying "slow down" politely · `circuit-breakers`: Timeouts and failing fast · `multi-region`: Surviving a region · `observability`: Seeing problems early |
 | Business | `cost`: Where the money goes · `security-compliance`: Proof built in · `ai-serving`: GPUs, tokens and fallbacks |
+| Go deeper | `consistent-hashing`: Consistent hashing and moving data · `copies-quorums`: Copies and quorums · `leader-consensus`: Agreeing on one leader · `consistency-models`: What consistent really means · `storage-engine`: Inside a storage engine · `work-across-services`: Work across services · `ordering-time`: Ordering and time · `device-sync`: Syncing across devices · `privacy-design`: Privacy by design · `metrics-systems`: How metrics systems work · `logs-traces`: Logs and traces · `slos-error-budgets`: SLOs and error budgets · `multi-tenancy`: Many customers on one system |
+| Lead the design | `lead-interview`: How to lead a design interview · `simplest-design`: The simplest thing that works · `running-migrations`: Changing a running system · `team-boundaries`: Designs that other teams must live with |
 
-The lesson ids (except `intro`) are also the **concept ids** used to tag problems.
+The lesson ids (except `intro`) are also the **concept ids** used to tag problems. `content/problems/concept-links.js` adds relevant deeper lessons to existing problem tags without changing their saved ids or scoring.
 
 ### 3.2 Practice
 
-The problem bank. 77 problems across 15 groups (section 5).
+The problem bank. 82 problems across 15 groups (section 5).
 
 **List screen.** Filter chips: difficulty (Easy, Medium, Hard), group (industry), concept (multi-select), status (new, tried, solved). A search box matches titles, comparisons and concepts. Cards show title, the plain comparison ("a video service like Netflix"), difficulty, concept tags, best stars and best score. Default sort: suggested order (Easy first within each group, groups in the order of section 5).
 
@@ -121,7 +123,7 @@ Every control has a visible button; keyboard shortcuts are accelerators only. Th
 
 ## 5. Problem bank (as built)
 
-77 problems across 15 groups, written to `content/data` by `tools/gen-content.mjs` from `content/problems/*.js`. "Events" are the scheduled signature events. Every problem also has a "new twist" replay (`content/problems/twists.js`, made by `tools/gen-twists.mjs`): its events move and one more is added, the reference design still passes it, and the day is practice only.
+82 problems across 15 groups, written to `content/data` by `tools/gen-content.mjs` from `content/problems/*.js`. "Events" are the scheduled signature events. Every problem also has a "new twist" replay (`content/problems/twists.js`, made by `tools/gen-twists.mjs`): its events move and one more is added, the reference design still passes it, and the day is practice only.
 
 ### core: Core building blocks
 
@@ -183,6 +185,7 @@ Every control has a visible button; keyboard shortcuts are accelerators only. Th
 | telehealth-video | Telehealth video visits | Medium | a video doctor visit | realtime-connections, multi-region | thundering-herd, zone-outage, dependency-outage |
 | pharmacy-stock | Pharmacy stock and refills | Medium | a pharmacy chain's stock and refill system | replication-lag, search-indexing | noisy-neighbor, replication-lag, hot-key |
 | vaccine-signup-surge | Vaccine sign-up surge | Hard | a county vaccine sign-up site | rate-limiting, queues-backpressure | flash-crowd, bot-scraping, db-failover |
+| wearable-health | Health readings from a wearable | Hard | private health summaries from a wrist device | privacy-design, device-sync, storage-engine, ordering-time, slos-error-budgets | retry-storm, zone-outage, thundering-herd |
 
 ### civic: Government and education
 
@@ -248,6 +251,7 @@ Every control has a visible button; keyboard shortcuts are accelerators only. Th
 | file-sync | File sync | Medium | a file sync app like Dropbox | storage-tiers, consistency | thundering-herd, hot-key, disk-full |
 | collaborative-docs | Collaborative documents | Hard | shared docs like Google Docs | realtime-connections, consistency | thundering-herd, zone-outage, network-partition |
 | email-service | Email service | Hard | an email service like Gmail | search-indexing, storage-tiers, queues-backpressure | bot-scraping, disk-full, replication-lag |
+| device-notes | Notes that sync across your devices | Hard | a private offline notebook like Standard Notes | device-sync, ordering-time, privacy-design, consistency-models, work-across-services | zone-outage, thundering-herd, retry-storm |
 
 ### commerce: Commerce and retail
 
@@ -274,9 +278,11 @@ Every control has a visible button; keyboard shortcuts are accelerators only. Th
 | feature-flag-service | Feature flag service | Medium | a flag service like LaunchDarkly | realtime-connections, cdn | thundering-herd, bad-config-push |
 | clickstream-analytics | Clickstream analytics | Medium | the page-view tracking behind a product analytics tool | queues-backpressure, storage-tiers | viral-spike, cardinality-explosion, cost-blowout |
 | observability-platform | Metrics platform | Hard | a metrics store like Mimir | sharding, observability, multi-region | cardinality-explosion, thundering-herd, zone-outage |
+| logs-platform | Logs platform | Hard | a label-indexed log service like Loki | logs-traces, consistent-hashing, storage-engine, multi-tenancy, slos-error-budgets | noisy-neighbor, zone-outage, retry-storm |
+| tracing-platform | Tracing platform | Hard | a trace store like Tempo | logs-traces, ordering-time, consistent-hashing, storage-engine, slos-error-budgets | zone-outage, thundering-herd, retry-storm |
+| tenant-metrics | Metrics for many customers | Hard | a shared metrics service like Mimir | metrics-systems, multi-tenancy, copies-quorums, consistent-hashing, slos-error-budgets | cardinality-explosion, noisy-neighbor, zone-outage |
 
-Totals: 19 Easy, 33 Medium, 25 Hard. Every group has at least one Hard problem.
-
+Totals: 19 Easy, 33 Medium, 30 Hard. Every group has at least one Hard problem.
 
 ## 6. The traffic day
 

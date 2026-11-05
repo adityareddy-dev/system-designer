@@ -24,6 +24,17 @@ export function createProgress(store, bus) {
       bus.emit('progress:updated', { problemId });
     },
 
+    recordInterview(problemId, report) {
+      const prev = probs[problemId] || { attempts: 0, bestScore: 0, stars: 0, hintsUsed: 0, solvedAt: null, lastResultAt: null };
+      const old = prev.interview || {};
+      const entry = { ...JSON.parse(JSON.stringify(report)), at: Date.now() };
+      const ratio = x => x?.total > 0 ? x.covered / x.total : -1;
+      probs[problemId] = { ...prev, interview: { attempts: (old.attempts || 0) + 1, latest: entry,
+        bestCoverage: ratio(entry) > ratio(old.bestCoverage) ? entry : old.bestCoverage,
+        bestDay: !old.bestDay || entry.score > old.bestDay.score ? entry : old.bestDay } };
+      save(); bus.emit('progress:updated', { problemId });
+    },
+
     // Returns { first, improved } so callers can celebrate.
     record(problemId, debrief, hintsUsed = 0) {
       const total = Math.round(debrief?.score?.total ?? debrief?.total ?? 0);
@@ -60,9 +71,16 @@ export function createProgress(store, bus) {
     },
 
     exportAll: () => ({ app: 'system-designer', v: 1, problems: probs, lessons }),
-    importAll(data) {
+    importAll(data, { preserveInterviews = false } = {}) {
       if (!data || data.app !== 'system-designer' || typeof data.problems !== 'object' || typeof data.lessons !== 'object') return false;
-      probs = data.problems;
+      const incoming = { ...data.problems };
+      // Account sync keeps device-local reports; backup imports restore the saved reports.
+      if (preserveInterviews) {
+        for (const [id, problem] of Object.entries(probs)) {
+          if (problem?.interview) incoming[id] = { ...(incoming[id] || problem), interview: problem.interview };
+        }
+      }
+      probs = incoming;
       lessons = data.lessons;
       save();
       bus.emit('progress:updated', {});

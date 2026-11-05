@@ -1,5 +1,6 @@
 // Compiles a graph into the runtime model: node table, edge classes, topological order and per-type routing tables.
 import { NEAR_USER, knobValue, inRequestPath } from './graph.js';
+import { sourceWeights } from './sources.js';
 
 export const KIND = { source: 0, router: 1, filter: 2, cache: 3, compute: 4, store: 5, queue: 6, lookaside: 7, tap: 8, external: 9, observer: 10, control: 11 };
 export const M = { NONE: 0, COMPLETE: 1, FORWARD: 2, QUEUE: 3, CALLED: 4, TAPEND: 5, CACHE: 6, SIDECACHE: 7, ABSORB: 8 };
@@ -97,7 +98,7 @@ export function refreshKnobs(catalog, info, env) {
   info.region = g.region || env.homeRegion;
 }
 
-export function compile(catalog, graph, env) {
+export function compile(catalog, graph, env, problem = { traffic: {} }) {
   const T = catalog.requests.length;
   const attackT = catalog.typeIndex.get('attack');
   const regionIds = env.regionIds;
@@ -329,15 +330,17 @@ export function compile(catalog, graph, env) {
   for (const n of nodes) if (n.kind === 'source') sources.push(n.i);
   const pathEls = Array.from({ length: T }, () => new Set());
   const typeServed = new Uint8Array(T);
+  const sourceShare = new Float64Array(N * T);
   // A type counts as served only if some path from a source ends at a part that finishes it (or a queue that holds it).
   const ENDS = new Set([M.COMPLETE, M.CACHE, M.SIDECACHE, M.QUEUE, M.CALLED, M.TAPEND]);
   for (let t = 0; t < T; t++) {
     if (t === attackT) continue;
     const seen = new Uint8Array(N);
     const stack = [];
-    for (const s of sources) {
+    for (const [s, share] of sourceWeights(problem, { nodes, H }, t, catalog.requests[t].id)) {
+      sourceShare[s * T + t] = share;
       const r = route[s * T + t];
-      if (r && r.mode === M.FORWARD) stack.push(s);
+      if (share > 0 && r && r.mode === M.FORWARD) stack.push(s);
     }
     while (stack.length) {
       const u = stack.pop();
@@ -397,7 +400,7 @@ export function compile(catalog, graph, env) {
   }
 
   return {
-    catalog, env, T, attackT, regionIds, homeIdx, cacheable,
+    catalog, env, problem, T, attackT, regionIds, homeIdx, cacheable, sourceShare,
     N, nodes, idx, E, edges, outAll, inAll, outFlow, tapOut, reentry, topo,
     canServe, route, ownProt, sources: Int32Array.from(sources), pathEls, typeServed, behind, ops, present,
     attackRoutes: new Map(),

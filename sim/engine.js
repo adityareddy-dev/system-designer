@@ -121,15 +121,15 @@ function statusOf(util, down, bands) {
 }
 
 const N_F64 = ['cap', 'capNom', 'rho', 'sv', 'sPrev', 'rhoPrev', 'rhoQacc', 'rhoQPrev', 'health', 'unhealthySince', 'extraNow', 'extraPrev', 'dNow',
-  'hop50', 'hop99', 'err', 'errSoft', 'addLat', 'cold', 'hot', 'flush', 'dup', 'lagEv', 'lag', 'cacheLag', 'capFactor', 'fan', 'limitCap',
+  'hop50', 'hop99', 'err', 'errSoft', 'addLat', 'cold', 'hot', 'flush', 'dup', 'lagEv', 'lag', 'cacheLag', 'capFactor', 'aliveFactor', 'fan', 'limitCap',
   'connErr', 'nodeCostMul', 'unitsCur', 'cbOpenUntil', 'cbDown', 'cbLat', 'loadEq', 'realIn', 'realInPrev', 'wrRate', 'wrRatePrev',
   'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'failedNow', 'llLoss', 'highSince', 'lowSince', 'nodeReq', 'nodeKb', 'nodeInKb', 'nodeWKb', 'atkIn', 'BIN',
-  'qAge', 'qOver', 'lateNow', 'unitsLo', 'unitsHi', 'peakUnits', 'peakCapacity', 'peakRequests'];
+  'qAge', 'qOver', 'lateNow', 'unitsLo', 'unitsHi', 'peakUnits', 'peakInstalledUnits', 'peakCapacity', 'peakRequests'];
 const N_U8 = ['down', 'blockW', 'poison', 'scaleBlocked', 'cbOpen', 'status', 'tmoAny'];
 const NL = ['IN', 'RIN', 'INJ', 'OKS', 'FAILR', 'DONE', 'HITS', 'PUa', 'SUCC', 'SOFT', 'LAT', 'TM', 'TV', 'EXTRA', 'PD', 'TMO', 'DD', 'BACK', 'DRAIN', 'RNEXT', 'RPEND', 'WNEXT', 'PQ'];
 const EL = ['W', 'ER', 'BACKE', 'DRAINE'];
 const PERSIST_N = ['unitsCur', 'sPrev', 'rhoPrev', 'rhoQPrev', 'health', 'unhealthySince', 'extraPrev', 'cbOpenUntil', 'cbDown', 'cbLat', 'realInPrev',
-  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'unitsLo', 'unitsHi', 'peakUnits', 'peakCapacity', 'peakRequests'];
+  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'unitsLo', 'unitsHi', 'peakUnits', 'peakInstalledUnits', 'peakCapacity', 'peakRequests'];
 const PERSIST_NL = ['BACK', 'RPEND', 'RNEXT', 'WNEXT', 'PQ'];
 const PERSIST_EL = ['BACKE'];
 // Every field the engine state ever holds, declared up front so the object keeps one fast shape in V8.
@@ -159,10 +159,10 @@ function blankState() {
     // per node (N)
     cap: null, capNom: null, rho: null, sv: null, sPrev: null, rhoPrev: null, rhoQacc: null, rhoQPrev: null, health: null, unhealthySince: null,
     extraNow: null, extraPrev: null, dNow: null, hop50: null, hop99: null, err: null, errSoft: null, addLat: null, cold: null, hot: null, flush: null,
-    dup: null, lagEv: null, lag: null, cacheLag: null, capFactor: null, fan: null, limitCap: null, connErr: null, nodeCostMul: null, unitsCur: null,
+    dup: null, lagEv: null, lag: null, cacheLag: null, capFactor: null, aliveFactor: null, fan: null, limitCap: null, connErr: null, nodeCostMul: null, unitsCur: null,
     cbOpenUntil: null, cbDown: null, cbLat: null, loadEq: null, realIn: null, realInPrev: null, wrRate: null, wrRatePrev: null, writesSoFar: null,
     peakUtil: null, overTicks: null, failedSum: null, failedNow: null, llLoss: null, highSince: null, lowSince: null,
-    nodeReq: null, nodeKb: null, nodeInKb: null, nodeWKb: null, atkIn: null, BIN: null, qAge: null, qOver: null, lateNow: null, unitsLo: null, unitsHi: null, peakUnits: null, peakCapacity: null, peakRequests: null,
+    nodeReq: null, nodeKb: null, nodeInKb: null, nodeWKb: null, atkIn: null, BIN: null, qAge: null, qOver: null, lateNow: null, unitsLo: null, unitsHi: null, peakUnits: null, peakInstalledUnits: null, peakCapacity: null, peakRequests: null,
     down: null, blockW: null, poison: null, scaleBlocked: null, cbOpen: null, status: null, tmoAny: null,
     // per node and lane (N x LN)
     IN: null, RIN: null, INJ: null, OKS: null, FAILR: null, DONE: null, HITS: null, PUa: null, SUCC: null, SOFT: null, LAT: null, TM: null, TV: null,
@@ -308,7 +308,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   function ensureModel() {
     if (!dirty && S.model) return;
     const old = S.model ? { model: S.model, arrays: snapshotPersist() } : null;
-    const model = compile(catalog, graph, env);
+    const model = compile(catalog, graph, env, prob);
     for (const n of model.nodes) prepareNode(n, model);
     S.model = model;
     allocArrays(S, model.N, model.E);
@@ -350,19 +350,9 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     const m = S.model;
     const { nodes, N } = m;
     // source shares per type
-    S.srcShare = new Float64Array(N * T);
+    S.srcShare = m.sourceShare;
     S.srcAny = new Float64Array(N);
     const srcMap = prob.traffic.sources || {};
-    for (let t = 0; t < T; t++) {
-      if (t === S.attackT) continue;
-      const list = nodes.filter((n) => n.kind === 'source' && m.H(n.i, t));
-      if (!list.length) continue;
-      const counts = new Map();
-      for (const n of list) counts.set(n.el.id, (counts.get(n.el.id) || 0) + 1);
-      let sum = 0;
-      const w = list.map((n) => { const v = (srcMap[n.el.id] || 0) / counts.get(n.el.id); sum += v; return v; });
-      for (let k = 0; k < list.length; k++) S.srcShare[list[k].i * T + t] = sum > 0 ? w[k] / sum : 1 / list.length;
-    }
     let anySum = 0;
     for (const n of nodes) if (n.kind === 'source') { S.srcAny[n.i] = (srcMap[n.el.id] || 0) + 1e-6; anySum += S.srcAny[n.i]; }
     for (const n of nodes) if (anySum > 0) S.srcAny[n.i] /= anySum;
@@ -459,7 +449,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   function resetMods(X) {
     const N = X.model.N;
     X.err.fill(0); X.errSoft.fill(0); X.addLat.fill(0); X.cold.fill(0); X.hot.fill(0); X.dup.fill(0); X.lagEv.fill(0);
-    X.flush.fill(1); X.capFactor.fill(1); X.fan.fill(1); X.limitCap.fill(Infinity); X.connErr.fill(0); X.nodeCostMul.fill(1);
+    X.flush.fill(1); X.capFactor.fill(1); X.aliveFactor.fill(1); X.fan.fill(1); X.limitCap.fill(Infinity); X.connErr.fill(0); X.nodeCostMul.fill(1);
     X.down.fill(0); X.blockW.fill(0); X.poison.fill(0); X.scaleBlocked.fill(0);
     X.trafficMul.fill(1); X.fanTypes.fill(0);
     X.attackRate = 0; X.attackMask = 0; X.attackAppRate = 0; X.attackApp = 0; X.usageMul = 1; X.partition = false; X.retryAmp = false;
@@ -978,7 +968,16 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     X.hourOff[hour] += off * dt; X.hourSucc[hour] += succ * dt;
     if (p99Now > 0) { X.hourP99[hour] += p99Now * off * dt; X.hourW[hour] += off * dt; }
     if (p99Now > X.worstP99) X.worstP99 = p99Now;
-    if (!X.firstBreak && off > 0 && succ / off < 0.95) X.firstBreak = { atMs: X.clock };
+    if (!X.firstBreak && off > 0 && succ / off < 0.95) {
+      const gap = validateModel(X).find(i => i.level === 'error' && i.type);
+      const limiting = m.nodes.filter(n => n.kind !== 'source' && !X.down[n.i] && X.cap[n.i] > 0 && X.rho[n.i] > 1 && X.failedNow[n.i] > 0)
+        .sort((a,b) => X.rho[b.i] - X.rho[a.i])[0];
+      const failed = limiting || m.nodes.filter(n => n.kind !== 'source' && X.failedNow[n.i] > 0).sort((a,b) => X.failedNow[b.i] - X.failedNow[a.i])[0];
+      const cause = gap?.nodeId ? m.nodes[m.idx.get(gap.nodeId)] : failed;
+      const unavailable = cause?.hasCap && (X.down[cause.i] || X.cap[cause.i] <= 0);
+      X.firstBreak = { atMs: X.clock, nodeId: gap?.nodeId || failed?.id || null,
+        kind: gap ? 'routing' : limiting ? 'capacity' : 'dependency', util: unavailable ? null : cause ? Math.round(X.rho[cause.i] * 1000) / 1000 : 0 };
+    }
 
     // safety ledger
     // stale read-backs only matter where people must see their own change at once
@@ -1022,7 +1021,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       const down = n.hasCap && n.k !== KIND.source && X.cap[u] <= 0;
       if (!down && util > X.peakUtil[u]) {
         X.peakUtil[u] = util;
-        X.peakUnits[u] = X.unitsCur[u];
+        X.peakUnits[u] = Math.round(X.unitsCur[u] * X.aliveFactor[u] * 1e6) / 1e6;
+        X.peakInstalledUnits[u] = X.unitsCur[u];
         X.peakCapacity[u] = X.cap[u];
         X.peakRequests[u] = X.realIn[u];
       }
@@ -1489,6 +1489,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     if (S.clock >= dayMs) st.clockLabel = '24:00';
     st.nodes = m.nodes.map((n) => ({
       id: n.id, type: n.el.id,
+      incomingRps: Math.round(S.realIn[n.i]),
+      availableUnits: phase === 'build' || S.clock === 0 ? Math.round(S.unitsCur[n.i]) : Math.max(0, Math.round(S.unitsCur[n.i] * (S.down[n.i] ? 0 : S.aliveFactor[n.i]))),
       util: Math.round(Math.min(S.rho[n.i], UTIL_SHOW_MAX) * 1000) / 1000,
       status: ['ok', 'warn', 'hot', 'overload', 'down'][S.status[n.i]],
       p99Ms: Math.round(S.hop99[n.i] * 10) / 10,

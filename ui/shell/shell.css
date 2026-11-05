@@ -217,6 +217,12 @@
 .sh-lp-hero-ico { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 20px; background: var(--accent-soft); color: var(--accent); }
 .sh-lp-hero-ico.is-ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
 .sh-lp-text { margin: 0; font-size: 17px; line-height: 1.55; max-width: 62ch; text-wrap: pretty; }
+.sh-defend-form, .sh-defend-comparison { display: grid; gap: 16px; min-width: 0; }
+.sh-defend-comparison[hidden] { display: none; }
+.sh-defend-answer { resize: vertical; min-height: 150px; font: inherit; line-height: 1.5; }
+.sh-defend-checklist { margin: 0; padding: 12px; border: 1px solid var(--border-strong); border-radius: 12px; min-width: 0; }
+.sh-defend-point { display: flex; align-items: flex-start; gap: 12px; padding: 12px 4px; cursor: pointer; line-height: 1.5; }
+.sh-defend-point input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); }
 .sh-lp-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .sh-lp-nav > .sh-btn--primary { margin-left: auto; }
 .sh-lp-nav > .sh-btn--primary.is-goal { animation: sh-pulse 1.6s var(--ease-in-out) infinite; }
@@ -690,3 +696,61 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-challenge-page .sh-scenario .sh-bench-scene {max-height:110px;margin-bottom:0}
  .sh-challenge-page .sh-scenario .sh-lp-text {font-size:15px;line-height:1.4}
 }
+
+/* Concept plates use the same ink, ports and calibration marks as the workbench. */
+.sh-bench-scene svg {display:block;width:100%;height:100%;max-height:150px}
+.sh-concept-plate {margin:0;border:1px solid var(--border);border-radius:12px;background:var(--bg);padding:16px}
+.sh-concept-plate svg {display:block;width:100%;height:auto;max-height:360px}
+.sh-track-progress {margin-left:auto;font:12px var(--font-mono);color:var(--text-2);font-weight:400}
+.sh-track>.sh-h2 {display:flex;align-items:center;gap:8px}
+.sh-lp-card:not(.sh-lp-card--demo) {border:none;border-top:2px solid var(--edge-idle);border-radius:0;background:transparent;padding:24px 0}
+.sh-lp-card--illustrated {grid-template-columns:minmax(260px,1fr) minmax(280px,1fr);column-gap:32px;align-items:start}
+.sh-lp-card--illustrated .sh-concept-plate {grid-column:2;grid-row:1/5;align-self:stretch;display:grid;align-items:center;min-height:280px}
+.sh-lp-card--illustrated .sh-lp-nav {grid-column:1/-1;border-top:1px solid var(--border);padding-top:16px}
+.sh-lp-card--illustrated .sh-lp-hero-ico {width:40px;height:40px;background:transparent;border:0}
+.sh-tap-lane {position:relative;min-height:180px;gap:24px;padding:32px 24px;border-radius:12px;border:1px solid var(--border);background:var(--canvas)}
+.sh-tap-end {width:96px;height:96px;padding:16px 8px;background:var(--surface-solid);border:1.5px solid var(--edge-idle);border-top:3px solid var(--cat-compute);border-radius:12px;box-shadow:0 3px 0 var(--border);font-size:14px}
+.sh-tap-end:first-child {border-top-color:var(--cat-clients)}
+.sh-tap-end .sh-ico {width:32px;height:32px}
+.sh-tap-wire {height:2px;background:var(--edge-idle)}
+.sh-tap-act {align-items:center;gap:16px}
+.sh-tap-out {max-width:44ch;font-size:16px}
+.sh-tap-log {min-height:28px}
+.sh-tap-log li {border-radius:4px;border-bottom:3px solid var(--cat-compute);font:13px var(--font-mono)}
+.sh-interview-toggle[aria-pressed=true] {border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+@media(max-width:719px){
+ .sh-lp-card--illustrated {grid-template-columns:1fr;gap:16px}
+ .sh-lp-card--illustrated .sh-concept-plate {grid-column:1;grid-row:auto;min-height:0;order:1;padding:8px}
+ .sh-lp-card--illustrated .sh-concept-plate svg {max-height:200px}
+ .sh-lp-card--illustrated .sh-lp-nav {order:2}
+ .sh-tap-lane {min-height:200px;gap:8px;padding:24px 12px}
+ .sh-tap-end {width:76px;height:88px;font-size:13px}
+ .sh-tap-out {font-size:15px}
+ .sh-interview-toggle {font-size:12px;padding:6px 10px;min-width:108px}
+ .sh-problem:has(.sh-interview-toggle) .sh-problem-like,.sh-problem:has(.sh-interview-toggle) .sh-problem-next {display:none}
+ .sh-lesson .sh-bench-scene {display:block;width:84px;height:64px;grid-column:1;grid-row:1/4;margin:0;padding:0;align-self:center}
+ .sh-lesson:has(.sh-bench-scene) {grid-template-columns:84px minmax(0,1fr);column-gap:12px}
+ .sh-lesson .sh-lesson-top {grid-column:2;grid-row:1;justify-content:end}
+ .sh-lesson .sh-lesson-ico {display:none}
+ .sh-lesson .sh-lesson-title {grid-column:2;grid-row:2}
+ .sh-lesson .sh-lesson-sum {grid-column:2;grid-row:3;font-size:13px;line-height:1.35}
+ .sh-lesson .sh-badge {grid-column:2;grid-row:4;justify-self:start}
+}
+
+.sh-hero-art::after {display:none}
+.sh-hero-controls {display:flex;gap:6px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)}
+.sh-hero-controls .sh-btn {flex:1;font-size:13px;padding-inline:8px;box-shadow:none;white-space:nowrap}
+.sh-hero-controls [aria-pressed=true] {background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.sh-hero-evidence {font-size:15px;line-height:1.5;min-height:68px;margin:12px 0 8px}
+.sh-hero-evidence b {font-family:var(--font-mono);font-size:13px}
+.sh-hero-art .sh-demo-capacity {transition:transform 120ms ease-out,stroke 120ms ease-out}
+.sh-hero-art [data-part] {transition:opacity 200ms ease-out}
+.sh-hero-art[data-state=failure] [data-part="el.vm-fleet-28"] {opacity:.25}
+.sh-hero-art[data-state=failure] [data-part="el.vm-fleet-28"]::after {content:'×'}
+.sh-hero-art[data-state=overload] {border-color:var(--bad)}
+:root[data-motion=reduce] .sh-hero-art [data-part],:root[data-motion=reduce] .sh-hero-art .sh-demo-capacity {transition:none}
+.sh-lp-card:has(.sh-tap-lane) .sh-lp-hero-ico {display:none}
+@media(min-width:768px){.sh-lp-card:has(.sh-tap-lane) {gap:12px}.sh-tap-lane {min-height:160px}}
+
+.sh-demo-cross {display:none}.sh-hero-art[data-state=failure] .sh-demo-cross {display:block}.sh-hero-art[data-state=failure] [data-part="el.vm-fleet-28"] {opacity:1}.sh-hero-art[data-state=failure] [data-stream="1"],.sh-hero-art[data-state=failure] [data-stream="4"] {display:none}
+@media(max-width:719px){.sh-problem:has(.sh-interview-toggle) .sh-problem-bar>.sh-diff {display:none}}

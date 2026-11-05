@@ -211,3 +211,16 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; margin: 0; }
 
 :root { --on-accent: #FFFFFF; }
 :root[data-theme="dark"] { --on-accent: #10213C; }
+
+/* Shared written defense controls. */
+.hp-defense-form,.hp-defense-model {font:16px/1.5 var(--font-ui)}
+.hp-defense-form {display:grid;gap:16px;min-width:0}
+.hp-defense-form > label {display:block;margin:0;font-weight:700}
+.hp-defense-form .hp-defense-answer {display:block;width:100%;min-height:150px;height:auto;padding:12px;resize:vertical;font:16px/1.5 var(--font-ui)}
+.hp-defense-model > h3:first-child {font:700 20px/1.3 var(--font-display);margin:0 0 16px}
+.hp-defense-help {color:var(--text-2);font-size:15px;line-height:1.5}
+.hp-defense-model {margin-top:20px;padding:16px;border-left:3px solid var(--cat-compute);background:var(--bg);line-height:1.5}
+.hp-defense-model[hidden] {display:none}
+.hp-defense-checklist {margin:16px 0 0;padding:12px;border:1px solid var(--border);border-radius:12px;min-width:0}
+.hp-defense-point {display:flex;align-items:flex-start;gap:12px;padding:12px 4px;min-height:44px;cursor:pointer;line-height:1.5}
+.hp-defense-point input {flex:none;width:20px;height:20px;margin:2px 0 0;accent-color:var(--accent)}

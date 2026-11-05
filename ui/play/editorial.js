@@ -2,6 +2,7 @@
 import { h, iconEl, fmtNum, fmtUsd, approx } from './util.js';
 import { iconInner } from '../../assets/icons/index.js';
 import { referenceSettings } from './reference-settings.js';
+import sizing from '../../content/sizing.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const s = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
@@ -121,6 +122,27 @@ export function renderEditorial(host, { problem, catalog, passed, onLoad, onClos
         h('div', { class: 'pl-ed-actions' },
           h('button', { class: 'pl-btn', type: 'button', onClick: () => onLoad?.(d, { run: false }) }, iconEl('ui.download', 16), 'Load onto my canvas'),
           h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: () => onLoad?.(d, { run: true }) }, iconEl('ui.play', 16), 'Load and run it'))].filter(Boolean));
+      const measured = sizing[problem.id]?.[cur];
+      if (problem.difficulty === 'Hard' && measured) {
+        const r = problem.requirements;
+        const writeShare = Object.entries(r.mix).filter(([id]) => catalog.requestById.get(id)?.isWrite).reduce((a, [,v]) => a + v, 0);
+        const surge = problem.events.filter(e => e.params?.factor > 1).map(e => `${e.text?.name || catalog.eventById.get(e.id)?.name}: ${e.params.factor}×${e.params.types ? ' ' + e.params.types.join('/') : ''}`).join('; ');
+        view.append(h('section', { class: 'pl-sec pl-worked-sizing' }, h('h3', { text: 'From an estimate to this design' }),
+          h('p', { text: `Start at ≈ ${fmtNum(r.peakRps)} requests/s: ≈ ${fmtNum(r.peakRps * writeShare)} writes/s and ${fmtNum(r.peakRps * (1 - writeShare))} other requests/s. Split by source and follow each route. Cache hits, queues, batching and retries change the work at each part. A write-only minimum is not the final fleet.` }),
+          h('p', { text: `Event load: ${surge || 'use each scheduled failure and surge below'}. The table measures the full day, including retries and failed zones. Zones divide the installed units; they do not multiply them. Losing one of three zones leaves about two thirds. Replication adds latency and copy cost as modeled by each part; do not multiply throughput by the copy count.` }),
+          h('div', { class: 'pl-sizing-scroll', tabindex: '0' }, h('table', { class: 'pl-table' },
+            h('caption', { text: 'Approximate capacity measured in this exact design' }),
+            h('thead', {}, h('tr', {}, ['Part', 'Base read / write per unit', 'Measured peak / active units', 'Peak busy', 'Installed / zones', 'Active / installed units at 70% busy'].map(text => h('th', { scope: 'col', text })))),
+            h('tbody', {}, measured.rows.map(n => h('tr', {},
+              h('th', { scope: 'row', text: `${n.id}: ${catalog.elementById.get(n.type)?.name}` }),
+              h('td', { text: `${fmtNum(n.readsPerUnit)} / ${fmtNum(n.writesPerUnit)} req/s (${n.tier})` }),
+              h('td', { text: `${fmtNum(n.peakRequests)} req/s / ${n.activeAtPeak}` }),
+              h('td', { text: `${Math.round(n.peakUtil * 1000) / 10}%` }),
+              h('td', { text: `${n.installed} / ${n.zones}` }),
+              h('td', { text: catalog.elementById.get(n.type)?.units?.max === 1 ? 'Managed capacity' : n.headroomUnits == null ? 'See queue drain' : `${n.headroomUnits} / ${n.installedForHeadroom}` })))))),
+          h('p', { text: 'The last column shows active units from peak work ÷ (measured effective capacity per active unit × 0.70), rounded up, then installed units needed to preserve the surviving share at that same peak. Effective capacity includes the request mix and dependency waits. This sizing experiment may exceed a part’s unit limit. The reference may accept a short slow interval or use burst scaling. Read its tradeoffs and check the allowed slow-time budget.' }),
+          h('p', { text: `Measured result: ${measured.score}/1,000, ${measured.passed ? 'passes' : 'misses a target'}, ≈ ${fmtUsd(measured.cost)}/month. Stored data starts at ≈ ${r.storageTb} TB; the catalog prices storage according to each part’s model. Keep copies for safety, not as free write throughput.` })));
+      }
     };
     designs.forEach((d, i) => tabs.append(h('button', { class: 'pl-tab', type: 'button', role: 'tab', onClick: () => { cur = i; paint(); } }, d.name, d.expect?.passed === false ? ' · does not pass' : '')));
 

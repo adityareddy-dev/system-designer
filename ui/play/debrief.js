@@ -1,5 +1,8 @@
+// End-of-day evidence and actions.
+export const duration = sec => sec < 60 ? `${Math.round(sec)} seconds` : `${Math.round(sec / 6) / 10} minutes`;
 // The debrief: verdict, score dial, four SLO cards, timeline, event stories, trade-offs, one thing to try next.
 import { loadSummary } from './load-labels.js';
+import { renderReflection } from './reflection.js';
 import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, clockLabel, minuteLabel, fill, approx } from './util.js';
 import { eventDescription } from './event-copy.js';
 import { renderCorrectness } from './correctness.js';
@@ -223,13 +226,13 @@ function eventStory(ev, i, result, catalog) {
   const lines = st ? [st.headline, ev.durations ? st.hurt?.replace(/in the first (\S+) (minutes?)/, 'during $1 $2 of the observation window') : st.hurt, st.helped, st.fix] : [fill(t.headline, vars), fill(t.hurt, vars), fill(t.helped, vars), fill(t.fix, vars)];
   // An event the design never met still teaches: say what it would have done to a design that was exposed to it.
   const unreached = !!(st && (st.none || !lines[1] || (Array.isArray(ev.hurt) && ev.hurt.length === 0)));
-  const would = unreached && def ? [eventDescription(def, vars), def.lesson].filter(Boolean).join(' ') : '';
-  const missing = st && !st.fix && !unreached ? [] : (def?.counters || []).filter((c) => c.element && !inGraph.has(c.element));
+  const would = unreached && def ? [eventDescription(def, vars, ev.description), def.lesson].filter(Boolean).join(' ') : '';
+  const missing = st && !st.fix && !unreached ? [] : (ev.counters || def?.counters || []).filter((c) => c.element && !inGraph.has(c.element));
   const card = h('article', { class: 'pl-story', id: 'pl-ev-' + i, tabindex: '-1' },
     h('header', { class: 'pl-story-head' }, iconEl('ev.' + ev.id, 28, 'pl-ic pl-story-ic'),
-      h('div', {}, h('b', { text: def?.name || ev.id }), h('div', { class: 'pl-muted pl-small', text: `${clockLabel(ev.atMs)} to ${clockLabel(ev.endMs || ev.atMs)}` }))),
+      h('div', {}, h('b', { text: ev.name || def?.name || ev.id }), h('div', { class: 'pl-muted pl-small', text: `${clockLabel(ev.atMs)} to ${clockLabel(ev.endMs || ev.atMs)}` }))),
     h('div', { class: 'pl-story-body' },
-      ev.durations ? h('p', { class: 'pl-muted', text: `Ramp: ${ev.durations.rampSec / 60} min. Spike duration at peak: ${ev.durations.spikeSec / 60} min. Traffic recovery duration: ${ev.durations.recoverySec / 60} min to return to normal. Overload duration: ≈ ${Math.round(ev.durations.overloadSec / 60)} min on the most overloaded part during the ${Math.round(ev.durations.observedSec / 60)} min observation window, including up to 10 min after the event. Recovery of your design may take longer.` }) : null,
+      ev.durations ? h('p', { class: 'pl-muted', text: `Ramp: ${duration(ev.durations.rampSec)}. Spike duration at peak: ${duration(ev.durations.spikeSec)}. Traffic recovery duration: ${duration(ev.durations.recoverySec)} to return to normal. Overload duration: ≈ ${Math.round(ev.durations.overloadSec / 60)} min on the most overloaded part during the ${Math.round(ev.durations.observedSec / 60)} min observation window, including up to 10 min after the event. Recovery of your design may take longer.` }) : null,
       lines[0] && h('p', { class: 'pl-story-1', text: lines[0] }),
       lines[1] && h('p', {}, h('span', { class: 'pl-tag pl-tag--bad', text: 'What it did' }), lines[1]),
       would ? h('p', {}, h('span', { class: 'pl-tag pl-tag--info', text: 'What it would have done' }), would) : null,
@@ -322,6 +325,8 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
         h('span', { class: 'pl-muted pl-small', text: `Hints used: ${hintsUsed}. Hints are free and never lower the score.` }))),
     tryNext,
     problem?.warmUp ? h('p', { class: 'pl-warmup', 'data-act': 'warm-up' }, iconEl('ui.info', 16), 'Warm-up done, now play the real day. This first day had no traffic spike, so its score is practice only: it is not saved, not posted and not shared. Retry plays the full day, spike included.') : null));
+  const reflection = renderReflection(result, catalog);
+  if (reflection) root.append(reflection);
   if (opponent && typeof opponent.score === 'number') root.prepend(versusCard(result, opponent, handlers));
   if (result.warnings?.length) {
     root.append(h('section', { class: 'pl-watch' }, iconEl('ui.warn', 20), h('div', {}, h('b', { text: 'Held, but watch out' }),

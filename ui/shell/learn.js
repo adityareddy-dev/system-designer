@@ -1,10 +1,11 @@
 // Learn view: lessons grouped by track, with done marks and a suggested path.
 import { h, ico } from './dom.js';
-import { appUrl } from '../../core/urls.js';
+import { sceneMarkup } from '../../assets/scenes/index.js';
 
 const TRACK_ICON = {
   'Start': 'ui.play', 'Scale the front': 'ui.speed', 'Scale the data': 'ui.units', 'Work later': 'ui.clock',
   'Stay correct': 'ui.safety', 'Stay up': 'ui.shield', 'Business': 'ui.budget',
+  'Go deeper': 'ui.search', 'Lead the design': 'ui.users',
 };
 
 export function renderLearn(host, ctx) {
@@ -23,7 +24,7 @@ export function renderLearn(host, ctx) {
     h('div', null,
       h('p', { class: 'sh-eyebrow', text: 'Learn' }),
       h('h1', { class: 'sh-h1', text: 'One idea at a time' }),
-      h('p', { class: 'sh-lead sh-lead--sm', text: 'Each lesson takes two to four minutes and ends with a live demo you can change. Take them in any order.' })),
+      h('p', { class: 'sh-lead sh-lead--sm', text: 'Start with short lessons and live demos. Go deeper in five to eight minutes with worked examples and choices to defend. Take them in any order.' })),
     h('div', { class: 'sh-head-side' },
       h('a', { class: 'sh-btn', href: '#/drill', title: 'Ten quick questions from the lessons, with a streak' }, ico('ui.speed', 18), 'Quick drill, 1 minute'),
       h('div', { class: 'sh-progress-pill', role: 'img', 'aria-label': `${done} of ${lessons.length} lessons done` },
@@ -40,13 +41,13 @@ export function renderLearn(host, ctx) {
         h('span', { class: 'sh-lesson-top' },
           h('span', { class: 'sh-lesson-ico' }, ico(isDone ? 'ui.check' : (l.icon || l.steps?.find((s) => s.icon)?.icon || 'ui.learn'), 22)),
           h('span', { class: 'sh-lesson-min' }, ico('ui.clock', 14), `${l.minutes || 3} min`)),
-        h('img', { class: 'sh-bench-scene', src: appUrl('assets/scenes/' + l.id + '.svg'), alt: '', loading: 'lazy' }),
+        h('div', { class: 'sh-bench-scene', 'aria-hidden': 'true', html: sceneMarkup(l.id) }),
         h('span', { class: 'sh-lesson-title', text: l.title }),
         h('span', { class: 'sh-lesson-sum', text: l.summary || '' }),
         isNext ? h('span', { class: 'sh-badge', text: 'Suggested next' }) : isDone ? h('span', { class: 'sh-badge sh-badge--ok', text: 'Done' }) : null));
     }));
     return h('section', { class: 'sh-track', 'aria-labelledby': 'sh-track-' + ti },
-      h('h2', { class: 'sh-h2', id: 'sh-track-' + ti }, ico(TRACK_ICON[t.name] || 'ui.learn', 20), t.name),
+      h('h2', { class: 'sh-h2', id: 'sh-track-' + ti }, ico(TRACK_ICON[t.name] || 'ui.learn', 20), t.name, h('small', { class: 'sh-track-progress', text: `${t.items.filter(l => ctx.progress.isLessonDone(l.id)).length}/${t.items.length} explored` })),
       grid);
   });
 

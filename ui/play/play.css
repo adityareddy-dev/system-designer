@@ -818,3 +818,62 @@
 }
 .pl-root[data-outcome=pass][data-step=debrief] .pl-stage {visibility:visible}
 @media(max-width:719px){.pl-root[data-mode=intro] .pl-caption {max-height:96px;padding:8px 10px;font-size:13px;line-height:1.35;overflow:auto}}
+
+/* Candidate writing and replica evidence share the instrument panel language. */
+.pl-defense-field {display:grid;gap:8px;margin:16px 0;font-size:16px}
+.pl-defense-field textarea {width:100%;min-height:144px;height:auto;resize:vertical;padding:12px;font:16px/1.5 var(--font-ui);border-radius:8px}
+.pl-defense-field input {min-height:44px}
+.pl-defense-card {border-top:1px solid var(--border);padding-block:24px}
+.pl-defense-card h3 {font-size:22px;line-height:1.3;max-width:54ch}
+.pl-defense-model {margin-top:16px;padding:16px;border-left:3px solid var(--cat-compute);background:var(--bg)}
+.pl-defense-check {display:flex;align-items:center;gap:12px;min-height:44px;font-size:15px}
+.pl-defense-check input {width:20px;height:20px;accent-color:var(--accent);flex:none}
+.pl-interview-compare {display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.pl-interview-compare p {white-space:pre-wrap}
+.pl-interview-clock {font:13px var(--font-mono);padding:12px;color:var(--text-2)}
+.pl-root[data-interview=true] .pl-issue-fix,.pl-root[data-interview=true] .pl-reset,.pl-root[data-interview=true] .pl-help-menu {display:none!important}
+.pl-root[data-interview=true] .pl-panel {max-width:760px}
+.pl-root[data-interview=true] .pl-panel .pl-btn {margin-top:12px}
+.pl-replica-view {margin-top:16px;padding-top:12px;border-top:1px solid var(--border);display:grid;gap:8px;color:var(--text-2)}
+.pl-replica-cells {display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pl-replica-cell {position:relative;padding:10px 4px 14px;border:1px solid var(--edge-idle);border-radius:6px;overflow:hidden;font:11px var(--font-mono);text-align:center;background:var(--bg)}
+.pl-replica-cell i {position:absolute;left:4px;right:4px;bottom:4px;height:4px;background:var(--cat-compute);transform-origin:left;transition:transform 120ms ease-out}
+.pl-replica-cell[data-failed=true] {border-color:var(--bad);color:var(--bad)}
+.pl-replica-cell[data-failed=true]:after {content:'×';position:absolute;inset:0;background:var(--surface-solid);font:26px/1.5 var(--font-ui)}
+.pl-replica-cell:before {content:'';position:absolute;left:0;top:5px;width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:0}
+.pl-replica-view.is-flowing .pl-replica-cell:not([data-failed=true]):before {animation:replica-route 1200ms linear infinite}
+.pl-replica-cell:nth-child(2n):before {animation-delay:-400ms!important}
+.pl-replica-cell:nth-child(3n):before {animation-delay:-800ms!important}
+@keyframes replica-route {0%{transform:translateX(0);opacity:1}85%{transform:translateX(70px);opacity:1}100%{transform:translateX(70px);opacity:0}}
+.pl-replica-summary {font-size:12px;line-height:1.5}
+.pl-sizing-scroll {overflow:auto;max-width:100%}
+.pl-worked-sizing table {min-width:700px;font-size:13px}
+.pl-overview {pointer-events:auto;display:flex;align-items:center;gap:8px;bottom:62px}
+.pl-overview select {min-width:0;width:0;flex:1;height:44px;font-size:13px}
+.pl-overview>span {display:none}
+.pl-overview .pl-btn {white-space:nowrap;font-size:13px;padding-inline:10px}
+.pl-goal-celebrate .pl-goal {animation:goal-settle 600ms ease-out}
+@keyframes goal-settle {0%{opacity:.6}35%,100%{opacity:1}}
+:root[data-motion=reduce] .pl-replica-cell:before {animation:none!important;opacity:1;transform:translateX(24px)}
+:root[data-motion=reduce] .pl-replica-cell i {transition:none}
+:root[data-motion=reduce] .pl-goal-celebrate .pl-goal {animation:none}
+.pl-root[data-phase=paused] .pl-replica-cell:before {animation-play-state:paused!important}
+@media(max-width:719px){
+ .pl-interview-compare {grid-template-columns:1fr;gap:12px}
+ .pl-interview-clock {font-size:11px;padding:4px;max-width:100px}
+ .pl-root[data-interview=true] .pl-panel {padding-bottom:24px;top:calc(var(--pl-top-end, 56px) + 6px);bottom:8px}
+ .pl-defense-card h3 {font-size:20px}
+ .pl-root[data-interview=true] .pl-tool--fit {display:none}
+ .pl-root:has(.pl-overview:not([hidden])) .pl-toolbar:not(.pl-toolbar--open) .pl-tb-grab {top:-112px;bottom:auto;height:44px}
+ .pl-root:has(.pl-overview:not([hidden])) .pl-overview {bottom:8px}
+ .pl-root:has(.pl-overview:not([hidden])) .pl-right {bottom:108px}
+}
+
+.pl-reflection-form {display:grid;gap:12px;padding:16px}.pl-reflection-form label {display:grid;gap:6px}.pl-check-passed {border-left:3px solid var(--ok);padding-left:12px}
+
+.pl-wire-preview {position:absolute;z-index:31;left:50%;bottom:128px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:12px 16px;border:1px solid var(--accent);border-radius:8px;background:var(--surface-solid);color:var(--text);pointer-events:none;font-size:14px}
+.pl-wire-preview[hidden] {display:none}
+.pl-root [hidden] {display:none!important}
+.pl-reflection {margin-top:24px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.pl-reflection>summary {padding:16px;cursor:pointer;font-weight:700}
+@media(max-width:719px){.pl-root[data-mode=lesson] .pl-goal--done {max-height:72px}}

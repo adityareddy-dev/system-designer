@@ -572,6 +572,8 @@ Groups (id: title), in display order: `core`: Core building blocks · `media`: M
 ```
 Rules: every element id, event id, request type, curve and compliance id must exist in the catalog. Numbers must be sensible approximations and say so. Time strings are 'HH:MM' on the simulated clock. Editorial `expect` values are filled from real sim runs during Phase 3.
 
+Advanced problems may include `workloadPlan: [{ sourceRef, entryRef, peakRps, mix, role? }]` to explain source-specific traffic. Rates sum to `requirements.peakRps` and reproduce its aggregate mix. This plan documents the workload; `traffic.sourceTypes` assigns the types the engine emits at each source. Each source enters a legitimate service path in the measured reference. Notes and editorials state the scored boundary and the protocol obligations outside it. The catalog's `batch` represents 100 MB, `telemetry` represents 1 KB or a time-series batch of 100 samples, and observers do not implement storage platforms.
+
 ### 11.2 Lesson files: `content/lessons/<lessonId>.js`
 ```js
 export default {
@@ -592,6 +594,16 @@ export default {
 }
 ```
 `intro` follows DESIGN.md section 8 and may use `{ kind: 'script', beats: [...] }` steps with `{ at: secondsOrTrigger, caption, highlight: elementId, waitFor: { action: 'place' | 'connect' | 'knob', type?, knob? } }`.
+
+Advanced lessons may use a worked example in a `read` step instead of a `demo` when the engine does not model the mechanism. The `Go deeper` and `Lead the design` tracks follow Business; their lessons take 5 to 8 minutes and contain a numbers step, at least three reasoning quizzes, a transfer case and two or three defend steps.
+
+```js
+{ kind: 'defend', q: 'A sharp colleague asks you to justify a choice. What fails next?',
+  checklist: ['A concrete failure case', 'The cost of the chosen guarantee'],
+  model: 'A model answer in plain words, including the follow-up.' }
+```
+
+A defend step requires a nonblank typed answer before revealing the model and checklist. Continue becomes available on reveal. Players tick points they covered; zero ticks is a valid self review, not a failed quiz. Answers and ticks remain in memory while navigating the mounted lesson and are never added to saved or synced progress. Native textarea, button and checkbox controls support keyboard and touch, with visible labels and focus. Existing lesson ids and progress records keep their meaning.
 
 ---
 
@@ -690,3 +702,22 @@ export function createAccount(ctx) → {
 - Modules share a rectangular face, category stripe, ports, capacity bar, attached caption and one labeled exception. Zoom never relocates captions to other nodes. Caption size updates during camera movement, independently of delayed text texture refresh. The optional renderer fit argument `focusId` centers a selected part at the existing zoom when opening a phone inspector. Small phone starter graphs flow top to bottom. A current-step select exposes all five workflow steps on phones. Only the active sheet occupies the bottom workspace slot.
 - Full motion uses short context-preserving entry and completion feedback. Packet counts are capped at 80 on phones and 160 on desktop independently of simulated traffic. Still flow bands, labels and instant values remain available with reduced motion. Pausing freezes decorative simulation motion too. Font, theme and category tokens apply to every screen and canvas.
 - Generated icon and palette modules follow the SVG/CSS sources. Run `tools/gen-bench-assets.mjs` for bench symbols and original shared-load, cached-read and draining-queue scenes, then `tools/gen-asset-modules.mjs`. The content JSON and module preload lists must also match their source modules.
+
+
+## Workload evidence and candidate-led practice
+
+`traffic.sourceTypes` is optional: an object keyed by source node ref/id or source element id, with arrays of request type ids. With it present, only listed types are emitted by a source. The global requirements mix remains authoritative: each type is split among its assigned, capable sources in proportion to `traffic.sources`, and duplicate sources share their element weight. Without it, legacy splitting is unchanged. A positive type with no eligible source is an error. Validation checks every positive source/type assignment for a usable route, even when another source can finish the same type. Missing routes precede capacity advice. Capacity diagnoses require measured saturation and failed work; a route diagnosis has no sizing action.
+
+A problem event can add `text: { name?, description?, debrief?: { headline?, hurt?, helped?, fix? } }`. These change presentation only. They do not change event timing, effects or seeded targets. Template variables remain preformatted. `DebriefData.events[].description` carries the resolved description. Durations in the interface use seconds below a minute and rounded minutes otherwise.
+
+`Sim.state().nodes[]` additionally exposes `incomingRps` and `availableUnits`. Replica illustrations are aggregate evidence: the engine still models a pool as one endpoint with internal distribution, not individual replicas. The UI states that explicitly and asks candidates to explain discovery and health checks. `DebriefData.nodes[]` includes `peakRequests`, `peakUnits`, and `effectiveRpsPerUnit` for measured sizing. `tools/gen-sizing.mjs` writes `content/sizing.js`; regenerate it whenever reference graphs or simulation capacities change. Hard editorials explain base writes, reads, zones, copies, event load and measured headroom using those measurements. These figures do not alter scoring.
+
+Practice routes for Medium and Hard problems accept `?interview=1`, off by default. This is a UI session over the same deterministic practice simulation. The candidate commits questions before keyword coverage and answers are revealed, writes scope before seeing requirements, and types all estimates before worked answers. The question matcher checks keywords only and makes no semantic claim. Draw has no hints, suggested fixes or editorial. A visible 45-minute guide never stops input. The day runs once with no structure or knob edits. Three to five follow-ups derive from graph, event evidence and actual cost. Answers must be typed before revealing models and self-assessed checklists. This problem defense is independent of lesson step types.
+
+Interview records live under `progress[problemId].interview` with attempts, latest, bestCoverage and bestDay. Coverage is explicitly self-assessed and never changes the simulation score or ordinary solved progress. Existing progress fields remain valid. `createProgress.recordInterview(problemId, report)` persists through `ctx.store` and emits `progress:updated`. Best coverage ratio and best simulated day are kept separately. Interview drafts are not loaded from ordinary practice.
+
+Explicit Fit always frames all parts. Automatic positioning can focus a selected part; edit gestures suppress automatic camera fitting. Large phone diagrams provide a complete overview plus a branch inspector. The selected pool panel displays no more than six illustrated groups, names unavailable capacity, and labels schematic work distribution. Concept SVGs use the same palette in both themes via `assets/scenes/index.js`, regenerated by `tools/gen-scene-index.mjs`.
+
+`DebriefData.firstFailure` is null or `{ atMs, nodeId, kind, util }`, recorded at the first interval below 95% served. Routing gaps take precedence, then measured saturation, then dependency/outage loss. It describes a material observed failure, not a claim that smaller earlier losses never happened. Ordinary debriefs offer a checked part-and-metric diagnosis; the written pre-run prediction remains explicitly ungraded.
+
+DNS mistakes expire on each affected router after the longest configured DNS TTL on its upstream flow path, capped at the event duration. Routers without a depicted upstream DNS keep the original duration; disconnected DNS parts never help. Event guidance distinguishes modeled controls from preventive production practices, and `events[].counters` contains only applicable modeled counters. Disk retention does not repair a full disk, CI/CD does not shorten a fixed table lock, and retry backoff does not remove a scheduled reconnect wave. Use `node tools/measure-references.mjs` to refresh measured expectations without resizing or changing budgets, then regenerate sizing and content.

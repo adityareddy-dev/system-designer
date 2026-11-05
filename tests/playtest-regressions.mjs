@@ -37,7 +37,7 @@ try {
     return { cache, done: document.querySelector('.pl-goal').classList.contains('pl-goal--done'), text: document.querySelector('.pl-goal').textContent };
   });
   assert.equal(state.done, false); assert.match(state.text, /60 seconds old/);
-  const fresh = await page.evaluate(id => { window.__game.setKnob(id, 'ttlSec', 60); window.__game.step(120000); return { done: document.querySelector('.pl-goal').classList.contains('pl-goal--done'), text: document.querySelector('.pl-goal').textContent }; }, state.cache);
+  const fresh = await page.evaluate(id => { const unused = window.__game.placeComponent('cache', 0, 400); window.__game.setKnob(unused, 'ttlSec', 86400); window.__game.setKnob(id, 'ttlSec', 60); window.__game.step(120000); return { done: document.querySelector('.pl-goal').classList.contains('pl-goal--done'), text: document.querySelector('.pl-goal').textContent }; }, state.cache);
   assert.equal(fresh.done, true, fresh.text);
   await page.evaluate(() => window.__game.loadProblem('url-shortener'));
   await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(3600000); });
@@ -54,14 +54,44 @@ try {
     if (width < 719) await page.select('.pl-step-picker', 'draw');
     else await page.click('.pl-step[data-step="draw"]');
     await page.waitForFunction(() => document.querySelector('.pl-root').dataset.step === 'draw');
+    await delay(350);
     assert.equal(await page.$eval('.pl-reset', el => el.checkVisibility()), true, 'completed Draw exposes the reset control');
     await page.click('.pl-reset');
     assert.equal(await page.evaluate(() => window.__game.getState().phase), 'build');
     const added = await page.evaluate(() => window.__game.placeComponent('cache', 0, 200));
     assert(added, 'reset makes drawing editable');
+    await page.click('[aria-label="Fit to screen (F)"]');
+    await delay(500);
+    assert(await page.evaluate(() => {
+      const { view } = window.__game.getState(), f = view.free;
+      return view.screen.every(n => n.x >= f.l && n.x <= f.w - f.r && n.y >= f.t && n.y <= f.h - f.b);
+    }), 'explicit Fit includes every part while one is selected');
     await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); });
     await page.waitForFunction(() => document.querySelector('.pl-root').dataset.step === 'debrief');
     assert.equal(await page.$eval('.pl-hud', el => el.checkVisibility()), false, 'debrief keeps the HUD hidden');
+  }
+  await page.evaluate(async () => {
+    await window.__game.loadSandbox();
+    for (let i = 0; i < 12; i++) window.__game.placeComponent('vm-fleet', i * 200, 0);
+  });
+  await delay(500);
+  for (const fit of ['button', 'keyboard', 'double tap']) {
+    if (fit === 'button') await page.click('[aria-label="Fit to screen (F)"]');
+    else if (fit === 'keyboard') { await page.focus('.pl-kb'); await page.keyboard.press('f'); }
+    else {
+      const blank = await page.evaluate(() => {
+        const r = document.querySelector('.pl-stage canvas').getBoundingClientRect();
+        const f = window.__game.getState().view.free;
+        return { x: r.left + (f.l + f.w - f.r) / 2, y: r.top + f.t + 60 };
+      });
+      await page.mouse.click(blank.x, blank.y);
+      await delay(60);
+      await page.mouse.click(blank.x, blank.y);
+    }
+    await delay(500);
+    const view = await page.evaluate(() => window.__game.getState().view);
+    assert(view.zoom < 0.15, `${fit} Fit can shrink below the interactive minimum`);
+    assert(view.screen.every(n => n.x >= view.free.l && n.x <= view.free.w - view.free.r && n.y >= view.free.t && n.y <= view.free.h - view.free.b), `${fit} Fit frames the complete wide phone diagram`);
   }
   await page.evaluate(() => { location.hash = '#/settings'; });
   await page.waitForSelector('[role="radiogroup"][aria-label="Theme"]');

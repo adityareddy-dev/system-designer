@@ -33,6 +33,7 @@ const context = vm.createContext({
   scene: { stopCamera: () => { stopped++; }, fit: (padding, animate, opts) => { fits++; lastFit = opts; }, stats: () => ({ zoom: .9 }) },
   root: { classList: { add() {} } }, showCaption() {},
   freeArea: () => ({ l: 0, t: 100, r: 0, b: 240 }), mode: 'practice',
+  performance: { now: () => 10000 },
 });
 vm.runInContext(connectSource + fitSource, context);
 vm.runInContext("startConnect('a'); fitView();", context);
@@ -52,9 +53,16 @@ vm.runInContext('fitView();', context);
 assert.equal(fits, 2);
 phone = true; S.selected = 'a';
 vm.runInContext('fitView();', context);
+assert.equal(lastFit.focusId, undefined, 'explicit fitting includes the graph even with a selected part');
+vm.runInContext('fitView(true, null, true);', context);
 assert.equal(lastFit.focusId, 'a');
 assert.equal(lastFit.minZ, .9);
 assert.equal(lastFit.maxZ, .9);
+S.editUntil = 11000;
+const beforeEditFit = fits;
+vm.runInContext('fitView(true, null, true);', context);
+assert.equal(fits, beforeEditFit, 'automatic fitting waits until an edit has settled');
+S.editUntil = 0;
 S.selected = null;
 
 const camera = createCamera({ position: { set() {} }, scale: { set() {} } });
@@ -66,4 +74,15 @@ camera.stop();
 camera.update(500);
 assert.deepEqual({ ...camera.center, zoom: camera.zoom }, before);
 assert.equal(camera.moving, false);
+const announcementSource = source.slice(source.indexOf('  let announcementTimer'), source.indexOf('  // ---- building actions'));
+const pending = new Map(), announced = { textContent: '' };
+let nextTimer = 0;
+vm.runInNewContext(announcementSource + "announce('Web browser'); announce('Load balancer'); announce('Connect to Cache?');", {
+  kbLive: announced, timers: new Set(),
+  clearTimeout: id => pending.delete(id),
+  later: fn => { const id = ++nextTimer; pending.set(id, fn); return id; },
+});
+assert.equal(pending.size, 1, 'superseded keyboard announcements are cancelled');
+for (const fn of pending.values()) fn();
+assert.equal(announced.textContent, 'Connect to Cache?', 'the live region describes the current target');
 console.log('Touch interaction checks passed.');

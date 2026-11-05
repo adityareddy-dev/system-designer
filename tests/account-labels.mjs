@@ -20,6 +20,9 @@ class Element {
   focus() {}
   getBoundingClientRect() { return { bottom: 50, right: 100 }; }
   all() { return [this, ...this.children.flatMap((c) => c instanceof Element ? c.all() : [])]; }
+  querySelectorAll(selector) {
+    return this.all().slice(1).filter(e => selector.startsWith('.') ? (e.className || '').split(' ').includes(selector.slice(1)) : e.tag === selector);
+  }
   querySelector(selector) {
     if (selector.includes(',')) return null;
     const parts = selector.split(' ');

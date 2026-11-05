@@ -22,7 +22,7 @@ export function traceRoute(model, type) {
     if (r.mode === M.COMPLETE || r.mode === M.CALLED) result.stops.push({ nodeId: nodes[u].id,
       reason: r.mode === M.CALLED ? 'Side call returns to its caller; it does not forward the request.' : 'This part completes the request.' });
   };
-  for (const u of model.sources) if (model.H(u, t)) visit(u);
+  for (const u of model.sources) if (model.sourceShare[u * T + t] > 0) visit(u);
   result.edgeIds = [...selected].map((ei) => edges[ei].id);
   // Inspect drawn branches too: upstream pruning should not hide the hop that caused it.
   const seen = new Set();
@@ -67,7 +67,7 @@ function findRepair(model, t) {
     if (!rule.ok || rule.swap || rule.kind !== 'flow') continue;
     const id = `${a.id}>${b.id}`;
     const candidate = compile(catalog, { nodes: nodes.map((n) => n.g),
-      edges: [...edges.map((e) => ({ id: e.id, from: e.from, to: e.to, kind: e.kind })), { id, from: a.id, to: b.id, kind: 'flow' }] }, model.env);
+      edges: [...edges.map((e) => ({ id: e.id, from: e.from, to: e.to, kind: e.kind })), { id, from: a.id, to: b.id, kind: 'flow' }] }, model.env, model.problem);
     if (!candidate.typeServed[t]) continue;
     const walk = (u, path = [], seen = new Set()) => {
       if (seen.has(u)) return null;
@@ -83,6 +83,7 @@ function findRepair(model, t) {
       return null;
     };
     for (const s of candidate.sources) {
+      if (!(candidate.sourceShare[s * candidate.T + t] > 0)) continue;
       const path = walk(s);
       if (path?.some((node, i) => node === a.id && path[i + 1] === b.id)) return { from: a.id, to: b.id, path };
     }

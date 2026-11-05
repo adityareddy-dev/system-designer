@@ -1,4 +1,5 @@
 // In-problem screen: mountPlay() builds the canvas, toolbar, inspector, HUD, steps, hints, debrief and editorial.
+import { createInterview, renderInterviewPrep, renderInterviewResult } from './interview.js';
 import { phoneLayout } from '../../render/diagram.js';
 import { renderDesignCheck } from './design-check.js';
 import { createSim } from '../../sim/engine.js';
@@ -18,7 +19,7 @@ import { createTrafficPanel, DEFAULT_TRAFFIC } from './traffic-panel.js';
 import { queueDrainAdvice } from './lesson-queue.js';
 import { createRouteTrace } from './route-trace.js';
 import { renderCheckpointForm } from './correctness.js';
-import { introPathHolds } from './intro-path.js';
+import { introPathHolds, repairInsertion } from './intro-path.js';
 import { goalPassed } from './goal-feedback.js';
 import { replicaReadsActive, replicaWiringAdvice } from './lesson-replica.js';
 
@@ -30,6 +31,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const { catalog, bus, store } = ctx;
   const world = catalog.world;
   const mode = opts.mode || 'practice';
+  const interview = !!opts.interview && mode === 'practice' && ['Medium', 'Hard'].includes(opts.problem?.difficulty);
+  const interviewState = interview ? createInterview(opts.problem) : null;
   const isSandbox = mode === 'sandbox';
   const isLesson = mode === 'lesson' || mode === 'intro';
   const stepped = !isSandbox && !isLesson;          // the five-step flow
@@ -99,13 +102,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const kb = h('div', { class: 'pl-kb', tabindex: '0', role: 'application', 'aria-label': 'Diagram. Arrow keys pick a part, C connects it to another part, Enter confirms, Delete removes, Escape cancels.' });
   const kbLive = h('div', { class: 'pl-sr', 'aria-live': 'polite' });
   const skip = h('button', { class: 'pl-skip', type: 'button', onClick: () => kb.focus() }, 'Skip to the diagram');
+  if (interview) root.dataset.interview = 'true';
   root.append(skip, stage, kb, kbLive, scrim, top, left, right, panel, issuesBox, goalChip, caption, slowNote, menu, debriefWrap, editorialWrap, modal);
   hostEl.append(root);
 
   // ---- scene
   const scene = await createScene(stage, { catalog, palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
   const routeTrace = createRouteTrace(root, catalog, scene);
-  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && S.step === 'draw' && S.sim?.phase === 'build'); }
+  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && !interview && S.step === 'draw' && S.sim?.phase === 'build'); }
 
   // ---- sim
   function makeSim(problem, graph) {
@@ -116,7 +120,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     return sim;
   }
   function onSimEvent({ eventId, phase, nodeIds }) {
-    const def = catalog.eventById.get(eventId);
+    const base = catalog.eventById.get(eventId);
+    const def = base && { ...base, ...(S.problem.events.find(e => e.id === eventId)?.text || {}) };
     if (!def) return;
     if (phase === 'start') {
       S.activeEvents.add(eventId);
@@ -127,6 +132,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (ctx.settings.get('autoSlowOnEvent') !== false && S.speed > 1) S.slowUntil = performance.now() + 3000;
     } else {
       S.activeEvents.delete(eventId);
+      try { scene.flashEvent(eventId, null, 0); } catch { /* render optional */ }
       if (!S.activeEvents.size) hud.hideBanner();
     }
     bus.emit('play:event', { eventId, phase, nodeIds: nodeIds || [] });
@@ -141,7 +147,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
 
   // ---- history, graph changes
   const saveDraft = debounce(() => {
-    if (isLesson) return;
+    if (isLesson || interview) return;
     const id = S.problem?.id;
     if (!id) return;
     store.set(`draft.${mode}.${id}`, { graph: S.sim.getGraph(), seed: S.seed, savedAt: Date.now() });
@@ -170,11 +176,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     } else startTraffic();
   }
   function commit() {
+    S.editUntil = performance.now() + 1800;
+    scene.stopCamera();
     const next = JSON.stringify(graph());
     if (next === S.cur) return;
     if (S.sim.phase === 'build' || freeEdit) { S.undo.push(S.cur); if (S.undo.length > 50) S.undo.shift(); S.redo.length = 0; }
     S.cur = next;
     afterChange();
+    later(() => { if (!S.destroyed && performance.now() >= S.editUntil && nodesHidden()) refitSoon(); }, 1850);
   }
   function restore(json) {
     S.sim.loadGraph(JSON.parse(json));
@@ -194,15 +203,31 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function refreshChecks() {
     let issues = [], est = null;
     try { issues = S.sim.validate() || []; } catch (e) { S.errors.push({ code: 'validate', message: String(e?.message || e) }); }
-    try { est = S.sim.estimate(); } catch { /* estimate is a nicety */ }
+    try {
+      est = S.sim.estimate();
+      if (S.problem.warmUp) {
+        const normal = createSim({ catalog, problem: { ...S.problem, requirements: { ...S.problem.requirements, peakRps: S.problem.normalPeakRps } } });
+        normal.loadGraph(graph());
+        est = { ...normal.estimate(), perMonth: est.perMonth, lines: est.lines };
+      }
+    } catch { /* estimate is a nicety */ }
     S.issues = issues;
     S.est = est;
     try { scene.setValidation(issues); } catch { /* render optional */ }
     let sizes = []; try { sizes = riskyIssues().filter((i) => i.fix); } catch { /* optional */ }
-    hud.setBuild(est, issues, sizes);
+    hud.setBuild(est, diagnosticIssues(), interview ? [] : sizes, { advice: !interview });
     paintIssues();
     let overview = root.querySelector('.pl-overview');
-    if (!overview) { overview = h('div', { class: 'pl-overview', text: 'Overview · tap a part for its name and settings' }); root.append(overview); }
+    if (!overview) { overview = h('div', { class: 'pl-overview' }); root.append(overview); }
+    if (isPhone() && graph().nodes.length > 8) {
+      const choose = h('select', { class: 'pl-input', 'aria-label': 'Inspect a branch', onChange: e => {
+        const id = e.target.value; if (!id) return;
+        select(id); inspector.fold(true);
+        const g = graph(), nodeIds = [id, ...g.edges.filter(e => e.kind === 'flow' && (e.from === id || e.to === id)).flatMap(e => [e.from,e.to])];
+        const a = freeArea(); scene.fit({ l: 36, r: 36, t: a.t + 28, b: a.b + 32 }, true, { nodeIds, minZ: .55, maxZ: .9 });
+      } }, h('option', { value: '', text: 'Inspect a branch…' }), graph().nodes.map(n => h('option', { value: n.id, text: `${n.id} · ${catalog.elementById.get(n.type)?.name || n.type}` })));
+      overview.replaceChildren(h('span', { text: 'System overview' }), choose, h('button', { class: 'pl-btn', type: 'button', onClick: () => { select(null); fitAll(); }, text: 'Fit all' }));
+    }
     overview.hidden = !(isPhone() && graph().nodes.length > 8);
     refreshTrace();
   }
@@ -233,27 +258,49 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     // a server group that is too small: name the setting and offer the count that would keep it near 70 percent busy
     const sizeFix = (n) => sizeFixFor(n.id, n.util);
     const out = arr.filter((n) => n.holds === false).map((n) => {
-      const fix = sizeFix(n);
+      const fix = interview ? null : sizeFix(n);
       const base = `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent at the normal peak. `;
       return { level: 'warn', code: 'peak-risk', nodeId: n.id, ...(fix ? { fix } : {}),
-        message: base + (fix ? `Open its ${fix.word} setting (now ${fix.now}) and raise it to about ${fix.units}. If Autoscale is on, raise "Never fewer than" too.` : lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')) };
+        message: base + (interview ? '' : fix ? `Open its ${fix.word} setting (now ${fix.now}) and raise it to about ${fix.units}. If Autoscale is on, raise "Never fewer than" too.` : lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')) };
     });
     const sp = S.est?.spike;
     if (!out.length && sp && !sp.holds) {
       const f = Math.round(sp.factor * 10) / 10;
       for (const n of sp.nodes || []) {
         out.push({ level: 'warn', code: 'spike-risk', nodeId: n.id,
-          message: `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent in the ${sp.name.toLowerCase()} (${f} times the traffic). ${lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')}` });
+          message: `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent in the ${sp.name.toLowerCase()} (${f} times the traffic).${interview ? '' : ' ' + lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')}` });
       }
       if (!out.length) out.push({ level: 'warn', code: 'spike-risk', message: `About ${Math.round((sp.successShare ?? 1) * 1000) / 10} percent of requests would succeed in the ${sp.name.toLowerCase()} (${f} times the traffic).` });
     }
     return out;
   }
+  function diagnosticIssues() {
+    if (!interview) return S.issues || [];
+    const facts = {
+      'no-source': 'No request sources are present.',
+      'no-source-type': 'No source emits this request type.',
+      'source-type-unserved': 'This source has no usable route for this request type.',
+      'type-unserved': 'This request type has no usable route.',
+      'requires-missing': 'This request type does not reach all required destinations.',
+      disconnected: 'This part has no connections.',
+      'zones-units': 'The configured zone count exceeds the unit count.',
+      'queue-no-consumer': 'This queue has no consumers.',
+      'replica-unattached': 'This replica has no primary connection.',
+      'observer-needs': 'This observer has an unmet connection requirement.',
+      'no-standby': 'This part has no replicated standby.',
+      'db-connections': 'Estimated connections exceed this part’s connection limit.',
+      'dr-same-region': 'The standby and protected parts use the same region.',
+      'cache-no-origin': 'Cache misses have no origin on this path.',
+      'compliance-missing': 'A required compliance check has no proof in this graph.',
+    };
+    return (S.issues || []).map(i => ({ level: i.level, code: i.code, nodeId: i.nodeId, type: i.type, source: i.source,
+      message: [i.nodeId, i.type && catalog.requestById.get(i.type)?.plural, facts[i.code] || 'A design check is unresolved.'].filter(Boolean).join(': ') }));
+  }
   function paintIssues() {
     issuesBox.replaceChildren();
     // errors first, then missing proof (it costs Data safety points), then the rest
     const rank = (i) => (i.level === 'error' ? 0 : i.code === 'compliance-missing' ? 1 : 2);
-    const all = [...(S.issues || []), ...riskyIssues()].map((i, k) => [i, k]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map((x) => x[0]);
+    const all = [...diagnosticIssues(), ...riskyIssues()].map((i, k) => [i, k]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map((x) => x[0]);
     const list = all.filter((i) => i.level !== 'info' || all.length < 5);
     if (!list.length) { issuesBox.hidden = true; return; }
     issuesBox.append(h('div', { class: 'pl-issues-h' }, iconEl('ui.warn', 16), h('b', { text: 'Heads up' }),
@@ -284,7 +331,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       const tbBox = box(toolbar.el);
       if (tbBox && tbBox.height > 120 && toolbar.el.classList.contains('pl-toolbar--open')) b = Math.max(b, r.bottom - tbBox.top + 56);
       // whatever floats at the bottom (the folded requirements strip, the sandbox traffic panel) is not free canvas
-      const low = [...right.children].map(box).filter((x) => x && x.height && x.top > r.top + r.height / 2);
+      const low = [...right.children].map(box).filter((x) => x && x.height);
       if (low.length) b = Math.max(b, r.bottom - Math.min(...low.map((x) => x.top)));
     } else {
       if (tb) t = Math.max(t, tb.bottom - r.top);
@@ -301,16 +348,21 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     return { l, t, r: rr, b, w: r.width, h: r.height };
   }
-  function fitView(animate = true, minZoom = null) {
-    if (S.connectFrom) return;
+  function fitView(animate = true, minZoom = null, automatic = false) {
+    if (S.connectFrom || (automatic && performance.now() < Math.max(S.editUntil || 0, S.manualViewUntil || 0))) return;
     const a = freeArea();
     const pad = isPhone() ? 20 : 36;
     // a big build zooms out far enough to sit between the panels instead of running underneath them
-    const zoom = isPhone() ? { minZ: minZoom ?? (graph().nodes.length > 8 ? 0.18 : 0.45), maxZ: 0.9 } : { minZ: minZoom ?? 0.6, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
+    const zoom = isPhone() ? { minZ: minZoom ?? (graph().nodes.length > 8 ? 0.18 : 0.45), maxZ: 0.9 } : { minZ: minZoom ?? (automatic ? 0.6 : 0.15), maxZ: mode === 'lesson' ? 1.35 : 1.4 };
     // names sit under the parts and are about 80 px wide, so the sides keep room for half a name (never under 12 px) and the bottom for a name line
     const side = Math.max(pad, 46);
-    if (isPhone() && S.selected) { const z = scene.stats().zoom; Object.assign(zoom, { minZ: z, maxZ: z, focusId: S.selected }); }
+    if (automatic && isPhone() && S.selected) { const z = Math.max(.6, scene.stats().zoom); Object.assign(zoom, { minZ: z, maxZ: z, focusId: S.selected }); }
     try { scene.fit({ l: a.l + side, t: a.t + pad, r: a.r + side, b: a.b + pad + 22 }, animate, zoom); } catch { try { scene.fit(); } catch { /* optional */ } }
+  }
+  function fitAll() {
+    S.manualViewUntil = performance.now() + 4000;
+    if (isPhone()) { inspector.fold(true); toolbar.el.classList.remove('pl-toolbar--open'); reqCard?.toggle(false); trafficPanel?.fold(true); }
+    later(() => fitView(true, 0), 40);
   }
   function placeAtCentre(type) {
     const a = freeArea();
@@ -318,7 +370,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const w = scene.screenToWorld(cx, cy);
     // a tap places the part in the nearest free spot; on a phone the settings sheet stays closed so the part is visible
     const id = placeComponent(type, w.x, w.y, null, { select: !isPhone(), autoPlace: true });
-    if (id) { announce(`${catalog.elementById.get(type)?.name || type} placed. Press C on the diagram to connect it.`); if (isPhone()) later(() => { if (!S.destroyed) fitView(true); }, 80); }
+    if (id) { announce(`${catalog.elementById.get(type)?.name || type} placed. Press C on the diagram to connect it.`);  }
     return id;
   }
 
@@ -364,10 +416,15 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       const sp = scene.worldToScreen ? scene.worldToScreen(x, y) : null;
       if (!sp) return;
       const a = freeArea();
-      if (sp.x < a.l + 30 || sp.x > a.w - a.r - 30 || sp.y < a.t + 30 || sp.y > a.h - a.b - 30) later(() => { if (!S.destroyed) fitView(true); }, 60);
+      if (sp.x < a.l + 30 || sp.x > a.w - a.r - 30 || sp.y < a.t + 30 || sp.y > a.h - a.b - 30) later(() => { if (!S.destroyed && performance.now() >= (S.editUntil || 0)) fitView(true, null, true); }, 60);
     } catch { /* optional */ }
   }
-  function announce(text) { kbLive.textContent = ''; later(() => { kbLive.textContent = text; }, 30); }
+  let announcementTimer = null;
+  function announce(text) {
+    clearTimeout(announcementTimer); timers.delete(announcementTimer);
+    kbLive.textContent = '';
+    announcementTimer = later(() => { kbLive.textContent = text; }, 30);
+  }
 
   // ---- building actions
   function placeComponent(type, x, y, edgeId = null, opt = {}) {
@@ -410,6 +467,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       commit();
       snd('connect');
       note('connect', { from, to });
+      if (!isLesson && caption.textContent.includes('Placed here.')) hideCaption();
       // once a part is connected its description has done its job: fold it so it stops covering the part the learner just placed
       if (isLesson && (S.selected === from || S.selected === to)) { try { inspector.fold(true); } catch { /* optional */ } }
       return id;
@@ -464,6 +522,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   // One tap from a heads-up: more units, and a higher autoscale floor when autoscaling is on.
   function applySizeFix(fix) {
+    if (interview) return;
     const n = graph().nodes.find((x) => x.id === fix.nodeId);
     if (!n) return;
     setKnob(fix.nodeId, 'units', fix.units);
@@ -471,7 +530,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (a?.on) setKnob(fix.nodeId, 'autoscale', { ...a, min: Math.max(a.min || 1, fix.units), max: Math.max(a.max || 1, fix.units) });
     announce(`${fix.word} set to ${fix.units}.`);
   }
-  function editableKnobs() { return mode !== 'challenge'; }
+  function editableKnobs() { return !interview && mode !== 'challenge'; }
   function removeNode(id) {
     if (structureBlocked()) return;
     const n = graph().nodes.find((x) => x.id === id);
@@ -552,7 +611,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     root.classList.toggle('pl-has-selection', !!id);
     // in a lesson the diagram steps out from under the settings panel, and settles back once it closes
-    if ((isLesson || isSandbox) && S.booted) { try { if (id) refitSoon(); else if (was) later(() => { if (!S.selected) fitView(true); }, 360); } catch { /* not ready yet */ } }
+    if ((isLesson || isSandbox) && S.booted) { try { if (id) refitSoon(); else if (was) later(() => { if (!S.selected) fitView(true, null, true); }, 360); } catch { /* not ready yet */ } }
     bus.emit('play:select', { nodeId: id });
   }
   function startConnect(from) {
@@ -793,14 +852,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         held = false;
         const showInstruction = () => showCaption(b.waitFor.path && graph().nodes.some(n => n.type === b.waitFor.type) && !alreadyHolds(b.waitFor)
           ? `${text} This part is not on the path yet. Drag it onto the line, or connect both sides and remove the original line.` : text, 0, b.waitFor.path ? [{ label: 'Retry insertion', onClick: () => {
-          const spec = b.waitFor, g = graph();
-          const edge = g.edges.find(e => e.from === spec.path[0] && e.to === spec.path[1] && e.kind === 'flow');
-          const loose = g.nodes.find(n => n.type === spec.type && !n.locked && !g.edges.some(e => e.from === n.id || e.to === n.id));
-          if (!edge || !loose) { toast('Drop the part onto the line, or connect both sides and remove the original line.', 'info'); return; }
-          const pos = makeRoomOnEdge(edge.id);
-          S.sim.moveNode(loose.id, pos.x, pos.y);
-          spliceInto(loose.id, loose.type, edge.id);
-          commit(); note('place', loose.type); fitView();
+          const spec = b.waitFor;
+          const id = repairInsertion(S.sim, spec, makeRoomOnEdge);
+          if (id) { commit(); note('place', spec.type); select(id); }
         } }] : []);
         S.insertionRetry = b.waitFor.path ? showInstruction : null;
         showInstruction();
@@ -962,12 +1016,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       return;
     }
     const v = metricValue(goal, st);
+    if (S.goalBefore == null && v != null) S.goalBefore = v;
     const dt = Math.max(0, (st.clockMs || 0) - Math.max(S.lastClock, from));
     S.lastClock = st.clockMs || 0;
     // Spare capacity must hold at the stated peak as well as during the measured traffic.
     const spare = goal.maxUtil == null || (st.nodes || []).filter(n => n.type === 'vm-fleet').every(n =>
       n.util <= goal.maxUtil && S.est?.nodes?.find(peak => peak.id === n.id)?.util <= goal.maxUtil);
-    const fresh = goal.maxTtlSec == null || graph().nodes.filter(n => n.type === 'cache').every(n => (n.knobs?.ttlSec ?? catalog.knobs.ttlSec.default) <= goal.maxTtlSec);
+    const fresh = goal.maxTtlSec == null || graph().nodes.filter(n => n.type === 'cache' && st.nodes?.some(live => live.id === n.id && live.incomingRps > 0)).every(n => (n.knobs?.ttlSec ?? catalog.knobs.ttlSec.default) <= goal.maxTtlSec);
     const ok = spare && fresh && v != null && placedOk(goal) && drained(goal, st) && { '<=': v <= goal.value, '>=': v >= goal.value, '<': v < goal.value, '>': v > goal.value, '==': v === goal.value }[goal.op];
     if (opts.lesson?.id === 'replication-lag' && replicaReadsActive(graph(), S.sim.flows())) hideCaption();
     S.goalMs = ok ? S.goalMs + dt : 0;
@@ -984,6 +1039,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (opts.lesson?.id === 'replication-lag') hideCaption();
       goalChip.classList.add('pl-goal--done');
       goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: mode === 'lesson' ? `${goalPassed(goal, v, nameOf(goal.node) || 'The part')} Day meters include earlier minutes.` : 'Goal reached. Nicely done.' }));
+      const before = S.goalBefore;
+      if (before != null && Math.abs(before - v) > 0.000001) {
+        const unit = ['availability', 'util', 'hitRate', 'errors', 'compliance'].includes(goal.metric) ? '%' : goal.metric === 'p99' ? ' ms' : '';
+        const fmt = n => Math.round(n * (unit === '%' ? 100 : 1) * 10) / 10;
+        hideCaption();
+        goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: `Check passed now. ${goal.metric === 'availability' ? 'Served' : goal.metric === 'util' ? 'Busy' : goal.metric}: ${fmt(before)}${unit} before at peak → ${fmt(v)}${unit} measured now. Goal ${goal.op} ${fmt(goal.value)}${unit}.` }));
+      }
+      root.classList.add('pl-goal-celebrate'); later(() => root.classList.remove('pl-goal-celebrate'), 900);
       snd('pass');
       // the goal is met: close the inspector and the parts sheet so the Continue button is never covered
       try { select(null); toolbar.el.classList.remove('pl-toolbar--open'); } catch { /* optional */ }
@@ -1000,7 +1063,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const btn = (iconId, label, fn, cls = '') => h('button', { class: 'pl-icon-btn ' + cls, type: 'button', 'aria-label': label, title: label, onClick: fn }, iconEl(iconId, 20));
   const undoBtn = btn('ui.undo', 'Undo (Ctrl+Z)', () => undo());
   const redoBtn = btn('ui.redo', 'Redo (Ctrl+Shift+Z)', () => redo(), 'pl-tool--redo');
-  const fitBtn = btn('ui.fit', 'Fit to screen (F)', () => fitView(), 'pl-tool--fit');
+  const fitBtn = btn('ui.fit', 'Fit to screen (F)', fitAll, 'pl-tool--fit');
   const hintBtn = btn('ui.hint', 'Hints (H)', () => hints.toggle(), 'pl-tool--hint');
   const edBtn = btn('ui.editorial', 'Editorial (after one finished day)', () => openEditorial(), 'pl-tool--editorial');
   tools.append(undoBtn, redoBtn, fitBtn);
@@ -1010,7 +1073,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     inspection.addEventListener('toggle', () => top.classList.toggle('pl-top--tools-open', inspection.open));
     for (const event of ['pointerdown', 'pointerup', 'click', 'dblclick', 'wheel']) options.addEventListener(event, e => e.stopPropagation());
     inspection.append(options); tools.append(inspection);
-    if (stepped) options.append(h('button', { class: 'pl-btn pl-btn--small', type: 'button', onClick: () => {
+    if (stepped && !interview) options.append(h('button', { class: 'pl-btn pl-btn--small', type: 'button', onClick: () => {
       inspection.open = false;
       top.classList.remove('pl-top--tools-open');
       hints.open();
@@ -1036,7 +1099,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       commit(); fitView(true, 0.2);
     } }, 'Arrange by region'));
   }
-  if (stepped) tools.append(hintBtn, edBtn);
+  if (stepped && !interview) tools.append(hintBtn, edBtn);
+  const interviewClock = interview ? h('output', { class: 'pl-interview-clock', title: '45-minute guide. Play continues after time runs out.', text: 'Interview · 45:00' }) : null;
+  if (interviewClock) tools.append(interviewClock);
   top.append(tools);
   let ghostBtn = null;
   if (mode === 'beat' && opts.overlay?.graph) {
@@ -1052,6 +1117,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function showPanel(on) { panel.hidden = !on; scrim.hidden = !on; }
   function go(step) {
     if (!stepped) return;
+    if (interview && interviewState.run && step !== 'debrief') return;
+    if (interview && interviewState.stage !== 'ready' && step !== 'clarify') return;
     if (step === 'day' || (step === 'debrief' && !S.result)) return;
     if ((step === 'clarify' || step === 'numbers') && S.sim.phase !== 'build') return;
     S.step = step;
@@ -1059,8 +1126,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     closeMenu();
     debriefWrap.hidden = step !== 'debrief';
     showPanel(step === 'clarify' || step === 'numbers');
-    if (step === 'clarify') renderClarify(panel, { problem: S.problem, revealed: S.revealed, snd, warm: !!S.problem?.warmUp, onNext: () => go('numbers') });
-    if (step === 'numbers') renderNumbers(panel, { problem: S.problem, guesses: S.guesses, snd, progress: ctx.progress, onBack: () => go('clarify'), onNext: () => go('draw') });
+    if (interview && step === 'clarify') renderInterviewPrep(panel, S.problem, interviewState, () => go('draw'), syncInterviewRequirements);
+    if (!interview && step === 'clarify') renderClarify(panel, { problem: S.problem, revealed: S.revealed, snd, warm: !!S.problem?.warmUp, onNext: () => go('numbers') });
+    if (!interview && step === 'numbers') renderNumbers(panel, { problem: S.problem, guesses: S.guesses, snd, progress: ctx.progress, onBack: () => go('clarify'), onNext: () => go('draw') });
     if (step === 'draw') { toolbar.setEnabled(canStructure(), ''); }
     stepsBar.set(step, { clarify: S.sim.phase === 'build', numbers: S.sim.phase === 'build', draw: true, debrief: !!S.result });
     if (step === 'debrief') showDebrief();
@@ -1076,7 +1144,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     refreshTrace();
     // the parts list folds to a strip while a day runs (and opens again after), so the diagram is fitted to the new free area
     const slim = toolbar.el.classList.contains('pl-toolbar--slim');
-    if (slim !== S.slimWas) { const first = S.slimWas === undefined; S.slimWas = slim; if (!first && !isPhone() && !S.destroyed) later(() => { if (!S.destroyed) fitView(true); }, 80); }
+    if (slim !== S.slimWas) { const first = S.slimWas === undefined; S.slimWas = slim; if (!first && !isPhone() && !S.destroyed) later(() => { if (!S.destroyed) fitView(true, null, true); }, 80); }
     syncUndoButtons();
   }
 
@@ -1100,7 +1168,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   // Start from the screen: a design where some request type has nowhere to go gets one question first.
   function startFromUi() {
-    if (mode === 'practice' && S.sim.phase === 'build' && !S.designChecked) {
+    if (!interview && mode === 'practice' && S.sim.phase === 'build' && !S.designChecked) {
       modal.replaceChildren(renderDesignCheck(S.problem, answer => {
         S.designChecked = true; S.prediction = answer.text; modal.hidden = true; startFromUi();
       }, () => { modal.hidden = true; }));
@@ -1109,13 +1177,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       return getState();
     }
     if (S.sim.phase === 'build' && stepped) {
-      const errs = (S.issues || []).filter((i) => i.level === 'error' || (i.code === 'disconnected' && i.source));
-      const proofs = (S.issues || []).filter((i) => i.code === 'compliance-missing');
+      const issues = diagnosticIssues();
+      const errs = issues.filter((i) => i.level === 'error' || (i.code === 'disconnected' && i.source));
+      const proofs = issues.filter((i) => i.code === 'compliance-missing');
       if (errs.length || proofs.length) {
         modal.replaceChildren(h('div', { class: 'pl-modal-card', style: { maxHeight: '100%', overflowY: 'auto' } },
           h('div', { class: 'pl-ed-top' }, h('b', { text: errs.length ? 'Some requests have nowhere to go' : 'Some required proofs are missing' })),
           h('ul', { class: 'pl-list' }, mergeByCause(errs).slice(0, 4).map((m) => h('li', { text: m }))),
-          proofs.length ? h('div', {}, h('b', { text: 'Missing proofs' }), h('ul', { class: 'pl-list' }, proofs.map((i) => h('li', { text: i.message }))), h('p', { class: 'pl-muted', text: 'Open each Must prove requirement for wiring guidance. Missing proofs prevent a pass and reduce Data safety points.' })) : null,
+          proofs.length ? h('div', {}, h('b', { text: 'Missing proofs' }), h('ul', { class: 'pl-list' }, proofs.map((i) => h('li', { text: i.message }))), h('p', { class: 'pl-muted', text: (interview ? '' : 'Open each Must prove requirement for wiring guidance. ') + 'Missing proofs prevent a pass and reduce Data safety points.' })) : null,
           h('p', { class: 'pl-muted', text: (errs.length ? 'Those requests will fail all day. ' : '') + 'Start anyway, or keep drawing?' }),
           h('div', { class: 'pl-actions' },
             h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: () => { modal.hidden = true; } }, 'Keep drawing'),
@@ -1128,7 +1197,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     return startTraffic();
   }
   function startTraffic() {
-    if (mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id) {
+    if (interview && (interviewState.stage !== 'ready' || (interviewState.run && S.sim.phase === 'build'))) return getState();
+    if (!interview && mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id) {
       modal.replaceChildren(renderCheckpointForm(S.problem.correctness, S.correctnessAnswer, (answer) => {
         S.correctnessAnswer = answer;
         S.checkpointReady = S.problem.id;
@@ -1144,6 +1214,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (S.sim.phase !== 'build') { if (S.sim.phase === 'paused') resume(); return getState(); }
     if (stepped && S.step !== 'draw') go('draw');
     cancelModes();
+    if (!isLesson) hideCaption();
     if (S.selected && !isLesson) select(null);
     S.result = null;
     S.acc = 0;
@@ -1151,6 +1222,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     hud.hideBanner();
     hud.resetHistory();
     S.sim.start();
+    if (interview) interviewState.run = true;
     S.checkpointReady = null;
     if (wasHeld) lessonLeadIn();
     S.lastClock = wasHeld ? S.sim.clockMs : 0; S.goalMs = 0;
@@ -1176,6 +1248,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (S.sim.phase === 'paused') resume();
   }
   function resetToDraw() {
+    if (interview && interviewState.run) { toast('The interview day runs once. Finish your defense to review it.', 'info'); return; }
     if (S.warm && S.fullEvents) {
       // the second run is the full day, spike included
       const full = S.fullEvents, fullReq = S.fullRequirements;
@@ -1235,10 +1308,18 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!isRef && S.problem?.warmUp && !S.problem?.twistDay && result.passed && mode === 'practice') {
       try { store.set('warmups', { ...(store.get('warmups', {}) || {}), [S.problem.id]: Date.now() }); bus.emit('progress:updated', { problemId: S.problem.id, warmUp: true }); } catch { /* optional */ }
     }
-    if (!isRef && !warm) bus.emit('play:day-end', { mode, problemId: S.problem.id, seed: S.seed, result, hintsUsed: hints.used() });
+    if (!interview && !isRef && !warm) bus.emit('play:day-end', { mode, problemId: S.problem.id, seed: S.seed, result, hintsUsed: hints.used() });
   }
   function showDebrief() {
     if (!S.result) return;
+    if (interview) {
+      renderInterviewResult(debriefWrap, S.problem, interviewState, S.result, catalog, report => {
+        if (S.interviewSaved) return;
+        S.interviewSaved = true;
+        ctx.progress.recordInterview(S.problem.id, report);
+      });
+      debriefWrap.hidden = false; debriefWrap.scrollTop = 0; return;
+    }
     const list = ctx.content?.problems || [];
     const idx = list.findIndex((p) => p.id === S.problem.id);
     renderDebrief(debriefWrap, {
@@ -1261,7 +1342,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
           toast(on ? 'New twist: the same brief, with the events moved and one more added. This day is practice only.' : 'Back to the original day.', 'info', 5000);
         } : null,
         onShowNext: (ns) => { reset(); if (ns.nodeId) select(ns.nodeId); if (ns.elementId) toolbar.pulse(ns.elementId); },
-        nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; const fix = rn && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; if (fix && ns.sizing) { fix.units = ns.sizing.units; fix.label = `Set ${fix.word.toLowerCase()} to ${fix.units}`; } return fix; },
+        nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; const fix = rn && ['units', 'autoscale'].includes(ns?.knob) && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; if (fix && ns.sizing) { fix.units = ns.sizing.units; fix.label = `Set ${fix.word.toLowerCase()} to ${fix.units}`; } return fix; },
         onSetNext: (fix) => { reset(); applySizeFix(fix); select(fix.nodeId); },
       },
     });
@@ -1272,7 +1353,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
 
   // ---- editorial
   function openEditorial() {
-    if (!stepped) return;
+    if (!stepped || interview) return;
     if (!S.result && !(ctx.progress?.get?.(S.problem.id)?.attempts > 0)) { toast('The editorial unlocks after one finished traffic day.', 'info'); return; }
     renderEditorial(editorialWrap, {
       problem: S.problem, catalog, passed: !!(S.result?.passed || ctx.progress?.get?.(S.problem.id)?.stars > 0),
@@ -1383,6 +1464,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   hud.el.querySelector('.pl-buildnote').addEventListener('click', () => { const rk = riskyIssues().find((i) => i.nodeId != null); if (rk && !S.issues?.some((i) => i.level === 'error')) select(rk.nodeId); if (S.issues?.length || riskyIssues().length) { paintIssues(); issuesBox.hidden = !issuesBox.hidden; } });
   let reqCard = null;
   let trafficPanel = null;
+  function syncInterviewRequirements() {
+    if (interview && reqCard) reqCard.el.hidden = ['questions', 'answers', 'requirements'].includes(interviewState.stage);
+  }
 
   // Easy problems open the palette with a short "start with these" list: the parts of the simplest reference design.
   // Medium and Hard problems get the usual starting parts plus what the brief says must be there (its required parts
@@ -1432,7 +1516,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function warmUpOf(problem) {
     S.warm = false; S.fullEvents = null; S.fullRequirements = null;
     try {
-      if (mode !== 'practice' || problem.difficulty !== 'Easy' || !(problem.events || []).some((e) => e.id === 'viral-spike')) return problem;
+      if (interview || mode !== 'practice' || problem.difficulty !== 'Easy' || !(problem.events || []).some((e) => e.id === 'viral-spike')) return problem;
       if (Object.keys(store.get('progress', {}) || {}).length) return problem;
       if (Object.keys(store.get('warmups', {}) || {}).length) return problem;
     } catch { return problem; }
@@ -1449,7 +1533,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (S.sim) { try { S.sim.pause?.(); } catch { /* old sim */ } }
     S.sim = makeSim(S.problem, null);
     let g = initialGraph || null;
-    if (!g && !isLesson && S.problem.id) {
+    if (!g && !isLesson && !interview && S.problem.id) {
       const d = store.get(`draft.${mode}.${S.problem.id}`, null);
       if (d?.graph && (mode !== 'challenge' || d.seed === S.seed)) g = d.graph;
     }
@@ -1458,14 +1542,21 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.cur = JSON.stringify(graph());
     toolbar.setPalette(S.problem.palette || null);
     const sug = suggestedParts(S.problem);
-    toolbar.setSuggested(sug?.list || null, sug?.title);
+    toolbar.setSuggested(interview ? null : sug?.list || null, interview ? '' : sug?.title);
     reqCard?.el.remove();
-    if (stepped) reqCard = createReqCard(right, { catalog, problem: S.problem });
+    if (stepped) reqCard = createReqCard(right, { catalog, problem: S.problem, advice: !interview });
+    syncInterviewRequirements();
     right.prepend(...(reqCard ? [reqCard.el] : []));
     hud.setPhase('build'); hud.setSpeed(S.speed);
     S.hintsUsed = hints.used();
     scene.sync(graph(), flowVersion());
     refreshChecks();
+    const goal = S.problem.goal;
+    if (goal) {
+      const measured = S.est?.nodes?.find(n => n.id === goal.node || n.type === goal.node);
+      S.goalBefore = goal.metric === 'util' ? measured?.util : goal.metric === 'availability' ? S.est?.successAtPeak :
+        goal.metric === 'errors' ? 1 - (S.est?.successAtPeak || 0) : goal.metric === 'p99' ? Math.max(0, ...Object.values(S.est?.p99AtPeak || {})) : goal.metric === 'cost' ? S.est?.perMonth : null;
+    }
     updateEditable();
   }
 
@@ -1512,6 +1603,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.dropSeen = perf.droppedTicks;
     try { scene.setFlows(sim.flows(), { speed: sim.phase === 'running' ? effectiveSpeed() : 0, dtWallMs: dt }); } catch (e) { if (!S.flowErr) { S.flowErr = 1; S.errors.push({ code: 'render', message: String(e?.message || e) }); } }
     hudClock += dt;
+    if (interviewClock && !interviewState.complete) {
+      const left = 2700 - Math.floor((Date.now() - interviewState.startedAt) / 1000);
+      interviewClock.textContent = left >= 0 ? `Interview · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Interview · Overtime';
+    }
     if (hudClock >= 250) { hudClock = 0; const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
     if (ctx.recordFrame) {
       try {
@@ -1589,12 +1684,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (mod && k.toLowerCase() === 'd') { ev.preventDefault(); if (S.selected) duplicate(S.selected); return; }
     if (mod || ev.altKey) return;
     if (k === '/') { ev.preventDefault(); toolbar.focusSearch(); }
-    else if (k === 'f' || k === 'F') fitView();
+    else if (k === 'f' || k === 'F') fitAll();
     else if (k === 'Delete' || k === 'Backspace') { if (S.selected) { ev.preventDefault(); removeNode(S.selected); } }
     else if (k === 'Enter') { if (S.sim.phase === 'build' && t === document.body) startFromUi(); }
     else if (k === ' ') { ev.preventDefault(); if (S.sim.phase === 'running') pause(); else if (S.sim.phase === 'paused') resume(); }
     else if (k >= '1' && k <= '7') setSpeed(world.sim.speeds[+k - 1]);
-    else if (k === 'h' || k === 'H') { if (stepped) hints.toggle(); }
+    else if (k === 'h' || k === 'H') { if (stepped && !interview) hints.toggle(); }
     else if (k === 'm' || k === 'M') { try { ctx.settings.set('soundMuted', !ctx.settings.get('soundMuted')); } catch { /* optional */ } }
   }
   document.addEventListener('keydown', onKey);
@@ -1677,7 +1772,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   if (stepped) {
     const seen = ctx.progress?.get?.(S.problem.id)?.attempts > 0;
-    go(opts.graph || seen || mode === 'beat' ? 'draw' : 'clarify');
+    go(interview ? 'clarify' : opts.graph || seen || mode === 'beat' ? 'draw' : 'clarify');
   } else {
     stepsBar?.set('draw');
     top.classList.add('pl-top--plain');
@@ -1710,7 +1805,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     clearTimeout(refitT);
     refitT = setTimeout(() => {
       if (S.destroyed || S.connectFrom || !(S.sim.phase !== 'build' || isLesson || isSandbox) || !nodesHidden()) return;
-      fitView(true);
+      const remaining = (S.editUntil || 0) - performance.now();
+      if (remaining > 0) { refitT = setTimeout(refitSoon, remaining + 20); return; }
+      fitView(true, null, true);
       // a big diagram that still does not fit between the panels gets the room the open traffic panel was using, and then
       // zooms out a little further than usual so the whole of it shows
       if (isPhone() || isLesson) return;
@@ -1732,10 +1829,17 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       const on = toolbar.el.classList.contains('pl-toolbar--open');
       if (on === drawerWas) return;
       drawerWas = on;
-      if (isPhone() && !S.destroyed) later(() => { if (!S.destroyed) fitView(true); }, 340);
+      if (isPhone() && !S.destroyed) later(() => { if (!S.destroyed) fitView(true, null, true); }, 340);
     });
     toolbarObs.observe(toolbar.el, { attributes: true, attributeFilter: ['class'] });
   } catch { syncHud(); }
+  const wirePreview = h('output', { class: 'pl-wire-preview', hidden: '', 'aria-live': 'polite' }); root.append(wirePreview);
+  offs.push(scene.on('connect:preview', pair => {
+    wirePreview.hidden = !pair?.to;
+    if (!pair?.to) return;
+    const name = id => { const n = graph().nodes.find(n => n.id === id); return catalog.elementById.get(n?.type)?.name || id; };
+    wirePreview.textContent = `${name(pair.from)} → ${name(pair.to)} · ${pair.ok ? 'Release to connect' : 'This connection is not allowed'}`;
+  }));
   bus.emit('play:loaded', { mode, problemId: S.problem.id ?? null, lessonId: opts.lesson?.id ?? null });
   if (isLesson) {
     if (S.problem.goal) { goalChip.hidden = false; goalChip.replaceChildren(iconEl('ui.hint', 16), h('span', { text: goalLabel() })); }

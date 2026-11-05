@@ -1,11 +1,14 @@
 // Traffic-day events: builds the schedule, resolves target selectors and applies every op in events.json.
 import { parseClock } from './util.js';
+import { guidedEvent } from './event-guidance.js';
+import { upstreamDns } from './paths.js';
 
 const AUDIT_SHOW_SEC = 60; // how long an instant event (audit, bad migration) stays on the banner
 const ELECTION_SEC = 5; // a consensus database elects new leaders for a lost node's shards in seconds, approx.
 
 export function makeInstance(catalog, entry, n, dayMs) {
-  const def = catalog.eventById.get(entry.id);
+  const base = catalog.eventById.get(entry.id);
+  const def = base && guidedEvent(base, entry.text);
   if (!def) return null;
   const atMs = Math.max(0, Math.min(dayMs - 1, typeof entry.atMs === 'number' ? entry.atMs : parseClock(entry.at)));
   const params = entry.params || {};
@@ -325,10 +328,14 @@ function startFail(S, inst, ef) {
   const base = durOf(S, ef, total);
   ef.st.mode = mode;
   ef.st.perNode = new Map();
-  let end = now + base * 1000;
+  let end = now;
   for (const u of ef.targets) {
     const n = nodes[u];
     let downSec = base;
+    if (inst.id === 'dns-misconfig') {
+      const ttl = [...upstreamDns(S, u)].map(v => nodes[v].ttlSec).filter(v => v > 0);
+      if (ttl.length) downSec = Math.min(base, Math.max(...ttl));
+    }
     if (mode === 'down' && n.kind === 'store' && !n.el.params?.consensus && n.keyed && !n.elastic && Math.round(S.unitsCur[u]) > 1 && n.failoverSec != null) {
       // A sharded store fails over one shard at a time: only that unit's share of keys is unavailable.
       const units = Math.round(S.unitsCur[u]);
@@ -592,6 +599,7 @@ function applyEffect(S, ef, now) {
         if (rec && rec.shard) { S.err[u] = 1 - (1 - S.err[u]) * (1 - rec.share); continue; }
         if (rec && rec.consensus) {
           S.capFactor[u] *= 1 - rec.share;
+          S.aliveFactor[u] *= 1 - rec.share;
           // leaders on the lost node answer "try again" during the election; callers retry those
           if (now < rec.electUntil) addErr(S, u, Math.min(0.49, rec.share * Math.min(1, ELECTION_SEC / S.dt)));
           continue;
@@ -605,7 +613,7 @@ function applyEffect(S, ef, now) {
     case 'zoneDown': {
       for (const [u, rec] of st.perNode) {
         if (now < rec.until) S.down[u] = 1;
-        else S.capFactor[u] *= rec.alive;
+        else { S.capFactor[u] *= rec.alive; S.aliveFactor[u] *= rec.alive; }
         if (now < rec.errUntil) S.err[u] = 1 - (1 - S.err[u]) * (1 - rec.errShare);
       }
       break;

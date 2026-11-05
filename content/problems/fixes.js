@@ -65,7 +65,7 @@ const fixes = {
   },
   'comments-and-likes': { textReplace: [['30 percent of all likes', '10 percent of all likes']], events: [{ id: 'viral-spike', at: '20:00', params: { factor: 5 } }, { id: 'hot-key', at: '13:00', params: { share: 0.1 } }] },
   'fleet-telemetry': { designs: { 0: { addEdges: [['lb', 'qapi']] } } },
-  'observability-platform': { designs: { 0: { addEdges: [['dist', 'qry']] } } },
+  'observability-platform': {},
   // Disk full stops writes until someone frees space; a queue lets sync writes wait instead of failing.
   'file-sync': {
     requirements: { queueLimitMin: 30 },

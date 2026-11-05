@@ -793,12 +793,12 @@ const problems = [
     mix: { telemetry: 0.8, report: 0.12, read: 0.08 }, latencyP99Ms: { default: 500, telemetry: 1000, report: 5000 }, availability: 0.9995,
     dataSafety: 'rpo-1m', readYourWrites: false, compliance: [], budgetPerMonth: 25000, storageTb: 8,
     userRegions: { us: 0.5, eu: 0.3, apac: 0.2 }, homeRegion: 'us',
-    notes: ['One ingest request is a batch of 100 samples, so 11,200 requests a second ≈ 1.1 million samples a second (approx.).', 'A sample takes about 1.5 bytes after compression (approx.).']
+    notes: ['One ingest request batches 100 samples. Use the peak request rate and telemetry share above to estimate the batch rate.', 'A sample takes about 1.5 bytes after compression (approx.).']
   },
-  traffic: { curve: 'flat', sources: { 'iot-device': 0.8, 'admin-console': 0.2 }, params: {} },
+  traffic: { curve: 'flat', sources: { 'iot-device': 0.8, 'admin-console': 0.2 }, sourceTypes: { 'iot-device': ['telemetry'], 'admin-console': ['read', 'report'] }, params: {} },
   requires: {}, palette: null,
   starter: { nodes: [S('agents', 'iot-device', -60), S('oncall', 'admin-console', 60)], edges: [] },
-  events: [ { id: 'cardinality-explosion', at: '08:00' }, { id: 'thundering-herd', at: '09:00', params: { factor: 8, types: ['report', 'read'] } }, { id: 'zone-outage', at: '12:00' } ],
+  events: [ { id: 'cardinality-explosion', at: '08:00' }, { id: 'thundering-herd', at: '09:00', params: { factor: 8, types: ['report', 'read'] }, text: { name: 'Dashboard rush', description: 'Teams open dashboards at nine. Read and report traffic rises to eight times normal while agents keep sending measurements.', debrief: { headline: 'Nine o’clock dashboard rush: reads and reports rose eightfold.', hurt: '{failed} requests failed as query traffic rose. Ingest continued on its separate path.', fix: 'Cache repeated dashboard queries and leave query capacity for cold misses. The ingest limiter cannot protect this separate read path.' } } }, { id: 'zone-outage', at: '12:00' } ],
   eventPool: ['noisy-neighbor', 'disk-full'],
   numbers: [
     { label: 'Ingest batches per second at peak', value: 11200, unit: 'batches/s', how: '14,000 × 0.80', ask: true },

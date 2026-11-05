@@ -4,6 +4,7 @@ import { fmtNum, fmtClock, withCommas, joinNames } from './util.js';
 import { nodeLabel } from './cost.js';
 import { responseSec } from './events.js';
 import { validateModel } from './validate.js';
+import { sourceFlow, upstreamDns } from './paths.js';
 
 const NOTHING = 'Nothing in your design';
 const autoOn = (n) => n.kind === 'compute' && !!(n.autoscaleKnob || n.autoscaler >= 0);
@@ -49,7 +50,7 @@ function knobNodes(S, knob, inst) {
       case 'readFrom': ok = n.el.id === 'document-db' && n.readFrom === 'primary'; break;
       case 'autoscale': ok = !!(n.autoscaleKnob || n.autoscaler >= 0); break;
       case 'ttlSec': ok = n.el.id === 'dns' && n.ttlSec != null && n.ttlSec <= 60; break;
-      case 'retentionDays': ok = n.kind === 'store' && n.retentionDays && n.retentionDays < 7; break;
+      case 'retentionDays': ok = inst?.id !== 'disk-full' && n.kind === 'store' && n.retentionDays && n.retentionDays < 7; break;
       case 'warmPool': ok = n.warmPool > 0; break;
       case 'units': {
         const st = inst && inst.stats;
@@ -116,6 +117,7 @@ function helpersFor(S, inst, hurtIdx) {
   // never saw that rush, so it is not listed as having helped.
   const T = S.T;
   const st0 = inst.stats && inst.stats.N === model.N ? inst.stats : null;
+  const dnsPath = inst.id === 'dns-misconfig' ? new Set(inst.effects.flatMap(e => (e.targets || []).flatMap(u => [...upstreamDns(S, u)]))) : null;
   const onRushPath = (u) => {
     const k = model.nodes[u].kind;
     if (k === 'observer' || k === 'control' || k === 'source') return true;
@@ -125,6 +127,7 @@ function helpersFor(S, inst, hurtIdx) {
   };
   const inReach = (u, scope = 'any') => {
     const node = model.nodes[u];
+    if (dnsPath && ['dns', 'geo-dns'].includes(node.el.id) && !dnsPath.has(u)) return false;
     if (node.hasCap && st0 && !(st0.maxLoad[u] > 0)) return false;
     if (inst.id === 'duplicate-delivery') return !reach || reach.up.has(u) || reach.near.has(u) || reach.seeds.has(u);
     if (!reach) return inst.def.group !== 'traffic' || onRushPath(u);
@@ -468,7 +471,7 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
         if (!mainNode || !mainNode.keyed || S.unitsCur[mainNode.i] <= 1) hurt = `${vars.node} overloaded on the hot item and ${vars.failed} requests failed.`;
         break;
       case 'thundering-herd':
-        hurt = `${vars.node} was overwhelmed by the reconnect wave and ${vars.failed} requests failed.`;
+        hurt = t.hurt ? fillT(t.hurt, vars) : `${vars.node} was overwhelmed by the reconnect wave and ${vars.failed} requests failed.`;
         break;
       case 'retry-storm':
         if (vars.minutes === '0') hurt = `Retries hit ${vars.node} hard and ${vars.failed} requests failed.`;
@@ -504,6 +507,21 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
     const fo = inst.id === 'db-failover' ? inst.effects.find((e) => e.op === 'fail') : null;
     if (fo && fo.st.failover) hurt = `No visible damage: ${fo.st.failover === 'consensus' ? 'the cluster re-elected a leader and kept serving' : fo.st.failover === 'shard' ? "the shard's standby took over while the other shards kept serving" : 'the standby took over quickly'}.`;
     fix = null;
+  }
+
+  // A typed traffic surge cannot explain losses confined to another workload's path.
+  let unaffectedPath = false;
+  const types = inst.effects.filter(e => e.op === 'traffic').flatMap(e => e.params.types || []);
+  if (dmg.any && types.length && inst.stats) {
+    const path = new Set(types.flatMap(id => {
+      const t = catalog.typeIndex.get(id);
+      return t != null && S.mixArr[t] > 0 ? [...sourceFlow(S, t).reached] : [];
+    }));
+    const elsewhere = model.nodes.filter(n => !path.has(n.i) && inst.stats.nodeFail[n.i] >= 1);
+    if (elsewhere.length) {
+      unaffectedPath = !model.nodes.some(n => path.has(n.i) && inst.stats.nodeFail[n.i] >= 1);
+      hurt = `${vars.failed} requests failed in this window across the design. Failed work was recorded on a separate path at ${joinNames(elsewhere.map(nodeLabel))}. ${unaffectedPath ? 'No failures were recorded on the affected traffic path.' : 'Failures were also recorded on the affected traffic path; this total includes both paths.'}`;
+    }
   }
 
   // A crowd that did not overload the part that failed is not what failed it: an outage that overlapped did.
@@ -642,6 +660,7 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
       fix = gap ? `Fix the routing gap first: ${gap.message}` : root ? `Fix the failures at ${nodeLabel(root)} first. The slow dependency caused none of these failures.` : null;
     }
   }
+  if (unaffectedPath) { fix = null; helped = null; }
   return { headline: tidy(headline), hurt: tidy(hurt), helped: tidy(helped), fix: tidy(fix) };
 }
 
@@ -659,7 +678,7 @@ function blockedOf(S) {
   }
   let issues = [];
   try { issues = validateModel(S); } catch { issues = []; }
-  const blocking = issues.filter((i) => i.level === 'error' && i.type && (i.code === 'type-unserved' || i.code === 'requires-missing' || i.code === 'no-source-type'));
+  const blocking = issues.filter((i) => i.level === 'error' && i.type && (i.code === 'source-type-unserved' || i.code === 'type-unserved' || i.code === 'requires-missing' || i.code === 'no-source-type'));
   const types = [...new Set(blocking.map((i) => i.type))];
   const share = failAll > 0 ? types.reduce((a, t) => a + (typeFail.get(t) || 0), 0) / failAll : 0;
   const top = blocking.slice().sort((a, b) => (typeFail.get(b.type) || 0) - (typeFail.get(a.type) || 0))[0] || null;
@@ -693,13 +712,15 @@ function sizingAdvice(S, n) {
   const requests = S.peakRequests[u], peak = S.peakUtil[u];
   if (!(requests > 0 && peak > 0)) return '';
   const perServer = requests / (peak * units);
-  const needed = Math.ceil(requests / (perServer * 0.7));
+  const activeNeeded = Math.ceil(requests / (perServer * 0.7));
+  const survival = units / S.peakInstalledUnits[u];
+  const needed = Math.ceil(activeNeeded / survival);
   const need = Math.min(n.el.units.max, needed);
   const price = (n.el.cost?.perUnit || 0) * n.tierCost;
   const avg = S.counters.elapsedSec > 0 ? S.counters.unitSec[u] / S.counters.elapsedSec : n.units;
   const delta = (need - avg) * price;
   const scaling = n.autoscaleKnob || n.autoscaler >= 0;
-  return ` Measured peak at this part, including retries and repeat visits: ≈ ${withCommas(requests)} requests/s with ${withCommas(units)} ${unitsWord(n)} active${scaling ? ' under autoscaling' : ''}. Effective capacity for this request mix: ≈ ${withCommas(perServer)} requests/s per unit. With 30 percent headroom (70 percent busy), round up ${withCommas(requests)} ÷ (${withCommas(perServer)} × 0.70) = ${withCommas(needed)} ${unitsWord(n)}.${need < needed ? ` The limit is ${withCommas(need)}; reduce load or use a bigger size too.` : ''} ${scaling ? `Set the autoscaling minimum to ${withCommas(need)} before the peak; new servers take 2 to 4 minutes to start. ` : ''}Keeping ${withCommas(need)} all day costs ≈ $${withCommas(need * price)}/month for units, ≈ $${withCommas(Math.abs(delta))}/month ${delta >= 0 ? 'more' : 'less'} than this run's average fleet (usage costs may change).`;
+  return ` Measured peak at this part, including retries and repeat visits: ≈ ${withCommas(requests)} requests/s with ${withCommas(units)} ${unitsWord(n)} active${scaling ? ' under autoscaling' : ''}. Effective capacity for this request mix: ≈ ${withCommas(perServer)} requests/s per unit. With 30 percent headroom (70 percent busy), round up ${withCommas(requests)} ÷ (${withCommas(perServer)} × 0.70) = ${withCommas(activeNeeded)} ${unitsWord(n)}.${survival < 1 ? ` Only ${withCommas(units)} of ${withCommas(S.peakInstalledUnits[u])} installed units survived at that peak. Keeping the same surviving share needs ${withCommas(needed)} installed units.` : ''}${need < needed ? ` The limit is ${withCommas(need)}; reduce load or use a bigger size too.` : ''} ${scaling ? `Set the autoscaling minimum to ${withCommas(need)} before the peak; new servers take 2 to 4 minutes to start. ` : ''}Keeping ${withCommas(need)} all day costs ≈ $${withCommas(need * price)}/month for units, ≈ $${withCommas(Math.abs(delta))}/month ${delta >= 0 ? 'more' : 'less'} than this run's average fleet (usage costs may change).`;
 }
 
 function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
@@ -783,6 +804,9 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
         if (!n.autoscaleKnob && n.autoscaler < 0 && (n.el.knobs || []).includes('autoscale')) return { text: `${name(n)} ran out of room${busy}. Add ${unitsWord(n)} and turn on autoscaling.${more2}`, nodeId: n.id, knob: 'autoscale' };
         return { text: `${name(n)} ran out of room${busy}. Add ${unitsWord(n)} so it peaks under about 70 percent busy.${more2}`, nodeId: n.id, knob: 'units' };
       }
+    }
+    if (['compute', 'store', 'cache', 'lookaside', 'router', 'filter'].includes(n.kind) && (S.peakUtil[worst] <= 1 || !(S.overTicks[worst] > 0))) {
+      return { text: `${name(n)} lost requests without exhausting its capacity (peak ≈ ${busyPct(S.peakUtil[worst])} percent busy). Check the source routes, failed dependencies and event evidence before adding capacity.`, nodeId: n.id };
     }
     if (n.kind === 'lookaside' && (n.el.knobs || []).includes('units')) {
       const peak = S.peakUtil[n.i];
@@ -889,7 +913,8 @@ function nextStepOf(S, score, metrics, nodesOut, eventsOut) {
   const node = S.model.nodes.find(n => n.id === step.nodeId);
   if (node?.kind === 'compute' && /Measured peak/.test(step.text)) {
     const i = node.i;
-    step.sizing = { units: Math.min(node.el.units.max, Math.ceil(S.peakUtil[i] * S.peakUnits[i] / 0.7)),
+    const activeNeeded = Math.ceil(S.peakUtil[i] * S.peakUnits[i] / 0.7);
+    step.sizing = { units: Math.min(node.el.units.max, Math.ceil(activeNeeded * S.peakInstalledUnits[i] / S.peakUnits[i])),
       peakRps: S.peakRequests[i], activeUnits: S.peakUnits[i] };
   }
   step.kind = kind;
@@ -1087,6 +1112,7 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
     const vars = varsFor(S, inst, hurt, helpers);
     return {
       id: inst.id, name: inst.name, severity: inst.severity, atMs: inst.atMs, endMs: inst.endMs,
+      description: inst.def.description, counters: inst.def.counters,
       nodeIds: inst.nodeIds,
       helpers: helpers.map((x) => x.id),
       hurt: hurt.map((u) => model.nodes[u].id),
@@ -1107,6 +1133,9 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
   const nodesOut = model.nodes.map((n) => ({
     id: n.id, type: n.el.id,
     peakUtil: Math.round(Math.min(S.peakUtil[n.i], 10) * 1000) / 1000,
+    peakRequests: Math.round(S.peakRequests[n.i]), peakUnits: S.peakUnits[n.i],
+    peakInstalledUnits: S.peakInstalledUnits[n.i],
+    effectiveRpsPerUnit: S.peakUtil[n.i] > 0 && S.peakUnits[n.i] > 0 ? S.peakRequests[n.i] / (S.peakUtil[n.i] * S.peakUnits[n.i]) : 0,
     minutesOverloaded: Math.round((S.overTicks[n.i] * S.dt) / 60),
     failed: Math.round(S.failedSum[n.i]),
     usd: Math.round((cost.perNode[n.i] || 0) * 100) / 100,
@@ -1132,6 +1161,7 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
       cost: { perMonth: cost.perMonth, budget: cost.budget, lines: cost.lines },
     },
     timeline,
+    firstFailure: S.firstBreak ? { ...S.firstBreak } : null,
     minuteSuccess,
     events: eventsOut,
     nodes: nodesOut,
