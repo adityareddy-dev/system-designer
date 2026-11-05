@@ -23,7 +23,7 @@ export function renderLearn(host, ctx) {
     h('div', null,
       h('p', { class: 'sh-eyebrow', text: 'Learn' }),
       h('h1', { class: 'sh-h1', text: 'One idea at a time' }),
-      h('p', { class: 'sh-lead sh-lead--sm', text: 'Each lesson takes two to four minutes and ends with a live demo you can change. Take them in any order.' })),
+      h('p', { class: 'sh-lead sh-lead--sm', text: 'Start with short lessons and live demos. Go deeper in five to eight minutes with worked examples and choices to defend. Take them in any order.' })),
     h('div', { class: 'sh-head-side' },
       h('a', { class: 'sh-btn', href: '#/drill', title: 'Ten quick questions from the lessons, with a streak' }, ico('ui.speed', 18), 'Quick drill, 1 minute'),
       h('div', { class: 'sh-progress-pill', role: 'img', 'aria-label': `${done} of ${lessons.length} lessons done` },

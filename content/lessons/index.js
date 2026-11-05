@@ -24,6 +24,24 @@ import cost from './cost.js';
 import securityCompliance from './security-compliance.js';
 import aiServing from './ai-serving.js';
 
+import consistentHashing from './consistent-hashing.js';
+import copiesQuorums from './copies-quorums.js';
+import leaderConsensus from './leader-consensus.js';
+import consistencyModels from './consistency-models.js';
+import storageEngine from './storage-engine.js';
+import workAcrossServices from './work-across-services.js';
+import orderingTime from './ordering-time.js';
+import deviceSync from './device-sync.js';
+import privacyDesign from './privacy-design.js';
+import metricsSystems from './metrics-systems.js';
+import logsTraces from './logs-traces.js';
+import slosErrorBudgets from './slos-error-budgets.js';
+import multiTenancy from './multi-tenancy.js';
+import leadInterview from './lead-interview.js';
+import simplestDesign from './simplest-design.js';
+import runningMigrations from './running-migrations.js';
+import teamBoundaries from './team-boundaries.js';
+
 export const lessons = [
   intro, requestsAndLatency, backOfEnvelope,
   loadBalancing, caching, cdn, autoscaling,
@@ -32,6 +50,10 @@ export const lessons = [
   consistency, idempotencyRetries,
   rateLimiting, circuitBreakers, multiRegion, observability,
   cost, securityCompliance, aiServing,
+  consistentHashing, copiesQuorums, leaderConsensus, consistencyModels,
+  storageEngine, workAcrossServices, orderingTime, deviceSync, privacyDesign,
+  metricsSystems, logsTraces, slosErrorBudgets, multiTenancy,
+  leadInterview, simplestDesign, runningMigrations, teamBoundaries,
 ];
 export const lessonById = new Map(lessons.map((l) => [l.id, l]));
 export default { lessons, lessonById };

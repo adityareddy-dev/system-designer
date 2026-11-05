@@ -1,0 +1,105 @@
+// Original lesson data. Worked figures are approximations, not engine measurements.
+export default {
+  "id": "privacy-design",
+  "title": "Privacy by design",
+  "track": "Go deeper",
+  "minutes": 7,
+  "summary": "The safest data to protect is data the service never receives.",
+  "steps": [
+    {
+      "kind": "read",
+      "title": "A wearable knows more than the dashboard needs",
+      "text": "A wrist device samples motion every second. The person wants a daily activity summary, not a server-side copy of every movement. Uploading all raw readings creates a sensitive archive and an ongoing deletion obligation. Start by asking which feature needs which data, who can read it and how long it must exist.",
+      "icon": "el.kms"
+    },
+    {
+      "kind": "read",
+      "title": "Move the boundary deliberately",
+      "text": "Data minimisation means collecting the fields, precision and retention needed for a stated purpose. On-device processing can keep raw health or location data local and upload only chosen summaries. It uses device CPU and needs a reliable local store. End-to-end encryption means only authorized endpoints hold decryption keys; TLS and encryption at rest do not provide that boundary if the service holds the keys. A server without plaintext cannot offer ordinary full-text search, content moderation or account recovery from a password reset alone. Local search and explicit encrypted backup or recovery keys change the product. Timing, account ids and sizes can still leak metadata."
+    },
+    {
+      "kind": "read",
+      "title": "Worked example: sparse uploads",
+      "text": "Assume one 16-byte reading each second. That is about 1.38 MB/day per device before local indexes. Thirty days require about 41.5 MB. A 2 KB daily summary is about 690 times less payload than raw readings. The summary can still reveal health information and needs consent, authorization and retention rules. These are decimal payload calculations, not a radio-energy measurement. The sim cannot prove device isolation, encryption or legal compliance; a passing traffic day does not establish those properties."
+    },
+    {
+      "kind": "numbers",
+      "rows": [
+        {
+          "label": "Raw payload",
+          "value": "≈ 1.38 MB/day",
+          "how": "16 B × 86,400 samples"
+        },
+        {
+          "label": "Thirty days local",
+          "value": "≈ 41.5 MB",
+          "how": "Before indexes, encryption overhead and spare capacity"
+        },
+        {
+          "label": "Summary payload",
+          "value": "≈ 2 KB/day",
+          "how": "About 690 times less payload, still sensitive"
+        }
+      ]
+    },
+    {
+      "kind": "quiz",
+      "q": "The server decrypts uploaded notes to index them. Is this end-to-end encryption from the server?",
+      "choices": [
+        "No, the server can read the plaintext",
+        "Yes, if the disk is encrypted",
+        "Yes, if TLS is enabled"
+      ],
+      "answer": 0,
+      "why": "Transport and at-rest encryption protect other boundaries. A server with decryption access is inside this one."
+    },
+    {
+      "kind": "defend",
+      "q": "Can we keep server search and claim the service cannot read notes? Follow-up: what does the first version offer?",
+      "checklist": [
+        "Explain the encryption boundary",
+        "Name feature costs and metadata leakage",
+        "Offer a concrete local search and recovery plan"
+      ],
+      "model": "Ordinary server plaintext indexing conflicts with that claim. The first version can encrypt note content on devices, search a local index and sync ciphertext with limited metadata. I would explain device enrollment, key backup and recovery to users. Searchable encryption techniques have leakage and complexity, so I would not casually promise identical server search. If the product requires server processing, I would change the claim and get an explicit decision about that trust boundary."
+    },
+    {
+      "kind": "read",
+      "title": "Keys and deletion are workflows",
+      "text": "Use authenticated encryption, unique nonces under a key and well-reviewed libraries. Wrap per-user or per-collection data keys with keys kept in the device's protected key store. Authenticate new devices, provide revocation and explain recovery before a device is lost. Rotate wrapping keys by rewrapping; compromise of a data key can require re-encrypting data. Revocation cannot erase plaintext already copied by an old device. Deletion covers active rows, object versions, indexes, caches, exports and backups. Track a deletion job through each store and prove completion with a receipt and a restore test. Backup expiry may bound final deletion. Cryptographic erasure works only if every usable copy of the relevant key is gone. Be precise about evidence and residual limits instead of promising an impossible universal proof."
+    },
+    {
+      "kind": "quiz",
+      "q": "A lost-device user resets a password. What restores encrypted content?",
+      "choices": [
+        "Any reset email automatically reconstructs data keys",
+        "A previously designed recovery key, authorized device or explicit escrow policy",
+        "Rotating the server TLS certificate"
+      ],
+      "answer": 1,
+      "why": "Recovery needs access to a key or a deliberate escrow choice. Encryption does not create a secret recovery path."
+    },
+    {
+      "kind": "defend",
+      "q": "The customer asks for proof of deletion. What can we actually prove? Follow-up: a backup is restored next week.",
+      "checklist": [
+        "Inventory stores and key copies",
+        "Record bounded deletion evidence and backup deadlines",
+        "Test restores so deleted records do not return"
+      ],
+      "model": "I can provide evidence that our managed stores processed a deletion, with per-store receipts, object-version checks and key-lifecycle records. I cannot prove an endpoint never copied plaintext. Restores must reapply a deletion ledger before serving data, or the backup must already be unreadable through complete key erasure. I would state when backups expire and test a restore against that promise. Keeping the evidence minimal avoids creating a new archive of the deleted content."
+    },
+    {
+      "kind": "quiz",
+      "q": "Active rows are deleted but a backup can restore them. What is an honest deletion receipt?",
+      "choices": [
+        "Every copy everywhere is already gone",
+        "No receipt is ever possible",
+        "Active deletion is verified; backup expiry or key erasure and restore controls are tracked"
+      ],
+      "answer": 2,
+      "why": "Evidence can cover managed stores and deadlines. It cannot prove that every possible external copy disappeared."
+    }
+  ],
+  "takeaway": "Choose what leaves the device, who holds keys and how deletion finishes before collecting data."
+};

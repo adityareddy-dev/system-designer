@@ -1,0 +1,105 @@
+// Original lesson data. Worked figures are approximations, not engine measurements.
+export default {
+  "id": "multi-tenancy",
+  "title": "Many customers on one system",
+  "track": "Go deeper",
+  "minutes": 7,
+  "summary": "Fairness and failure boundaries matter as much as total capacity.",
+  "steps": [
+    {
+      "kind": "read",
+      "title": "One customer ruins everyone's morning",
+      "text": "A shared analytics service has plenty of average capacity. One customer submits a thousand broad queries and fills the worker queue. A small customer's one quick query waits behind them. Fleet capacity is not a promise of fair access. Tenant identity must follow work through admission, queues, caches and storage.",
+      "icon": "ev.noisy-neighbor"
+    },
+    {
+      "kind": "read",
+      "title": "Budget work at every scarce resource",
+      "text": "Set per-tenant rate, concurrency, queue-depth and work limits. Requests/s alone misses the difference between one key lookup and a terabyte scan. Weighted fair queueing or deficit round robin can reserve progress for active tenants while lending unused capacity. Bound queue age and propagate cancellation so abandoned queries stop consuming resources. Reject overload with clear reasons and retry guidance. Distinguish admitted traffic from rejected demand in the SLI and contract so quotas cannot hide a broken service. A tenant with many API keys must not escape an account-level limit."
+    },
+    {
+      "kind": "read",
+      "title": "Worked example: cells and overlap",
+      "text": "Divide 2,000 tenants evenly across 20 cells. A cell owns its ingress, workers and data path, so one cell failure reaches about 100 tenants, or 5%, under even placement. That bound is false if all cells need one shared database to serve requests. Shuffle sharding instead assigns each tenant a small subset of a larger worker pool. Choosing 2 of 10 workers yields 45 possible pairs. Under uniform independent assignment, two tenants have a 1/45 chance of the same pair, but a 17/45 chance of sharing at least one worker. Partial overlap still matters. The sim can model a noisy-neighbour event, but not this assignment distribution."
+    },
+    {
+      "kind": "numbers",
+      "rows": [
+        {
+          "label": "Tenants per cell",
+          "value": "≈ 100",
+          "how": "2,000 ÷ 20 under even placement"
+        },
+        {
+          "label": "One-cell reach",
+          "value": "≈ 5%",
+          "how": "1 ÷ 20; only with independent request paths"
+        },
+        {
+          "label": "Identical shuffle pair",
+          "value": "≈ 2.2%",
+          "how": "1 ÷ choose(10,2) = 1/45; partial overlap is larger"
+        }
+      ]
+    },
+    {
+      "kind": "quiz",
+      "q": "One request scans 1 TB and another reads one key. Which limit best protects fairness?",
+      "choices": [
+        "One global requests/s number only",
+        "Per-tenant scanned work and concurrency plus fair scheduling",
+        "A longer global FIFO queue"
+      ],
+      "answer": 1,
+      "why": "Equal request counts can consume very different work. A longer FIFO increases head-of-line waiting."
+    },
+    {
+      "kind": "defend",
+      "q": "Why not just add more workers for the noisy tenant? Follow-up: queries keep getting wider.",
+      "checklist": [
+        "Separate total capacity from fair access",
+        "Bound work and cancellation per tenant",
+        "Offer paid capacity or isolation for legitimate demand"
+      ],
+      "model": "Extra workers buy time, but unbounded scans can consume them too. I would cap concurrency and estimated or observed scan work, schedule fairly, cancel expired work and give explicit rejection feedback. A customer with sustained justified demand can buy a larger quota or a dedicated cell. I would protect the service promised to smaller tenants while measuring both admitted success and demand rejected by policy."
+    },
+    {
+      "kind": "read",
+      "title": "Trace the actual blast radius",
+      "text": "Cells provide a concrete failure boundary only if their critical data, queues and deployment controls respect it. A shared control plane can provision cells without sitting on every request path. Cache keys and authorization must include the tenant; fairness is useless if data leaks. Test a runaway query, full disk, bad deployment and control-plane outage. List which tenants each event can reach, including shared identity, DNS and key services. Larger tenants may need dedicated cells or higher priced quotas. More isolation costs idle headroom, duplicated operations and migration work. Make that cost visible rather than selling unlimited capacity on a shared pool."
+    },
+    {
+      "kind": "quiz",
+      "q": "Twenty cells all call one shared database for every query. What is the reach of that database failing?",
+      "choices": [
+        "At most 5% by definition",
+        "Only the biggest tenant",
+        "Potentially every cell"
+      ],
+      "answer": 2,
+      "why": "A cell label does not remove a shared critical dependency."
+    },
+    {
+      "kind": "defend",
+      "q": "You claim a cell failure reaches only 5%. Prove it. Follow-up: the key service fails.",
+      "checklist": [
+        "Map tenants to independent data paths",
+        "Include shared dependencies and control plane",
+        "Test failures and state the exceptions"
+      ],
+      "model": "That number assumes even tenant placement and a failure contained to one of twenty cells. I would inventory each critical dependency and trace affected tenants. If every request synchronously needs one key service, its outage may reach everyone, so the 5% claim does not apply. Caching valid key material safely, regional redundancy or cell-local services may reduce that reach, but each needs a security and expiry policy. I would verify with failure tests, not a box boundary."
+    },
+    {
+      "kind": "quiz",
+      "q": "Two tenants choose two workers from ten. Is 1/45 their chance of any overlap?",
+      "choices": [
+        "No, 1/45 is identical pairs; any overlap is 17/45",
+        "Yes, a subset is either identical or disjoint",
+        "No, all pairs always overlap"
+      ],
+      "answer": 0,
+      "why": "For a fixed pair, 28 of the 45 pairs use only the other eight workers. The remaining 17 overlap."
+    }
+  ],
+  "takeaway": "Limit work per tenant and trace every shared dependency before claiming a small blast radius."
+};

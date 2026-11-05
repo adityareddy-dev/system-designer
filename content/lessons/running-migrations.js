@@ -1,0 +1,105 @@
+// Original lesson data. Worked figures are approximations, not engine measurements.
+export default {
+  "id": "running-migrations",
+  "title": "Changing a running system",
+  "track": "Lead the design",
+  "minutes": 7,
+  "summary": "A safe migration preserves compatibility through the whole rollback window.",
+  "steps": [
+    {
+      "kind": "read",
+      "title": "The new column is ready, but old apps are not",
+      "text": "You want to replace a free-text address with structured fields. Web code can update today, but mobile clients will keep sending the old shape for months. A migration is a period when multiple schemas and code versions coexist. A deployment that works only after every client updates is not a rollout plan.",
+      "icon": "el.ci-cd"
+    },
+    {
+      "kind": "read",
+      "title": "Expand, move, contract",
+      "text": "Expand by adding compatible fields and readers before removing anything. Establish one authoritative write path. If you must dual write, record a durable intent or use a transactional outbox or change-data capture to avoid one store succeeding while the other fails. Make replay idempotent and versioned so an old backfill cannot overwrite a fresh write. Backfill in bounded batches with checkpoints, throttling and reconciliation. Shadow reads compare results without changing user responses; redact sensitive differences. Cut over a small cohort, then increase gradually while watching correctness and SLOs. Contract by deleting the old path only after clients, replay, backups and the rollback window no longer require it."
+    },
+    {
+      "kind": "read",
+      "title": "Worked example: how long it takes",
+      "text": "A table has 500 million rows. At a safe 5,000 rows/s, a backfill alone takes 100,000 seconds, or about 27.8 hours. At 500 bytes/row that is about 250 GB of logical data before indexes and replicas. Retries, live changes and reconciliation make the real operation longer. If writes continue at 2,000/s and the change consumer handles 5,000/s, a backlog of 30 million changes drains at 3,000/s, about 2.8 hours. A canary might start at 1%, then 5%, 25% and all eligible traffic, but percentages do not replace minimum observation time or coverage of large tenants. The sim does not execute schema changes row by row."
+    },
+    {
+      "kind": "numbers",
+      "rows": [
+        {
+          "label": "Backfill floor",
+          "value": "≈ 27.8 hours",
+          "how": "500 million ÷ 5,000/s"
+        },
+        {
+          "label": "Logical copied bytes",
+          "value": "≈ 250 GB",
+          "how": "500 million × 500 B, before index and replication"
+        },
+        {
+          "label": "Change catch-up",
+          "value": "≈ 2.8 hours",
+          "how": "30 million ÷ (5,000 - 2,000)/s"
+        }
+      ]
+    },
+    {
+      "kind": "quiz",
+      "q": "A backfill reads version 5, then a live write creates version 6. What prevents regression?",
+      "choices": [
+        "Apply version 5 unconditionally later",
+        "Use conditional version checks or ordered replay so older data cannot win",
+        "Pause monitoring during backfill"
+      ],
+      "answer": 1,
+      "why": "Idempotency prevents duplicates; version ordering also prevents stale overwrite."
+    },
+    {
+      "kind": "defend",
+      "q": "Why not write to both databases in the request handler? Follow-up: the first write succeeds and the second times out.",
+      "checklist": [
+        "Identify partial success and unknown outcome",
+        "Use a durable change record and idempotent replay",
+        "Define authority and reconciliation"
+      ],
+      "model": "Two independent writes leave an ambiguous state. I would keep one authority and atomically record its change with an outbox or capture its committed log. The target applies versioned changes idempotently and exposes lag. A timeout is reconciled rather than treated as proof of failure. During cutover I would compare the stores and keep a documented source of truth. A second successful API reply alone does not prove the databases contain the same state."
+    },
+    {
+      "kind": "read",
+      "title": "Rollback is a data decision",
+      "text": "Before cutover, define which versions can read new writes and what happens to writes accepted during the canary. A code rollback is unsafe if the old code cannot understand the new representation. Preserve compatible writes or provide a tested reverse transform where possible. Watch mismatch rate, lag, p99, lock time and support signals with stop thresholds. Agree ownership with application and data teams, on-call, security and product; support needs user-facing failure states. Reserve time for review, a full backfill, verification, staged traffic, a stable rollback period and old-client deprecation. Calendar time can be weeks even when copying bytes takes a day."
+    },
+    {
+      "kind": "quiz",
+      "q": "The canary accepts a new enum old code cannot parse. Is reverting the binary a safe rollback?",
+      "choices": [
+        "Always",
+        "Only if the deployment system is fast",
+        "No, compatibility or a data recovery plan is needed"
+      ],
+      "answer": 2,
+      "why": "New data can outlive the binary that wrote it. Rollback must include read and write compatibility."
+    },
+    {
+      "kind": "defend",
+      "q": "The backfill takes one day. Why did you ask for three weeks? Follow-up: who can stop the rollout?",
+      "checklist": [
+        "Separate byte-copy time from verification and compatibility",
+        "Budget canary and rollback observation",
+        "Name owners and stop thresholds"
+      ],
+      "model": "The copy floor excludes throttling, catching live changes, verifying results, representative canaries and a rollback window. Old clients and backup restores may need the old schema longer. I would give application, data and on-call owners shared stop criteria such as mismatch rate, replication lag or p99 regression, with one named rollout lead. Product and support need to agree the user states and deprecation deadline. We can shorten the calendar only by explicitly changing that evidence or compatibility requirement."
+    },
+    {
+      "kind": "quiz",
+      "q": "A 1% canary passes for thirty seconds on a low-volume service. What is missing?",
+      "choices": [
+        "Enough time, representative tenants and correctness coverage",
+        "A larger percentage label alone",
+        "Deleting the old schema immediately"
+      ],
+      "answer": 0,
+      "why": "A small sample can miss rare paths and slow background failures."
+    }
+  ],
+  "takeaway": "Migrate through compatible states and prove that rollback still understands the data."
+};
