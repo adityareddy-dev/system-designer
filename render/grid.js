@@ -1,4 +1,5 @@
 // Canvas dot grid as a static particle field in world space, rebuilt only when the view leaves it or the zoom changes a lot.
+import { GRID } from './geom.js';
 
 const MAX_DOTS = 6000;
 
@@ -19,7 +20,7 @@ export function createGrid(PIXI, parent, env) {
 
   // Dot spacing in world units: 20, 40, 80 ... so dots stay at least 18 px apart on screen.
   function stepFor(z) {
-    let step = 24;
+    let step = GRID;
     while (step * z < 18) step *= 2;
     return step;
   }

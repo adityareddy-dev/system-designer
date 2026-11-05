@@ -738,7 +738,7 @@
 .pl-tb-item {min-height:44px}
 .pl-m-l {white-space:normal;overflow:visible;text-overflow:clip;line-height:1.2}
 .pl-step-picker {display:none}
-.pl-root[data-phase=done] .pl-hud {display:none}
+.pl-root[data-step=debrief] .pl-hud {display:none}
 .pl-root[data-phase=done] .pl-overlay {bottom:0;padding-bottom:24px}
 .pl-debrief {animation:bench-enter 220ms ease-out both}
 .pl-score-details {margin-top:24px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}

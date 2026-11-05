@@ -964,7 +964,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const v = metricValue(goal, st);
     const dt = Math.max(0, (st.clockMs || 0) - Math.max(S.lastClock, from));
     S.lastClock = st.clockMs || 0;
-    const spare = goal.maxUtil == null || (st.nodes || []).filter(n => n.type === 'vm-fleet').every(n => n.util <= goal.maxUtil);
+    // Spare capacity must hold at the stated peak as well as during the measured traffic.
+    const spare = goal.maxUtil == null || (st.nodes || []).filter(n => n.type === 'vm-fleet').every(n =>
+      n.util <= goal.maxUtil && S.est?.nodes?.find(peak => peak.id === n.id)?.util <= goal.maxUtil);
     const fresh = goal.maxTtlSec == null || graph().nodes.filter(n => n.type === 'cache').every(n => (n.knobs?.ttlSec ?? catalog.knobs.ttlSec.default) <= goal.maxTtlSec);
     const ok = spare && fresh && v != null && placedOk(goal) && drained(goal, st) && { '<=': v <= goal.value, '>=': v >= goal.value, '<': v < goal.value, '>': v > goal.value, '==': v === goal.value }[goal.op];
     if (opts.lesson?.id === 'replication-lag' && replicaReadsActive(graph(), S.sim.flows())) hideCaption();
@@ -972,7 +974,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const need = (goal.holdSec || 0) * 1000;
     goalChip.hidden = false;
     goalChip.classList.toggle('pl-goal--ok', S.goalMs > 0);
-    const gap = !spare ? `Leave at least ${Math.round((1 - goal.maxUtil) * 100)}% spare app capacity. Serving every request at full capacity is fragile.` : !fresh ? `Answers may be at most ${goal.maxTtlSec} seconds old. Shorten the cache TTL and measure again.` : !ok ? goalGap(goal, st, v) : '';
+    const gap = !spare ? `Leave at least ${Math.round((1 - goal.maxUtil) * 100)}% spare app capacity at peak. Serving every request at full capacity is fragile.` : !fresh ? `Answers may be at most ${goal.maxTtlSec} seconds old. Shorten the cache TTL and measure again.` : !ok ? goalGap(goal, st, v) : '';
     goalChip.title = gap;
     goalChip.replaceChildren(iconEl(S.goalMs > 0 ? 'ui.check' : 'ui.hint', 16),
       h('span', { text: gap ? `${goalLabel()}. ${gap}` : ok ? goalPassed(goal, v, nameOf(goal.node) || 'The part') : goalLabel() }),
