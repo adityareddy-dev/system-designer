@@ -12,7 +12,9 @@ export function capacityText(el, node, tiers) {
 export function inspectorStatus(s) {
   const status = typeof s.status === 'number' ? STATUS_NAMES[s.status] : s.status;
   const name = STATUS_NAMES.includes(status) ? status : 'ok';
-  const service = name === 'ok' ? '' : STATUS_TEXT[name];
+  const lowLoad = Number.isFinite(s.util) && s.util < .7;
+  const service = name === 'ok' || (lowLoad && name !== 'down') ? '' : STATUS_TEXT[name];
   const failing = s.failRps > 0.5 ? 'Requests failing' : '';
+  if (s.status == null) return { name: 'ok', text: 'Not measured yet' };
   return { name, text: name === 'down' ? 'Down' : ['Available', service, failing].filter(Boolean).join(' · ') };
 }

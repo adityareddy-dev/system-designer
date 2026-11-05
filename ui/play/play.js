@@ -1,4 +1,6 @@
 // In-problem screen: mountPlay() builds the canvas, toolbar, inspector, HUD, steps, hints, debrief and editorial.
+import { phoneLayout } from '../../render/diagram.js';
+import { renderDesignCheck } from './design-check.js';
 import { createSim } from '../../sim/engine.js';
 import { createScene, regionLayout } from '../../render/scene.js';
 import { h, iconEl, clamp, clockLabel, snd as sndRaw, debounce, STATUS_NAMES, fmtMs, fmtPct } from './util.js';
@@ -59,7 +61,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       const sum = Object.values(t.rps).reduce((a, b) => a + b, 0);
       return { id: 'sandbox', title: 'Sandbox', difficulty: 'Easy', concepts: [], brief: 'Any component, any traffic, no game over.', clarify: [], numbers: [], hints: [], events: [], eventPool: [],
         requirements: baseRequirements({ peakRps: sum, mix: Object.fromEntries(Object.entries(t.rps).map(([k, v]) => [k, v / sum])), userRegions: t.regions, budgetPerMonth: 1e9 }),
-        traffic: { curve: t.curve, sources: { 'web-browser': 0.6, 'mobile-app': 0.4 }, params: {} }, palette: null, starter: { nodes: [], edges: [] } };
+        traffic: { curve: t.curve, sources: { 'web-browser': 0.6, 'mobile-app': 0.4 }, params: {} }, palette: null, starter: { nodes: [{ ref: 'web', type: 'web-browser', x: -400, y: -100, locked: true }, { ref: 'mobile', type: 'mobile-app', x: -400, y: 100, locked: true }, { ref: 'app', type: 'vm-fleet', x: -140, y: 0, units: 3 }, { ref: 'db', type: 'sql-primary', x: 100, y: 0 }], edges: [['web', 'app'], ['mobile', 'app'], ['app', 'db']] } };
     }
     const lesson = opts.lesson;
     const step = lesson?.steps?.[opts.stepIndex || 0] || {};
@@ -155,13 +157,17 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     saveDraft();
     refreshChecks();
     if (S.selected && !g.nodes.some((n) => n.id === S.selected)) select(null);
-    else inspector.refresh();
+    else { inspector.refresh(); if (S.selected) inspector.update(S.sim.state().nodes.find(n => n.id === S.selected)); }
     syncUndoButtons();
     releaseHold();
   }
   function releaseHold() {
     if (!S.hold || !S.booted || S.destroyed) return;
-    startTraffic();
+    if (isLesson && !ctx.reducedMotion()) {
+      if (S.releasePending) return;
+      S.releasePending = true;
+      later(() => { S.releasePending = false; if (S.hold && !S.destroyed) startTraffic(); }, 220);
+    } else startTraffic();
   }
   function commit() {
     const next = JSON.stringify(graph());
@@ -195,6 +201,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     let sizes = []; try { sizes = riskyIssues().filter((i) => i.fix); } catch { /* optional */ }
     hud.setBuild(est, issues, sizes);
     paintIssues();
+    let overview = root.querySelector('.pl-overview');
+    if (!overview) { overview = h('div', { class: 'pl-overview', text: 'Overview · tap a part for its name and settings' }); root.append(overview); }
+    overview.hidden = !(isPhone() && graph().nodes.length > 8);
     refreshTrace();
   }
   // Parts the peak estimate says will run past 100 percent, as list items that select the part.
@@ -296,7 +305,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const a = freeArea();
     const pad = isPhone() ? 20 : 36;
     // a big build zooms out far enough to sit between the panels instead of running underneath them
-    const zoom = isPhone() ? { minZ: minZoom ?? 0.45, maxZ: 0.9 } : { minZ: minZoom ?? 0.6, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
+    const zoom = isPhone() ? { minZ: minZoom ?? (graph().nodes.length > 8 ? 0.18 : 0.45), maxZ: 0.9 } : { minZ: minZoom ?? 0.6, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
     // names sit under the parts and are about 80 px wide, so the sides keep room for half a name (never under 12 px) and the bottom for a name line
     const side = Math.max(pad, 46);
     try { scene.fit({ l: a.l + side, t: a.t + pad, r: a.r + side, b: a.b + pad + 22 }, animate, zoom); } catch { try { scene.fit(); } catch { /* optional */ } }
@@ -534,7 +543,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const was = S.selected;
     S.selected = id;
     try { scene.setSelection(id); } catch { /* render optional */ }
-    if (id) { inspector.show(id); toolbar.el.classList.remove('pl-toolbar--open'); try { reqCard?.toggle(false); } catch { /* not built yet */ } } else inspector.hide();
+    if (id) { inspector.show(id); inspector.update(S.sim.state().nodes.find(n => n.id === id)); toolbar.el.classList.remove('pl-toolbar--open'); try { reqCard?.toggle(false); } catch { /* not built yet */ } } else inspector.hide();
     // on small screens the sheet that opens must not cover the part it is about
     if (id && globalThis.matchMedia?.('(max-width: 899px)').matches) {
       later(() => { const n = graph().nodes.find((q) => q.id === id); if (n && !S.destroyed && S.selected === id) revealIfHidden(n.x, n.y); }, 120);
@@ -882,7 +891,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (goal.drain && !queuesHaveReaders()) return false;
     const types = w.types || [w.type];
     const mids = g.nodes.filter((n) => types.includes(n.type)).map((n) => n.id);
-    if (!mids.length) return true; // nothing placed yet: the numbers speak for themselves
+    if (!mids.length) return false;
     const froms = ids(w.from), tos = ids(w.to);
     return mids.some((m) => froms.some((f) => reach(g, f).has(m)) && tos.some((t) => reach(g, m).has(t)));
   }
@@ -921,6 +930,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function checkGoal(st) {
     const goal = S.problem?.goal;
     if (!goal || S.goalMet) return;
+    if (!(st.clockMs > 0) || !(st.traffic?.offeredRps > 0) || !(st.traffic?.successRps > 0)) {
+      S.goalMs = 0; S.lastClock = st.clockMs || 0;
+      goalChip.classList.remove('pl-goal--ok');
+      goalChip.replaceChildren(iconEl('ui.clock', 16), h('span', { text: 'Waiting for served traffic. Run the experiment to measure it.' }));
+      return;
+    }
     // A demo with an event is judged while the event runs (after it has had a few minutes to build), not in the calm before it.
     const evs = st.events || [];
     const act = evs.find((e) => e.active);
@@ -947,13 +962,15 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const v = metricValue(goal, st);
     const dt = Math.max(0, (st.clockMs || 0) - Math.max(S.lastClock, from));
     S.lastClock = st.clockMs || 0;
-    const ok = v != null && placedOk(goal) && drained(goal, st) && { '<=': v <= goal.value, '>=': v >= goal.value, '<': v < goal.value, '>': v > goal.value, '==': v === goal.value }[goal.op];
+    const spare = goal.maxUtil == null || (st.nodes || []).filter(n => n.type === 'vm-fleet').every(n => n.util <= goal.maxUtil);
+    const fresh = goal.maxTtlSec == null || graph().nodes.filter(n => n.type === 'cache').every(n => (n.knobs?.ttlSec ?? catalog.knobs.ttlSec.default) <= goal.maxTtlSec);
+    const ok = spare && fresh && v != null && placedOk(goal) && drained(goal, st) && { '<=': v <= goal.value, '>=': v >= goal.value, '<': v < goal.value, '>': v > goal.value, '==': v === goal.value }[goal.op];
     if (opts.lesson?.id === 'replication-lag' && replicaReadsActive(graph(), S.sim.flows())) hideCaption();
     S.goalMs = ok ? S.goalMs + dt : 0;
     const need = (goal.holdSec || 0) * 1000;
     goalChip.hidden = false;
     goalChip.classList.toggle('pl-goal--ok', S.goalMs > 0);
-    const gap = !ok ? goalGap(goal, st, v) : '';
+    const gap = !spare ? `Leave at least ${Math.round((1 - goal.maxUtil) * 100)}% spare app capacity. Serving every request at full capacity is fragile.` : !fresh ? `Answers may be at most ${goal.maxTtlSec} seconds old. Shorten the cache TTL and measure again.` : !ok ? goalGap(goal, st, v) : '';
     goalChip.title = gap;
     goalChip.replaceChildren(iconEl(S.goalMs > 0 ? 'ui.check' : 'ui.hint', 16),
       h('span', { text: gap ? `${goalLabel()}. ${gap}` : ok ? goalPassed(goal, v, nameOf(goal.node) || 'The part') : goalLabel() }),
@@ -1044,6 +1061,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const can = canStructure();
     toolbar.setEnabled(can, can ? '' : 'The day is running. Press "Back to drawing" beside the clock to change parts.');
     const knobsOk = S.sim.phase === 'build' || (editableKnobs() && S.sim.phase !== 'done');
+    if (mode === 'lesson') inspector.setFocus(({ 'requests-and-latency': 'region', 'back-of-envelope': 'units', caching: 'ttlSec', 'load-balancing': 'units', autoscaling: 'autoscale' })[opts.lesson?.id] || null);
     inspector.setEditable(knobsOk, mode === 'challenge' ? 'Challenge days run without changes.' : 'This day has finished. Go back to drawing to change it.');
     root.dataset.phase = S.sim.phase;
     refreshTrace();
@@ -1073,6 +1091,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   // Start from the screen: a design where some request type has nowhere to go gets one question first.
   function startFromUi() {
+    if (mode === 'practice' && S.sim.phase === 'build' && !S.designChecked) {
+      modal.replaceChildren(renderDesignCheck(S.problem, answer => {
+        S.designChecked = true; S.prediction = answer.text; modal.hidden = true; startFromUi();
+      }, () => { modal.hidden = true; }));
+      modal.hidden = false;
+      modal.querySelector('button')?.focus();
+      return getState();
+    }
     if (S.sim.phase === 'build' && stepped) {
       const errs = (S.issues || []).filter((i) => i.level === 'error' || (i.code === 'disconnected' && i.source));
       const proofs = (S.issues || []).filter((i) => i.code === 'compliance-missing');
@@ -1188,6 +1214,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.step = 'debrief'; root.dataset.step = 'debrief';
     stepsBar.set('debrief', { clarify: false, numbers: false, draw: true, debrief: true });
     showDebrief();
+    if (result.passed && !ctx.reducedMotion()) {
+      const seal = h('div', { class: 'pl-day-seal', role: 'status' }, h('b', { text: 'Your system held' }), h('span', { text: '✓  ✓  ✓' }));
+      root.append(seal); later(() => seal.remove(), 900);
+    }
+    root.dataset.outcome = result.passed ? 'pass' : 'fail';
     updateEditable();
     snd(result.passed ? 'pass' : 'miss');
     for (let i = 0; i < result.stars; i++) later(() => snd('star'), 500 + i * 220);
@@ -1208,7 +1239,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       handlers: {
         onRetry: () => { reset(); },
         onBack: () => { reset(); },
-        onHints: () => { hints.open(); },
+        onHints: () => { hints.open(); hints.el.focus?.(); },
         onEditorial: () => openEditorial(),
         onShare: () => openShare(),
         onNext: () => { const n = list[idx + 1]; if (n) ctx.router.go('#/practice/' + n.id); },
@@ -1221,10 +1252,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
           toast(on ? 'New twist: the same brief, with the events moved and one more added. This day is practice only.' : 'Back to the original day.', 'info', 5000);
         } : null,
         onShowNext: (ns) => { reset(); if (ns.nodeId) select(ns.nodeId); if (ns.elementId) toolbar.pulse(ns.elementId); },
-        nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; return rn && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; },
+        nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; const fix = rn && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; if (fix && ns.sizing) { fix.units = ns.sizing.units; fix.label = `Set ${fix.word.toLowerCase()} to ${fix.units}`; } return fix; },
         onSetNext: (fix) => { reset(); applySizeFix(fix); select(fix.nodeId); },
       },
     });
+    if (S.prediction) debriefWrap.querySelector('.pl-verdict-sec')?.append(h('p', { class: 'pl-prediction' }, h('b', { text: 'Your prediction before this run: ' }), S.prediction, ' Compare it with the measured cause below.'));
     debriefWrap.hidden = false;
     debriefWrap.scrollTop = 0;
   }
@@ -1413,6 +1445,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (d?.graph && (mode !== 'challenge' || d.seed === S.seed)) g = d.graph;
     }
     if (g) { try { S.sim.loadGraph(g); } catch (e) { toast('Could not restore that design: ' + (e.message || e), 'warn'); } }
+    if (isPhone() && graph().nodes.length <= 8) for (const n of phoneLayout(graph())) S.sim.moveNode(n.id, n.x, n.y);
     S.cur = JSON.stringify(graph());
     toolbar.setPalette(S.problem.palette || null);
     const sug = suggestedParts(S.problem);

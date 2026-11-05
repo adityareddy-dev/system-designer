@@ -5,7 +5,7 @@ export function loadSummary(problem) {
   const peak = problem.normalPeakRps ?? problem.requirements?.peakRps;
   const viral = (problem.events || []).find(e => e.id === 'viral-spike');
   const factor = viral?.params?.factor || 3;
-  if (problem.id === 'url-shortener') return `${problem.warmUp ? `Warm-up peak: ≈ ${fmtNum(problem.requirements.peakRps)} req/s, no viral spike. ` : ''}Normal peak: ≈ ${fmtNum(peak)} req/s. Request rates and server counts in Numbers use the normal peak; Event peak on the full day: up to ≈ ${fmtNum(peak * factor)} req/s (${factor} times the scheduled load at ${viral?.at || '19:30'}).`;
+  if (problem.id === 'url-shortener') return `${problem.warmUp ? `Warm-up peak: ≈ ${fmtNum(problem.requirements.peakRps)} req/s, no viral spike. ` : ''}Normal peak: ≈ ${fmtNum(peak)} req/s. Request rates and server counts in Numbers use the normal peak; Event peak on the full day: up to ≈ ${fmtNum(peak * factor)} req/s (${factor} times the scheduled load at ${viral?.at || '19:30'}). Those are arriving user requests. Retries can multiply the work reaching an overloaded part; the debrief measures that internal load.`;
   if (problem.id === 'concert-ticket-drop') return `Normal peak: ≈ ${fmtNum(peak * 0.1)} req/s. Event peak: ≈ ${fmtNum(peak * 0.1 * ((problem.events || []).find(e => e.id === 'flash-crowd')?.params?.factor || 25))} req/s. Numbers use the event peak for request rates and an assumed 2,000 holds/s for sell-out time.`;
   return '';
 }

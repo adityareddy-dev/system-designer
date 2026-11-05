@@ -75,10 +75,11 @@ export function drillStreak(days, today) {
 
 export function renderDrill(host, ctx) {
   const today = ctx.compete?.daily?.todayLocal?.() || localDay();
-  // The shared set of the day: every player gets the same questions in the same order.
+  // A stable daily review drawn from concepts the player has studied.
   const dailyRnd = () => mulberry32(hashSeed('drill-' + today));
-  const dailyPool = buildPool(ctx.content.lessons || [], dailyRnd());
-  const pool = buildPool(ctx.content.lessons || []);
+  const studied = (ctx.content.lessons || []).filter(l => ctx.progress.isLessonDone(l.id));
+  const dailyPool = buildPool(studied.length ? studied : (ctx.content.lessons || []).filter(l => l.track === 'Start'), dailyRnd());
+  const pool = buildPool(studied.length ? studied : (ctx.content.lessons || []).filter(l => l.track === 'Start'));
   const saved = () => ctx.store.get(KEY, null) || { best: 0, rounds: 0, days: {} };
   const page = h('div', { class: 'sh-page sh-page--narrow sh-drill' });
   host.append(page);
@@ -181,7 +182,7 @@ export function renderDrill(host, ctx) {
     const run = drillStreak(days, today);
     const url = 'https://systemdesigner.io/#/drill';
     const line = S.daily
-      ? `System Designer drill ${today}: ${S.right}/${S.qs.length}, ${run}-day drill streak. Same ten questions for everyone: ${url}`
+      ? `System Designer drill ${today}: ${S.right}/${S.qs.length}, ${run}-day drill streak. A review from my lessons: ${url}`
       : `System Designer drill: ${S.right}/${S.qs.length}, longest run ${S.bestStreak}. ${url}`;
     const copy = async () => {
       try { await navigator.clipboard.writeText(line); toast({ text: 'Result copied.', level: 'ok' }); } catch { toast({ text: 'Could not copy. Select the line and copy it.', level: 'bad' }); }
@@ -190,7 +191,7 @@ export function renderDrill(host, ctx) {
       h('header', { class: 'sh-page-head' }, h('div', null, h('p', { class: 'sh-eyebrow', text: S.daily ? `Today's set, ${today}` : 'Drill' }), h('h1', { class: 'sh-h1', text: 'Round done' }))),
       h('section', { class: 'sh-card sh-lp-card' },
         h('p', { class: 'sh-lp-text', text: `${S.right} of ${S.qs.length} right (${pct} percent). Longest run: ${S.bestStreak} in a row.${isBest && S.bestStreak > 1 ? ' That is a new best.' : ` Your best run is ${Math.max(prev.best || 0, S.bestStreak)}.`}` }),
-        run ? h('p', { class: 'sh-lp-text', text: `Drill day streak: ${run} ${run === 1 ? 'day' : 'days'}.${S.daily ? '' : ' Finish the shared set of the day to keep it going.'}` }) : null,
+        run ? h('p', { class: 'sh-lp-text', text: `Drill day streak: ${run} ${run === 1 ? 'day' : 'days'}.${S.daily ? '' : ' Finish today's review to keep it going.'}` }) : null,
         h('p', { class: 'sh-muted sh-drill-line', text: line }),
         h('div', { class: 'sh-lp-nav' },
           h('a', { class: 'sh-btn sh-btn--ghost', href: '#/learn' }, 'Back to lessons'),

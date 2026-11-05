@@ -33,3 +33,6 @@ const app = sim.state().nodes.find((n) => n.id === 'app');
 assert.ok(app.util > 2.4 && app.util < 3.1, `Demo busy level: ${app.util}`);
 assert.equal(inspectorStatus(app).name, 'overload');
 console.log('Inspector facts and load-balancing demo checks passed.');
+
+assert.equal(inspectorStatus({status:'overload',util:.03,failRps:20}).text, 'Available · Requests failing');
+assert.equal(inspectorStatus({}).text, 'Not measured yet');

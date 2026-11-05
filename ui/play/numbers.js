@@ -11,6 +11,7 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
   if (saved) rows.forEach((row, i) => { if (row.ask) guesses[i] = saved[i] ?? null; });
   const save = () => progress?.saveEstimates(problem.id, rows.map((row, i) => row.ask ? guesses[i] ?? null : null));
   const list = h('div', { class: 'pl-nlist' });
+  if (problem.requirements?.notes?.length) list.append(h('aside', { class: 'pl-number-assumptions' }, h('b', { text: 'Use these assumptions' }), h('ul', {}, problem.requirements.notes.map(text => h('li', { text })))));
   const checks = [];
 
   rows.forEach((row, i) => {
