@@ -87,6 +87,7 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
   }, hasAsk ? 'Check my guesses' : 'Show the worked numbers');
   // Check waits until every estimate is entered; Start drawing never waits.
   function syncReveal() {
+    if (guesses.__revealed === true) checks.forEach(check => check());
     const left = rows.filter((r, i) => r.ask && guesses[i] == null).length;
     reveal.disabled = guesses.__revealed === true || left > 0;
     reveal.title = left > 0 ? 'Enter an estimate for each question first' : '';

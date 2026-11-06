@@ -1,7 +1,7 @@
 // Repairs require a mechanism, a prediction and arithmetic before applying a player's count.
 import { h } from './util.js';
 
-export function repairCase(result, problem, catalog) {
+function rawRepairCase(result, problem, catalog) {
   const ns = result.nextStep || {};
   const node = result.nodes?.find(n => n.id === ns.nodeId);
   const placed = result.graph.nodes.find(n => n.id === ns.nodeId);
@@ -30,6 +30,15 @@ export function repairCase(result, problem, catalog) {
     evidence: `Your day served ${(result.slo.availability.actual * 100).toFixed(2)}% against ${(result.slo.availability.target * 100).toFixed(2)}%. Stated peak is ${rate} requests/s, of which ${percent}% are ${type[0]}.`,
     calculation: `How many ${type[0]} operations/s must your next experiment account for at the stated peak?`,
     arithmetic: `${rate} × ${percent} ÷ 100 = ${rate * percent / 100} operations/s.`, unit: 'operations/s' };
+}
+
+export function repairCase(result, problem, catalog) {
+  const test = rawRepairCase(result, problem, catalog);
+  const seed = [...problem.id].reduce((n,c) => Math.imul(n ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
+  const order = (items, correct, shift) => ({ items: [...items.slice(shift), ...items.slice(0,shift)], correct: (correct - shift + items.length) % items.length });
+  const plans = order(test.choices, test.answer, seed % test.choices.length);
+  const effects = order(test.effects, test.effect, (seed >>> 8) % test.effects.length);
+  return { ...test, choices: plans.items, answer: plans.correct, effects: effects.items, effect: effects.correct };
 }
 
 export function repairCorrect(test, choice, effect, value) {

@@ -3,7 +3,8 @@ const traces = {};
 function trace(id, responsibility, ...steps) {
   traces[id] = { responsibility, fields: steps.map((step, i) => {
     const [label, right, wrong, explanation] = step.split('|');
-    return { label: `Step ${i + 1}. ${label}`, options: i % 2 ? [wrong, right] : [right, wrong], correct: i % 2, explanation };
+    const correct = [...id + label].reduce((n, c) => Math.imul(n ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261) % 2;
+    return { label: `Step ${i + 1}. ${label}`, options: correct ? [wrong, right] : [right, wrong], correct, explanation };
   }) };
 }
 trace('rate-limiter-service', 'Enforce a fair per-key limit across replicas and choose an outage policy.',
