@@ -14,7 +14,7 @@ export function renderCheckpointForm(checkpoint, answer = {}, onSubmit, onCancel
     h('option', { value: '', text: 'Choose an answer' }), field.options.map((text, j) => h('option', { value: j, selected: answer.choices?.[i] === j, text }))));
   const line = h('input', { class: 'pl-input', type: 'text', required: true, maxlength: 500, value: answer.text || '' });
   const feedback = h('p', { class: 'pl-muted', role: 'status' });
-  const form = h('form', { class: 'pl-modal-card', style: { maxHeight: '100%', overflowY: 'auto' }, onSubmit: (event) => {
+  const form = h('form', { class: 'pl-modal-card pl-checkpoint', style: { maxHeight: '100%', overflowY: 'auto' }, onSubmit: (event) => {
     event.preventDefault();
     const value = { choices: selects.map((select) => select.value === '' ? null : Number(select.value)), text: line.value.trim() };
     if (checkpointCorrect(checkpoint, value)) onSubmit(value);

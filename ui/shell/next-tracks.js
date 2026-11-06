@@ -2,9 +2,22 @@
 import { h } from './dom.js';
 
 export function nextTracks() {
-  return h('section', { class: 'sh-card', 'aria-label': 'After the basics' },
+  return h('section', { class: 'sh-next-tracks', 'aria-label': 'After the basics' },
     h('h2', { class: 'sh-h2', text: 'After the basics' }),
-    h('p', { class: 'sh-muted' }, h('a', { href: '#/learn/consistent-hashing', text: 'Go deeper' }), ': Work through replication, agreement, ordering and storage with failure examples and calculations.'),
-    h('p', { class: 'sh-muted' }, h('a', { href: '#/learn/lead-interview', text: 'Lead the design' }), ': Practice choosing scope, defending tradeoffs, planning migrations and assigning operating responsibility.'),
-    h('p', { class: 'sh-muted' }, 'Try Interview mode on ', h('a', { href: '#/practice?d=Medium', text: 'Medium' }), ' and ', h('a', { href: '#/practice?d=Hard', text: 'Hard problems' }), '. Open a problem and choose Interview mode to state your assumptions, estimate load and defend a design before seeing repairs.'));
+    h('div', { class: 'sh-next-paths' },
+      h('a', { class: 'sh-next-path', href: '#/learn/consistent-hashing' },
+        h('span', { class: 'sh-chapter-index', text: '01 / Work through the mechanism' }),
+        h('h3', { text: 'Go deeper' }),
+        h('p', { text: 'Replication, agreement, ordering and storage. Work through failure examples and calculations in five to eight minutes.' }),
+        h('span', { class: 'sh-chapter-action', text: 'Explore the deeper lessons →' })),
+      h('a', { class: 'sh-next-path', href: '#/learn/lead-interview' },
+        h('span', { class: 'sh-chapter-index', text: '02 / Make the call' }),
+        h('h3', { text: 'Lead the design' }),
+        h('p', { text: 'Choose scope, defend tradeoffs, plan migrations and decide who operates the system.' }),
+        h('span', { class: 'sh-chapter-action', text: 'Practice design judgment →' })),
+      h('div', { class: 'sh-next-path' },
+        h('span', { class: 'sh-chapter-index', text: '03 / Try it independently' }),
+        h('h3', { text: 'Interview mode' }),
+        h('p', { text: 'Open a problem and choose Interview mode. State assumptions, estimate load and defend your design before seeing repairs.' }),
+        h('div', { class: 'sh-chip-wrap' }, h('a', { class: 'sh-chip', href: '#/practice?d=Medium', text: 'Medium problems' }), h('a', { class: 'sh-chip', href: '#/practice?d=Hard', text: 'Hard problems' })))));
 }

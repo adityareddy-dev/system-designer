@@ -754,6 +754,17 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 
 .sh-demo-cross {display:none}.sh-hero-art[data-state=failure] .sh-demo-cross {display:block}.sh-hero-art[data-state=failure] [data-part="el.vm-fleet-28"] {opacity:1}.sh-hero-art[data-state=failure] [data-stream="1"],.sh-hero-art[data-state=failure] [data-stream="4"] {display:none}
 /* The field book: oversized plates, numbered chapters, and quiet lists of experiments. */
+.sh-next-tracks {margin-block:32px;padding-block:24px;border-block:1px solid var(--border)}
+.sh-next-paths {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px;margin-top:24px}
+.sh-next-path {display:flex;flex-direction:column;align-items:start;gap:12px;color:var(--text);text-decoration:none;min-width:0}
+.sh-next-path h3 {font-size:27px;letter-spacing:-.7px;line-height:1.15;margin:0}
+.sh-next-path p {font-size:15px;line-height:1.5;color:var(--text-2);margin:0 0 8px}
+.sh-next-path>.sh-chapter-action,.sh-next-path>.sh-chip-wrap {margin-top:auto}
+.sh-next-path[href]:hover h3 {color:var(--accent)}
+@media(max-width:719px) {
+ .sh-next-paths {grid-template-columns:1fr;gap:24px}
+ .sh-next-path+.sh-next-path {border-top:1px solid var(--border);padding-top:24px}
+}
 .sh-home-page {max-width:1240px}
 .sh-home-page .sh-hero {grid-template-columns:1fr 1.15fr;gap:48px;padding:48px 0 40px;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
 .sh-home-page .sh-display {font-size:clamp(46px,5.1vw,72px);line-height:.98;letter-spacing:-2.7px;max-width:9.8ch;margin:16px 0 24px}

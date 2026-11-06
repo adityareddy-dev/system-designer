@@ -121,7 +121,7 @@ export function renderHome(host, ctx) {
     heroArt(ctx));
 
   const cards = h('section', { class: 'sh-section-grid', 'aria-label': 'Sections' },
-    sectionCard({ href: '#/learn', iconId: 'ui.learn', title: 'Learn', tone: 'a', text: 'Short lessons with a live demo each. Caching, queues, replicas and more, in plain words.', stat: `${stats.lessonsDone} of ${lessonsTotal || 24} lessons done` }),
+    sectionCard({ href: '#/learn', iconId: 'ui.learn', title: 'Learn', tone: 'a', text: 'Live demos and worked examples. Learn the building blocks, then go deeper and defend your choices.', stat: `${stats.lessonsDone} of ${lessonsTotal || 41} lessons done` }),
     sectionCard({ href: '#/practice', iconId: 'ui.practice', title: 'Practice', tone: 'b', text: 'A bank of real problems across the whole industry. Build, survive the day, read the debrief.', stat: `${stats.solved} of ${total || 75} solved, ${stats.stars} stars` }),
     sectionCard({ href: '#/challenge', iconId: 'ui.challenge', title: 'Challenge', tone: 'c', text: 'One new scenario every day. Beat your best, then send a friend a link to beat your design.', stat: streak ? `${streak}-day streak` : 'Start a streak today' }),
     sectionCard({ href: '#/sandbox', iconId: 'ui.sandbox', title: 'Sandbox', tone: 'd', text: 'Every component and any amount of traffic. Break things on purpose; nothing is graded.', stat: 'No game over' }));
