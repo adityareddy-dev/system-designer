@@ -377,7 +377,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   // almost nothing served: speed, safety and cost describe too little traffic to judge
   const thin = !none && a.actual < 0.5;
   const thinNote = thin ? `Not measured: only ${fmtPct(a.actual)} of requests were served, so this says little about a real day.` : null;
-  const servedNote = a.actual < 0.999 ? `Points count only for the share of requests that were served (${fmtPct(a.actual)}).` : null;
+  const servedNote = a.actual < a.target ? `Points count only for the share of requests that were served (${fmtPct(a.actual)}).` : null;
   const safeWhy = [];
   for (const f of s.promiseFailures || []) safeWhy.push(f.message);
   if (!okSafe && !none && s.staleShare > STALE_MAX && problem?.requirements?.readYourWrites) {
@@ -394,7 +394,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
       lines: none ? ['Not measured: nothing was served, so no data was kept to score. Safety points are only awarded for served requests.'] : [thinNote, s.lostWrites ? `${fmtNum(s.lostWrites)} acknowledged writes were lost.` : 'No acknowledged write was lost.', s.duplicates ? `${fmtNum(s.duplicates)} duplicate effects (such as a double charge).` : 'No duplicate effects.',
         s.staleReads ? `${fmtNum(s.staleReads)} stale reads.` : null, compNames.length ? `Missing proof: ${compNames.join(', ')}.` : null, ...safeWhy, servedNote].filter(Boolean) }),
     sloCard({ key: 'cost', title: 'Cost', iconId: 'ui.cost', pts: sc.cost, max: 200, ok: okCost, flag: none || thin ? 'none' : null, target: `≤ ${fmtUsd(c.budget)} a month`, actual: `≈ ${fmtUsd(c.perMonth)} a month`,
-      lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (result.efficiency?.length ? 'Under budget, with avoidable idle capacity. See the capacity decision above.' : a.actual < 0.999 ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
+      lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (result.efficiency?.length ? 'Under budget, with avoidable idle capacity. See the capacity decision above.' : a.actual < a.target ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
   root.append(cards, h('p', { class: 'pl-footnote' }, approx('Every dollar and millisecond here is a sensible real-world approximation, not a quote.')));
   const checkpoint = renderCorrectness(problem?.correctness, correctnessAnswer);
   if (checkpoint) root.append(checkpoint);

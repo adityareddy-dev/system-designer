@@ -1,4 +1,4 @@
-// First-attempt HUD facts stay gated and live safety includes configured history promises.
+// HUD gates, configured history promises and target-based score explanations stay consistent.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
 
@@ -65,8 +65,36 @@ try {
   await page.waitForFunction(() => window.__game.getState().phase === 'build');
   assert.match(await proofCopy(), /Example: users → app server → SQL database/, 'retry keeps the newly unlocked wiring help');
   assert.deepEqual(await disclosureState(), foldedState, 'retry preserves requirements disclosures');
+
+  const scoreCards = await page.evaluate(async () => {
+    const { loadCatalog } = await import('./sim/catalog.js');
+    const { createSim } = await import('./sim/engine.js');
+    const { problemById } = await import('./content/problems/index.js');
+    const { renderDebrief } = await import('./ui/play/debrief.js');
+    const catalog = await loadCatalog(), problem = problemById.get('file-sync');
+    const sim = createSim({ catalog, problem, seed: 'practice' });
+    sim.loadGraph(problem.editorial.designs[0].graph); sim.start(); sim.advance(86400000);
+    const result = sim.result();
+    const cases = [result.slo.availability, { actual: 0.995, target: 0.995 },
+      { actual: 0.9949, target: 0.995 }, { actual: 0.99995, target: 0.99999 }];
+    return { score: result.score.total, cases: cases.map(availability => {
+      const host = document.createElement('div');
+      renderDebrief(host, { result: { ...result, slo: { ...result.slo, availability } }, problem, catalog, reduced: true });
+      return { ...availability, cards: [...host.querySelectorAll('[data-slo]')].map(el => el.textContent),
+        cost: host.querySelector('[data-slo="cost"]').textContent };
+    }) };
+  });
+  assert.equal(scoreCards.score, 1000);
+  assert(scoreCards.cases[0].actual < 0.999 && scoreCards.cases[0].actual >= scoreCards.cases[0].target);
+  for (const { actual, target, cards, cost } of scoreCards.cases) {
+    const scaled = actual < target;
+    assert.equal(cards.filter(copy => copy.includes('Points count only for the share')).length, scaled ? 3 : 0,
+      'served-share explanations follow the stated availability target');
+    assert.equal(cost.includes('At or under budget: full points.'), !scaled,
+      'cost copy follows the same reliability rule');
+  }
   assert.deepEqual(errors, []);
-  console.log('HUD prediction gate and retention safety checks passed.');
+  console.log('HUD prediction gate, retention safety and score explanation checks passed.');
 } finally {
   await browser.close();
 }
