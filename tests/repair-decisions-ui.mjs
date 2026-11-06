@@ -53,6 +53,31 @@ try {
     const outage = { value: outageCase.value, suggested: outageResult.nextStep.sizing.units, evidence: outageCase.evidence,
       activeCountRejected, applied: outageApplied, peakUtil: outageSim.result().nodes.find(n => n.id === 'api').peakUtil };
     const limiter = problemById.get('rate-limiter-service'), costSim = createSim({ catalog, problem: limiter });
+    const overloadedSim = createSim({ catalog, problem: limiter });
+    overloadedSim.loadGraph(limiter.editorial.designs[0].graph);
+    overloadedSim.setKnob('svc', 'units', 1); overloadedSim.setKnob('svc', 'autoscale', false);
+    overloadedSim.start(); overloadedSim.advance(86400000);
+    const overloadedResult = overloadedSim.result(), overloadedCase = repairCase(overloadedResult, limiter, catalog);
+    const overloadedApplied = [];
+    let overloadedAssisted = 0;
+    const overloadedForm = renderRepair(overloadedResult, limiter, catalog, {
+      onSetNext: fix => overloadedApplied.push(fix), onAssisted: () => overloadedAssisted++,
+    });
+    document.body.append(overloadedForm);
+    const overloadedSelects = overloadedForm.querySelectorAll('select');
+    overloadedSelects[0].value = overloadedCase.answer; overloadedSelects[1].value = overloadedCase.effect;
+    const overloadedNumber = overloadedForm.querySelector('input');
+    overloadedNumber.value = 42; overloadedForm.requestSubmit(); overloadedForm.requestSubmit();
+    const overloaded = { value: overloadedCase.value, suggested: overloadedResult.nextStep.sizing.units,
+      applied: [...overloadedApplied], assisted: overloadedAssisted,
+      measured: overloadedResult.nodes.find(n => n.id === 'svc').peakRequests,
+      peakRps: overloadedResult.nextStep.sizing.peakRps };
+    overloadedNumber.value = 15; overloadedNumber.dispatchEvent(new Event('input', { bubbles: true }));
+    overloadedForm.requestSubmit(); overloadedForm.requestSubmit();
+    overloaded.lowCountRejected = overloadedApplied.length === overloaded.applied.length;
+    const precisionResult = structuredClone(overloadedResult);
+    Object.assign(precisionResult.nodes.find(n => n.id === 'svc'), { peakRequests: 1400.0001, effectiveRpsPerUnit: 1000, peakUtil: 1.4 });
+    overloaded.precisionValue = repairCase(precisionResult, limiter, catalog).value;
     costSim.loadGraph(limiter.editorial.designs[0].graph);
     costSim.setKnob('svc', 'units', 500); costSim.setKnob('svc', 'autoscale', false);
     costSim.start(); costSim.advance(86400000);
@@ -74,7 +99,7 @@ try {
       const section = [...host.querySelectorAll('section')].find(s => s.querySelector('h3')?.textContent === 'The numbers');
       problem.numbers.forEach((row,i) => { if (estimateUnit(row).percent) units.push({ id: problem.id, text: section.querySelectorAll('tr')[i].children[1].textContent, value: estimateUnit(row).value }); });
     }
-    return { units, initial, none, wrongPlan, wrongCount, checked, applied, expected: test.value, outage, cost };
+    return { units, initial, none, wrongPlan, wrongCount, checked, applied, expected: test.value, outage, overloaded, cost };
   });
   assert.equal(outcome.units.length, 6);
   for (const row of outcome.units) { assert(row.text.includes(row.value + ' %'), row.id); assert(!row.text.includes('of requests')); }
@@ -89,6 +114,13 @@ try {
   assert(outcome.outage.activeCountRejected);
   assert.equal(outcome.outage.applied.length, 1); assert.equal(outcome.outage.applied[0].units, 26);
   assert(outcome.outage.peakUtil <= .7, 'installed capacity keeps the outage peak below the headroom target');
+  assert.equal(outcome.overloaded.value, 42, 'heavy overload uses measured demand rather than capped display utilization');
+  assert.equal(outcome.overloaded.value, outcome.overloaded.suggested);
+  assert.equal(outcome.overloaded.assisted, 0, 'correct arithmetic does not mark assistance');
+  assert.equal(outcome.overloaded.applied.length, 1); assert.equal(outcome.overloaded.applied[0].units, 42);
+  assert(outcome.overloaded.lowCountRejected, 'the count derived from capped utilization is rejected');
+  assert.equal(outcome.overloaded.measured, outcome.overloaded.peakRps, 'demand and effective capacity retain matching peak precision');
+  assert.equal(outcome.overloaded.precisionValue, 3, 'rounding cannot erase demand above an integer sizing boundary');
   assert.deepEqual(outcome.cost.checks, { availability: true, latency: true, safety: true, cost: false });
   assert.equal(outcome.cost.kind, 'cost'); assert.equal(outcome.cost.knob, 'units');
   assert.match(outcome.cost.plan, /Reduce the largest measured cost driver/);

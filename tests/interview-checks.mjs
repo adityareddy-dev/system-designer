@@ -120,9 +120,19 @@ try {
     await page.waitForSelector('.pl-defense-card');
     await page.evaluate(() => window.__game.reset());
     assert.equal(await page.evaluate(() => window.__game.getState().phase), 'done');
+    await page.$eval('.pl-defense-card', card => {
+      const input = card.querySelector('textarea'); input.value = 'Measure surviving capacity and use health checks to detect unavailable replicas.'; input.dispatchEvent(new Event('input'));
+      card.querySelector('button').click();
+      const boxes = [...card.querySelectorAll('input[type=checkbox]')];
+      boxes.slice(0, -1).forEach(box => box.click());
+      boxes.at(-1).focus();
+    });
+    await page.keyboard.press('Space');
+    assert(await page.$eval('.pl-defense-card', card => !card.open && document.activeElement === card.querySelector('summary') && document.activeElement.checkVisibility()),
+      'completing a follow-up with the keyboard moves focus to its visible summary');
     await page.$$eval('.pl-defense-card', cards => cards.forEach(card => {
       const input = card.querySelector('textarea'); input.value = 'The failed path must be measured before choosing capacity or routing changes.'; input.dispatchEvent(new Event('input'));
-      card.querySelector('button').click(); card.querySelectorAll('input[type=checkbox]').forEach(box => box.click());
+      card.querySelector('button').click(); card.querySelectorAll('input[type=checkbox]').forEach(box => { if (!box.checked) box.click(); });
     }));
     assert.equal(await page.$$eval('.pl-defense-card', els => els.length >= 3 && els.length <= 5), true);
     await click('Save interview report');

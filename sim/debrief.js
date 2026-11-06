@@ -1144,7 +1144,7 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
   const nodesOut = model.nodes.map((n) => ({
     id: n.id, type: n.el.id,
     peakUtil: Math.round(Math.min(S.peakUtil[n.i], 10) * 1000) / 1000,
-    peakRequests: Math.round(S.peakRequests[n.i]), peakUnits: S.peakUnits[n.i],
+    peakRequests: S.peakRequests[n.i], peakUnits: S.peakUnits[n.i],
     peakInstalledUnits: S.peakInstalledUnits[n.i],
     effectiveRpsPerUnit: S.peakUtil[n.i] > 0 && S.peakUnits[n.i] > 0 ? S.peakRequests[n.i] / (S.peakUtil[n.i] * S.peakUnits[n.i]) : 0,
     minutesOverloaded: Math.round((S.overTicks[n.i] * S.dt) / 60),

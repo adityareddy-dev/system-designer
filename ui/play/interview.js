@@ -134,7 +134,13 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     const response = h('div', { class: 'pl-defense-response' });
     const evidence = h('aside', { class: 'pl-defense-evidence' }, h('h4', { text: 'Evidence from your run' }), q.evidence.map(text => h('p', { text })));
     columns.append(response, evidence);
-    controls.push(mountDefense(response, q, d, { id: 'pl-defense-' + i, locked: state.complete, onReveal: update, onChange: () => { if (d.revealed && q.checklist.every((_,j) => d.checked[j])) section.open = false; update(); } }));
+    controls.push(mountDefense(response, q, d, { id: 'pl-defense-' + i, locked: state.complete, onReveal: update, onChange: () => {
+      if (d.revealed && q.checklist.every((_,j) => d.checked[j])) {
+        if (section.contains(document.activeElement)) section.querySelector('summary').focus();
+        section.open = false;
+      }
+      update();
+    } }));
     evidence.append(response.querySelector('.pl-defense-model'));
     root.append(section);
   });

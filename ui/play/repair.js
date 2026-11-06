@@ -16,7 +16,7 @@ function rawRepairCase(result, problem, catalog) {
     const rate = Math.round(node.peakRequests * 100) / 100;
     const perUnit = Math.round(node.effectiveRpsPerUnit * 100) / 100;
     const active = node.peakUnits, installed = node.peakInstalledUnits || active;
-    const activeNeeded = Math.ceil(node.peakUtil * active / .7);
+    const activeNeeded = Math.ceil(node.peakRequests / (node.effectiveRpsPerUnit * .7));
     const floor = Math.max(el.units.min || 1, placed.zones || 1);
     const value = Math.min(el.units.max, Math.max(floor, Math.ceil(activeNeeded * installed / active)));
     return { kind: 'capacity', nodeId: node.id, word: el.units.label, rate, perUnit, value,
