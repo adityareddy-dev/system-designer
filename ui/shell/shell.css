@@ -779,6 +779,7 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 .sh-chapter-action svg {transition:transform 240ms ease}
 .sh-chapter.is-open .sh-chapter-action svg {transform:rotate(180deg)}
 .sh-chapter-art {width:100%;height:auto;max-height:280px;object-fit:contain;border-radius:12px}
+.sh-chapter-art svg,.sh-industry-art svg {display:block;width:100%;height:auto;max-height:inherit;border-radius:inherit}
 .sh-chapter:nth-child(even) .sh-chapter-copy {padding-left:32px}
 .sh-chapter .sh-lesson-grid {display:grid;grid-template-columns:1fr 1fr;gap:0 40px;padding:20px 0 0;list-style:none;counter-reset:lesson}
 .sh-chapter .sh-lesson-grid[hidden] {display:none}

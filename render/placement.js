@@ -10,16 +10,17 @@ export function insertionLayout(graph, edgeId) {
   const positions = new Map(graph.nodes.map(n => [n.id, { ...n }]));
   const target = positions.get(b.id);
   target[axis] += sign * Math.max(0, gap * 2 - Math.abs(b[axis] - a[axis]));
-  const pending = [target];
-  const moved = new Set();
-  while (pending.length) {
-    const current = pending.shift();
-    moved.add(current.id);
-    for (const n of positions.values()) {
-      if (n.id === a.id || n.id === current.id || moved.has(n.id)) continue;
+  // Keep the original order so a swept part cannot be left behind the target.
+  const downstream = graph.nodes.filter(n => n.id !== a.id && (n[axis] - b[axis]) * sign >= 0)
+    .sort((u, v) => (u[axis] - v[axis]) * sign || (u.id === b.id ? -1 : v.id === b.id ? 1 : 0));
+  for (let i = 0; i < downstream.length; i++) {
+    const original = downstream[i], current = positions.get(original.id);
+    if (current[axis] === original[axis]) continue;
+    for (const next of downstream.slice(i + 1)) {
+      const n = positions.get(next.id);
       const distance = (n[axis] - current[axis]) * sign;
-      if (distance >= 0 && distance < gap && Math.abs(n[other] - current[other]) < cross) {
-        n[axis] += sign * (gap - distance); pending.push(n);
+      if (distance < gap && Math.abs(n[other] - current[other]) < cross) {
+        n[axis] += sign * (gap - distance);
       }
     }
   }

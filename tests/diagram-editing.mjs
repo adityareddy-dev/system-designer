@@ -64,4 +64,27 @@ try {
   assert(await page.$('.pl-map-drawing svg'), 'the whole drawing remains available');
   assert.equal(await page.$eval('.pl-dragchip', e => e.hidden), true);
   console.log('The 15-part phone diagram fits; the selected-part view keeps an overview.');
+
+  for (const width of [320, 390]) {
+    await page.setViewport({ width, height: 844, isMobile: true, hasTouch: true });
+    await page.goto(base + '#/learn/load-balancing?step=1');
+    await page.waitForFunction(() => window.__game.getState().nodes.some(n => n.id === 'app'));
+    await sleep(900);
+    const position = await page.evaluate(() => {
+      const s = window.__game.getState(), n = s.view.screen.find(n => n.id === 'app');
+      const r = document.querySelector('.pl-stage').getBoundingClientRect();
+      return { x: r.left + n.x, y: r.top + n.y };
+    });
+    await page.touchscreen.tap(position.x, position.y);
+    await page.waitForSelector('.pl-focus-map');
+    await sleep(350);
+    const bounds = await page.evaluate(() => {
+      const box = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
+      return { map: box('.pl-focus-map'), goal: box('.pl-goal'), inspector: box('.pl-inspector'), button: box('.pl-focus-map .pl-btn'), width: innerWidth, height: innerHeight };
+    });
+    assert(bounds.map.top >= bounds.goal.bottom + 8, `${width}px overview clears the lesson goal`);
+    assert(bounds.button.bottom <= bounds.inspector.top, `${width}px full overview and Enlarge control clear the inspector`);
+    assert(bounds.map.left >= 0 && bounds.map.right <= bounds.width && bounds.map.bottom <= bounds.height, `${width}px overview fits on screen`);
+  }
+  console.log('Lesson overview and Enlarge control remain visible at 320px and 390px.');
 } finally { await browser.close(); }

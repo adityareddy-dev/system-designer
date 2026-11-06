@@ -460,6 +460,7 @@ export function createNodeLayer(PIXI, parent, env) {
         v.lock.context = kit.glyphs.lock;
         for (const s of v.pileSprites) { s.texture = kit.atlas.textures[Math.max(0, v.pileType)]; s.scale.set(8 / P_SHAPE); }
         v.labelT.style.fill = P.text2;
+        v.poolT.style.fill = P.text2;
         drawChip(v); drawRegion(v);
         if (v.event) v.event.color = v.event.severity ? severityColor(P, v.event.severity) : v.event.color;
         if (v.event) this.setEvent(v, v.event);

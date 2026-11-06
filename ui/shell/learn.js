@@ -1,5 +1,6 @@
 // Learn view: lessons grouped by track, with done marks and a suggested path.
 import { h, ico } from './dom.js';
+import { sceneMarkup } from '../../assets/scenes/index.js';
 const TRACK_SCENE = ['intro', 'load-balancing', 'sharding', 'queues-backpressure', 'idempotency-retries', 'multi-region', 'cost', 'storage-engine', 'lead-interview'];
 
 export function renderLearn(host, ctx) {
@@ -46,7 +47,7 @@ export function renderLearn(host, ctx) {
       h('span', { class: 'sh-chapter-copy' }, h('span', { class: 'sh-chapter-index', text: `Field notes / ${String(ti + 1).padStart(2, '0')}` }),
         h('h2', { id: 'sh-track-' + ti, text: t.name }), h('span', { class: 'sh-track-progress', text: count }),
         h('span', { class: 'sh-chapter-action' }, ti === 0 ? 'Close track' : 'Open track', ico('ui.chevron-down', 20))),
-      h('img', { class: 'sh-chapter-art', src: new URL('../../assets/scenes/' + TRACK_SCENE[ti] + '.svg', import.meta.url).href, loading: ti ? 'lazy' : 'eager', decoding: 'async', width: 440, height: 240, alt: '' }));
+      h('span', { class: 'sh-chapter-art', 'aria-hidden': 'true', html: sceneMarkup(TRACK_SCENE[ti]) }));
     grid.id = 'sh-track-list-' + ti; grid.hidden = ti !== 0;
     section.classList.toggle('is-open', ti === 0);
     button.addEventListener('click', () => {

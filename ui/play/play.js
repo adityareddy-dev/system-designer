@@ -215,6 +215,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     } catch { /* estimate is a nicety */ }
     S.issues = issues;
     S.est = est;
+    S.nodeStates = S.sim.state().nodes;
     try { scene.setValidation(issues); } catch { /* render optional */ }
     let sizes = []; try { sizes = riskyIssues().filter((i) => i.fix); } catch { /* optional */ }
     hud.setBuild(est, diagnosticIssues(), interview ? [] : sizes, { advice: !interview });
@@ -620,6 +621,18 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       enlarge.dataset.zoomed = 'true'; enlarge.textContent = 'Show whole diagram';
     } });
     map.append(drawing, enlarge); root.append(map);
+    syncFocusMap();
+  }
+  function syncFocusMap() {
+    const map = root.querySelector('.pl-focus-map');
+    if (!map || !isPhone()) return;
+    const r = root.getBoundingClientRect();
+    let top = hud.el.getBoundingClientRect().bottom;
+    for (const el of [caption, goalChip]) {
+      if (!el.hidden && el.offsetParent) top = Math.max(top, el.getBoundingClientRect().bottom);
+    }
+    root.style.setProperty('--pl-focus-top', Math.ceil(top - r.top + 10) + 'px');
+    root.style.setProperty('--pl-focus-end', Math.ceil(top - r.top + 10 + map.offsetHeight + 8) + 'px');
   }
   function startConnect(from) {
     S.connectFrom = from;
@@ -1609,13 +1622,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     const dropped = perf.droppedTicks - (S.dropSeen || 0);
     S.dropSeen = perf.droppedTicks;
-    try { scene.setFlows(sim.flows(), { speed: sim.phase === 'running' ? effectiveSpeed() : 0, dtWallMs: dt, nodeStates: sim.state().nodes }); } catch (e) { if (!S.flowErr) { S.flowErr = 1; S.errors.push({ code: 'render', message: String(e?.message || e) }); } }
     hudClock += dt;
     if (interviewClock && !interviewState.complete) {
       const left = 2700 - Math.floor((Date.now() - interviewState.startedAt) / 1000);
       interviewClock.textContent = left >= 0 ? `Interview · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Interview · Overtime';
     }
     if (hudClock >= 250) { hudClock = 0; const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
+    try { scene.setFlows(sim.flows(), { speed: sim.phase === 'running' ? effectiveSpeed() : 0, dtWallMs: dt, nodeStates: S.nodeStates }); } catch (e) { if (!S.flowErr) { S.flowErr = 1; S.errors.push({ code: 'render', message: String(e?.message || e) }); } }
     if (ctx.recordFrame) {
       try {
         const rs = scene.stats();
@@ -1633,6 +1646,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function hudTick() {
     if (S.sim.phase === 'build') return;
     const st = S.sim.state();
+    S.nodeStates = st.nodes;
     hud.update(st, { problem: S.problem, types: Object.keys(S.problem.requirements.mix || {}), goalMetric: S.problem.goal?.metric || (mode === 'intro' ? 'availability' : null), goalMet: S.goalMet });
     if (S.selected) inspector.update(st.nodes.find((n) => n.id === S.selected));
     let maxUtil = 0;
@@ -1652,6 +1666,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (wasRunning) { S.sim.start(); if (clock > 0) S.sim.advance(clock); }
     S.acc = 0;
     scene.sync(graph(), flowVersion());
+    S.nodeStates = S.sim.state().nodes;
     updateEditable();
   }
   function applyTraffic(t) {
@@ -1797,6 +1812,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     root.style.setProperty('--pl-hud-end', Math.round(r.bottom - rr.top) + 'px');
     const tb = top.getBoundingClientRect();
     root.style.setProperty('--pl-top-end', Math.round(tb.bottom - rr.top) + 'px');
+    syncFocusMap();
   };
   // When a panel changes size (the status bar grows with live meters, the traffic panel folds), a diagram that now runs
   // underneath a panel is fitted back into the free part of the canvas.
@@ -1832,6 +1848,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   try {
     hudObs = new ResizeObserver(() => { syncHud(); refitSoon(); });
     hudObs.observe(hud.el); hudObs.observe(root); hudObs.observe(top);
+    hudObs.observe(caption); hudObs.observe(goalChip);
     const traceEl = root.querySelector('.pl-trace');
     if (traceEl) hudObs.observe(traceEl);
     // on phones the diagram is fitted above the parts drawer whenever it opens or closes
