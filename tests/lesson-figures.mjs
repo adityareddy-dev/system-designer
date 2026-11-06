@@ -1,0 +1,73 @@
+// Every lesson model stays deterministic, responds to controls and checks known numerical cases.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {lessons} from '../content/lessons/index.js';
+const models=new Map();
+for(const lesson of lessons.filter(l=>l.id!=='intro')){
+ const steps=lesson.steps.filter(s=>s.kind==='figure');assert(steps.length,lesson.id+' has a figure');
+ const module=await import(`../ui/figures/${lesson.id}.js`);const m=module.model;models.set(lesson.id,m);
+ assert(m.note.startsWith('Model:'),lesson.id+' states assumptions');
+ for(const step of steps){assert.equal(step.figure,lesson.id);let s=m.initial(step.view);assert.deepEqual(s,m.initial(step.view));
+  for(const c of m.controls){const value=c.type==='range'?c.max:c.type==='checkbox'?!s[c.id]:c.type==='select'?(Array.isArray(c.options.at(-1))?c.options.at(-1)[0]:c.options.at(-1)):undefined;
+   const frozen=structuredClone(s);const next=m.update(s,c.id,value);assert.deepEqual(s,frozen,lesson.id+' does not mutate input');assert.deepEqual(next,m.update(s,c.id,value));s=next;const view=m.view(s);assert(view.svg.includes('<'));assert(view.caption.length>10);assert(!/NaN|undefined|Infinity/.test(JSON.stringify(view)),lesson.id+' finite visible numbers');
+  }
+ }
+ assert(fs.statSync(new URL(`../ui/figures/${lesson.id}.js`,import.meta.url)).size<13000,'small lazy module');
+}
+const run=(id,actions=[])=>{const m=models.get(id);let s=m.initial();for(const [a,v]of actions)s=m.update(s,a,v);return {s,v:m.view(s),m};};
+const action=(...ids)=>ids.map(id=>[id]);
+const hashing=await import('../ui/figures/consistent-hashing.js');
+for(const mode of ['ring','mod']){const expected=hashing.keys.filter(k=>hashing.placement(k,3,1,mode)!==hashing.placement(k,4,1,mode)).length;assert.equal(run('consistent-hashing',[['mode',mode],['n',4]]).v.stats['keys moved'],expected);}
+assert.equal(run('consistent-hashing',action('snapshot','write','route','diagnose')).v.stats['missing writes'],1);
+assert.equal(run('consistent-hashing',action('snapshot','write','fence','replay','route','diagnose')).v.stats['missing writes'],0);
+assert.equal(run('copies-quorums',[['r',1],['write'],['read']]).s.result,0);
+assert.equal(run('copies-quorums',action('write','read')).s.result,1);
+assert.equal(run('copies-quorums',action('kill','write','read')).s.result,1);
+let r=run('leader-consensus',action('kill','elect','stale'));assert.equal(r.s.term,2);assert.equal(r.s.accepted,0);
+assert.equal(run('leader-consensus',[['split',true],['write']]).s.commits,0);
+assert.equal(run('leader-consensus',[['split',true],['elect'],['write']]).s.commits,1);
+assert.equal(run('consistency-models',action('write','readA')).s.reads.at(-1).value,0);
+assert.equal(run('consistency-models',[['write'],['mode','ryw'],['readA']]).s.reads.at(-1).value,1);
+assert.equal(run('consistency-models',[['write'],['mode','monotonic'],['readB'],['readB']]).s.reads.at(-1).value,1);
+assert.deepEqual(run('consistency-models',action('skew')).s.doctors,[0,0]);
+r=run('storage-engine',[['write'],['key','b'],['write'],['flush'],['key','a'],['write'],['flush'],['compact']]);assert.equal(r.s.recordWrites,8);assert.equal(r.s.logical,3);assert.equal(r.s.files.length,1);assert.equal(r.s.files[0].a,3);
+const storage=await import('../ui/figures/storage-engine.js');for(const key of ['a','b','c'])assert(storage.mayContain(storage.bloom(['a','b','c']),key));assert.equal(storage.treeInsert([['a','b','c']],'d').writes,3);
+r=run('work-across-services',action('step','step','step','compensate','compensate'));assert.deepEqual(r.s.undone,['charge','reserve']);assert.equal(r.s.done.length,0);
+r=run('work-across-services',[['mode','outbox'],...action('step','crash','recover','recover')]);assert.equal(r.s.consumed.length,1);assert.equal(r.s.published.length,2);
+r=run('work-across-services',[['mode','direct'],...action('step','crash','recover')]);assert.equal(r.s.consumed.length,0);
+const ordering=await import('../ui/figures/ordering-time.js');assert(!ordering.dominates([3,1],[2,2]));assert.deepEqual(ordering.merge([4,0],[0,3]),[4,3]);
+r=run('ordering-time',[['mode','counter'],...action('a','a','a','a','b','b','b','merge','merge')]);assert.deepEqual(r.s.ca,[4,3]);assert.deepEqual(r.s.cb,[4,3]);
+r=run('device-sync',action('editA','editB','delete','sync'));assert(r.s.conflict);assert(r.s.delta>0&&r.s.delta<r.s.full);assert.equal(r.s.wakeups,1);
+assert.equal(run('privacy-design',action('upload','breach')).v.stats['exposed payload bytes'],80);
+r=run('metrics-systems',action('ingest','block','compact','query','query','advance','query'));assert.equal(r.s.writes,18);assert.equal(r.s.hits,3);
+const logs=await import('../ui/figures/logs-traces.js');assert.equal(logs.indexLogs('words').timeout.length,5);r=run('logs-traces',action('sample'));assert.equal(r.s.tail.filter(i=>logs.traces[i].error).length,6);
+const slo=await import('../ui/figures/slos-error-budgets.js');assert(Math.abs(slo.rates(3,60,60).used-4.166666666666667)<1e-10);assert.equal(slo.firstAlert(3,60,'fast'),29);assert.equal(slo.firstAlert(3,60,'slow'),null);
+const tenants=await import('../ui/figures/multi-tenancy.js');assert.equal(tenants.dispatch(models.get('multi-tenancy').initial()).hurt,5);assert.equal(run('multi-tenancy',[['fair',true]]).v.stats['other tenants hurt'],0);
+r=run('lead-interview',[['spend',20],...action('scope','scope','scope','depth')]);assert.equal(r.s.scope,60);assert.equal(r.s.depth,0);
+const simple=await import('../ui/figures/simplest-design.js');r=run('simplest-design');assert.equal(simple.costs(r.s).buy.reduce((a,b)=>a+b,0),24720);assert.equal(simple.costs(r.s).build.reduce((a,b)=>a+b,0),117000);
+r=run('running-migrations',action('next','next','write','next','verify'));assert.equal(r.v.stats['mismatched rows'],0);assert.equal(r.s.rows[0].new,'LIVE1');r=run('running-migrations',action('next','next','next','next','next','next','rollback'));assert.equal(r.v.stats['rollback columns'],0);
+r=run('team-boundaries',[['versioned',true],...action('week','week')]);assert.equal(r.v.stats['broken consumers'],0);assert.equal(r.v.stats['v1 weekly calls'],200);
+assert.equal(run('requests-and-latency').v.stats['p99 (ms)'],800);
+assert.equal(run('back-of-envelope').v.stats['requests/day'],200000000);
+assert.equal(run('load-balancing',action('send','send','tick')).s.done,1);
+assert.equal(run('caching',action('read','write','read')).s.result,1);
+assert.equal(run('cdn',action('read','read')).s.bytes,100000);
+assert.equal(run('autoscaling',action('tick','tick','tick','tick')).s.lost,900);
+assert.equal(run('replication-lag',action('write','tick','tick','tick')).s.replica,1);
+const shard=await import('../ui/figures/sharding.js');assert.equal(shard.counts(models.get('sharding').initial()).reduce((a,b)=>a+b,0),40);
+assert.equal(run('hot-keys',[['cache',true]]).v.stats['total origin reads'],21);
+assert.deepEqual(run('search-indexing',action('write','deliver','search')).s.found,['1']);
+assert.equal(run('storage-tiers',[['age',90]]).v.stats['monthly cost ($)'],1);
+assert.equal(run('queues-backpressure',action('step','step')).s.queue.length,6);
+assert.equal(run('fanout',action('post')).v.stats.writes,100);
+assert.match(run('realtime-connections',action('beat','disconnect','tick','tick','tick','tick','tick')).v.caption,/presence offline/);
+assert.equal(run('consistency',action('write','read')).s.answer,0);
+assert.equal(run('idempotency-retries',[['dedupe',true],...action('pay','retry')]).s.charges,1);
+assert.equal(run('rate-limiting',action('send','send','send')).s.rejected,2);
+assert.equal(run('circuit-breakers',action('call','call','call','call')).s.upstream,3);
+assert.equal(run('multi-region',action('write','replicate','write','fail','promote')).v.stats['unreplicated versions'],1);
+assert.equal(run('observability',action('incident')).v.stats['failed requests'],3500);
+assert.equal(run('cost',[['scale',true]]).v.stats['server-hours/day'],64);
+assert.equal(run('security-compliance',[['least',true],['try']]).s.blocked,1);
+assert.equal(run('ai-serving').v.stats['generated tokens'],700);
+console.log('40 figure models: deterministic controls, input isolation and known arithmetic passed.');
