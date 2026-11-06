@@ -184,8 +184,8 @@ export function mountShell(rootEl, ctx) {
     if (!result) return;
     if (mode === 'practice' && problemId) {
       const r = ctx.progress.record(problemId, result, hintsUsed || 0);
-      if (result.passed && result.learning && !result.learning.traceChecked) toast({ text: 'Traffic passed. Check the responsibility trace for learning credit.', level: 'info' });
-      else if (result.passed && result.learning?.assisted) toast({ text: 'Traffic passed with assistance. Try an independent New twist next.', level: 'info' });
+      if (result.passed && result.learning && !result.learning.traceChecked) toast({ text: 'Traffic passed. Trace still open.', level: 'info' });
+      else if (result.passed && result.learning?.assisted) toast({ text: 'Traffic passed with assistance.', level: 'info' });
       else if (r.first && (result.stars || 0) > 0) toast({ text: `Solved with ${result.stars || 0} star${result.stars === 1 ? '' : 's'}. Nicely done.`, level: 'ok', ms: 4200 });
       else if (r.improved && r.previousBest != null && (result.stars || 0) > 0) toast({ text: 'New personal best on this problem.', level: 'ok' });
     }

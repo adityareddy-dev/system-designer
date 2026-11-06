@@ -36,7 +36,7 @@ try {
   await page.waitForSelector('.pl-learning-status');
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /trace is still open/);
   assert.equal(await page.$('.pl-victory'), null);
-  assert.match(await page.$eval('.sh-toast', e => e.textContent), /Traffic passed.*responsibility trace/);
+  assert.match(await page.$eval('.sh-toast', e => e.textContent), /Traffic passed.*Trace still open/);
   await click('Retry'); await click('Start day'); await gates();
   await page.evaluate(() => window.__game.step(86400000));
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /responsibility trace passed/);

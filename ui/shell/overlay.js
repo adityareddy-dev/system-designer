@@ -25,6 +25,7 @@ function placeToasts() {
   // on a workbench the note docks in a bottom corner, away from the middle of the diagram, the card action rows and the debrief heading
   if (root) toastBox.dataset.dock = 'corner'; else delete toastBox.dataset.dock;
   if (!root) return;
+  if (root.dataset.step === 'debrief') return;
   const base = parseFloat(getComputedStyle(toastBox).bottom) || 24;
   let top = Infinity;
   for (const sel of ['.pl-hud', '.pl-caption', '.pl-tb-grab', '.pl-inspector', '.pl-toolbar--open', '.pl-slow']) {
