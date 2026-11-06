@@ -168,7 +168,8 @@ export function createInspector(host, { catalog, getNode, getHome, getProblem, o
     // numbers
     const facts = h('dl', { class: 'pl-facts' });
     if (el.capacity) {
-      facts.append(h('dt', { text: 'Handles' }), h('dd', {}, approx(capacityText(el, node, tiers))));
+      const [total, perUnit] = capacityText(el, node, tiers).split(', ');
+      facts.append(h('dt', { text: 'Handles' }), h('dd', {}, approx(total), perUnit ? h('div', { class: 'pl-capacity-unit' }, approx(perUnit)) : null));
     }
     if (el.latencyMs) facts.append(h('dt', { text: 'Adds' }), h('dd', {}, approx(`${fmtMs(el.latencyMs.p50)} typical, ${fmtMs(el.latencyMs.p99)} slow`), el.latencyMs.note ? h('span', { class: 'pl-muted pl-small', text: ' ' + el.latencyMs.note }) : null));
     facts.append(h('dt', { text: 'Uptime alone' }), h('dd', {}, approx(fmtPct(el.availability) + ' of the time, one copy in one zone')));
@@ -204,7 +205,7 @@ export function createInspector(host, { catalog, getNode, getHome, getProblem, o
         section('What it can do', facts),
         section('Cost a month', costLines(el, node)),
         el.failureModes?.length ? section('How it breaks', h('ul', { class: 'pl-list' }, el.failureModes.map((f) => h('li', { text: f.text })))) : null);
-      root.append(head, h('div', { class: 'pl-insp-scroll' }, el.kind === 'compute' ? liveBox : null, actions, replicaCount, section('Settings', knobs), h('p', { class: 'pl-desc', text: el.description }), el.kind !== 'compute' ? liveBox : null, more));
+      root.append(head, h('div', { class: 'pl-insp-scroll' }, actions, replicaCount, section('Settings', knobs), liveBox, h('p', { class: 'pl-desc', text: el.description }), more));
       const sc = root.querySelector('.pl-insp-scroll'); if (sc) sc.scrollTop = 0;
       paintLive();
       return;

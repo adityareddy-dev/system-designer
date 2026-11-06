@@ -8,7 +8,7 @@ import { createEdgeLayer, edgeCarries } from './edges.js';
 import { createParticles } from './particles.js';
 import { createFx } from './fx.js';
 import { createInput, PORT_R, DND_TYPE, DND_PREFIX } from './input.js';
-import { makeLut, edgeCurve, HALF, niceCeil } from './geom.js';
+import { makeLut, edgeCurve, lutAt, HALF, niceCeil } from './geom.js';
 import { createGrid } from './grid.js';
 import { pathsThrough } from './diagram.js';
 
@@ -170,10 +170,15 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
 
   // ---- interaction drawings: port ring, rubber band, guides, ghost ----
   const portRing = new PIXI.Graphics(); portRing.visible = false;
+  const portHint = new PIXI.Text({ text: 'Drag to connect →', style: { fontFamily: 'Atkinson Hyperlegible', fontSize: 13, fill: P.accent, fontWeight: '700' }, resolution: 2 });
+  portHint.anchor.set(.5, 1); portHint.visible = false;
+  const connectionInk = new PIXI.Graphics();
+  let connection = null;
   const band = new PIXI.Graphics(); band.visible = false;
   const target = new PIXI.Graphics(); target.visible = false;
   const guides = new PIXI.Graphics();
-  uiLayer.addChild(guides, portRing, band, target);
+  const dropWires = new PIXI.Graphics();
+  uiLayer.addChild(guides, dropWires, connectionInk, portRing, portHint, band, target);
   let ringNode = null, ringHot = false;
   const bandLut = makeLut();
   let previewPair = null;
@@ -182,6 +187,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     portRing.clear();
     if (!ringNode) { portRing.visible = false; return; }
     portRing.visible = true;
+    const k = Math.max(1, 1 / camera.zoom);
     const n = 40;
     for (let i = 0; i < n; i += 2) {
       const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2;
@@ -190,8 +196,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     portRing.stroke({ width: ringHot ? 2.4 : 1.6, color: P.accent, alpha: ringHot ? 0.95 : 0.6, cap: 'round' });
     if (ringHot) portRing.circle(0, 0, PORT_R + 6).stroke({ width: 10, color: P.accent, alpha: 0.12 });
     // the handle: a clear dot with an arrow, big enough to find and to grab with a finger
-    portRing.circle(PORT_R, 0, 9).fill({ color: P.accent }).stroke({ width: 2, color: P.surfaceSolid });
-    portRing.moveTo(PORT_R - 3.5, -4).lineTo(PORT_R + 3, 0).lineTo(PORT_R - 3.5, 4).stroke({ width: 2, color: P.surfaceSolid, cap: 'round', join: 'round' });
+    portRing.circle(PORT_R, 0, 10 * k).fill({ color: P.accent }).stroke({ width: 2 * k, color: P.surfaceSolid });
+    portRing.moveTo(PORT_R - 3.5 * k, -4 * k).lineTo(PORT_R + 3 * k, 0).lineTo(PORT_R - 3.5 * k, 4 * k).stroke({ width: 2 * k, color: P.surfaceSolid, cap: 'round', join: 'round' });
   }
 
   const ui = {
@@ -240,6 +246,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   };
 
   const dropTol = () => Math.min(EDGE_DROP_MAX, Math.max(EDGE_DROP_MIN, EDGE_DROP_PX / Math.max(0.1, camera.zoom)));
+  let insertionPreview = null;
   // placement ghost (toolbar drag, tap-to-place, HTML drag and drop)
   function ghostView(type) {
     if (ghost.view && ghost.view.__type === type) return;
@@ -254,10 +261,23 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   function ghostMove(wx, wy) {
     const sp = input.snapPos(wx, wy, null);
     ghost.x = sp.x; ghost.y = sp.y;
-    if (ghost.view) { ghost.view.position.set(sp.x, sp.y); ghost.view.visible = true; ghost.shown = true; }
     ui.drawGuides(sp.guides);
     const ev = edges.hitMiddle(sp.x, sp.y, dropTol());
     ghost.edgeId = ev ? ev.id : null;
+    dropWires.clear();
+    if (ev) {
+      const edge = graph?.edges.find(e => e.id === ev.id);
+      const a = nodes.views.get(edge?.from), b = nodes.views.get(edge?.to);
+      const plan = insertionPreview?.(ghost.type, ev.id);
+      if (plan?.position) { ghost.x = plan.position.x; ghost.y = plan.position.y; }
+      if (a && b && plan) {
+        dropWires.moveTo(a.x, a.y).lineTo(ghost.x, ghost.y);
+        if (plan.kind !== 'side') dropWires.lineTo(b.x, b.y);
+        dropWires.stroke({ width: 3 / camera.zoom, color: P.accent, alpha: .8 });
+      }
+    }
+    if (ghost.view) { ghost.view.position.set(ghost.x, ghost.y); ghost.view.visible = true; ghost.shown = true; }
+    emitter.emit('placement:preview', ghost.edgeId ? { type: ghost.type, edgeId: ghost.edgeId } : null);
     edges.setHighlight(ghost.edgeId);
     return sp;
   }
@@ -265,6 +285,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     ghostView(null);
     ghost.type = null; ghost.preview = false; ghost.shown = false; ghost.edgeId = null;
     edges.setHighlight(null);
+    dropWires.clear(); emitter.emit('placement:preview', null);
     ui.clearGuides();
   }
   const ghostApi = {
@@ -593,12 +614,33 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       });
     }
     fx.update(dt);
+    connectionInk.clear();
+    if (connection) {
+      const edge = edges.views.get(connection.id);
+      const elapsed = now - connection.start;
+      if (!edge || elapsed > 1100) connection = null;
+      else {
+        const z = camera.zoom, path = edge.lut;
+        const p = lutAt(path, path.len * (reduced ? 1 : Math.min(1, elapsed / 720)), {});
+        connectionInk.moveTo(path.p0x, path.p0y).bezierCurveTo(path.c1x, path.c1y, path.c2x, path.c2y, path.p3x, path.p3y).stroke({ width: 4 / z, color: P.accent, alpha: .22 });
+        if (elapsed < 720 && !reduced) {
+          connectionInk.circle(p.x, p.y, 12 / z).fill({ color: P.accent, alpha: .15 });
+          connectionInk.circle(p.x, p.y, 5 / z).fill({ color: P.accent }).stroke({ width: 2 / z, color: P.surfaceSolid });
+        } else {
+          const v = nodes.views.get(edge.to);
+          if (v) connectionInk.circle(v.x, v.y, (44 + (reduced ? 0 : (elapsed - 720) / 16)) / Math.max(.7, z)).stroke({ color: P.accent, width: 3 / z, alpha: reduced ? .7 : Math.max(0, 1 - (elapsed - 720) / 380) });
+        }
+      }
+    }
     updateGlows(now);
     updateFlashes(now);
     if (ringNode) {
       if (ringNode.removing || !nodes.views.has(ringNode.id)) ui.setPortRing(null);
       else portRing.position.set(ringNode.x, ringNode.y);
     }
+    portHint.visible = !!ringNode && ringNode.id === selected && editable && input.mode !== 'connect';
+    if (portHint.visible) { portHint.position.set(ringNode.x, ringNode.y - PORT_R - 16 / camera.zoom); portHint.scale.set(1 / camera.zoom); portHint.style.fill = P.accent; }
+    if (viewChanged && ringNode) drawPortRing();
     if (!editable && ringNode) ui.setPortRing(null);
     else if (editable && !ringNode && selected && input.mode === 'idle' && !nodes.hovered) {
       const v = nodes.views.get(selected);
@@ -701,6 +743,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       else if (selected && editable) ui.setPortRing(nodes.views.get(selected) || null, false);
     },
     setTrace(edgeIds) { edges.setTrace(edgeIds); },
+    confirmConnection(edgeId) { connection = { id: edgeId, start: performance.now() }; },
+    setInsertionPreview(fn) { insertionPreview = fn; },
     // type, then world x, y (snapped). Leave x, y out to have the ghost follow the pointer.
     setGhost(type, x, y) {
       if (!type) { ghostClear(); return; }
@@ -816,6 +860,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         particles: particles.count, renderMs: rsn ? sum / rsn : 0, renderMsLast: lastRenderMs,
         idle: isIdle, idleFrames, quality: level, qualitySetting, dotScale, effects: fx.count, nodes: nodes.list.length, edges: edges.list.length,
         zoom: camera.zoom,
+        labelPx: Math.min(...nodes.list.map(v => v.labelT.style.fontSize * v.labelT.scale.x * v.c.scale.x * camera.zoom)),
       };
     },
     async snapshot({ width = 600, height = 315, graph: g2 } = {}) {

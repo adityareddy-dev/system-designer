@@ -47,7 +47,8 @@ export function createNodeLayer(PIXI, parent, env) {
   const dying = [];
   let textRes = 2;
   let compact = false;
-  let tiny = false; // zoomed out so far that names cannot be read without overlapping: only the picked part keeps its name
+  let detailZoom = true;
+  let tiny = false;
   const showLabel = (v) => { v.labelT.visible = true; v.labelT.text = compact ? shortName(v) : v.label; };
   const shortName = v => ({ 'vm-fleet': 'Servers', 'sql-primary': 'SQL', 'sql-replica': 'Replica', 'mobile-app': 'Mobile', 'web-browser': 'Web', 'regional-lb': 'Balancer', 'worker-pool': 'Workers', 'object-storage': 'Objects', 'api-gateway': 'Gateway', 'identity-provider': 'Identity', 'waf': 'Firewall', 'distributed-cache': 'Cache' }[v.type] || v.label?.replace(/\s*\([^)]*\)/g, '').split(' ')[0].slice(0, 9) || v.type);
   let labelK = 1; // label scale that keeps names readable when zoomed out
@@ -95,7 +96,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.icon.anchor.set(0.5); v.icon.width = v.icon.height = 28; v.icon.y = iconOffset(shape);
     v.busy = new PIXI.Graphics();
     v.pool = new PIXI.Graphics();
-    v.poolT = makeText('', 7.5, P.text2, true); v.poolT.anchor.set(.5); v.poolT.y = 19;
+    v.poolT = makeText('', 10.5, P.text2, true); v.poolT.anchor.set(.5); v.poolT.y = 19;
     v.labelBg = new PIXI.Graphics();
     v.pile = new PIXI.Container(); v.pile.visible = false;
     v.pileSprites = PILE.map(([px, py]) => {
@@ -202,7 +203,7 @@ export function createNodeLayer(PIXI, parent, env) {
   }
 
   function drawPool(v, P, now, reduced, time) {
-    const show = v.kind === 'compute' && (v.units > 1 || v.fleetUnits > 1) &&
+    const show = detailZoom && v.kind === 'compute' && (v.units > 1 || v.fleetUnits > 1) &&
       (selected === v.id || v.live || now < (v.recoverUntil || 0));
     v.pool.visible = v.poolT.visible = show;
     v.icon.visible = !show;
@@ -222,7 +223,7 @@ export function createNodeLayer(PIXI, parent, env) {
       }
       if (cell.available < .99) g.moveTo(x + w - 4, y + 2).lineTo(x + w - 1, y + h - 2).moveTo(x + w - 1, y + 2).lineTo(x + w - 4, y + h - 2).stroke({ width: 1, color: P.bad });
     });
-    v.poolT.text = count > 12 ? `${cells.length} groups · ${alive}/${count}` : `${alive}/${count} available`;
+    v.poolT.text = `${alive}/${count}`;
   }
 
   function step(v, dt, now, P, reduced, time) {
@@ -359,6 +360,18 @@ export function createNodeLayer(PIXI, parent, env) {
       for (const v of list) step(v, dt, now, P, reduced, time);
       // Captions always belong to their module. Spacing is handled by graph layout, never by moving captions.
       for (const v of list) {
+        const detail = detailZoom || selected === v.id;
+        v.chip.visible = detail && v.units > 1;
+        v.chip.scale.set(detailZoom ? 1 : labelK * 1.1);
+        v.zonesG.visible = detailZoom;
+        v.busy.visible = detailZoom;
+        v.qbar.visible = detailZoom && v.queue > 0;
+        v.pile.visible = detailZoom && v.over > .01;
+        v.lock.visible = detailZoom && v.locked;
+        v.regionC.visible = detailZoom && multiRegion && v.region !== mainRegion && !v.event;
+        v.statusG.visible = !detailZoom || v.status > 0;
+        if (!detailZoom) { v.statusG.context = env.kit().glyphs.status[v.status]; v.statusG.scale.set(Math.max(1, labelK * .7)); }
+        else v.statusG.scale.set(1);
         v.labelT.y = HALF + 10;
         const key = `${v.labelT.text}/${labelK}/${P.canvas}`;
         if (v.labelBgKey !== key) {
@@ -475,8 +488,9 @@ export function createNodeLayer(PIXI, parent, env) {
     },
     // Below full zoom the names grow (up to 4.5 times, the lowest zoom) so they stay at about 13 px on screen (the base size is 12 px).
     setLabelScale(z) {
-      const px = z < 0.5 ? 10.5 : 13; // a crowded, zoomed-out diagram keeps names at least 11.5 px, a normal one 13 px
-      const k = Math.max(1, Math.min(8, px / (12 * Math.max(0.1, z))));
+      detailZoom = z >= 1.05;
+      const px = 13;
+      const k = Math.max(1, px / (12 * Math.max(0.01, z)));
       if ((z < .65) !== compact) { compact = z < .65; for (const v of list) showLabel(v); }
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
       if (Math.abs(k - labelK) < 0.03) return;

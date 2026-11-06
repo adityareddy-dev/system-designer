@@ -24,7 +24,7 @@ try {
       request.respond({ contentType: 'text/javascript', body: source });
     } else if (file.endsWith('/render/nodes.js')) {
       const source = fs.readFileSync(new URL('../render/nodes.js', import.meta.url), 'utf8')
-        .replace("v.poolT = makeText('', 7.5, P.text2, true);", "v.poolT = makeText('', 7.5, P.text2, true); window.__reviewPools.push({ id: n.id, text: v.poolT });");
+        .replace("v.poolT = makeText('', 10.5, P.text2, true);", "v.poolT = makeText('', 10.5, P.text2, true); window.__reviewPools.push({ id: n.id, text: v.poolT });");
       request.respond({ contentType: 'text/javascript', body: source });
     } else request.continue();
   });

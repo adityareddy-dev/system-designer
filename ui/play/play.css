@@ -177,7 +177,7 @@
 .pl-bar-fill { display: block; height: 100%; width: 0; border-radius: 999px; transition: width var(--dur-2) var(--ease-out); }
 .pl-insp-sec { margin-bottom: 16px; font-size: 13.5px; color: var(--text-2); }
 .pl-insp-sec p { margin: 0; }
-.pl-facts { margin: 0; display: grid; grid-template-columns: 82px 1fr; gap: 6px 8px; font-size: 13px; }
+.pl-facts { margin: 0; display: grid; grid-template-columns: 74px minmax(0,1fr); gap: 6px 8px; font-size: 13px; }
 .pl-facts dt { color: var(--text-3); } .pl-facts dd { margin: 0; color: var(--text); }
 .pl-cost-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 2px 0; }
 .pl-cost-total { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; font-weight: 600; }
@@ -948,3 +948,9 @@
 /* Keep the earned route visible throughout its sequence. */
 .pl-root[data-outcome=pass][data-phase=done] .pl-overlay--debrief {animation:pl-panel-settle 220ms cubic-bezier(.2,.8,.2,1) both}
 :root[data-motion=reduce] .pl-root[data-outcome=pass][data-phase=done] .pl-overlay--debrief {animation:none}
+/* Narrow settings stay readable, including catalog approximation labels. */
+.pl-inspector {min-width:0;overflow-wrap:anywhere}
+.pl-inspector .pl-approx {white-space:normal}
+.pl-inspector dd,.pl-cost-row>* {min-width:0}
+.pl-capacity-unit {margin-top:5px;color:var(--text-2);line-height:1.45}
+.pl-connecting .pl-right,.pl-connecting .pl-left,.pl-connecting .pl-trace,.pl-connecting .pl-focus-map,.pl-connecting .pl-overview {visibility:hidden;pointer-events:none;opacity:0;transform:translateY(16px)}

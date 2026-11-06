@@ -21,7 +21,7 @@ import { createRouteTrace } from './route-trace.js';
 import { renderCheckpointForm } from './correctness.js';
 import { introPathHolds, repairInsertion } from './intro-path.js';
 import { showVictory } from './victory.js';
-import { insertionLayout } from '../../render/placement.js';
+import { insertionLayout, insertionWiring } from '../../render/placement.js';
 import { goalPassed } from './goal-feedback.js';
 import { replicaReadsActive, replicaWiringAdvice } from './lesson-replica.js';
 
@@ -166,6 +166,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     refreshChecks();
     if (S.selected && !g.nodes.some((n) => n.id === S.selected)) select(null);
     else { inspector.refresh(); if (S.selected) inspector.update(S.sim.state().nodes.find(n => n.id === S.selected)); }
+    if (isPhone() && S.selected) showFocusMap(S.selected, true);
     syncUndoButtons();
     releaseHold();
   }
@@ -435,7 +436,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     try {
       let pos = null;
-      if (edgeId && canSplice(type, edgeId)) pos = makeRoomOnEdge(edgeId);
+      const wiring = wiringFor(type, edgeId);
+      if (wiring?.kind === 'side') pos = wiring.position;
+      else if (wiring) pos = makeRoomOnEdge(edgeId);
       else edgeId = null;
       const want = { x: snap(pos ? pos.x : x), y: snap(pos ? pos.y : y) };
       const at = opt.autoPlace && !edgeId ? freeSpot(want.x, want.y, null) : want;
@@ -466,19 +469,27 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       commit();
       snd('connect');
       note('connect', { from, to });
-      if (!isLesson && caption.textContent.includes('Placed here.')) hideCaption();
+      scene.confirmConnection(id);
+      const edge = graph().edges.find(e => e.id === id), target = graph().nodes.find(n => n.id === to);
+      const part = catalog.elementById.get(target?.type);
+      const traffic = edge?.kind === 'observe' ? 'Measurements now travel here.' : edge?.kind === 'replication' ? 'Data copies now travel here.' : edge?.kind === 'control' ? 'Control signals now travel here.'
+        : part?.kind === 'lookaside' || part?.params?.lookasideFor?.length ? 'Checks travel here and answers return to the caller.'
+        : 'Requests now travel in this direction.';
+      showCaption(`${nameOf(from)} → ${nameOf(to)}. ${traffic}`, 2600);
       // once a part is connected its description has done its job: fold it so it stops covering the part the learner just placed
       if (isLesson && (S.selected === from || S.selected === to)) { try { inspector.fold(true); } catch { /* optional */ } }
       return id;
     } catch (e) { toast(e.message || 'Those cannot be connected.', 'warn'); snd('miss'); return null; }
   }
   function canSplice(type, edgeId) {
-    const e = graph().edges.find((x) => x.id === edgeId);
-    if (!e || e.kind !== 'flow') return false;
-    const types = new Map(graph().nodes.map((n) => [n.id, n.type]));
-    const a = S.sim.canConnect(types.get(e.from), type), b = S.sim.canConnect(type, types.get(e.to));
-    return a.ok && b.ok && !a.swap && !b.swap && a.kind === 'flow' && b.kind === 'flow';
+    return !!wiringFor(type, edgeId);
   }
+  const wiringFor = (type, edgeId) => {
+    const plan = insertionWiring(graph(), type, edgeId, catalog, (a, b) => S.sim.canConnect(a, b));
+    if (plan?.kind === 'side') plan.position = freeSpot((plan.source.x + plan.target.x) / 2, (plan.source.y + plan.target.y) / 2 - 160);
+    return plan;
+  };
+  scene.setInsertionPreview(wiringFor);
   // A part placed on its own gets one line on how to connect it: the first time in a session, and every time in a lesson.
   function connectCoach(id, el) {
     if (opts.lesson?.id === 'replication-lag' && el.id === 'sql-replica') { showCaption(replicaWiringAdvice); return; }
@@ -491,17 +502,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const touch = isPhone() || !!globalThis.matchMedia?.('(pointer: coarse)').matches;
     showCaption((touch ? `${lessonTip} Tap the part, then "Connect to…", then tap the next part.` : `${lessonTip} Drag from the arrow dot on a part's edge to the next part, or select it and press "Connect to…".`).trim(), 7000);
   }
-  // Dropped on a connection A>B: becomes A>new>B when both new links are allowed.
+  // Side calls return to the caller and keep its delivery route.
   function spliceInto(id, type, edgeId) {
-    const e = graph().edges.find((x) => x.id === edgeId);
-    if (!e || e.kind !== 'flow') return;
-    const types = new Map(graph().nodes.map((n) => [n.id, n.type]));
-    const a = S.sim.canConnect(types.get(e.from), type), b = S.sim.canConnect(type, types.get(e.to));
-    if (!a.ok || !b.ok || a.swap || b.swap || a.kind !== 'flow' || b.kind !== 'flow') return;
+    const plan = wiringFor(type, edgeId);
+    if (!plan) return;
+    const e = plan.edge;
     try {
-      S.sim.disconnect(edgeId);
       S.sim.connect(e.from, id);
-      S.sim.connect(id, e.to);
+      if (plan.kind === 'route') { S.sim.connect(id, e.to); S.sim.disconnect(edgeId); }
       note('connect', { from: e.from, to: id });
     } catch { /* keep the plain placement */ }
   }
@@ -609,11 +617,16 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       later(() => { const n = graph().nodes.find((q) => q.id === id); if (n && !S.destroyed && S.selected === id) revealIfHidden(n.x, n.y); }, 120);
     }
     root.classList.toggle('pl-has-selection', !!id);
+    if (id && canStructure() && !store.get('seenConnectHandle', false)) {
+      store.set('seenConnectHandle', true);
+      showCaption('Drag the arrow handle outward to another part to connect it. Drag the part itself to move it.', 6500);
+    }
     // in a lesson the diagram steps out from under the settings panel, and settles back once it closes
     if (isPhone()) showFocusMap(id);
     bus.emit('play:select', { nodeId: id });
   }
-  function showFocusMap(id) {
+  function showFocusMap(id, refresh = false) {
+    const zoomed = refresh && root.querySelector('.pl-focus-map .pl-btn')?.dataset.zoomed;
     root.querySelector('.pl-focus-map')?.remove();
     if (!id) return;
     const g = graph(), n = g.nodes.find(n => n.id === id);
@@ -636,6 +649,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       scene.fit({ l: 38, r: 38, t: a.t + 24, b: a.b + 28 }, true, { focusId: id, maxZ: 1.35 });
       enlarge.dataset.zoomed = 'true'; enlarge.textContent = 'Show whole diagram';
     } });
+    if (zoomed) { enlarge.dataset.zoomed = 'true'; enlarge.textContent = 'Show whole diagram'; }
     map.append(drawing, enlarge); root.append(map);
     syncFocusMap();
   }
@@ -658,8 +672,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function startConnect(from) {
     S.connectFrom = from;
     // Clear the target area and stop any fit already moving the phone diagram.
-    if (isPhone()) { scene.stopCamera(); inspector.hide(); }
-    else inspector.fold(true);
+    scene.stopCamera();
     root.classList.add('pl-connecting');
     showCaption('Now tap the part it should send requests to. Esc cancels.', 0);
   }
@@ -1768,10 +1781,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }));
 
   // ---- state for tests
-  const LABEL_MAX_K = 8; // same cap as render/nodes.js setLabelScale
   // Camera zoom and the free canvas area, for tests: the on-screen label size is 12 px times the label scale times the zoom.
   function viewInfo() {
-    try { const z = scene.stats().zoom; return { zoom: z, labelPx: 12 * Math.max(1, Math.min(LABEL_MAX_K, (z < .5 ? 10.5 : 13) / (12 * Math.max(.1, z)))) * z, free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
+    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, labelPx: stats.labelPx, free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
   }
   function getState() {
     const sim = S.sim;
@@ -1898,10 +1910,19 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   } catch { syncHud(); }
   const wirePreview = h('output', { class: 'pl-wire-preview', hidden: '', 'aria-live': 'polite' }); root.append(wirePreview);
   offs.push(scene.on('connect:preview', pair => {
+    root.classList.toggle('pl-connecting', !!pair || !!S.connectFrom);
     wirePreview.hidden = !pair?.to;
     if (!pair?.to) return;
     const name = id => { const n = graph().nodes.find(n => n.id === id); return catalog.elementById.get(n?.type)?.name || id; };
     wirePreview.textContent = `${name(pair.from)} → ${name(pair.to)} · ${pair.ok ? 'Release to connect' : 'This connection is not allowed'}`;
+  }));
+  offs.push(scene.on('placement:preview', preview => {
+    const plan = preview && wiringFor(preview.type, preview.edgeId);
+    wirePreview.hidden = !preview;
+    if (!preview) return;
+    wirePreview.textContent = !plan ? 'Place beside this route. Connect it separately.' : plan.kind === 'side'
+      ? `Add a side call to ${catalog.elementById.get(preview.type).name}. Keep ${nameOf(plan.source.id)} → ${nameOf(plan.target.id)}.`
+      : `Insert ${catalog.elementById.get(preview.type).name} between ${nameOf(plan.source.id)} and ${nameOf(plan.target.id)}.`;
   }));
   bus.emit('play:loaded', { mode, problemId: S.problem.id ?? null, lessonId: opts.lesson?.id ?? null });
   bus.emit('play:graph', { graph: graph() });
