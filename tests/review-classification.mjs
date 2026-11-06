@@ -46,6 +46,47 @@ const missing = repairCase({ ...broken, verdict: '', nextStep: { ...broken.nextS
 assert.match(missing.choices[missing.answer], /Restore a complete path/);
 assert.match(missing.effects[missing.effect], /Completion becomes possible/);
 
+const tenant = problemById.get('tenant-metrics');
+const outage = day(tenant, sim => sim.setKnob('lb', 'zones', 1));
+assert.equal(outage.checks.availability, false);
+assert.equal(outage.nextStep.knob, 'zones');
+assert.equal(outage.nextStep.eventId, 'zone-outage');
+const coverage = repairCase(outage, tenant, catalog);
+assert.equal(coverage.kind, 'recovery');
+assert.match(coverage.choices[coverage.answer], /Spread Load balancer across/);
+assert.match(coverage.effects[coverage.effect], /outside the failed zone/);
+assert.match(coverage.evidence, /Load balancer.*1 zone/);
+assert.match(coverage.evidence, /Zone outage/);
+assert.match(coverage.evidence, /failed operations/);
+assert(repairCorrect(coverage, coverage.answer, coverage.effect, coverage.value));
+const capacityChoice = coverage.choices.findIndex(text => text.startsWith('Add capacity'));
+const capacityEffect = coverage.effects.findIndex(text => text.startsWith('Pressure'));
+assert(capacityChoice >= 0 && capacityEffect >= 0);
+assert(!repairCorrect(coverage, capacityChoice, coverage.effect, coverage.value));
+assert(!repairCorrect(coverage, coverage.answer, capacityEffect, coverage.value));
+const repaired = day(tenant);
+assert.equal(repaired.checks.availability, true, 'restoring zone coverage fixes the observed availability failure');
+assert.deepEqual(repairCase({ ...outage, nextStep: { ...outage.nextStep, text: 'Try another zone.' } }, tenant, catalog), coverage,
+  'structured zone diagnosis is independent of advice wording');
+assert.equal(repairCase({ ...outage, nextStep: { ...outage.nextStep, eventId: undefined } }, tenant, catalog).kind, 'recovery',
+  'zone advice also occurs when a queue consumer disappears');
+for (const id of ['region-outage', 'bad-config-push', 'dns-misconfig']) {
+  const problem = structuredClone(tenant);
+  problem.events = [{ id, at: '12:00' }];
+  const result = day(problem), test = repairCase(result, problem, catalog);
+  assert.equal(result.nextStep.eventId, id);
+  assert.equal(test.kind, 'recovery', id);
+  assert(test.evidence.includes(result.events[0].story.hurt), id + ' retains the measured event cause');
+  assert(repairCorrect(test, test.answer, test.effect, test.value), id);
+  if (id === 'region-outage') {
+    assert.match(test.choices[test.answer], /second region/);
+    assert.match(test.effects[test.effect], /outside the failed region/);
+  } else {
+    assert.equal(test.choices[test.answer], result.events[0].story.fix, id + ' keeps the modeled repair');
+    if (id === 'bad-config-push') assert.match(test.effects[test.effect], /Shorter detection and repair/);
+  }
+}
+
 for (const id of ['music-streaming', 'video-on-demand', 'game-patch-day']) {
   const problem = problemById.get(id), result = day(problem);
   const cache = result.graph.nodes.find(n => catalog.elementById.get(n.type)?.kind === 'cache');

@@ -32,6 +32,27 @@ try {
     const checked = { applied: applied.length, text: form.querySelector('button').textContent };
     form.requestSubmit();
     const tenant = problemById.get('tenant-metrics');
+    const zoneSim = createSim({ catalog, problem: tenant });
+    zoneSim.loadGraph(tenant.editorial.designs[0].graph); zoneSim.setKnob('lb', 'zones', 1);
+    zoneSim.start(); zoneSim.advance(86400000);
+    const zoneResult = zoneSim.result(), zoneCase = repairCase(zoneResult, tenant, catalog), zoneApplied = [];
+    let zoneBack = 0;
+    const zoneForm = renderRepair(zoneResult, tenant, catalog, { onSetNext: fix => zoneApplied.push(fix), onBack: () => zoneBack++ });
+    document.body.append(zoneForm);
+    const zoneSelects = zoneForm.querySelectorAll('select');
+    zoneForm.querySelector('input').value = zoneCase.value;
+    zoneSelects[0].value = zoneCase.choices.findIndex(text => text.startsWith('Add capacity'));
+    zoneSelects[1].value = zoneCase.effect;
+    zoneForm.requestSubmit(); zoneForm.requestSubmit();
+    const zone = { wrongBack: zoneBack, wrongText: zoneForm.textContent };
+    zoneSelects[0].value = zoneCase.answer;
+    zoneSelects[1].value = zoneCase.effects.findIndex(text => text.startsWith('Pressure'));
+    zoneForm.requestSubmit(); zoneForm.requestSubmit();
+    zone.wrongEffectBack = zoneBack;
+    zoneSelects[1].value = zoneCase.effect;
+    zoneForm.dispatchEvent(new Event('input', { bubbles: true })); zoneForm.requestSubmit();
+    zone.checked = { back: zoneBack, text: zoneForm.textContent };
+    zoneForm.requestSubmit(); zone.back = zoneBack; zone.applied = zoneApplied;
     const outageSim = createSim({ catalog, problem: tenant });
     outageSim.loadGraph(tenant.editorial.designs[0].graph);
     outageSim.setKnob('api', 'units', 4); outageSim.setKnob('api', 'autoscale', false);
@@ -117,7 +138,7 @@ try {
       const section = [...host.querySelectorAll('section')].find(s => s.querySelector('h3')?.textContent === 'The numbers');
       problem.numbers.forEach((row,i) => { if (estimateUnit(row).percent) units.push({ id: problem.id, text: section.querySelectorAll('tr')[i].children[1].textContent, value: estimateUnit(row).value }); });
     }
-    return { units, initial, none, wrongPlan, wrongCount, checked, applied, expected: test.value, outage, overloaded, cost, latency };
+    return { units, initial, none, wrongPlan, wrongCount, checked, applied, expected: test.value, zone, outage, overloaded, cost, latency };
   });
   assert.equal(outcome.units.length, 6);
   for (const row of outcome.units) { assert(row.text.includes(row.value + ' %'), row.id); assert(!row.text.includes('of requests')); }
@@ -127,6 +148,14 @@ try {
   assert.match(outcome.wrongCount.text, /ceil\(/);
   assert.equal(outcome.checked.applied, 0); assert.match(outcome.checked.text, /Set my/);
   assert.equal(outcome.applied.length, 1); assert.equal(outcome.applied[0].units, outcome.expected);
+  assert.equal(outcome.zone.wrongBack, 0, 'capacity in the failed zone is not an outage repair');
+  assert.match(outcome.zone.wrongText, /Revisit the limiting boundary/);
+  assert.equal(outcome.zone.wrongEffectBack, 0, 'a pressure prediction cannot pass a zone coverage repair');
+  assert.equal(outcome.zone.checked.back, 0, 'checking a repair does not apply it');
+  assert.match(outcome.zone.checked.text, /Plan, predicted effect and arithmetic checked/);
+  assert.match(outcome.zone.checked.text, /Load balancer: 1 zone/);
+  assert.equal(outcome.zone.back, 1, 'a checked outage repair returns to Draw');
+  assert.equal(outcome.zone.applied.length, 0, 'zone repair never applies a capacity count');
   assert.equal(outcome.outage.value, 26); assert.equal(outcome.outage.value, outcome.outage.suggested);
   assert.match(outcome.outage.evidence, /2 of 4 installed units survived/);
   assert(outcome.outage.activeCountRejected);
