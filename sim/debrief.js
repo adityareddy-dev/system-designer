@@ -1056,9 +1056,9 @@ function verdictOf(S, metrics, score, passed, eventsOut, checks) {
     return `Broke${at ? ' ' + at : ''}: ${pct(a)} percent of requests succeeded against a ${pct(req.availability)} percent target.`;
   }
   if (!checks.latency) {
-    if (metrics.latencyShare < latencyBar(req)) return `Too slow. The p99 met its target in ${Math.round(metrics.latencyShare * 100)} percent of the day; the bar is ${Math.round(latencyBar(req) * 100)} percent.${slowCause(S)}`;
+    if (metrics.latencyShare < latencyBar(req)) return `Too slow. The p99 met its target in ${Math.round(metrics.latencyShare * 100)} percent of served interactive requests; the bar is ${Math.round(latencyBar(req) * 100)} percent.${slowCause(S)}`;
     const slow = Object.entries(metrics.typeShares || {}).filter(([, v]) => v < PASS_TYPE_SHARE).map(([k]) => S.catalog.requestById.get(k)?.plural || k);
-    return `Too slow for ${joinNames(slow)}: they met their speed target in under ${Math.round(PASS_TYPE_SHARE * 100)} percent of the day.`;
+    return `Too slow for ${joinNames(slow)}: they met their speed target in under ${Math.round(PASS_TYPE_SHARE * 100)} percent of served requests.`;
   }
   if (!checks.safety) {
     const L = metrics.ledger;

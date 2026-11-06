@@ -15,7 +15,7 @@ const svg = (tag, attrs = {}, ...kids) => {
   return e;
 };
 
-// share of the day the p99 must meet its target to pass (sim/score.js): 90 percent on Easy problems, else 95
+// share of served interactive requests whose interval p99 must meet its target to pass (sim/score.js): 90 percent on Easy problems, else 95
 const latBarOf = (problem) => problem?.requirements?.latencyBar ?? (problem?.difficulty === 'Easy' ? 0.9 : 0.95);
 const STALE_MAX = 0.001; // read-your-writes problems: most stale own reads allowed (sim/score.js)
 
@@ -143,7 +143,7 @@ export function verdictLine(result, catalog, problem) {
     return `Missed the uptime target: ${fmtPct(a.actual)} of requests succeeded against ${fmtPct(a.target)}.`;
   }
   if (result.verdict) return result.verdict;
-  if (result.slo.latency.shareOk < LAT_BAR) return `Too slow: the speed target held for only ${fmtPct(result.slo.latency.shareOk, 0)} of the day (${Math.round(LAT_BAR * 100)}% needed).`;
+  if (result.slo.latency.shareOk < LAT_BAR) return `Too slow: the speed target held for only ${fmtPct(result.slo.latency.shareOk, 0)} of served interactive requests (${Math.round(LAT_BAR * 100)}% needed).`;
   if (result.score.safety < 150) return 'Fast and up, but data was put at risk. Safety needs at least 150 of 200 points.';
   return `Over budget: about ${fmtUsd(result.slo.cost.perMonth)} a month against ${fmtUsd(result.slo.cost.budget)}.`;
 }
@@ -386,9 +386,9 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const cards = h('section', { class: 'pl-slo-grid', 'aria-label': 'Score cards' },
     sloCard({ key: 'reliability', title: 'Reliability', iconId: 'ui.availability', pts: sc.reliability, max: 400, ok: a.actual >= a.target, target: fmtPct(a.target), actual: fmtPct(a.actual),
       lines: [a.actual >= a.target ? 'You met the uptime target.' : `${nines.toFixed(1)} "nines" short of the target. Each nine is ten times fewer failures.`, lateNote, 'Real user requests only; attacks and retries are not counted.'].filter(Boolean) }),
-    sloCard({ key: 'latency', title: 'Speed', iconId: 'ui.latency', pts: sc.latency, max: 200, ok: okLat, flag: none || thin ? 'none' : null, target: latTarget, actual: none ? 'nothing served' : `${fmtPct(l.shareOk, 1)} (≈ ${Math.round(l.shareOk * 1440).toLocaleString()} of 1,440 equivalent minutes)`,
-      lines: none ? ['Not measured: nothing was served, so there is no speed to score.'] : [thinNote, `Compliance uses served-request weighting; equivalent minutes scale that share to a 1,440-minute day. To pass: aggregate compliance must reach ${Math.round(LAT_BAR * 100)}%, and every request type at least 80%.`,
-        `Slowest moment: ${fmtMs(l.worstP99Ms)} (p99, approx.).${okLat && overTarget ? ' That slow stretch is inside the allowance: the target only has to hold in most minutes.' : ''}`, ...worst.map(([t, v]) => v.measured === false ? `${catalog.requestById.get(t)?.name || t}: Not measured: no requests of this type were served. Target ${fmtMs(v.targetMs)}.` : `${catalog.requestById.get(t)?.name || t}: ${fmtPct(v.shareOk, 1)} within target (≈ ${Math.round(v.shareOk * 1440).toLocaleString()} of 1,440 equivalent minutes, weighted by served requests). ${fmtMs(v.worstP99Ms ?? v.p99Ms)} at the slowest, target ${fmtMs(v.targetMs)}${okLat && (v.worstP99Ms ?? v.p99Ms) > v.targetMs ? ` (over it in ${Math.max(1, Math.round((1 - (v.shareOk ?? 1)) * 1440))} of 1,440 equivalent minutes, within the allowance)` : ''}`),
+    sloCard({ key: 'latency', title: 'Speed', iconId: 'ui.latency', pts: sc.latency, max: 200, ok: okLat, flag: none || thin ? 'none' : null, target: latTarget, actual: none ? 'nothing served' : `${fmtPct(l.shareOk, 1)} of served interactive requests`,
+      lines: none ? ['Not measured: nothing was served, so there is no speed to score.'] : [thinNote, `Compliance weights each interval by its served requests. To pass: aggregate compliance must reach ${Math.round(LAT_BAR * 100)}%, and every request type at least 80%.`,
+        `Slowest moment: ${fmtMs(l.worstP99Ms)} (p99, approx.).${okLat && overTarget ? ' That slow stretch is inside the allowance: the required share of served requests still met the target.' : ''}`, ...worst.map(([t, v]) => v.measured === false ? `${catalog.requestById.get(t)?.name || t}: Not measured: no requests of this type were served. Target ${fmtMs(v.targetMs)}.` : `${catalog.requestById.get(t)?.name || t}: ${fmtPct(v.shareOk, 1)} of served requests within target. ${fmtMs(v.worstP99Ms ?? v.p99Ms)} at the slowest, target ${fmtMs(v.targetMs)}${okLat && (v.worstP99Ms ?? v.p99Ms) > v.targetMs ? ` (over it in ${fmtPct(1 - (v.shareOk ?? 1), 1)} of served requests, within the allowance)` : ''}`),
         slowTypes.length ? `Too often slow: ${slowTypes.join(', ')}.` : null, servedNote].filter(Boolean) }),
     sloCard({ key: 'safety', title: 'Data safety', iconId: 'ui.safety', pts: sc.safety, max: 200, ok: okSafe, flag: none || thin ? 'none' : null, target: problem?.requirements?.dataSafety === 'no-loss' ? 'no lost writes' : problem?.requirements?.dataSafety === 'rpo-1m' ? 'lose at most a minute of writes' : problem?.requirements?.dataSafety || '–', actual: `${fmtNum(s.lostWrites)} lost · ${fmtNum(s.duplicates)} duplicate`,
       lines: none ? ['Not measured: nothing was served, so no data was kept to score. Safety points are only awarded for served requests.'] : [thinNote, s.lostWrites ? `${fmtNum(s.lostWrites)} acknowledged writes were lost.` : 'No acknowledged write was lost.', s.duplicates ? `${fmtNum(s.duplicates)} duplicate effects (such as a double charge).` : 'No duplicate effects.',
