@@ -5,6 +5,7 @@ import { nodeLabel } from './cost.js';
 import { joinNames } from './util.js';
 import { checkCompliance } from './events.js';
 import { traceRoute } from './trace.js';
+import { obligationFailures } from './obligations.js';
 
 const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const lowerName = (s) => (/^[A-Z][A-Z]/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
@@ -75,9 +76,9 @@ function unservedMessage(S, t) {
     const trace = traceRoute(model, type.id);
     const hop = trace.rejected.find((h) => h.from === trace.repair?.from && /side call|does not handle|parking/i.test(h.reason))
       || trace.rejected.find((h) => /Side calls return|does not handle|parking/.test(h.reason)) || trace.rejected[0];
-    const name = (id) => label(nodes.findIndex((n) => n.id === id));
+    const name = (id) => { const n = nodes.find(n => n.id === id); return n ? nodeLabel(n) : catalog.elementById.get(trace.repair?.addNodes?.find(n => n.id === id)?.type)?.name || id; };
     const rejected = hop ? `${name(hop.from)} → ${name(hop.to)} is rejected: ${hop.reason} ` : '';
-    if (trace.repair) return { msg: `${cap1(plural)} have no usable route. ${rejected}Connect ${name(trace.repair.from)} to ${name(trace.repair.to)}. Complete path: ${trace.repair.path.map(name).join(' → ')}.`, nodeId: trace.repair.from };
+    if (trace.repair) return { msg: `${cap1(plural)} have no usable route. ${rejected}${trace.repair.addNodes?.length ? 'Add Background workers. ' : ''}Connect ${(trace.repair.steps || [[trace.repair.from, trace.repair.to]]).map(([a,b]) => `${name(a)} to ${name(b)}`).join(', then ')}. Complete path: ${trace.repair.path.map(name).join(' → ')}.`, nodeId: trace.repair.from };
     return { msg: `${cap1(plural)} have no usable route. ${rejected}Trace a request to check each hop before adding a delivery connection.`, nodeId: hop?.from };
   }
   const ids = finishersFor(S, t);
@@ -179,6 +180,7 @@ export function validateModel(S) {
       if (def) add('warn', 'compliance-missing', `Missing proof for "${def.name}": ${def.text} Add ${joinNames(def.satisfiedBy.map((id) => catalog.elementById.get(id)?.name || id), 'or')}.`, undefined, { elementId: def.satisfiedBy[0] });
     }
   }
+  for (const f of obligationFailures(S)) add('warn', f.code, f.message, f.nodeId);
   return issues;
 }
 

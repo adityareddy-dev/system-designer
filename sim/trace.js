@@ -1,6 +1,6 @@
 // Build-time request paths and excluded hops from the compiled routing tables.
 import { M, compile } from './route.js';
-import { connectRule } from './graph.js';
+import { connectRule, makeNode } from './graph.js';
 
 export function traceRoute(model, type) {
   const t = model.catalog.typeIndex.get(type);
@@ -59,6 +59,9 @@ export function traceRoute(model, type) {
 // Verify a missing connection by compiling it with the same rules as the run.
 function findRepair(model, t) {
   const { nodes, edges, catalog } = model;
+  const reachable = new Set(), pending = [...model.sources].filter(u => model.sourceShare[u * model.T + t] > 0);
+  while (pending.length) { const u = pending.pop(); if (reachable.has(u)) continue; reachable.add(u); for (const e of model.outFlow[u]) if (model.H(e.ti,t)) pending.push(e.ti); }
+  const queues = nodes.filter(n => n.kind === 'queue' && !n.isDLQ && reachable.has(n.i));
   const callers = [...nodes.filter((n) => n.kind === 'compute').reverse(), ...nodes.filter((n) => n.kind !== 'compute')];
   for (const a of callers) for (const b of nodes) {
     if (a.i === b.i || !model.H(a.i, t) || !model.canServe[b.i * model.T + t]) continue;
@@ -85,7 +88,35 @@ function findRepair(model, t) {
     for (const s of candidate.sources) {
       if (!(candidate.sourceShare[s * candidate.T + t] > 0)) continue;
       const path = walk(s);
-      if (path?.some((node, i) => node === a.id && path[i + 1] === b.id)) return { from: a.id, to: b.id, path };
+      if (path?.some((node, i) => node === a.id && path[i + 1] === b.id)) {
+        if (queues.length && !queues.some(q => path.includes(q.id))) continue;
+        return { from: a.id, to: b.id, path };
+      }
+    }
+  }
+  // A queue needs a consumer and its delivery destination, not a bypass back to synchronous calls.
+  for (const q of queues) for (const b of nodes.filter(n => model.C(n.i, t) && n.kind !== 'source' && n.kind !== 'cache')) {
+    const worker = nodes.find(n => n.el.id === 'worker-pool');
+    const id = worker?.id || 'repair-workers';
+    const added = worker ? [] : [makeNode(catalog, catalog.elementById.get('worker-pool'), id, q.g.x + 160, q.g.y, {}, model.env)];
+    const steps = [[q.id, id], [id, b.id]].filter(([from, to]) => !edges.some(e => e.from === from && e.to === to));
+    const candidate = compile(catalog, { nodes: [...nodes.map(n => n.g), ...added], edges: [...edges.map(e => ({ id: e.id, from: e.from, to: e.to, kind: e.kind })), ...steps.map(([from,to]) => ({ id: `${from}>${to}`, from, to, kind: 'flow' }))] }, model.env, model.problem);
+    if (!candidate.typeServed[t]) continue;
+    const prefix = (u, path = [], seen = new Set()) => {
+      if (seen.has(u)) return null;
+      if (u === q.i) return [...path, nodes[u].id];
+      seen = new Set(seen).add(u);
+      for (const e of model.outFlow[u]) {
+        if (!model.H(e.ti, t)) continue;
+        const found = prefix(e.ti, [...path, nodes[u].id], seen);
+        if (found) return found;
+      }
+      return null;
+    };
+    for (const u of model.sources) {
+      if (!(model.sourceShare[u * model.T + t] > 0)) continue;
+      const path = prefix(u);
+      if (path) return { from: steps[0][0], to: steps[0][1], path: [...path, id, b.id], steps, addNodes: added.map(n => ({ id: n.id, type: n.type })) };
     }
   }
   return null;

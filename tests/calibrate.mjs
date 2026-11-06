@@ -5,6 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { applyPromises } from '../content/problems/promises.js';
+import { applyEvidence } from '../content/problems/evidence.js';
 
 const J = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 const imp = (f) => import(pathToFileURL(path.resolve(f)).href);
@@ -23,7 +25,7 @@ const latency = !args.includes('--no-latency');
 const only = new Set(args.filter((a) => !a.startsWith('--')));
 const cal = JSON.parse(JSON.stringify(current));
 const raw = new Map();
-for (const f of sourceFiles) for (const p of f.problems || []) if (!raw.has(p.id)) raw.set(p.id, applyCalibration(p, fixes[p.id]));
+for (const f of sourceFiles) for (const p of f.problems || []) if (!raw.has(p.id)) raw.set(p.id, applyPromises(applyEvidence(applyCalibration(p, fixes[p.id]))));
 
 // Uptime floors: money moves at 99.9 percent or better, everything else at 99.5 or better (never above the brief).
 const floorOf = (id, src) => Math.min(src, problemById.get(id)?.group === 'fintech' ? 0.999 : 0.995);
@@ -60,7 +62,7 @@ for (const [id, base] of raw) {
   const designsN = (base.editorial?.designs || []).length;
   const srcAvail = base.requirements.availability ?? 0.99;
   // start from the brief's uptime target; budgets are re-derived from scratch each run
-  if (c.requirements) { delete c.requirements.availability; delete c.requirements.budgetPerMonth; }
+  if (c.requirements) { if (size) delete c.requirements.availability; if (budget) delete c.requirements.budgetPerMonth; }
 
   for (let i = 0; i < designsN; i++) {
     const dc = c.designs[i] || (c.designs[i] = {});

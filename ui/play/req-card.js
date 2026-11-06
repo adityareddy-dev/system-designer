@@ -2,7 +2,7 @@
 import { loadSummary, gradingContract } from './load-labels.js';
 import { h, iconEl, fmtNum, fmtUsd, approx } from './util.js';
 import { shapeSvg } from '../../assets/shapes.js';
-import { latencyTarget } from '../../sim/engine.js';
+import { latencyTarget, queueLimitFor } from '../../sim/engine.js';
 
 const SAFETY = {
   'no-loss': 'No acknowledged write may be lost',
@@ -58,7 +58,10 @@ export function createReqCard(host, { catalog, problem, advice = true }) {
   const av = r.availability ?? 0.99;
   rows.append(row('ui.availability', 'Uptime', `${(av * 100).toFixed(av >= 0.9999 ? 3 : av >= 0.999 ? 2 : 1)}% of requests succeed`));
   rows.append(row('ui.safety', 'Data safety', SAFETY[r.dataSafety] || r.dataSafety || '–'));
-  if (r.readYourWrites) rows.append(row('ui.check', 'Fresh reads', 'People must see their own changes at once'));
+  if (r.retentionDays) rows.append(row('ui.clock', 'Data retention', `At least ${r.retentionDays} days on authoritative stores`));
+  const waits = Object.keys(r.mix || {}).map(id => `${catalog.requestById.get(id)?.plural || id}: ${queueLimitFor(r, catalog.requestById.get(id))} seconds`);
+  rows.append(row('ui.clock', 'Waiting deadline', waits.join('; ') + '. Queued work beyond this age counts as failed. This is separate from the interactive p99 target.'));
+  if (r.readYourWrites) rows.append(row('ui.check', 'Fresh reads', 'Read your own changes; at most 0.1% of reads may be stale in this model'));
   if (r.privateReads > 0) rows.append(row('ui.lock', 'Private reads', [approx(`${Math.round(r.privateReads * 100)}%`), ' of reads are personal; a shared CDN copy cannot answer them']));
   rows.append(row('ui.budget', 'Budget', [approx(fmtUsd(r.budgetPerMonth) + ' a month')]));
   const regs = Object.entries(r.userRegions || {}).map(([k, v]) => `${regionName(k)} ${Math.round(v * 100)}%`).join(', ');

@@ -15,9 +15,10 @@ import { applyCalibration } from './calibrate.js';
 import twists from './twists.js';
 import { twistEvents } from './twist-events.js';
 import { applyEvidence } from './evidence.js';
-import correctness from './correctness.js';
+import { correctnessFor } from './correctness.js';
 import deeper from './deeper.js';
 import conceptLinks from './concept-links.js';
+import { applyPromises } from './promises.js';
 
 // Industry groups in display order (CONTRACT 11.1).
 const GROUPS = [
@@ -121,9 +122,10 @@ for (const file of files) {
   for (const p of file.problems || []) {
     if (!p || !p.id || problemById.has(p.id)) continue;
     const gid = GROUP_OF[p.id] || (known.has(file.group?.id) ? file.group.id : 'core');
-    const prob = { ...spaced(applyEvidence(applyCalibration(applyCalibration(p, fixes[p.id]), calibration[p.id]))), group: gid };
+    const prob = { ...spaced(applyPromises(applyEvidence(applyCalibration(applyCalibration(p, fixes[p.id]), calibration[p.id])))), group: gid };
     if (conceptLinks[p.id]) prob.concepts = [...new Set([...prob.concepts, ...conceptLinks[p.id]])];
-    if (correctness[p.id]) prob.correctness = correctness[p.id];
+    const checkpoint = correctnessFor(prob);
+    if (checkpoint) prob.correctness = checkpoint;
     // the "new twist" replay: the same problem with its events moved and one more added (tools/gen-twists.mjs)
     const tw = twists[p.id];
     if (tw && !tw.none) prob.twist = { shiftMin: tw.shiftMin, extra: tw.extra, events: twistEvents(prob, tw) };

@@ -2,8 +2,9 @@
 import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, approx, statusGlyph } from './util.js';
 import { stepCount } from './draw-controls.js';
 import { capacityText, inspectorStatus } from './inspector-facts.js';
+import { serviceElement } from '../../sim/service-profile.js';
 
-export function createInspector(host, { catalog, getNode, getHome, onKnob, onDelete, onDuplicate, onConnect, onClose, lesson = false }) {
+export function createInspector(host, { catalog, getNode, getHome, getProblem, onKnob, onDelete, onDuplicate, onConnect, onClose, lesson = false }) {
   const root = h('aside', { class: 'pl-inspector', 'aria-label': 'Inspector', hidden: '' });
   host.append(root);
   let curId = null;
@@ -137,7 +138,7 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
     root.replaceChildren();
     const node = curId && getNode(curId);
     if (!node) { root.hidden = true; return; }
-    const el = catalog.elementById.get(node.type);
+    const el = serviceElement(catalog, getProblem?.(), node.type);
     if (!el) { root.hidden = true; return; }
     root.hidden = false;
     root.classList.toggle('pl-inspector--folded', folded);

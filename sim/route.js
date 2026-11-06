@@ -1,6 +1,7 @@
 // Compiles a graph into the runtime model: node table, edge classes, topological order and per-type routing tables.
 import { NEAR_USER, knobValue, inRequestPath } from './graph.js';
 import { sourceWeights } from './sources.js';
+import { serviceElement } from './service-profile.js';
 
 export const KIND = { source: 0, router: 1, filter: 2, cache: 3, compute: 4, store: 5, queue: 6, lookaside: 7, tap: 8, external: 9, observer: 10, control: 11 };
 export const M = { NONE: 0, COMPLETE: 1, FORWARD: 2, QUEUE: 3, CALLED: 4, TAPEND: 5, CACHE: 6, SIDECACHE: 7, ABSORB: 8 };
@@ -18,8 +19,8 @@ const ASYNC_ACCEPT_P99 = 1000;
 const EMPTY = new Int32Array(0);
 const EMPTYF = new Float64Array(0);
 
-function nodeInfo(catalog, g, i, env) {
-  const el = catalog.elementById.get(g.type);
+function nodeInfo(catalog, g, i, env, problem) {
+  const el = serviceElement(catalog, problem, g.type);
   const p = el.params || {};
   const knobs = el.knobs || [];
   const kv = (k) => knobValue(catalog, g, k);
@@ -107,7 +108,7 @@ export function compile(catalog, graph, env, problem = { traffic: {} }) {
   catalog.requests.forEach((r, i) => { cacheable[i] = r.cacheable ? 1 : 0; });
 
   const N = graph.nodes.length;
-  const nodes = graph.nodes.map((g, i) => nodeInfo(catalog, g, i, env));
+  const nodes = graph.nodes.map((g, i) => nodeInfo(catalog, g, i, env, problem));
   const idx = new Map(nodes.map((n) => [n.id, n.i]));
   const hm = new Uint8Array(N * T), cm = new Uint8Array(N * T);
   for (let u = 0; u < N; u++) {

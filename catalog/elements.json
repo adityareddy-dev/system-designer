@@ -44,7 +44,7 @@
     "replication": { "type": "enum", "label": "Replication", "options": ["none", "async", "sync"], "default": "async", "help": "async: fast writes, a short window of loss on failover. sync: no loss, a few ms slower." },
     "readFrom": { "type": "enum", "label": "Read from", "options": ["primary", "replicas"], "default": "replicas", "help": "Replicas spread load but can be a little behind." },
     "partitions": { "type": "int", "label": "Partitions", "default": 12, "help": "How many ordered lanes. More lanes, more parallel consumers; order is kept only inside a lane." },
-    "retentionDays": { "type": "enum", "label": "Keep for (days)", "options": [1, 4, 7, 14, 30, 90, 395], "default": 7, "help": "Older data or messages are deleted." },
+    "retentionDays": { "type": "enum", "label": "Keep for (days)", "options": [1, 4, 5, 7, 14, 30, 90, 395, 2555, 3650], "default": 7, "help": "Older data or messages are deleted." },
     "retries": { "type": "enum", "label": "Retries", "options": [0, 1, 2, 3, 5], "default": 3, "help": "How many times a failed call is tried again." },
     "backoff": { "type": "enum", "label": "Retry spacing", "options": ["none", "exponential", "exponential-jitter"], "default": "none", "help": "Waiting longer between tries, with randomness, stops everyone retrying at once." },
     "timeoutMs": { "type": "enum", "label": "Timeout (ms)", "options": [25, 50, 100, 300, 1000, 3000, 10000, 30000], "default": 30000, "help": "How long to wait for a dependency before giving up." },
@@ -673,7 +673,7 @@
       "handles": ["read", "report", "login", "search", "attack"],
       "completes": ["read", "report", "login"],
       "params": { "family": "sql", "role": "replica", "lagMs": 100, "promotable": true },
-      "knobs": ["units", "tier", "zones", "region"],
+      "knobs": ["units", "tier", "zones", "region", "retentionDays"],
       "failureModes": [
         { "id": "lag", "event": "replication-lag", "text": "Under heavy writes, replicas fall seconds or minutes behind." },
         { "id": "promote-loss", "event": "db-failover", "text": "Promoting a replica loses the writes it had not received yet." }
@@ -693,7 +693,7 @@
       "handles": ["read", "write", "payment", "login", "sync", "message", "location", "event", "report", "attack"],
       "completes": ["read", "write", "payment", "login", "sync", "message", "location", "event", "report"],
       "params": { "keyed": true, "failoverSec": 60, "replicationLagMs": 100 },
-      "knobs": ["units", "tier", "zones", "replication", "region"],
+      "knobs": ["units", "tier", "zones", "replication", "region", "retentionDays"],
       "failureModes": [
         { "id": "hot-shard", "event": "hot-key", "text": "One popular key sends a big share of traffic to a single shard." },
         { "id": "cross-shard", "event": null, "text": "A query over all users must ask every shard." }
@@ -713,7 +713,7 @@
       "handles": ["read", "write", "payment", "login", "sync", "message", "location", "event", "report", "attack"],
       "completes": ["read", "write", "payment", "login", "sync", "message", "location", "event", "report"],
       "params": { "keyed": true, "consensus": true, "replication": "quorum" },
-      "knobs": ["units", "tier", "zones", "region"],
+      "knobs": ["units", "tier", "zones", "region", "retentionDays"],
       "failureModes": [
         { "id": "partition", "event": "network-partition", "text": "The side without a majority stops accepting writes." },
         { "id": "hot-range", "event": "hot-key", "text": "Sequential keys land on one node." }
@@ -733,7 +733,7 @@
       "handles": ["read", "write", "login", "sync", "message", "location", "event", "payment", "telemetry", "attack"],
       "completes": ["read", "write", "login", "sync", "message", "location", "event", "payment", "telemetry"],
       "params": { "keyed": true, "perKeyReadRps": 3000, "perKeyWriteRps": 1000 },
-      "knobs": ["units", "region"],
+      "knobs": ["units", "region", "retentionDays"],
       "failureModes": [
         { "id": "hot-partition", "event": "hot-key", "text": "One key above about 1,000 writes per second is throttled." },
         { "id": "bill", "event": "cost-blowout", "text": "A scan or a bot multiplies paid reads." }
@@ -753,7 +753,7 @@
       "handles": ["read", "write", "login", "sync", "message", "event", "search", "report", "location", "attack"],
       "completes": ["read", "write", "login", "sync", "message", "event", "report", "location"],
       "params": { "keyed": true, "replicationLagMs": 200 },
-      "knobs": ["units", "tier", "zones", "replication", "readFrom", "region"],
+      "knobs": ["units", "tier", "zones", "replication", "readFrom", "region", "retentionDays"],
       "failureModes": [
         { "id": "no-index", "event": "noisy-neighbor", "text": "A query without an index scans the whole collection." },
         { "id": "stale-secondary", "event": "replication-lag", "text": "Reads from secondaries can be behind." }
@@ -773,7 +773,7 @@
       "handles": ["read", "write", "login", "message", "event", "telemetry", "location", "sync", "attack"],
       "completes": ["read", "write", "login", "message", "event", "telemetry", "location", "sync"],
       "params": { "keyed": true, "replicationFactor": 3, "modes": ["ONE", "QUORUM", "ALL"] },
-      "knobs": ["units", "tier", "zones", "region", "mode"],
+      "knobs": ["units", "tier", "zones", "region", "mode", "retentionDays"],
       "failureModes": [
         { "id": "hot-partition", "event": "hot-key", "text": "A partition key like 'today' puts every write on the same nodes." },
         { "id": "stale-one", "event": "replication-lag", "text": "Reading with ONE can return an older copy." }
@@ -793,7 +793,7 @@
       "handles": ["read", "write", "search", "payment", "attack"],
       "completes": ["read", "write", "search"],
       "params": { "keyed": false },
-      "knobs": ["units", "tier", "zones", "region"],
+      "knobs": ["units", "tier", "zones", "region", "retentionDays"],
       "failureModes": [
         { "id": "supernode", "event": "celebrity-fanout", "text": "A celebrity with 50 million followers makes every traversal through them slow." }
       ],
@@ -832,7 +832,7 @@
       "handles": ["search", "write", "read", "report", "event", "attack"],
       "completes": ["search", "write", "read", "report", "event"],
       "params": { "refreshSec": 1, "isCopy": true },
-      "knobs": ["units", "tier", "zones", "region"],
+      "knobs": ["units", "tier", "zones", "region", "retentionDays"],
       "failureModes": [
         { "id": "heavy-query", "event": "noisy-neighbor", "text": "Leading-wildcard queries make every node scan." },
         { "id": "index-lag", "event": "replication-lag", "text": "Bulk writes leave search results minutes behind." }
@@ -852,7 +852,7 @@
       "handles": ["search", "write", "read", "inference"],
       "completes": ["search", "write", "read"],
       "params": { "recall": 0.95 },
-      "knobs": ["units", "tier", "zones", "region"],
+      "knobs": ["units", "tier", "zones", "region", "retentionDays"],
       "failureModes": [
         { "id": "re-embed", "event": null, "text": "Changing the embedding model means re-computing every vector." },
         { "id": "memory", "event": "disk-full", "text": "The index outgrows memory and queries slow sharply." }
@@ -933,7 +933,7 @@
       "handles": ["read", "write", "batch", "telemetry", "event"],
       "completes": ["read", "write", "batch", "telemetry", "event"],
       "params": { "singleZone": true },
-      "knobs": ["units", "region"],
+      "knobs": ["units", "region", "retentionDays"],
       "failureModes": [
         { "id": "zone", "event": "zone-outage", "text": "The disk is gone while its zone is down." },
         { "id": "iops", "event": "noisy-neighbor", "text": "Hitting the operations limit makes every request slow." }
@@ -953,7 +953,7 @@
       "handles": ["read", "write", "upload", "batch"],
       "completes": ["read", "write", "upload", "batch"],
       "params": {},
-      "knobs": ["region"],
+      "knobs": ["region", "retentionDays"],
       "failureModes": [
         { "id": "small-files", "event": "noisy-neighbor", "text": "Listing millions of small files stalls every user of the share." }
       ],
@@ -1011,7 +1011,7 @@
       "handles": ["payment", "write", "read", "report"],
       "completes": ["payment", "write", "read", "report"],
       "params": { "keyed": true, "immutable": true, "failoverSec": 60, "replicationLagMs": 100 },
-      "knobs": ["units", "tier", "zones", "replication", "region"],
+      "knobs": ["units", "tier", "zones", "replication", "region", "retentionDays"],
       "failureModes": [
         { "id": "hot-account", "event": "hot-key", "text": "One merchant receives most payments and every posting waits on its row." },
         { "id": "drift", "event": "data-corruption", "text": "Without double entry, balances drift and nobody can say why." }
