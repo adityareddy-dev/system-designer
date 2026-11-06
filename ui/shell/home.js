@@ -36,7 +36,7 @@ function heroArt(ctx) {
     });
   }
   const el = h('div', { class: 'sh-hero-art', 'aria-label': 'Try a capacity experiment' });
-  el.innerHTML = `<svg viewBox="0 0 540 270" role="presentation" focusable="false">${edgeSvg}${nodeSvg}${dots}</svg>`;
+  el.innerHTML = `<svg viewBox="0 0 540 270" role="presentation" focusable="false"><g fill="none" stroke="var(--border)" stroke-width="1"><path d="M4 14h532M4 250h532M4 8v12m532-12v12M4 244v12m532-12v12"/></g><g fill="var(--text-2)" font-family="monospace" font-size="10"><text x="20" y="84">01 / arrive</text><text x="158" y="84">02 / route</text><text x="310" y="264">03 / share the work</text><text x="450" y="84">04 / reuse</text></g>${edgeSvg}${nodeSvg}${dots}</svg>`;
   const out = h('p', { class: 'sh-hero-evidence', role: 'status' });
   const controls = h('div', { class: 'sh-hero-controls', role: 'group', 'aria-label': 'Experiment workload' });
   const phases = [
@@ -113,7 +113,7 @@ export function renderHome(host, ctx) {
   const offAccount = ctx.bus.on('account', paintAccount);
   const hero = h('section', { class: 'sh-hero' },
     h('div', { class: 'sh-hero-copy' },
-      h('p', { class: 'sh-eyebrow', text: 'Free and open source' }),
+      h('p', { class: 'sh-eyebrow', text: 'An engineer’s pocket signal bench' }),
       h('h1', { class: 'sh-display', text: 'Build the system. Survive the day.' }),
       h('p', { class: 'sh-lead', text: 'Design real systems, from a link shortener to a bank ledger, then watch a full day of traffic flow through your design. See what held, what broke, what it cost, and why.' }),
       h('div', { class: 'sh-cta-row' }, cta),
@@ -173,6 +173,6 @@ export function renderHome(host, ctx) {
     h('span', { text: 'System Designer is free and open source (MIT). Numbers shown are approximations for learning.' }),
     h('span', null, 'Made by Aditya Reddy. Company names appear only as plain comparisons.'));
 
-  host.append(h('div', { class: 'sh-page' }, hero, cards, nextTracks(), extras, conceptStrip, strip, foot));
+  host.append(h('div', { class: 'sh-page sh-home-page' }, hero, cards, nextTracks(), extras, conceptStrip, strip, foot));
   return { title: 'Home', destroy: offAccount };
 }

@@ -678,6 +678,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (autoFit && graph?.nodes?.length) { autoFit = false; api.fit(80, false); }
     },
     setFlows(frameData, opts = {}) {
+      if (opts.nodeStates) for (const state of opts.nodeStates) { const v = nodes.views.get(state.id); if (v) { v.fleetUnits = state.units; v.availableUnits = state.availableUnits; v.motionActive = opts.speed > 0; } }
       if (opts && typeof opts.speed === 'number') speed = opts.speed;
       if (!!frameData !== !!flow) wake();
       if (!frameData) {
@@ -788,7 +789,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
       const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(opts.nodeIds ? { ...graph, nodes: graph.nodes.filter(n => opts.nodeIds.includes(n.id)) } : graph);
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
-      camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY, padding, animate && !reduced, opts);
+      camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, opts);
     },
     zoomBy(factor, cx, cy) { const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); },
     panBy(dx, dy) { camera.panBy(dx, dy); },

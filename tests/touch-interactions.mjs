@@ -29,7 +29,7 @@ const connectSource = source.slice(source.indexOf('  function startConnect('), s
 const fitSource = source.slice(source.indexOf('  function fitView('), source.indexOf('  function placeAtCentre('));
 let phone = true, folded = 0, hidden = 0, stopped = 0, fits = 0, lastFit;
 const context = vm.createContext({
-  S, graph: () => g, isPhone: () => phone, inspector: { fold: () => { folded++; }, hide: () => { hidden++; } },
+  S, isLesson: false, graph: () => g, isPhone: () => phone, inspector: { fold: () => { folded++; }, hide: () => { hidden++; } },
   scene: { stopCamera: () => { stopped++; }, fit: (padding, animate, opts) => { fits++; lastFit = opts; }, stats: () => ({ zoom: .9 }) },
   root: { classList: { add() {} } }, showCaption() {},
   freeArea: () => ({ l: 0, t: 100, r: 0, b: 240 }), mode: 'practice',
@@ -54,14 +54,16 @@ assert.equal(fits, 2);
 phone = true; S.selected = 'a';
 vm.runInContext('fitView();', context);
 assert.equal(lastFit.focusId, undefined, 'explicit fitting includes the graph even with a selected part');
+S.booted = true;
+const beforeAutomaticFit = fits;
 vm.runInContext('fitView(true, null, true);', context);
-assert.equal(lastFit.focusId, 'a');
-assert.equal(lastFit.minZ, .9);
-assert.equal(lastFit.maxZ, .9);
+assert.equal(fits, beforeAutomaticFit, 'opening a selection never automatically refits an editing camera');
+assert.equal(lastFit.focusId, undefined);
+S.booted = false;
 S.editUntil = 11000;
 const beforeEditFit = fits;
 vm.runInContext('fitView(true, null, true);', context);
-assert.equal(fits, beforeEditFit, 'automatic fitting waits until an edit has settled');
+assert.equal(fits, beforeEditFit, 'entry fitting is suppressed during an edit');
 S.editUntil = 0;
 S.selected = null;
 

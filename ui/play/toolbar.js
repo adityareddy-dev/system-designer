@@ -16,7 +16,7 @@ export function createToolbar(host, { catalog, palette = null, onArm, onPlace, o
   const body = h('div', { class: 'pl-tb-body', 'aria-label': 'Components: arrow keys move, Enter places the part in the middle of the canvas' });
   let focusId = null; // the one component that is a tab stop (roving tab index)
   const note = h('div', { class: 'pl-tb-note', 'aria-live': 'polite' });
-  const grab = h('button', { class: 'pl-tb-grab', type: 'button', 'aria-label': 'Open or close the components drawer', onClick: () => root.classList.toggle('pl-toolbar--open') }, iconEl('ui.plus', 18), h('span', { text: 'Add component' }));
+  const grab = h('button', { class: 'pl-tb-grab', type: 'button', 'aria-label': 'Open or close the components drawer', onClick: () => { root.classList.toggle('pl-toolbar--open'); root.classList.remove('pl-toolbar--folded'); } }, iconEl('ui.plus', 18), h('span', { text: 'Add component' }));
   root.append(grab, h('div', { class: 'pl-tb-head' }, iconEl('ui.search', 16, 'pl-ic pl-tb-sicon'), search), tabs, body, note);
   host.append(root);
 
@@ -224,6 +224,7 @@ export function createToolbar(host, { catalog, palette = null, onArm, onPlace, o
 
   const api = {
     el: root,
+    clearTransient() { dragChip.hidden = true; dragChip.replaceChildren(); },
     setPalette(list) { allowed = list ? new Set(list) : null; render(); },
     setSuggested(list, title = 'Start with these') { suggested = list && list.length ? list : null; suggestedTitle = title; render(); },
     setEnabled(on, reason = '') {
@@ -235,6 +236,7 @@ export function createToolbar(host, { catalog, palette = null, onArm, onPlace, o
       if (!on) api.setArmed(null);
     },
     setArmed(type) {
+      if (!type) api.clearTransient();
       armed = type;
       body.querySelectorAll('.pl-item').forEach((n) => {
         const on = n.dataset.el === type;
@@ -243,18 +245,18 @@ export function createToolbar(host, { catalog, palette = null, onArm, onPlace, o
       });
     },
     armed: () => armed,
-    focusSearch() { root.classList.add('pl-toolbar--open'); search.focus(); search.select(); },
+    focusSearch() { root.classList.remove('pl-toolbar--folded'); root.classList.add('pl-toolbar--open'); search.focus(); search.select(); },
     pulse(elementId) {
       // on a phone the drawer stays shut so the diagram stays visible; the Add button pulses instead
       const narrow = !!globalThis.matchMedia?.('(max-width: 899px)').matches;
       grab.classList.toggle('pl-tb-grab--pulse', !!elementId && narrow);
-      if (!narrow) root.classList.add('pl-toolbar--open');
+      if (!narrow) { root.classList.remove('pl-toolbar--folded'); root.classList.add('pl-toolbar--open'); }
       body.querySelectorAll('.pl-item--pulse').forEach((n) => n.classList.remove('pl-item--pulse'));
       if (!elementId) return;
       collapsed.clear(); query = ''; search.value = ''; render();
       const n = body.querySelector(`[data-el="${elementId}"]`);
       n?.classList.add('pl-item--pulse');
-      if (!narrow) n?.scrollIntoView({ block: 'nearest' });
+      if (!narrow && n) body.scrollTop = Math.max(0, n.offsetTop - body.offsetTop - 8);
     },
     destroy() { dragChip.remove(); root.remove(); },
   };

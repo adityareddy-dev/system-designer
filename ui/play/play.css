@@ -876,4 +876,59 @@
 .pl-root [hidden] {display:none!important}
 .pl-reflection {margin-top:24px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .pl-reflection>summary {padding:16px;cursor:pointer;font-weight:700}
+/* Transient labels live outside the workbench root. */
+.pl-dragchip[hidden] {display:none!important}
+.pl-inspector:not([hidden]),.pl-caption:not([hidden]),.pl-panel:not([hidden]),.pl-debrief,.pl-hints:not([hidden]),.pl-menu:not([hidden]),.pl-modal-card,.pl-traffic[open] {animation:pl-panel-settle 240ms cubic-bezier(.2,.8,.2,1) both}
+@keyframes pl-panel-settle {from {opacity:.15;transform:translate(var(--pl-anchor-x,0px),12px)}to {opacity:1;transform:translate(var(--pl-anchor-x,0px),0)}}
+.pl-caption,.pl-panel {--pl-anchor-x:-50%}
+.pl-victory {display:grid;grid-template-columns:1fr 1.3fr;align-items:center;gap:24px;padding:24px 0;margin-top:20px;border-top:2px solid var(--ok);border-bottom:1px solid var(--border)}
+.pl-victory-copy h3 {font-size:27px;line-height:1.1;letter-spacing:-.6px;margin:8px 0}
+.pl-victory-copy p {font-size:14px;color:var(--text-2);margin:8px 0}
+.pl-victory-copy>.pl-small {color:var(--ok)}
+.pl-victory>svg {width:100%;height:180px;overflow:visible}
+.pl-victory-wire {fill:none;stroke:var(--ok);stroke-width:7;animation:pl-route-earned 300ms ease-out both;animation-delay:var(--beat)}
+.pl-victory-part {color:var(--text-2)}
+.pl-victory-part>rect {fill:var(--surface-solid);stroke:var(--edge-idle);stroke-width:2}
+.pl-victory-part.is-repaired {color:var(--ok)}
+.pl-victory-part.is-repaired>rect {stroke:var(--ok);stroke-width:4}
+.pl-victory-part text {fill:var(--text-2);font:12px var(--font-ui)}
+.pl-victory-numbers {display:flex;gap:20px;align-items:center;margin-top:16px;font:24px var(--font-mono)}
+.pl-victory-numbers small {display:block;font:12px var(--font-ui);color:var(--text-2);margin-bottom:6px}
+.pl-victory-numbers strong {color:var(--ok)}
+.pl-victory--sweep {border-top-width:4px}
+.pl-victory--sweep .pl-victory-copy h3 {color:var(--ok)}
+.pl-victory-marks {display:flex;gap:8px;color:var(--ok);font-size:25px;line-height:1;margin-top:12px}
+.pl-victory-marks span {animation:pl-mark-earned 260ms cubic-bezier(.2,.8,.2,1) both}
+.pl-victory--sweep .pl-victory-marks {color:var(--cat-data);font-size:32px}
+.pl-verdict-sec:has(.pl-victory--sweep) .pl-score-side>.pl-stars {display:none}
+@keyframes pl-mark-earned {from {opacity:0;transform:translateY(10px) scale(.7)}to {opacity:1;transform:translateY(0) scale(1)}}
+@keyframes pl-route-earned {from {opacity:.12;transform:translateY(6px)}to {opacity:1;transform:translateY(0)}}
+.pl-focus-map {display:none}
+@media(min-width:900px) {
+ .pl-left:has(.pl-toolbar--folded:not(.pl-toolbar--open)) {width:auto;bottom:auto}
+ .pl-toolbar--folded:not(.pl-toolbar--open) {height:auto;overflow:visible;border:0;background:transparent}
+ .pl-toolbar--folded:not(.pl-toolbar--open)>:not(.pl-tb-grab) {display:none}
+ .pl-toolbar--folded .pl-tb-grab {display:flex;position:static;align-items:center;gap:8px;padding:12px 16px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface-solid);color:var(--text);cursor:pointer}
+}
+@media(max-width:719px) {
+ .pl-focus-map {position:absolute;right:10px;top:var(--pl-focus-top,calc(var(--pl-hud-end,220px) + 10px));display:flex;flex-direction:column;align-items:end;gap:6px;z-index:21;max-width:140px;animation:pl-panel-settle 220ms ease-out both}
+ .pl-root:has(.pl-focus-map) .pl-right {max-height:max(148px,min(40%,calc(100% - var(--pl-focus-end,0px) - 56px)))}
+ .pl-root:has(.pl-focus-map.is-compact) .pl-right {max-height:max(206px,40%)}
+ .pl-root:has(.pl-focus-map.is-compact) .pl-inspector:not(.pl-inspector--folded) {min-height:148px}
+ .pl-focus-map.is-compact {position:static;flex:none;flex-direction:row;align-items:center;justify-content:flex-end;max-width:none}
+ .pl-focus-map.is-compact .pl-map-drawing {width:64px;height:44px}
+ .pl-insp-head {flex:none}
+ .pl-map-drawing {width:116px;height:76px;background:var(--surface-solid);border:1px solid var(--border-strong);border-radius:8px;padding:6px;cursor:pointer}
+ .pl-map-drawing svg {width:100%;height:100%}
+ .pl-focus-map .pl-btn {font-size:12px;padding:8px;min-height:36px}
+ .pl-victory {grid-template-columns:1fr;gap:12px;padding:20px 0}
+ .pl-victory>svg {height:150px}
+ .pl-victory-copy h3 {font-size:24px}
+ .pl-victory-numbers {font-size:22px;gap:16px}
+}
+:root[data-motion=reduce] .pl-root *, :root[data-motion=reduce] .pl-victory-wire {animation:none!important;transition:none!important}
 @media(max-width:719px){.pl-root[data-mode=lesson] .pl-goal--done {max-height:72px}}
+
+/* Keep the earned route visible throughout its sequence. */
+.pl-root[data-outcome=pass][data-phase=done] .pl-overlay--debrief {animation:pl-panel-settle 220ms cubic-bezier(.2,.8,.2,1) both}
+:root[data-motion=reduce] .pl-root[data-outcome=pass][data-phase=done] .pl-overlay--debrief {animation:none}

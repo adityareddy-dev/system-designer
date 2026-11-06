@@ -1,5 +1,6 @@
 // Node views: glass silhouette, icon, label, busy ring, status glyphs, chips, glows; spring placement.
 
+import { poolCells } from './pool.js';
 import { outline, HALF } from './geom.js';
 import { statusColor, severityColor } from './theme.js';
 import { P_SHAPE, BODY_BOX } from './textures.js';
@@ -45,8 +46,10 @@ export function createNodeLayer(PIXI, parent, env) {
   let list = [];
   const dying = [];
   let textRes = 2;
+  let compact = false;
   let tiny = false; // zoomed out so far that names cannot be read without overlapping: only the picked part keeps its name
-  const showLabel = (v) => { v.labelT.visible = !tiny || v.id === selected || v.id === hovered; };
+  const showLabel = (v) => { v.labelT.visible = true; v.labelT.text = compact ? shortName(v) : v.label; };
+  const shortName = v => ({ 'vm-fleet': 'Servers', 'sql-primary': 'SQL', 'sql-replica': 'Replica', 'mobile-app': 'Mobile', 'web-browser': 'Web', 'regional-lb': 'Balancer', 'worker-pool': 'Workers', 'object-storage': 'Objects', 'api-gateway': 'Gateway', 'identity-provider': 'Identity', 'waf': 'Firewall', 'distributed-cache': 'Cache' }[v.type] || v.label?.replace(/\s*\([^)]*\)/g, '').split(' ')[0].slice(0, 9) || v.type);
   let labelK = 1; // label scale that keeps names readable when zoomed out
   let multiRegion = false;
   let mainRegion = null; // most common region; only nodes elsewhere get a region chip
@@ -91,6 +94,9 @@ export function createNodeLayer(PIXI, parent, env) {
     v.icon = new PIXI.Sprite(kit.icons.get('el.' + n.type, P.cat[cat] ?? P.text3) || PIXI.Texture.EMPTY);
     v.icon.anchor.set(0.5); v.icon.width = v.icon.height = 28; v.icon.y = iconOffset(shape);
     v.busy = new PIXI.Graphics();
+    v.pool = new PIXI.Graphics();
+    v.poolT = makeText('', 7.5, P.text2, true); v.poolT.anchor.set(.5); v.poolT.y = 19;
+    v.labelBg = new PIXI.Graphics();
     v.pile = new PIXI.Container(); v.pile.visible = false;
     v.pileSprites = PILE.map(([px, py]) => {
       const s = new PIXI.Sprite(kit.atlas.textures[0]); s.anchor.set(0.5); s.position.set(px, py); s.scale.set(8 / P_SHAPE); s.visible = false;
@@ -114,8 +120,8 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeBg = new PIXI.Graphics(); v.badge.addChild(v.badgeBg);
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
-    c.addChild(v.glow, v.pulse, v.shadow, v.body, v.select, v.icon, v.busy, v.qbar, v.pile, v.statusG, v.valid, v.lock,
-      v.chip, v.zonesG, v.labelT, v.regionC, v.badge, v.evidenceT);
+    c.addChild(v.glow, v.pulse, v.shadow, v.body, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.pile, v.statusG, v.valid, v.lock,
+      v.chip, v.zonesG, v.labelBg, v.labelT, v.regionC, v.badge, v.evidenceT);
     c.alpha = 0;
     c.scale.set(v.s);
     parent.addChild(c);
@@ -166,7 +172,7 @@ export function createNodeLayer(PIXI, parent, env) {
     const locked = !!n.locked;
     if (fresh || locked !== v.locked) { v.locked = locked; v.lock.visible = locked; }
     const label = n.label || v.el?.name || n.type;
-    if (fresh || label !== v.label) { v.label = label; v.labelT.text = label; }
+    if (fresh || label !== v.label) { v.label = label; showLabel(v); }
   }
 
   function remove(v) {
@@ -193,6 +199,30 @@ export function createNodeLayer(PIXI, parent, env) {
     v.qbar.roundRect(-22, HALF - 6, 44, 4, 2).fill({ color: P.text3, alpha: 0.18 });
     if (f > 0.005) v.qbar.roundRect(-22, HALF - 6, Math.max(4, 44 * f), 4, 2).fill({ color: f > 0.6 ? P.hot : P.cat.messaging });
     v.drawnQ = f;
+  }
+
+  function drawPool(v, P, now, reduced, time) {
+    const show = v.kind === 'compute' && (v.units > 1 || v.fleetUnits > 1) &&
+      (selected === v.id || v.live || now < (v.recoverUntil || 0));
+    v.pool.visible = v.poolT.visible = show;
+    v.icon.visible = !show;
+    if (!show) return;
+    const count = v.fleetUnits ?? v.units, alive = v.availableUnits ?? count;
+    const cells = poolCells(count, alive, v.live ? v.du : 0);
+    const cols = Math.min(cells.length, cells.length <= 3 ? 3 : 4), rows = Math.ceil(cells.length / cols);
+    const w = 56 / cols - 3, h = Math.min(28, 31 / rows - 3), g = v.pool;
+    g.clear();
+    cells.forEach((cell, i) => {
+      const x = -28 + (i % cols) * (w + 3), y = -22 + Math.floor(i / cols) * (h + 3);
+      g.roundRect(x, y, w, h, 1.5).fill({ color: P.border, alpha: .6 });
+      if (cell.available > 0) g.roundRect(x, y, Math.max(1, w * cell.available), h, 1.5).fill({ color: P.cat.compute, alpha: .15 });
+      if (cell.busy > .002) {
+        const light = reduced || !v.motionActive ? 1 : .75 + .25 * Math.sin(time / 135 - i * 1.2);
+        g.roundRect(x, y + h * (1 - cell.busy), Math.max(1, w * cell.available), Math.max(1, h * cell.busy), 1).fill({ color: v.tu > 1 ? P.bad : P.cat.compute, alpha: light });
+      }
+      if (cell.available < .99) g.moveTo(x + w - 4, y + 2).lineTo(x + w - 1, y + h - 2).moveTo(x + w - 1, y + 2).lineTo(x + w - 4, y + h - 2).stroke({ width: 1, color: P.bad });
+    });
+    v.poolT.text = count > 12 ? `${cells.length} groups · ${alive}/${count}` : `${alive}/${count} available`;
   }
 
   function step(v, dt, now, P, reduced, time) {
@@ -251,6 +281,7 @@ export function createNodeLayer(PIXI, parent, env) {
       }
     }
 
+    drawPool(v, P, now, reduced, time);
     // glow: overload pulse > event > selection
     const over = v.live && (v.down || v.tu > 1 || v.status >= 3);
     const isSel = selected === v.id;
@@ -327,7 +358,14 @@ export function createNodeLayer(PIXI, parent, env) {
       const reduced = env.reduced();
       for (const v of list) step(v, dt, now, P, reduced, time);
       // Captions always belong to their module. Spacing is handled by graph layout, never by moving captions.
-      for (const v of list) v.labelT.y = HALF + 10;
+      for (const v of list) {
+        v.labelT.y = HALF + 10;
+        const key = `${v.labelT.text}/${labelK}/${P.canvas}`;
+        if (v.labelBgKey !== key) {
+          v.labelBgKey = key; const b = v.labelT.getLocalBounds();
+          v.labelBg.clear().roundRect(-b.width * labelK / 2 - 3, HALF + 8, b.width * labelK + 6, b.height * labelK + 4, 3).fill({ color: P.canvas, alpha: .97 });
+        }
+      }
       for (let i = dying.length - 1; i >= 0; i--) {
         const v = dying[i];
         v.fade += dt;
@@ -422,6 +460,7 @@ export function createNodeLayer(PIXI, parent, env) {
         v.lock.context = kit.glyphs.lock;
         for (const s of v.pileSprites) { s.texture = kit.atlas.textures[Math.max(0, v.pileType)]; s.scale.set(8 / P_SHAPE); }
         v.labelT.style.fill = P.text2;
+        v.poolT.style.fill = P.text2;
         drawChip(v); drawRegion(v);
         if (v.event) v.event.color = v.event.severity ? severityColor(P, v.event.severity) : v.event.color;
         if (v.event) this.setEvent(v, v.event);
@@ -436,8 +475,9 @@ export function createNodeLayer(PIXI, parent, env) {
     },
     // Below full zoom the names grow (up to 4.5 times, the lowest zoom) so they stay at about 13 px on screen (the base size is 12 px).
     setLabelScale(z) {
-      const px = z < 0.5 ? 11.5 : 13; // a crowded, zoomed-out diagram keeps names at least 11.5 px, a normal one 13 px
-      const k = Math.max(1, Math.min(4.5, px / (12 * Math.max(0.1, z))));
+      const px = z < 0.5 ? 10.5 : 13; // a crowded, zoomed-out diagram keeps names at least 11.5 px, a normal one 13 px
+      const k = Math.max(1, Math.min(8, px / (12 * Math.max(0.1, z))));
+      if ((z < .65) !== compact) { compact = z < .65; for (const v of list) showLabel(v); }
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
       if (Math.abs(k - labelK) < 0.03) return;
       labelK = k;

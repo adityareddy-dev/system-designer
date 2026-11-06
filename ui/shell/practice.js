@@ -1,6 +1,7 @@
 // Practice view: the problem bank with search, difficulty, industry, concept and status filters.
 import { h, ico, clear, append, buildHash, groupsOf, groupIdOf, lessonOf, diffBadge, stars, GROUP_ICON, DIFF_ORDER } from './dom.js';
 import { nextProblem } from './home.js';
+import { sceneMarkup } from '../../assets/scenes/index.js';
 
 const DIFFS = ['Easy', 'Medium', 'Hard'];
 const STATUSES = [['new', 'New'], ['tried', 'Tried'], ['solved', 'Solved']];
@@ -179,7 +180,7 @@ export function renderPractice(host, ctx, route) {
         const items = list.filter((p) => groupOf.get(p.id) === g.id);
         if (!items.length) continue;
         results.append(h('section', { class: 'sh-group', 'aria-labelledby': 'sh-g-' + g.id },
-          h('div', { class: 'sh-group-head' }, ico(GROUP_ICON[g.id] || 'ui.grid', 22), h('div', null, h('h2', { class: 'sh-h2', id: 'sh-g-' + g.id, text: g.title }), g.blurb ? h('p', { class: 'sh-muted', text: g.blurb }) : null)),
+          h('div', { class: 'sh-group-head' }, h('div', { class: 'sh-industry-art', 'aria-hidden': 'true', html: sceneMarkup('industry-' + g.id) }), ico(GROUP_ICON[g.id] || 'ui.grid', 22), h('div', null, h('h2', { class: 'sh-h2', id: 'sh-g-' + g.id, text: g.title }), g.blurb ? h('p', { class: 'sh-muted', text: g.blurb }) : null)),
           h('ul', { class: 'sh-prob-grid' }, items.map(card))));
       }
     } else {
@@ -261,7 +262,7 @@ export function renderPractice(host, ctx, route) {
     h('label', { class: 'sh-search' }, ico('ui.search', 18), search),
     sortSel, filterBtn, randomBtn);
 
-  host.append(h('div', { class: 'sh-page' }, head, bar, upNext, tools, panel, setsRow, countEl, results));
+  host.append(h('div', { class: 'sh-page sh-practice-page' }, head, bar, upNext, tools, panel, setsRow, countEl, results));
   renderAll();
 
   return {
