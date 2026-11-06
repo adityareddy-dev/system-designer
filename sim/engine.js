@@ -198,8 +198,8 @@ function initNodeRuntime(S) {
   const { nodes } = S.model;
   for (const n of nodes) {
     S.unitsCur[n.i] = n.units;
-    S.unitsLo[n.i] = n.units;
-    S.unitsHi[n.i] = n.units;
+    S.unitsLo[n.i] = Infinity;
+    S.unitsHi[n.i] = 0;
     S.sPrev[n.i] = 1;
     S.health[n.i] = 1;
     S.unhealthySince[n.i] = -1;
@@ -1055,10 +1055,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         if (qs > st) st = qs;
         if (a >= lim) X.overTicks[u] += 1;
       }
-      if (n.kind === 'compute' && !n.elastic) {
-        if (X.unitsCur[u] < X.unitsLo[u]) X.unitsLo[u] = X.unitsCur[u];
-        if (X.unitsCur[u] > X.unitsHi[u]) X.unitsHi[u] = X.unitsCur[u];
-      }
+      if (X.unitsCur[u] < X.unitsLo[u]) X.unitsLo[u] = X.unitsCur[u];
+      if (X.unitsCur[u] > X.unitsHi[u]) X.unitsHi[u] = X.unitsCur[u];
       if (st !== X.status[u]) { X.status[u] = st; changed.push(u); }
       X.wrRatePrev[u] = X.wrRate[u];
       X.writesSoFar[u] += X.wrRate[u] * dt;
@@ -1536,7 +1534,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       latency: S.latWorstT >= 0 && phase !== 'build'
         ? { targetMs: S.latTarget[S.latWorstT], p99Ms: Math.round(S.typeP99Now[S.latWorstT]), shareOk: mt.latencyShare, typeId: catalog.requests[S.latWorstT].id }
         : { targetMs: interactiveTarget(), p99Ms: Math.round(tn.p99), shareOk: mt.latencyShare, typeId: null },
-      safety: { lostWrites: Math.round(S.lostWrites || 0), duplicates: Math.round(S.duplicates || 0), staleReads: Math.round(S.staleReads || 0), complianceFailed: mt.ledger.complianceFailed },
+      safety: { lostWrites: Math.round(S.lostWrites || 0), duplicates: Math.round(S.duplicates || 0), staleReads: Math.round(S.staleReads || 0), complianceFailed: mt.ledger.complianceFailed, promiseFailures: mt.ledger.promiseFailures },
     };
     st.cost = { perMonth: cost.perMonth, budget: cost.budget, lines: cost.lines };
     st.scoreLive = scoreAll(world, req, mt);

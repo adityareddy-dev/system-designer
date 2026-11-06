@@ -47,6 +47,18 @@ for (const p of problems) {
   }
 }
 const scheduler = problems.find(p => p.id === 'job-scheduler');
+const ledger = problems.find(p => p.id === 'bank-ledger');
+const shortHistory = createSim({ catalog, problem: ledger });
+shortHistory.loadGraph(ledger.editorial.designs[0].graph);
+shortHistory.setKnob('ledger', 'retentionDays', 1);
+const promiseFailures = () => shortHistory.state().slo.safety.promiseFailures;
+assert(promiseFailures()?.some(f => f.nodeId === 'ledger' && f.code === 'retention'), 'public build state exposes retention failures');
+const expectedFailures = structuredClone(promiseFailures());
+shortHistory.start(); shortHistory.tick();
+assert.deepEqual(promiseFailures(), expectedFailures, 'live state preserves promised-history failures');
+shortHistory.advance(86400000);
+assert.deepEqual(promiseFailures(), shortHistory.result().slo.safety.promiseFailures, 'public and final safety agree');
+assert.equal(shortHistory.result().passed, false);
 assert.equal(queueLimitFor(scheduler.requirements, catalog.requestById.get('webhook')), 60);
 assert.match(scheduler.clarify[0].a, /60 seconds/);
 assert(!/exactly once/.test(scheduler.brief), 'an arbitrary external endpoint cannot guarantee one effect');

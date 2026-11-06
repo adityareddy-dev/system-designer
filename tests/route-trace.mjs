@@ -49,6 +49,31 @@ sim.connect('i', 'p');
 const workerTrace = sim.trace('notify');
 assert.deepEqual(workerTrace.repair, { from: 'w', to: 'p', path: ['u', 'a', 'q', 'w', 'p'] });
 assert(sim.validate().find((i) => i.type === 'notify').message.includes('Background workers → Idempotency keys'));
+// A producer cannot double as its own queue's downstream consumer.
+for (const spare of [null, 'consumer', 'repair-workers']) {
+  const blocked = createSim({ catalog, problem: problemById.get('notification-service') });
+  blocked.loadGraph({ nodes: [
+    ['u', 'mobile-app'], ['producer', 'worker-pool'], ['q', 'queue'], ['destination', 'email-provider'],
+    ...(spare ? [[spare, spare === 'consumer' ? 'worker-pool' : 'vm-fleet']] : []),
+  ].map(([id, type], x) => ({ id, type, x: x * 160, y: 0 })),
+  edges: [['u', 'producer'], ['producer', 'q']] });
+  const before = blocked.getGraph();
+  const repair = blocked.trace('notify').repair;
+  assert.deepEqual(blocked.getGraph(), before, 'finding a repair does not mutate the graph');
+  assert(repair, 'a deferred path can be repaired');
+  assert.equal(new Set(repair.path).size, repair.path.length, 'a verified path cannot repeat its producer');
+  assert(repair.path.includes('q'), 'the repair preserves the deferred queue');
+  for (const n of repair.addNodes || []) blocked.addNode(n.type, 0, 0, { id: n.id });
+  for (const [from, to] of repair.steps || [[repair.from, repair.to]]) blocked.connect(from, to);
+  const actual = blocked.trace('notify');
+  for (let i = 1; i < repair.path.length; i++) {
+    assert(actual.edgeIds.includes(`${repair.path[i - 1]}>${repair.path[i]}`), 'every advertised hop carries notify');
+  }
+  assert(!blocked.validate().some(i => i.code === 'flow-cycle'), 'queue repairs introduce no ignored closing links');
+  assert(!blocked.validate().some(i => i.type === 'notify' && /unserved/.test(i.code)));
+  if (spare === 'consumer') assert.equal(repair.addNodes.length, 0, 'reuse a safe consumer when present');
+  else assert.equal(repair.addNodes.length, 1, 'add a distinct downstream consumer when needed');
+}
 console.log('Request routing trace checks passed.');
 
 

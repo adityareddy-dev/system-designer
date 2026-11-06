@@ -7,7 +7,8 @@ export function efficiencyOf(S) {
     const installed = S.peakInstalledUnits[i] || n.units;
     if (!(installed > 0)) continue;
     const needed = Math.max(n.el.units.min, n.zones || 1, 2, Math.ceil(S.peakUtil[i] * installed / 0.7));
-    const floor = Math.min(n.units, S.unitsLo[i] || n.units);
+    const floor = S.unitsLo[i];
+    if (!Number.isFinite(floor)) continue;
     if (floor <= needed * 1.5 || floor - needed < 2) continue;
     const perUnit = n.el.cost.perUnit * n.tierCost;
     const saving = Math.round((floor - needed) * perUnit);

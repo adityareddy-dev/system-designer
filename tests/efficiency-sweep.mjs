@@ -5,6 +5,26 @@ import { createCatalog } from '../sim/catalog.js';
 import { createSim } from '../sim/engine.js';
 import { problems } from '../content/problems/index.js';
 const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(k=>[k,JSON.parse(fs.readFileSync(`catalog/${k}.json`))])));
+const shortener = problems.find(p => p.id === 'url-shortener');
+function fixedFloorDay(units) {
+  const sim = createSim({ catalog, problem: shortener });
+  const graph = structuredClone(shortener.editorial.designs[0].graph);
+  const api = graph.nodes.find(n => n.ref === 'api');
+  api.units = units;
+  api.knobs = { ...api.knobs, autoscale: { on: true, min: 10, max: 10, targetUtil: 0.6 } };
+  sim.loadGraph(graph);
+  sim.start();
+  sim.tick();
+  assert.equal(sim.state().nodes.find(n => n.id === 'api').units, 10);
+  sim.advance(86400000);
+  return sim.result();
+}
+const fullStart = fixedFloorDay(10), lowStart = fixedFloorDay(2);
+assert.deepEqual(lowStart.efficiency, fullStart.efficiency, 'the same billed floor gets the same capacity deduction regardless of build count');
+assert(lowStart.efficiency.some(n => n.nodeId === 'api' && n.units === 10));
+assert.deepEqual(lowStart.score, fullStart.score);
+assert.deepEqual(lowStart.slo.cost, fullStart.slo.cost);
+assert.deepEqual(lowStart.nodes, fullStart.nodes, 'both runs measure the same traffic and fleets');
 for (const p of problems) {
   const sim = createSim({ catalog, problem: { ...p, requirements: { ...p.requirements, peakRps: p.requirements.peakRps * 0.01, budgetPerMonth: 1e12 } } });
   sim.loadGraph(p.editorial.designs[0].graph);

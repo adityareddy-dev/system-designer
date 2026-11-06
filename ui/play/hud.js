@@ -231,10 +231,12 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
         meterSet('lat', { text: `≈ ${fmtMs(ack)}`, sub: 'Queue hop only, before the job completes', status: 'ok' });
       }
       const s = slo.safety || {};
-      const bad = (s.lostWrites || 0) > 0 || (s.duplicates || 0) > 0 || (s.complianceFailed?.length || 0) > 0;
+      const promises = s.promiseFailures || [];
+      const bad = (s.lostWrites || 0) > 0 || (s.duplicates || 0) > 0 || (s.complianceFailed?.length || 0) > 0 || promises.length > 0;
       const gaps = s.complianceFailed?.length || 0;
-      meterSet('safe', { text: bad ? 'At risk' : 'Safe', sub: `${gaps ? `${gaps} audit gap${gaps > 1 ? 's' : ''} · ` : ''}${fmtNum(s.lostWrites || 0)} lost · ${fmtNum(s.duplicates || 0)} duplicate · ${fmtNum(s.staleReads || 0)} stale`, frac: bad ? 1 : 0, status: bad ? 'bad' : 'ok' });
-      if (queued.length) {
+      const promiseText = promises.map(f => f.message).join(' ');
+      meterSet('safe', { text: bad ? 'At risk' : 'Safe', sub: `${promiseText ? promiseText + ' ' : ''}${gaps ? `${gaps} audit gap${gaps > 1 ? 's' : ''} · ` : ''}${fmtNum(s.lostWrites || 0)} lost · ${fmtNum(s.duplicates || 0)} duplicate · ${fmtNum(s.staleReads || 0)} stale`, frac: bad ? 1 : 0, status: bad ? 'bad' : 'ok' });
+      if (queued.length && !promises.length) {
         const risk = Math.max(0, ...queued.map((n) => (n.oldestJobAgeSec || 0) / (n.queueLimitSec || 1)));
         const limit = Math.min(...queued.map((n) => n.queueLimitSec || 1));
         meterSet('safe', { text: risk >= 1 ? 'Over deadline' : risk >= 0.5 ? 'Approaching' : 'Within deadline', sub: `Job deadline ≈ ${fmtNum(limit)} s. Acceptance does not guarantee completion.`, frac: risk, status: risk >= 1 ? 'bad' : risk >= 0.5 ? 'warn' : 'ok' });

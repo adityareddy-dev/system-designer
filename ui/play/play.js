@@ -215,7 +215,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.est = est;
     try { scene.setValidation(issues); } catch { /* render optional */ }
     let sizes = []; try { sizes = riskyIssues().filter((i) => i.fix); } catch { /* optional */ }
-    hud.setBuild(est, diagnosticIssues(), interview ? [] : sizes, { advice: !interview });
+    hud.setBuild(est, diagnosticIssues(), interview ? [] : sizes, { advice: !interview && adviceReady() });
     paintIssues();
     let overview = root.querySelector('.pl-overview');
     if (!overview) { overview = h('div', { class: 'pl-overview' }); root.append(overview); }
