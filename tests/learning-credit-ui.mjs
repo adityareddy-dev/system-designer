@@ -39,7 +39,12 @@ try {
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /with assistance/);
   const before = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);
   assert(before.learning.eligibleAt && before.learning.assistedAt && !before.learning.masteredAt);
-  await click('Next: New twist without hints'); await click('Start day'); await gates();
+  await click('Next: New twist without hints');
+  await page.$eval('.pl-tool--hint', e => e.click()); await click('Show hint 1'); await page.$eval('.pl-hints [aria-label="Close hints"]', e => e.click());
+  await click('Start day'); await gates();
+  await page.evaluate(() => window.__game.step(86400000));
+  assert.match(await page.$eval('.pl-learning-status', e => e.textContent), /twist used help/);
+  await click('Next: Retry twist without hints'); await click('Start day'); await gates();
   await page.evaluate(() => window.__game.step(86400000));
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /Full mastery earned/);
   const after = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);

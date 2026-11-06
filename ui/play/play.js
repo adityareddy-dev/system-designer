@@ -1383,6 +1383,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       hasNext: mode === 'practice' && idx >= 0 && idx < list.length - 1,
       handlers: {
         onRetry: () => { reset(); },
+        onIndependentRetry: () => { hints.reset(); S.workedRepair = false; S.correctnessAnswer = undefined; S.checkpointReady = null; reset(); },
         onBack: () => { reset(); },
         onHints: () => { hints.open(); hints.el.focus?.(); },
         onEditorial: () => openEditorial(),
