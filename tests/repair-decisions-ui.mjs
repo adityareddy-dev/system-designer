@@ -91,6 +91,24 @@ try {
     costForm.requestSubmit(); costForm.requestSubmit();
     const cost = { checks: costResult.checks, kind: costResult.nextStep.kind, knob: costResult.nextStep.knob,
       plan: costCase.choices[costCase.answer], effect: costCase.effects[costCase.effect], text: costForm.textContent, applied: costApplied, back };
+    const health = problemById.get('health-records'), slowSim = createSim({ catalog, problem: health });
+    slowSim.loadGraph(health.editorial.designs[0].graph); slowSim.setKnob('scans', 'region', 'apac');
+    slowSim.start(); slowSim.advance(86400000);
+    const slowCase = repairCase(slowSim.result(), health, catalog);
+    let slowBack = 0;
+    const slowForm = renderRepair(slowSim.result(), health, catalog, { onBack: () => slowBack++ });
+    document.body.append(slowForm);
+    const slowSelects = slowForm.querySelectorAll('select');
+    slowSelects[0].value = slowCase.choices.findIndex(text => text.startsWith('Restore a complete path'));
+    slowSelects[1].value = slowCase.effects.findIndex(text => text.startsWith('Completion becomes possible'));
+    slowForm.querySelector('input').value = 1980;
+    slowForm.requestSubmit(); slowForm.requestSubmit();
+    const latency = { wrongBack: slowBack, wrongText: slowForm.textContent };
+    slowSelects[0].value = slowCase.answer; slowSelects[1].value = slowCase.effect;
+    slowSelects[0].dispatchEvent(new Event('input', { bubbles: true }));
+    slowForm.requestSubmit();
+    latency.checkedText = slowForm.textContent;
+    slowForm.requestSubmit(); latency.back = slowBack;
     const { renderEditorial } = await import('./ui/play/editorial.js');
     const { estimateUnit } = await import('./ui/play/estimate-units.js');
     const units = [];
@@ -99,7 +117,7 @@ try {
       const section = [...host.querySelectorAll('section')].find(s => s.querySelector('h3')?.textContent === 'The numbers');
       problem.numbers.forEach((row,i) => { if (estimateUnit(row).percent) units.push({ id: problem.id, text: section.querySelectorAll('tr')[i].children[1].textContent, value: estimateUnit(row).value }); });
     }
-    return { units, initial, none, wrongPlan, wrongCount, checked, applied, expected: test.value, outage, overloaded, cost };
+    return { units, initial, none, wrongPlan, wrongCount, checked, applied, expected: test.value, outage, overloaded, cost, latency };
   });
   assert.equal(outcome.units.length, 6);
   for (const row of outcome.units) { assert(row.text.includes(row.value + ' %'), row.id); assert(!row.text.includes('of requests')); }
@@ -127,5 +145,9 @@ try {
   assert.match(outcome.cost.effect, /Cost may fall while headroom or freshness changes/);
   assert.doesNotMatch(outcome.cost.text, /Increase this pool|Less waiting at this pool/);
   assert.equal(outcome.cost.applied.length, 0); assert.equal(outcome.cost.back, 1);
+  assert.equal(outcome.latency.wrongBack, 0, 'a routing answer cannot pass a latency-only report');
+  assert.match(outcome.latency.wrongText, /Revisit the limiting boundary/);
+  assert.match(outcome.latency.checkedText, /Plan, predicted effect and arithmetic checked/);
+  assert.equal(outcome.latency.back, 1, 'a latency repair with checked arithmetic returns to Draw');
   console.log('Repair plan, effect and count are required; worked arithmetic marks assistance; Set applies the player’s checked number.');
 } finally { await browser.close(); }

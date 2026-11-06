@@ -928,6 +928,8 @@ function nextStepOf(S, score, metrics, nodesOut, eventsOut) {
       peakRps: S.peakRequests[i], activeUnits: S.peakUnits[i] };
   }
   step.kind = kind;
+  const routingIssue = blockedOf(S).top;
+  if (routingIssue) step.routingIssue = { code: routingIssue.code, type: routingIssue.type, nodeId: routingIssue.nodeId };
   const lesson = lessonOfStep(S, step);
   if (lesson) step.lesson = lesson;
   // name the other parts that ran over too, so the biggest bottleneck is not read as the only one
