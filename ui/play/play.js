@@ -291,6 +291,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       'db-connections': 'Estimated connections exceed this part’s connection limit.',
       'dr-same-region': 'The standby and protected parts use the same region.',
       'cache-no-origin': 'Cache misses have no origin on this path.',
+      'flow-cycle': 'A delivery loop includes a closing link that the run ignores. Trace where a request would repeat.',
       'compliance-missing': 'A required compliance check has no proof in this graph.',
     };
     return (S.issues || []).map(i => ({ level: i.level, code: i.code, nodeId: i.nodeId, type: i.type, source: i.source,

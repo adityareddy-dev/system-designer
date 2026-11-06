@@ -8,10 +8,11 @@ const catalog = createCatalog(Object.fromEntries(['elements','requests','events'
 const plain = (text, where) => {
   assert(!/undefined|NaN|Infinity|\[object Object\]|\{\w+\}|\u2014|\b\d+(?:\.\d+)?[kMB] ms\b/.test(text || ''), `${where}: ${text}`);
 };
-let days = 0, repairs = 0, sizing = 0;
+let days = 0, repairs = 0, sizing = 0, checked = 0;
 const run = (sim) => { sim.start(); sim.advance(86400000); days++; return sim.result(); };
 for (const p of problems) {
   if (process.argv.length > 2 && !process.argv.slice(2).includes(p.id)) continue;
+  checked++;
   for (const text of [p.brief, ...p.clarify.flatMap(c => [c.q,c.a]), ...p.requirements.notes, ...p.hints]) plain(text, p.id);
   const reference = p.editorial.designs[0].graph;
   const normalized = createSim({ catalog, problem: p }); normalized.loadGraph(reference);
@@ -64,4 +65,4 @@ for (const p of problems) {
   }
   console.log(`Advice sweep: ${p.id}, ${variants.length} wrong designs.`);
 }
-console.log(`Advice sweep passed: ${problems.length} problems, ${days} full days, ${repairs} verified path repairs, ${sizing} measured sizing repairs.`);
+console.log(`Advice sweep passed: ${checked} problems, ${days} full days, ${repairs} verified path repairs, ${sizing} measured sizing repairs.`);

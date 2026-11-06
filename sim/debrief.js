@@ -735,6 +735,8 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
   const [kind, loss] = nextKind(S, score, metrics);
   const nodes = model.nodes;
   const name = (n) => nodeLabel(n);
+  const loop = model.edges.find(e => e.back && e.kind === 'flow');
+  if (loop) return { text: `${name(nodes[loop.fi])} → ${name(nodes[loop.ti])} closes a delivery loop and is ignored by the run. Remove this closing link, then trace one request from its source to its destination. Keep queue producers, consumers and required side calls on explicit paths before interpreting a sizing experiment.`, nodeId: nodes[loop.fi].id };
   if (loss <= 0 && passOf(S.world, req, metrics, score)) return { text: 'Everything held. Try the daily challenge, or see how low you can take the monthly cost.' };
   if (metrics.availability <= 0.001) {
     const required = Object.entries(problem.requires || {}).filter(([tid]) => req.mix[tid] > 0).map(([tid, groups]) => `${catalog.requestById.get(tid)?.plural || tid} must reach ${groups.map((g) => g.map((id) => catalog.elementById.get(id)?.name || id).join(' or ')).join(' and ')}`);

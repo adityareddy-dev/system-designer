@@ -99,6 +99,7 @@ export function validateModel(S) {
   const add = (level, code, message, nodeId, extra) => issues.push({ level, code, message, ...(nodeId ? { nodeId } : {}), ...(extra || {}) });
 
   if (!model.sources.length) add('error', 'no-source', 'Add where requests come from: users, devices or partners.');
+  for (const e of model.edges.filter(e => e.back && e.kind === 'flow')) add('warn', 'flow-cycle', `${nodeLabel(nodes[e.fi])} → ${nodeLabel(nodes[e.ti])} closes a delivery loop. The run ignores this closing link. Trace one request and remove the loop before interpreting capacity estimates.`, nodes[e.fi].id);
 
   for (const [tid, share] of Object.entries(req.mix)) {
     if (!(share > 0)) continue;
