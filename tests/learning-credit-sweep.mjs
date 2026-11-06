@@ -88,5 +88,12 @@ assert.deepEqual(merged.problems.legacy.learning, saved.problems.legacy.learning
 assert.deepEqual(merged, mergeProgress({ problems: { legacy: { bestScore: 400, stars: 1, attempts: 2 } } }, saved));
 assert.equal(questionCoverage('What idempotency guarantees do we need?', [{ q: 'What if the same message is asked for twice?' }])[0], true);
 assert.equal(questionCoverage('Can the counter fail open during an outage?', [{ q: 'If the limiter itself breaks, do we let traffic through or block it?' }])[0], true);
+assert.equal(questionCoverage('How is consent enforced when a recipient opts out?', [{ q: 'Do people opt out?' }])[0], true);
+const scheduled = problems.find(p => p.id === 'job-scheduler');
+const previewSim = createSim({ catalog, problem: scheduled });
+const previewGraph = structuredClone(scheduled.editorial.designs[0].graph);
+previewGraph.nodes.filter(n => n.type === 'worker-pool').forEach(n => { n.units = 12; });
+previewSim.loadGraph(previewGraph);
+assert.match(previewLimits(scheduled, previewSim.getGraph(), previewSim.estimate(), catalog), /above the 60-second deadline/);
 assert.equal(traces, 63);
 console.log(`Learning credit: ${problems.length} problems, ${traces} central traces, ${repairs} checked repairs, ${references} full-mark references; legacy and synced mastery preserved.`);
