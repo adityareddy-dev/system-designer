@@ -37,7 +37,9 @@ r=run('work-across-services',[['mode','outbox'],...action('step','crash','recove
 r=run('work-across-services',[['mode','direct'],...action('step','crash','recover')]);assert.equal(r.s.consumed.length,0);
 const ordering=await import('../ui/figures/ordering-time.js');assert(!ordering.dominates([3,1],[2,2]));assert.deepEqual(ordering.merge([4,0],[0,3]),[4,3]);
 r=run('ordering-time',[['mode','counter'],...action('a','a','a','a','b','b','b','merge','merge')]);assert.deepEqual(r.s.ca,[4,3]);assert.deepEqual(r.s.cb,[4,3]);
-r=run('device-sync',action('editA','editB','delete','sync'));assert(r.s.conflict);assert(r.s.delta>0&&r.s.delta<r.s.full);assert.equal(r.s.wakeups,1);
+r=run('device-sync',action('editA','editB','delete','sync'));assert(r.s.conflict);assert.equal(r.s.delta,207);assert(r.s.delta<r.s.full);assert.equal(r.s.wakeups,2);assert.equal(r.s.polls,6);
+r=run('device-sync',action('editA','editB','sync','resolve','sync'));assert.equal(r.s.docsB[1].length,1);assert.equal(r.s.docsB[1][0].text,'Resolved title');
+r=run('device-sync',[['tombstones',false],...action('delete','sync')]);assert.equal(r.s.docsA[2][0].deleted,false);assert(r.s.delta>2,'repair record is included in payload bytes');
 assert.equal(run('privacy-design',action('upload','breach')).v.stats['exposed payload bytes'],80);
 r=run('metrics-systems',action('ingest','block','compact','query','query','advance','query'));assert.equal(r.s.writes,18);assert.equal(r.s.hits,3);
 const logs=await import('../ui/figures/logs-traces.js');assert.equal(logs.indexLogs('words').timeout.length,5);r=run('logs-traces',action('sample'));assert.equal(r.s.tail.filter(i=>logs.traces[i].error).length,6);
