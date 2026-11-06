@@ -12,6 +12,8 @@ for (const el of elements) {
   if (c.perGB) assert.match(advice.text, /per GB transferred/);
   if (c.perGBMonth) assert.match(advice.text, /per GB stored/);
   if (c.perUnit && el.knobs.includes('units') && el.units.max > 1) assert.match(advice.text, /Units have a monthly price/);
-  if (!el.knobs.includes('retentionDays')) assert.doesNotMatch(advice.text, /lower Retention days/);
+  if (!el.knobs.includes('retentionDays')) assert.doesNotMatch(advice.text, /lower Keep for/);
+  if (el.knobs.includes('retentionDays') && c.perGBMonth) assert.match(advice.text, /Keep for \(days\)/);
+  if (el.knobs.includes('sampling')) assert.match(advice.text, /Sample rate/);
 }
 console.log(`Cost advice sweep: all ${elements.length} catalog parts and every price dimension.`);
