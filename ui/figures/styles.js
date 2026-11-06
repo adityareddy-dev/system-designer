@@ -34,7 +34,7 @@ export const styles = `/* Lesson instruments on the game's drafting paper. */
 
 .fg-bench[data-motion=reduce] * {transition:none;animation:none}
 
-.fg-control[hidden]{display:none}
+.fg-bench .fg-control[hidden]{display:none}
 .fg-mark.fg-owner-0 circle{fill:var(--cat-edge)}
 .fg-mark.fg-owner-1 circle{fill:var(--cat-compute)}
 .fg-mark.fg-owner-2 circle{fill:var(--cat-data)}
