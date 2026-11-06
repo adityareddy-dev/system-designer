@@ -60,6 +60,7 @@ export function renderLearn(host, ctx) {
   });
 
   const empty = lessons.length ? null : h('p', { class: 'sh-muted', text: 'Lessons are on their way.' });
-  host.append(h('div', { class: 'sh-page sh-learn-page' }, head, bar, nextTracks(), empty, sections));
+  const chapters = sections.flatMap((section, i) => tracks[i].name === 'Go deeper' ? [nextTracks(), section] : [section]);
+  host.append(h('div', { class: 'sh-page sh-learn-page' }, head, bar, empty, chapters));
   return { title: 'Learn' };
 }

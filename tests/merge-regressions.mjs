@@ -10,15 +10,19 @@ try {
     localStorage.setItem('hotpath.v1.seenIntro', 'true');
     localStorage.setItem('hotpath.v1.settings', JSON.stringify({ reducedMotion: 'full', soundMuted: true }));
   });
-  for (const phone of [false, true]) {
+  for (const [phone, lesson] of [[false, false], [true, false], [false, true], [true, true]]) {
     await page.setViewport({ width: phone ? 390 : 1366, height: phone ? 844 : 800, isMobile: phone, hasTouch: phone });
-    await page.goto(base + '#/sandbox');
+    await page.goto(base + (lesson ? '#/learn/load-balancing?step=1' : '#/sandbox'));
     await page.waitForFunction(() => window.__game?.getState().nodes.some(n => n.id === 'app'));
     await sleep(700);
+    if (lesson) {
+      await page.$eval('.pl-stage', e => e.scrollIntoView({ block: 'end', behavior: 'instant' }));
+      await sleep(200);
+    }
     const pos = await page.evaluate(() => {
       const n = window.__game.getState().view.screen.find(n => n.id === 'app');
       const r = document.querySelector('.pl-stage').getBoundingClientRect();
-      return { x: n.x + r.left, y: n.y + r.top, scroll: scrollY };
+      return { x: n.x + r.left, y: n.y + r.top, scroll: scrollY, mainScroll: document.querySelector('.sh-main').scrollTop };
     });
     if (phone) {
       const cdp = await page.createCDPSession();
@@ -32,12 +36,13 @@ try {
       await sleep(delay);
       const menu = await page.$eval('.pl-menu', e => {
         const r = e.getBoundingClientRect(), stage = document.querySelector('.pl-stage').getBoundingClientRect();
-        return { x: r.x, y: r.y, stageX: stage.x, stageY: stage.y, w: stage.width, h: stage.height, scroll: scrollY, focused: e.contains(document.activeElement) };
+        return { x: r.x, y: r.y, stageX: stage.x, stageY: stage.y, w: stage.width, h: stage.height, scroll: scrollY, mainScroll: document.querySelector('.sh-main').scrollTop, focused: e.contains(document.activeElement) };
       });
       const x = Math.min(menu.w - 190, Math.max(8, pos.x - menu.stageX)) + menu.stageX;
       const y = Math.min(menu.h - 150, Math.max(8, pos.y - menu.stageY)) + menu.stageY;
       assert(Math.abs(menu.x - x) < 2 && Math.abs(menu.y - y) < 2, 'menu stays beside its part during and after full motion');
       assert.equal(menu.scroll, pos.scroll, 'menu focus never scrolls the page');
+      assert.equal(menu.mainScroll, pos.mainScroll, 'menu focus preserves the scrolled lesson position');
       if (!phone) assert(menu.focused, 'desktop menu remains keyboard ready');
     }
     await page.keyboard.press('Escape');
@@ -45,21 +50,32 @@ try {
   const pool = await page.evaluate(async () => {
     const { createInspector } = await import('./ui/play/inspector.js');
     const { loadCatalog } = await import('./sim/catalog.js');
+    const { createSim } = await import('./sim/engine.js');
     const catalog = await loadCatalog();
     const host = document.body.appendChild(document.createElement('div'));
-    const node = { id: 'pool', type: 'vm-fleet', units: 12, knobs: { autoscale: { on: true, min: 1, max: 12 } } };
-    const inspector = createInspector(host, { catalog, getNode: () => node, getHome: () => 'us-east', onKnob() {} });
-    inspector.show(node.id);
+    const sim = createSim({ catalog, mode: 'sandbox', problem: { requirements: { peakRps: 100, mix: { read: 1 } }, traffic: { curve: 'flat' } } });
+    sim.loadGraph({ nodes: [
+      { id: 'u', type: 'web-browser', x: 0, y: 0 },
+      { id: 'pool', type: 'vm-fleet', x: 200, y: 0, units: 12, knobs: { autoscale: { on: true, min: 1, max: 12 } } },
+      { id: 'db', type: 'sql-primary', x: 400, y: 0 },
+    ], edges: [['u', 'pool'], ['pool', 'db']] });
+    const inspector = createInspector(host, { catalog, getNode: id => sim.getGraph().nodes.find(n => n.id === id), getHome: () => 'us', onKnob() {} });
+    inspector.show('pool'); sim.start();
     const snapshots = [];
-    for (const units of [12, 6, 2, 1]) {
-      inspector.update({ id: node.id, units, availableUnits: units, incomingRps: units * 100, util: .1 });
-      snapshots.push({ selected: inspector.current(), count: host.querySelectorAll('.pl-replica-cell').length, summary: host.querySelector('.pl-replica-summary').textContent });
+    for (let i = 0; i < 24; i++) {
+      sim.advance(120000);
+      const state = sim.state().nodes.find(n => n.id === 'pool');
+      inspector.update(state);
+      snapshots.push({ units: state.units, incomingRps: state.incomingRps, selected: inspector.current(), count: host.querySelectorAll('.pl-replica-cell').length, summary: host.querySelector('.pl-replica-summary').textContent });
     }
     host.remove(); return snapshots;
   });
   assert(pool.every(s => s.selected === 'pool'), 'shrinking keeps the pool selected');
+  assert(pool.some(s => s.units > 1), 'the running autoscaler starts with multiple units');
+  assert.equal(pool.at(-1).units, 1, 'the running autoscaler shrinks to one');
   assert.equal(pool.at(-1).count, 1);
-  assert.match(pool.at(-1).summary, /1\/1 units available · 100 requests\/s/);
+  assert.match(pool.at(-1).summary, /1\/1 units available/);
+  assert(pool.at(-1).summary.includes(`${Math.round(pool.at(-1).incomingRps)} requests/s`), 'the selected pool shows the current request rate');
 
   await page.goto(base + '#/practice/bank-ledger?interview=1');
   await page.waitForSelector('.pl-interview-clock');
