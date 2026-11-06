@@ -878,7 +878,9 @@
 .pl-reflection>summary {padding:16px;cursor:pointer;font-weight:700}
 /* Transient labels live outside the workbench root. */
 .pl-dragchip[hidden] {display:none!important}
-.pl-inspector:not([hidden]),.pl-caption:not([hidden]),.pl-panel:not([hidden]),.pl-debrief,.pl-hints:not([hidden]),.pl-menu:not([hidden]),.pl-modal-card,.pl-traffic[open] {animation:pl-panel-settle 240ms cubic-bezier(.2,.8,.2,1) both}
+.pl-inspector:not([hidden]),.pl-caption:not([hidden]),.pl-panel:not([hidden]),.pl-debrief,.pl-hints:not([hidden]),.pl-modal-card,.pl-traffic[open] {animation:pl-panel-settle 240ms cubic-bezier(.2,.8,.2,1) both}
+.pl-menu:not([hidden]) {animation:pl-menu-settle 240ms ease-out both}
+@keyframes pl-menu-settle {from {opacity:.15}to {opacity:1}}
 @keyframes pl-panel-settle {from {opacity:.15;transform:translate(var(--pl-anchor-x,0px),12px)}to {opacity:1;transform:translate(var(--pl-anchor-x,0px),0)}}
 .pl-caption,.pl-panel {--pl-anchor-x:-50%}
 .pl-victory {display:grid;grid-template-columns:1fr 1.3fr;align-items:center;gap:24px;padding:24px 0;margin-top:20px;border-top:2px solid var(--ok);border-bottom:1px solid var(--border)}

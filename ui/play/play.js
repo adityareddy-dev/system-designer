@@ -775,7 +775,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const x = pos ? clamp(pos.x, 8, r.width - 190) : r.width / 2 - 90;
     const y = pos ? clamp(pos.y, 8, r.height - 150) : r.height / 2 - 40;
     menu.style.transform = `translate(${x}px, ${y}px)`;
-    menu.querySelector('button')?.focus();
+    menu.querySelector('button')?.focus({ preventScroll: true });
   }
   function closeMenu() { menu.hidden = true; }
 
@@ -1658,7 +1658,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     hudClock += dt;
     if (interviewClock && !interviewState.complete) {
       const left = 2700 - Math.floor((Date.now() - interviewState.startedAt) / 1000);
-      interviewClock.textContent = left >= 0 ? `Interview · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Interview · Overtime';
+      const shown = left >= 0 ? `Interview · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Interview · Overtime';
+      if (interviewClock.textContent !== shown) interviewClock.textContent = shown;
     }
     if (hudClock >= 250) { hudClock = 0; const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
     try { scene.setFlows(sim.flows(), { speed: sim.phase === 'running' ? effectiveSpeed() : 0, dtWallMs: dt, nodeStates: S.nodeStates }); } catch (e) { if (!S.flowErr) { S.flowErr = 1; S.errors.push({ code: 'render', message: String(e?.message || e) }); } }

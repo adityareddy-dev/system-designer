@@ -230,7 +230,7 @@ export function createInspector(host, { catalog, getNode, getHome, getProblem, o
     if (!refs.meter?.isConnected) return;
     const s = live;
     const util = s.util ?? 0;
-    if (refs.pool && (s.units || getNode(curId)?.units || 1) > 1) {
+    if (refs.pool) {
       const count = s.units || getNode(curId)?.units || 1;
       const alive = s.availableUnits ?? count;
       const buckets = Math.min(count, 6);
