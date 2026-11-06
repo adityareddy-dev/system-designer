@@ -44,6 +44,6 @@ const input = all(host).filter(e => e.type === 'number')[2];
 assert.equal(String(input.value), '90', 'existing fraction saves reopen as percent');
 input.value = '.9'; input.valueAsNumber = .9; input.listeners.input();
 assert.ok(Math.abs(guesses[2] - .009) < 1e-12);
-assert.match(estimateFeedback(problem.numbers[2], guesses[2]).text, /Unit slip/);
+assert.equal(estimateFeedback(problem.numbers[2], guesses[2]).text, 'Unit slip: enter a percent. 0.9 as a fraction means 90%.');
 delete globalThis.document;
 console.log(`Estimate units and inclusive ranges checked across ${problems.length} problems.`);

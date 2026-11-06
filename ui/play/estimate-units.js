@@ -12,9 +12,9 @@ export function estimateUnit(row) {
 
 export function estimateFeedback(row, canonical) {
   const { factor, percent, value } = estimateUnit(row);
-  const entered = canonical * factor;
+  const entered = Number((canonical * factor).toPrecision(12));
   if (percent && entered > 0 && entered <= 1 && value > 2 && Math.max(entered * 100 / value, value / (entered * 100)) <= 2)
-    return { cls: 'warn', text: `Unit slip: enter a percent. ${entered} as a fraction means ${entered * 100}%.` };
+    return { cls: 'warn', text: `Unit slip: enter a percent. ${entered} as a fraction means ${Number((entered * 100).toPrecision(12))}%.` };
   const ratio = entered > 0 ? Math.max(entered / value, value / entered) : Infinity;
   if (!percent && [1000, 1000000].some(scale => Math.max(entered * scale / value, value / (entered * scale)) < 1.1 || Math.max(entered / scale / value, value / (entered / scale)) < 1.1))
     return { cls: 'warn', text: `Possible unit slip: check the ${row.unit} label and convert your number before comparing.` };
