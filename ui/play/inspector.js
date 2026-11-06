@@ -168,7 +168,8 @@ export function createInspector(host, { catalog, getNode, getHome, getProblem, o
     // numbers
     const facts = h('dl', { class: 'pl-facts' });
     if (el.capacity) {
-      const [total, perUnit] = capacityText(el, node, tiers).split(', ');
+      const [total, ...details] = capacityText(el, node, tiers).split(', ');
+      const perUnit = details.join(', ');
       facts.append(h('dt', { text: 'Handles' }), h('dd', {}, approx(total), perUnit ? h('div', { class: 'pl-capacity-unit' }, approx(perUnit)) : null));
     }
     if (el.latencyMs) facts.append(h('dt', { text: 'Adds' }), h('dd', {}, approx(`${fmtMs(el.latencyMs.p50)} typical, ${fmtMs(el.latencyMs.p99)} slow`), el.latencyMs.note ? h('span', { class: 'pl-muted pl-small', text: ' ' + el.latencyMs.note }) : null));

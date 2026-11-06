@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
 import { problemById } from '../content/problems/index.js';
+import { checkFor } from '../ui/play/design-check.js';
 const base = process.argv[2] || 'http://localhost:8765/';
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -54,6 +55,7 @@ try {
   const overflow = await page.evaluate(async () => {
     const { loadCatalog } = await import('./sim/catalog.js');
     const { createInspector } = await import('./ui/play/inspector.js');
+    const { capacityText } = await import('./ui/play/inspector-facts.js');
     const catalog = await loadCatalog(), root = document.createElement('div'); root.className = 'pl-root';
     Object.assign(root.style, { position: 'fixed', inset: '0', zIndex: 100, background: 'var(--bg)' }); document.body.append(root);
     const right = document.createElement('div'); right.className = 'pl-right';
@@ -65,6 +67,11 @@ try {
       for (const element of catalog.elements) {
         node = { id: element.id, type: element.id, units: Math.min(30, element.units?.max || 1), tier: 'M', region: 'us', zones: 1, knobs: {} };
         inspector.show(node.id); root.querySelectorAll('details').forEach(d => d.open = true);
+        if (element.capacity) {
+          const expected = capacityText(element, node, catalog.world.tiers);
+          const actual = root.querySelector('.pl-facts dd').textContent.replaceAll('≈', '').trim();
+          if (actual !== expected.replace(', ', ' ')) failures.push(`${theme}: ${element.id} lost capacity explanation: ${actual}`);
+        }
         const sc = root.querySelector('.pl-insp-scroll');
         if (sc.scrollWidth > sc.clientWidth + 1) failures.push(`${theme}: ${element.id}`);
       }
@@ -82,12 +89,24 @@ try {
     await page.evaluateOnNewDocument((graph, motion) => {
       localStorage.setItem('hotpath.v1.seenIntro', 'true');
       localStorage.setItem('hotpath.v1.settings', JSON.stringify({ soundMuted: true, reducedMotion: motion === 'reduce' ? 'reduce' : 'full' }));
-      localStorage.setItem('hotpath.v1.draft.challenge.shopping-cart', JSON.stringify({ graph, seed: 'daily-2026-11-05' }));
+      localStorage.setItem('hotpath.v1.draft.practice.shopping-cart', JSON.stringify({ graph }));
       if (motion === 'fallback') document.startViewTransition = undefined;
     }, win, motion);
-    await page.goto(base + '#/challenge/2026-11-05?play=1');
+    await page.goto(base + '#/practice/shopping-cart');
     await page.waitForFunction(() => window.__game?.getState().nodes.length === 9);
-    await page.evaluate(() => { window.__game.startTraffic(); window.__game.pause(); });
+    await page.evaluate(() => window.__game.loadProblem('shopping-cart'));
+    await page.$eval('.pl-play', button => button.click());
+    await page.evaluate(test => {
+      const form = document.querySelector('.pl-design-check');
+      form.querySelectorAll('.sh-choice')[test.answer].click(); form.querySelector('input').value = test.value;
+      form.querySelector('textarea').value = 'Check measured peak demand against surviving capacity and verify retry safety.'; form.requestSubmit();
+    }, checkFor(problemById.get('shopping-cart')));
+    await page.evaluate(choices => {
+      const form = document.querySelector('.pl-checkpoint');
+      form.querySelectorAll('select').forEach((e,i) => e.value = choices[i]);
+      form.querySelector('input').value = 'Commit the operation and result atomically and test recovery against a completed durable copy.'; form.requestSubmit();
+      window.__game.pause();
+    }, problemById.get('shopping-cart').correctness.fields.map(f => f.correct));
     const readings = await page.evaluate(async () => {
       window.__game.step(86400000);
       const samples = [], start = performance.now();
