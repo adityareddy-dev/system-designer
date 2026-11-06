@@ -873,6 +873,7 @@
 
 .pl-wire-preview {position:absolute;z-index:31;left:50%;bottom:128px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:12px 16px;border:1px solid var(--accent);border-radius:8px;background:var(--surface-solid);color:var(--text);pointer-events:none;font-size:14px}
 .pl-wire-preview[hidden] {display:none}
+.pl-root:has(.pl-wire-preview:not([hidden])) .pl-caption {visibility:hidden}
 .pl-root [hidden] {display:none!important}
 .pl-reflection {margin-top:24px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .pl-reflection>summary {padding:16px;cursor:pointer;font-weight:700}

@@ -457,8 +457,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       commit();
       snd('place', { category: el.category });
       note('place', type);
-      if (opt.select !== false && mode !== 'lesson') { select(id); if (isLesson && isPhone()) setTimeout(() => { if (S.selected === id) select(null); }, 1400); }
       if (!edgeId && !opt.autoPlace) showCaption('Placed here. Select the part and use "Connect to…" to wire it. Drag it to leave room for its name.', 7000);
+      if (opt.select !== false && mode !== 'lesson') { select(id); if (isLesson && isPhone()) setTimeout(() => { if (S.selected === id) select(null); }, 1400); }
       connectCoach(id, el);
       revealIfHidden(at.x, at.y);
       if (S.sim.phase !== 'build') {
@@ -504,8 +504,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (waiters.some(w => w.spec.path && w.spec.type === el.id)) { S.insertionRetry?.(); return; }
     const g = graph();
     if (g.edges.some((e) => e.from === id || e.to === id)) return;
-    if (connectTipShown && !isLesson) return;
+    if (!isLesson && (connectTipShown || store.get('seenConnectHandle', false))) return;
     connectTipShown = true;
+    if (!isLesson) store.set('seenConnectHandle', true);
     const lessonTip = isLesson ? ` ${el.name} is not connected yet: drop it onto the line where it belongs, or connect it.` : '';
     const touch = isPhone() || !!globalThis.matchMedia?.('(pointer: coarse)').matches;
     showCaption((touch ? `${lessonTip} Tap the part, then "Connect to…", then tap the next part.` : `${lessonTip} Drag from the arrow dot on a part's edge to the next part, or select it and press "Connect to…".`).trim(), 7000);
