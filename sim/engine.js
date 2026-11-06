@@ -780,13 +780,15 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       for (let t = 0; t < T; t++) {
         if (!(q.typeArr[t] > 0)) continue;
         let hist = q.types.get(t);
-        if (!hist) { hist = { A: new Float64Array(DAY_TICKS + 1), lastK: -1 }; q.types.set(t, hist); }
+        if (!hist) { hist = { A: new Float64Array(DAY_TICKS + 1), lastK: -1, Dprev: 0, procAvg: 0 }; q.types.set(t, hist); }
         for (let j = hist.lastK + 2; j <= k; j++) hist.A[j] = hist.A[j - 1];
         hist.A[k + 1] = q.typeArr[t]; hist.lastK = k;
         const limit = queueLimitFor(X.problem.requirements, catalog.requests[t]);
         shortest = Math.min(shortest, limit);
         const k0 = k - Math.max(1, Math.ceil(limit / X.dt)) + 1;
         const processed = Math.max(0, q.typeArr[t] - compBuf[t]);
+        hist.procAvg = 0.9 * hist.procAvg + 0.1 * Math.max(0, processed - hist.Dprev) / dt;
+        hist.Dprev = processed;
         if (k0 >= 0) lateByType[t] = Math.max(0, hist.A[k0 + 1] - Math.max(hist.A[k0], processed));
         lateMsgs += lateByType[t];
       }
@@ -872,18 +874,18 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       if (!q || n.isDLQ) continue;
       const B = queueComposition(X, n, u, compBuf);
       if (!(B > 1)) continue;
-      const Lt = Math.max(1, Math.round(q.limitSec / X.dt));
       const k = Math.min(DAY_TICKS - 1, q.lastK);
-      const young = q.Acum - q.A[Math.max(0, k + 1 - Lt)];
-      const lateEnd = Math.max(0, Math.min(young, B - q.procAvg * q.limitSec));
-      if (!(lateEnd > 0)) continue;
-      q.late += lateEnd;
-      if (q.side) continue;
-      for (let t = 0; t < T; t++) {
-        const share = compBuf[t] / B;
-        if (!(share > 0)) continue;
+      for (const [t, hist] of q.types) {
+        const limit = queueLimitFor(X.problem.requirements, catalog.requests[t]);
+        const Lt = Math.max(1, Math.ceil(limit / X.dt));
+        // The deadline-crossing bucket was already charged by queueLateness().
+        const young = q.typeArr[t] - hist.A[Math.max(0, k + 2 - Lt)];
+        const lateEnd = Math.max(0, Math.min(young, compBuf[t] - hist.procAvg * limit));
+        if (!(lateEnd > 0)) continue;
+        q.late += lateEnd;
+        if (q.side) continue;
         const perReq = q.typeArr[t] > 0 ? Math.min(1, X.typeOff[t] / q.typeArr[t]) : 1;
-        X.lateCarry[t] += lateEnd * share * perReq;
+        X.lateCarry[t] += lateEnd * perReq;
       }
     }
     for (let t = 0; t < T; t++) {

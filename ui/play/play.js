@@ -1287,6 +1287,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const result = S.sim.result();
     if (!result) return;
     S.triedId = S.problem.id;
+    refreshSuggestions();
     const isRef = !!S.refSig && S.refSig === graphSig();
     const warm = !!S.problem?.warmUp || !!S.problem?.twistDay;
     S.result = isRef ? { ...result, reference: true } : warm ? { ...result, warmUp: true, ...(S.problem?.twistDay ? { twistDay: true } : {}) } : result;
@@ -1556,8 +1557,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!g && isPhone() && graph().nodes.length <= 8) for (const n of phoneLayout(graph())) S.sim.moveNode(n.id, n.x, n.y);
     S.cur = JSON.stringify(graph());
     toolbar.setPalette(S.problem.palette || null);
-    const sug = suggestedParts(S.problem);
-    toolbar.setSuggested(interview ? null : sug?.list || null, interview ? '' : sug?.title);
+    refreshSuggestions();
     reqCard?.el.remove();
     if (stepped) reqCard = createReqCard(right, { catalog, problem: S.problem, advice: !interview && adviceReady() });
     syncInterviewRequirements();
@@ -1573,6 +1573,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         goal.metric === 'errors' ? 1 - (S.est?.successAtPeak || 0) : goal.metric === 'p99' ? Math.max(0, ...Object.values(S.est?.p99AtPeak || {})) : goal.metric === 'cost' ? S.est?.perMonth : null;
     }
     updateEditable();
+  }
+
+  function refreshSuggestions() {
+    const sug = !interview && adviceReady() ? suggestedParts(S.problem) : null;
+    toolbar.setSuggested(sug?.list || null, sug?.title);
   }
 
   // A lesson demo on a flat day skips the quiet hours: its clock starts two minutes before the first event.
