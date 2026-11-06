@@ -1375,7 +1375,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       S.prevBest = mode === 'practice' ? bestOf(ctx.progress?.get(S.problem.id)) : bestOf(ctx.compete?.bests?.get?.(`${mode}:${S.problem.id}:${S.seed}`));
     } catch { S.prevBest = null; }
     S.step = 'debrief';
-    carryRunIntoReport({ host: debriefWrap, stage, scene, result: S.result, catalog, interview, reduced: ctx.reducedMotion(), render: () => {
+    const traces = result.passed ? Object.entries(S.problem.requirements.mix).filter(([, share]) => share > 0).map(([type]) => S.sim.trace(type)) : [];
+    carryRunIntoReport({ host: debriefWrap, stage, scene, result: S.result, catalog, traces, interview, reduced: ctx.reducedMotion(), render: () => {
       if (S.destroyed || S.step !== 'debrief') return;
       root.dataset.step = 'debrief';
       stepsBar.set('debrief', { clarify: false, numbers: false, draw: true, debrief: true });

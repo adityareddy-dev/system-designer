@@ -121,12 +121,14 @@ export function mountShell(rootEl, ctx) {
     if (!opts.force && full === lastKey) return;
     lastKey = full;
     const key = viewKey(r);
+    const mine = ++seq;
     if (!opts.force && view && viewId === key && typeof view.update === 'function') {
+      main.removeAttribute('aria-busy');
+      pending = Promise.resolve();
       view.update(r);
       setImmersive(view.immersive);
       return;
     }
-    const mine = ++seq;
     const route = routes[r.parts[0] || ''];
     const spec = route?.(r);
     const previous = viewId;
