@@ -8,7 +8,7 @@ try {
   const outcome = await page.evaluate(async () => {
     const { loadCatalog } = await import('./sim/catalog.js');
     const { createSim } = await import('./sim/engine.js');
-    const { problemById } = await import('./content/problems/index.js');
+    const { problemById, problems } = await import('./content/problems/index.js');
     const { renderRepair, repairCase } = await import('./ui/play/repair.js');
     const catalog = await loadCatalog(), problem = problemById.get('job-scheduler');
     const graph = structuredClone(problem.editorial.designs[0].graph);
@@ -31,8 +31,18 @@ try {
     number.value = test.value; number.dispatchEvent(new Event('input', { bubbles: true })); form.requestSubmit();
     const checked = { applied: applied.length, text: form.querySelector('button').textContent };
     form.requestSubmit();
-    return { initial, none, wrongPlan, wrongCount, checked, applied, expected: test.value };
+    const { renderEditorial } = await import('./ui/play/editorial.js');
+    const { estimateUnit } = await import('./ui/play/estimate-units.js');
+    const units = [];
+    for (const problem of problems) {
+      const host = document.createElement('div'); renderEditorial(host, { problem, catalog, passed: true });
+      const section = [...host.querySelectorAll('section')].find(s => s.querySelector('h3')?.textContent === 'The numbers');
+      problem.numbers.forEach((row,i) => { if (estimateUnit(row).percent) units.push({ id: problem.id, text: section.querySelectorAll('tr')[i].children[1].textContent, value: estimateUnit(row).value }); });
+    }
+    return { units, initial, none, wrongPlan, wrongCount, checked, applied, expected: test.value };
   });
+  assert.equal(outcome.units.length, 6);
+  for (const row of outcome.units) { assert(row.text.includes(row.value + ' %'), row.id); assert(!row.text.includes('of requests')); }
   assert(!/Set .*\d/.test(outcome.initial)); assert.equal(outcome.none, 0);
   assert.equal(outcome.wrongPlan.applied, 0); assert.equal(outcome.wrongPlan.assisted, 0);
   assert.equal(outcome.wrongCount.applied, 0); assert.equal(outcome.wrongCount.assisted, 1);
