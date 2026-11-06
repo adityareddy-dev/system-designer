@@ -36,6 +36,7 @@ try {
   await page.waitForSelector('.pl-learning-status');
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /trace is still open/);
   assert.equal(await page.$('.pl-victory'), null);
+  assert.match(await page.$eval('.sh-toast', e => e.textContent), /Traffic passed.*responsibility trace/);
   await click('Retry'); await click('Start day'); await gates();
   await page.evaluate(() => window.__game.step(86400000));
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /responsibility trace passed/);
@@ -51,6 +52,7 @@ try {
   assert.match(await page.$eval('.pl-learning-status', e => e.textContent), /twist used help/);
   const assisted = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);
   assert(assisted.learning.assistedAt && !assisted.learning.masteredAt);
+  assert.equal(await page.$('.pl-victory'), null, 'assisted twist keeps the pass quiet');
   assert.equal(assisted.learning.eligibleAt, before.learning.eligibleAt);
   await click('Next: Retry twist without hints'); await click('Start day'); await gates();
   await page.evaluate(() => window.__game.step(86400000));

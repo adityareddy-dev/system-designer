@@ -29,7 +29,7 @@ function placeToasts() {
   let top = Infinity;
   for (const sel of ['.pl-hud', '.pl-caption', '.pl-tb-grab', '.pl-inspector', '.pl-toolbar--open', '.pl-slow']) {
     const el = root.querySelector(sel);
-    if (!el || el.hidden) continue;
+    if (!el || el.hidden || !el.checkVisibility()) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 2 || r.height < 2 || r.top < innerHeight * 0.4 || r.top > innerHeight) continue;
     top = Math.min(top, r.top);

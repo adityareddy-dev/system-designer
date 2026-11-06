@@ -301,6 +301,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const demanding = !!problem?.difficulty && problem.difficulty !== 'Easy';
   const traceChecked = !problem?.correctness || checkpointCorrect(problem.correctness, correctnessAnswer);
   const assisted = result.learning?.assisted || hintsUsed >= 3;
+  root.dataset.credit = !traceChecked ? 'trace-open' : assisted ? 'assisted' : 'checked';
   let learningMessage = 'Traffic passed, but the central responsibility trace is still open. Complete it on your next run before a clean sweep or mastery counts.';
   if (result.mode && result.mode !== 'practice') learningMessage = 'Traffic passed. Open this problem in Practice to check its central responsibility and earn mastery on a later New twist.';
   else if (traceChecked) learningMessage = result.learning?.independentTwist ? 'Full mastery earned: changed conditions passed without hints, and the responsibility trace is checked.'

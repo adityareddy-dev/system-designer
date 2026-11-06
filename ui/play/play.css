@@ -999,6 +999,7 @@
 .pl-report-arriving>.pl-run-evidence .pl-run-evidence-copy {animation:pl-evidence-in 180ms ease-out 540ms both}
 .pl-report-arriving>:not(.pl-run-evidence) {animation:pl-evidence-in 220ms ease-out 620ms both}
 .pl-report-arriving {--victory-lead:620ms}
+.pl-debrief[data-credit=trace-open] .pl-star--on,.pl-debrief[data-credit=assisted] .pl-star--on {animation:none}
 .pl-report-arriving .pl-victory-wire {animation-delay:calc(var(--beat) + var(--victory-lead))}
 .pl-repair,.pl-learning-status,.pl-interview-priorities {overflow-wrap:anywhere;min-width:0}
 .pl-repair select {text-overflow:ellipsis}

@@ -1389,14 +1389,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       updateEditable();
     } });
     snd(result.passed ? 'pass' : 'miss');
-    for (let i = 0; i < result.stars; i++) later(() => snd('star'), 500 + i * 220);
+    if (creditForVictory()) for (let i = 0; i < result.stars; i++) later(() => snd('star'), 500 + i * 220);
     // A passed warm-up leaves a mark in the list (a tick and 'Warm-up passed'), but no score is saved.
     if (!isRef && S.problem?.warmUp && !S.problem?.twistDay && result.passed && mode === 'practice') {
       try { store.set('warmups', { ...(store.get('warmups', {}) || {}), [S.problem.id]: Date.now() }); bus.emit('progress:updated', { problemId: S.problem.id, warmUp: true }); } catch { /* optional */ }
     }
     if (!interview && !isRef && !warm) {
       if (mode === 'practice') ctx.progress?.recordCorrectness?.(S.problem.id, S.problem.correctness, S.correctnessAnswer, result.passed);
-      bus.emit('play:day-end', { mode, problemId: S.problem.id, seed: S.seed, result, hintsUsed: hints.used() });
+      bus.emit('play:day-end', { mode, problemId: S.problem.id, seed: S.seed, result: S.result, hintsUsed: hints.used() });
     }
   }
   function creditForVictory() { return S.result.learning?.traceChecked && !S.result.learning?.assisted; }
