@@ -17,7 +17,7 @@ export function createProgress(store, bus) {
       probs[problemId] = {
         attempts: 0, bestScore: 0, stars: 0, hintsUsed: 0, solvedAt: null, lastResultAt: null,
         ...prev,
-        estimates: values.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null),
+        estimates: values.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null),
         estimatesAt: Math.max(Date.now(), (prev?.estimatesAt || 0) + 1),
       };
       save();

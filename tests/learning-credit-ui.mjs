@@ -55,6 +55,30 @@ try {
   const after = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);
   assert(after.learning.masteredAt);
   assert.equal(after.bestScore, before.bestScore); assert.equal(after.attempts, before.attempts);
+  await page.reload();
+  await page.waitForFunction(() => !!window.__game);
+  await page.evaluate(async id => window.__game.loadProblem(id), p.id);
+  await page.$eval('.pl-tool--editorial', e => e.click());
+  await click('Show me the spoilers');
+  await click('Load and run it');
+  await gates();
+  await page.evaluate(() => window.__game.step(86400000));
+  assert.equal(await page.evaluate(() => window.__game.getState().score.total), 1000);
+  const referenceProgress = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);
+  const unchangedReference = async () => {
+    assert.match(await page.$eval('.pl-verdict-sec', e => e.textContent), /Reference design: not saved to your results/);
+    const saved = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);
+    assert.deepEqual(saved, referenceProgress, 'reference replays never save scores, solved dates or learning credit');
+  };
+  await unchangedReference();
+  for (const day of ['New twist', 'Original day', 'New twist']) {
+    await click(day); await click('Start day'); await gates();
+    await page.evaluate(() => window.__game.step(86400000));
+    await unchangedReference();
+  }
+  await click('Retry'); await click('Start day'); await gates();
+  await page.evaluate(() => window.__game.step(86400000));
+  await unchangedReference();
   assert.deepEqual(errors, []);
   console.log('Open trace cannot earn mastery; assisted original pass then an unhinted checked New twist earns mastery without altering traffic bests.');
 } finally { await browser.close(); }

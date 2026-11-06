@@ -49,7 +49,7 @@ function cleanProblem(p) {
     ...(correctness ? { correctness } : {}),
     ...(cleanLearning(p.learning) ? { learning: cleanLearning(p.learning) } : {}),
     ...(Array.isArray(p.estimates) && ts(p.estimatesAt) ? {
-      estimates: p.estimates.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 1e30 ? v : null),
+      estimates: p.estimates.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1e30 ? v : null),
       estimatesAt: ts(p.estimatesAt),
     } : {}),
     attempts: int(p.attempts, 0, 1e6),

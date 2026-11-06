@@ -1393,8 +1393,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
           const p = ctx.content?.problemById?.get(S.problem.id);
           if (!p?.twist) return;
           const g = graph(), on = !S.twist;
-          hints.reset(); S.workedRepair = false; S.correctnessAnswer = undefined; S.refSig = null; S.prediction = null;
-          resetHostForProblem(); S.twist = on;
+          resetHostForProblem({ preserveReference: true }); S.twist = on;
           configure(p, g); go('draw'); fitView(false);
           toast(on ? 'New twist: the same brief, with the events moved and one more added. Pass with no hints to earn full mastery after a checked original day.' : 'Back to the original day.', 'info', 5000);
         } : null,
@@ -1973,9 +1972,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       root.remove();
     },
   };
-  function resetHostForProblem() {
+  function resetHostForProblem({ preserveReference = false } = {}) {
     S.twist = false;
-    S.correctnessAnswer = undefined; S.checkpointReady = null; S.workedRepair = false; S.refSig = null; S.prediction = null; hints.reset();
+    if (!preserveReference) S.refSig = null;
+    S.correctnessAnswer = undefined; S.checkpointReady = null; S.workedRepair = false; S.prediction = null; hints.reset();
     S.revealed.clear(); S.guesses = {}; S.selected = null; inspector.hide(); debriefWrap.hidden = true; editorialWrap.hidden = true;
     hud.hideBanner(); hud.resetHistory();
   }

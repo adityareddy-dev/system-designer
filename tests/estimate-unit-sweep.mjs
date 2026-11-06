@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { problems } from '../content/problems/index.js';
 import { estimateUnit, estimateFeedback } from '../ui/play/estimate-units.js';
 import { renderNumbers } from '../ui/play/numbers.js';
+import { createInterview, renderInterviewPrep } from '../ui/play/interview.js';
 class Element {
   nodeType = 1; children = []; listeners = {}; style = {}; value = '';
   classList = { remove() {}, toggle() {} };
@@ -46,5 +47,27 @@ assert.equal(String(input.value), '90', 'existing fraction saves reopen as perce
 input.value = '.9'; input.valueAsNumber = .9; input.listeners.input();
 assert.ok(Math.abs(guesses[2] - .009) < 1e-12);
 assert.equal(estimateFeedback(problem.numbers[2], guesses[2]).text, 'Unit slip: enter a percent. 0.9 as a fraction means 90%.');
+for (const unit of ['of reads', '%', 'percent']) for (const entry of ['', '-1', '0', '100', '101', 'NaN']) {
+  const interviewProblem = { ...problem, numbers: [{ label: 'Cache hits', value: unit === 'of reads' ? .9 : 90, unit }] };
+  const state = createInterview(interviewProblem);
+  state.stage = 'numbers';
+  renderInterviewPrep(host, interviewProblem, state, () => {});
+  const controls = all(host), field = controls.find(e => e.type === 'number');
+  field.listeners.input({ target: { value: entry } });
+  assert.equal(state.estimates[0], entry === '' ? null : Number(entry) / estimateUnit(interviewProblem.numbers[0]).factor);
+  controls.find(e => e.children?.some(c => c.textContent === 'Commit estimates')).listeners.click();
+  const valid = entry === '0' || entry === '100';
+  assert.equal(state.committed, valid, `${unit}: ${entry || 'blank'} respects the displayed inclusive range`);
+  assert.equal(state.stage, valid ? 'worked' : 'numbers');
+}
+const state = createInterview(problem);
+state.stage = 'numbers';
+renderInterviewPrep(host, problem, state, () => {});
+all(host).filter(e => e.type === 'number').forEach((field, i) => field.listeners.input({ target: { value: i === 0 ? '0' : String(estimateUnit(problem.numbers[i]).value) } }));
+all(host).find(e => e.children?.some(c => c.textContent === 'Commit estimates')).listeners.click();
+assert.equal(state.committed, false, 'a count with a positive minimum still rejects zero');
+all(host).filter(e => e.type === 'number')[0].listeners.input({ target: { value: '1' } });
+all(host).find(e => e.children?.some(c => c.textContent === 'Commit estimates')).listeners.click();
+assert.equal(state.committed, true, 'small positive non-percent guesses remain valid');
 delete globalThis.document;
 console.log(`Estimate units and inclusive ranges checked across ${problems.length} problems.`);
