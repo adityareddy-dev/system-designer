@@ -1424,15 +1424,15 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         onEditorial: () => openEditorial(),
         onShare: () => openShare(),
         onNext: () => { const n = list[idx + 1]; if (n) ctx.router.go('#/practice/' + n.id); },
-        onTwist: mode === 'practice' && S.problem.twist ? () => {
+        onTwist: mode === 'practice' && S.problem.twist ? () => transitionScreen(() => {
           const p = ctx.content?.problemById?.get(S.problem.id);
           if (!p?.twist) return;
           const g = graph(), on = !S.twist;
           resetHostForProblem({ preserveReference: true }); S.twist = on;
           configure(p, g); go('draw'); fitView(false);
           toast(on ? 'New twist: the same brief, with the events moved and one more added. Pass with no hints to earn full mastery after a checked original day.' : 'Back to the original day.', 'info', 5000);
-        } : null,
-        onShowNext: (ns) => { reset(); if (ns.nodeId) select(ns.nodeId); if (ns.elementId) toolbar.pulse(ns.elementId); },
+        }, { direction: 'back', reduced: ctx.reducedMotion() }) : null,
+        onShowNext: (ns) => transitionScreen(() => { reset(); if (ns.nodeId) select(ns.nodeId); if (ns.elementId) toolbar.pulse(ns.elementId); }, { direction: 'back', reduced: ctx.reducedMotion() }),
         nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; const fix = rn && ['units', 'autoscale'].includes(ns?.knob) && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; if (fix && ns.sizing) { fix.units = ns.sizing.units; fix.label = `Set ${fix.word.toLowerCase()} to ${fix.units}`; } return fix; },
         onAssisted: () => { S.workedRepair = true; },
         onSetNext: (fix) => transitionScreen(() => { reset(); applySizeFix(fix); select(fix.nodeId); }, { direction: 'back', reduced: ctx.reducedMotion() }),
