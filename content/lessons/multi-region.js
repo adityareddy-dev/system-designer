@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "multi-region",
   "title": "Surviving a region",
@@ -108,9 +108,11 @@ export default {
       "hint": "Add servers set to Europe, connect the global balancer to them, add a Read replica in Europe fed by the database, and connect the European servers to it."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "multi-region",
+      "view": "main",
       "title": "The price",
-      "text": "A second region costs about double and brings new problems: copies are far apart, so writes to two places can disagree. Many teams keep one writing region and a standby, or give each user a home region."
+      "text": "A standby can take over only with an ownership decision. Asynchronous writes that never reached it remain a recovery gap."
     },
     {
       "kind": "numbers",

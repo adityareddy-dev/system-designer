@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "back-of-envelope",
   "title": "Numbers you can do in your head",
@@ -13,9 +13,11 @@ export default {
       "icon": "ui.budget"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "back-of-envelope",
+      "view": "main",
       "title": "Divide by a day, then by the peak",
-      "text": "A day has about 86,400 seconds; call it 100,000. 200 million divided by 100,000 is 2,000 requests a second on average. Peak hour is often 3 times the average, so plan for about 6,000 a second."
+      "text": "Change the visitors, requests and peak. Follow the units from one day to one second before adding spare capacity."
     },
     {
       "kind": "demo",

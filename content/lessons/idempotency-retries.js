@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "idempotency-retries",
   "title": "Exactly once, on purpose",
@@ -116,9 +116,11 @@ export default {
       "hint": "Place an Idempotency store beside the workers and connect the workers to it. Each payment carries a unique key; a repeated key returns the first result."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "idempotency-retries",
+      "view": "main",
       "title": "The key",
-      "text": "The app makes one random key per purchase and sends it with every try. The server checks the key first: seen before, return the saved answer; new, do the work and save it. Keys are kept for a day or more (approx.)."
+      "text": "The purchase keeps one key across retries. An atomic ledger returns its stored receipt instead of repeating the charge."
     },
     {
       "kind": "numbers",

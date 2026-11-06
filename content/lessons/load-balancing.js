@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "load-balancing",
   "title": "Spreading load",
@@ -50,7 +50,9 @@ export default {
               "x": -480,
               "y": 0,
               "locked": true,
-              "knobs": { "retries": 0 }
+              "knobs": {
+                "retries": 0
+              }
             },
             {
               "ref": "app",
@@ -58,7 +60,9 @@ export default {
               "x": -300,
               "y": 0,
               "units": 1,
-              "knobs": { "retries": 0 }
+              "knobs": {
+                "retries": 0
+              }
             },
             {
               "ref": "db",
@@ -85,14 +89,21 @@ export default {
         "metric": "availability",
         "op": ">=",
         "value": 0.99,
-        "between": {"type": "regional-lb", "from": "users", "to": "app", "note": "The load balancer goes between the phone and the servers, so it can share requests out. Drop it onto that line."}
+        "between": {
+          "type": "regional-lb",
+          "from": "users",
+          "to": "app",
+          "note": "The load balancer goes between the phone and the servers, so it can share requests out. Drop it onto that line."
+        }
       },
       "hint": "Drag Load balancer between the phone and the servers, then set App servers to 5 at size M. At peak, 3,000 ÷ (1,000 × 70%) ≈ 4.3, rounded up to 5 servers."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "load-balancing",
+      "view": "main",
       "title": "Choosing who is next",
-      "text": "Round robin deals requests out in turn, like cards. Least requests picks the server with the fewest in progress. Least requests is better when some requests are slow."
+      "text": "Send a mix of short and long requests. Compare round robin with a policy that can see which servers still have work."
     },
     {
       "kind": "numbers",

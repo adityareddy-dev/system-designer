@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "consistency",
   "title": "Which copy is the truth",
@@ -112,9 +112,11 @@ export default {
       "hint": "Set the database Replication to sync so no write is lost. For reads that must be current, send them to the primary, not the replica."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "consistency",
+      "view": "main",
       "title": "Choose per screen",
-      "text": "You do not have to pick one for the whole app. A bank balance and a \"payment sent\" screen need the latest. A like count or a view counter can be a few seconds late. Use the expensive guarantee only where it matters."
+      "text": "Read a replica before delivery, then route to the primary. Choose the guarantee for each screen, including the authority needed to serve a latest-value read."
     },
     {
       "kind": "numbers",

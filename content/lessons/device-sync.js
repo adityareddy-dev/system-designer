@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "device-sync",
   "title": "Syncing across devices",
@@ -13,9 +13,11 @@ export default {
       "icon": "el.mobile-app"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "device-sync",
+      "view": "deltas",
       "title": "Send changes, keep intent",
-      "text": "Save each local edit and a device outbox entry in one durable transaction before showing it as saved on this device. Give the operation a stable id, a device sequence and a base version. Upload retries use the same id. The server commits the operation and deduplication result together, then returns its version. An upload acknowledgement must not advance the pull cursor past other changes the device has never downloaded. Pull after the last committed pull cursor, then commit the downloaded changes and that cursor together locally. Opaque cursors may include an epoch so a rebuilt log cannot be mistaken for the old one. A lost cursor can trigger a snapshot tied to a log position, followed by deltas from that position. Preserve local unsynced edits separately during this rebase."
+      "text": "Edit one note on two offline devices, delete another, then reconnect. Delta payloads carry the intent; concurrent versions need a visible resolution."
     },
     {
       "kind": "read",

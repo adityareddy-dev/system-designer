@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "metrics-systems",
   "title": "How metrics systems work",
@@ -13,9 +13,11 @@ export default {
       "icon": "el.timeseries-db"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "metrics-systems",
+      "view": "pipeline",
       "title": "The ingest and storage path",
-      "text": "Authenticate a tenant before accepting writes. Validate label counts, sizes and allowed dimensions. One design sends each series to a replicated ingester set with a WAL. Another appends to a replicated durable log first, then lets ingesters consume it. Mimir supports classic ingester replication and an ingest-storage architecture with Kafka-backed durability; do not assume both acknowledge at the same boundary. Prometheus alone uses a local TSDB and WAL, not this distributed ring. Recent samples become compressed immutable blocks; a distributed backend can upload them to object storage. Indexes select series and blocks. Compaction rewrites blocks, while retention removes expired data. Downsampling is an optional separate policy, not an automatic Mimir or Prometheus retention feature. Preserve count and sum for combined averages, and use semantics-aware summaries for counters and histograms."
+      "text": "Every label combination creates a series. Follow counted samples from the log into blocks and compaction, then repeat and shift a four-slice query."
     },
     {
       "kind": "read",

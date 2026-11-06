@@ -649,6 +649,14 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     if (ghost.view && ghost.ring) ghost.ring.alpha = reduced ? 0.9 : 0.6 + 0.35 * Math.sin(now * 0.006);
   }
 
+  function renderCanvas() {
+    try { app.render(); return true; } catch (error) {
+      // A context can also disappear during shader compilation, after the frame's check.
+      if (!app.renderer.context.isLost) throw error;
+      return false;
+    }
+  }
+
   function frame(now) {
     if (destroyed) return;
     raf = requestAnimationFrame(frame);
@@ -659,7 +667,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     for (const fn of frameFns) {
       try { fn(dt); } catch (err) { queueMicrotask(() => { throw err; }); }
     }
-    if (destroyed) return;
+    if (destroyed || app.renderer.context.isLost) { lastRenderMs = 0; return; }
     // nothing is moving: skip drawing and the GPU pass until something wakes the scene
     if (now - lastActive > IDLE_AFTER_MS && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
       idleFrames++; isIdle = true;
@@ -669,7 +677,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     isIdle = false;
     const t0 = performance.now();
     draw(dt, now);
-    app.render();
+    if (!renderCanvas()) { lastRenderMs = 0; return; }
     const ms = performance.now() - t0;
     renderSamples[rsi] = ms; rsi = (rsi + 1) % renderSamples.length; rsn = Math.min(rsn + 1, renderSamples.length);
     lastRenderMs = ms;
@@ -695,6 +703,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'pointerleave', 'wheel', 'dragover', 'drop', 'touchstart']) hostEl.addEventListener(ev, wake, { passive: true, capture: true });
   globalThis.addEventListener?.('keydown', wake);
   globalThis.document?.addEventListener?.('visibilitychange', wake);
+  canvas.addEventListener('webglcontextrestored', wake);
 
   globalThis.document?.fonts?.ready?.then(() => { if (!destroyed) nodes.refreshLabels(); });
 
@@ -848,11 +857,11 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     on(name, fn) { return emitter.on(name, fn); },
     // Extra: draw one frame right now (tests, step()).
     renderNow(dt = 16.7) {
-      if (destroyed) return;
+      if (destroyed || app.renderer.context.isLost) return;
       wake();
       const t0 = performance.now();
       draw(dt, t0);
-      app.render();
+      if (!renderCanvas()) { lastRenderMs = 0; return; }
       lastRenderMs = performance.now() - t0;
     },
     stats() {
@@ -866,6 +875,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       };
     },
     async snapshot({ width = 600, height = 315, graph: g2 } = {}) {
+      if (destroyed || app.renderer.context.isLost) throw new Error('The drawing surface is unavailable. Try again after it recovers.');
       const g = g2 || graph;
       const root = new PIXI.Container();
       const bg = new PIXI.Graphics().rect(0, 0, width, height).fill({ color: P.canvas });
@@ -907,6 +917,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         inner.scale.set(sc);
         inner.position.set(width / 2 - ((minX + maxX) / 2) * sc, height / 2 - ((minY + maxY) / 2) * sc);
       }
+      if (destroyed || app.renderer.context.isLost) {
+        root.destroy({ children: true });
+        throw new Error('The drawing surface is unavailable. Try again after it recovers.');
+      }
       const rt = PIXI.RenderTexture.create({ width, height, resolution: 1, antialias: true });
       app.renderer.render({ container: root, target: rt, clear: true });
       const out = app.renderer.extract.canvas(rt);
@@ -921,6 +935,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       ro.disconnect();
       globalThis.removeEventListener?.('keydown', wake);
       globalThis.document?.removeEventListener?.('visibilitychange', wake);
+      canvas.removeEventListener('webglcontextrestored', wake);
       input.destroy();
       frameFns.clear();
       ghostClear();

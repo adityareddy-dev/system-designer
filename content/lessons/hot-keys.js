@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "hot-keys",
   "title": "When one item is popular",
@@ -92,14 +92,24 @@ export default {
         "metric": "availability",
         "op": ">=",
         "value": 0.99,
-        "between": {"types": ["cache", "distributed-cache"], "from": "app", "to": "db", "note": "The cache has to sit between the servers and the database, so the popular item is answered from memory. Drop it onto that line."}
+        "between": {
+          "types": [
+            "cache",
+            "distributed-cache"
+          ],
+          "from": "app",
+          "to": "db",
+          "note": "The cache has to sit between the servers and the database, so the popular item is answered from memory. Drop it onto that line."
+        }
       },
       "hint": "Place a Cache between the servers and the database so the popular item is answered from memory."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "hot-keys",
+      "view": "main",
       "title": "Ways out",
-      "text": "Cache the hot item so the shard is rarely asked. Keep several copies of it. Or split the key, for example by adding a small number to the end, and combine the pieces on read."
+      "text": "Adding shards spreads different keys. It does not divide the work on one popular key. Try coalescing those reads."
     },
     {
       "kind": "numbers",

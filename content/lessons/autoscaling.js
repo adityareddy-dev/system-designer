@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "autoscaling",
   "title": "Adding servers, and why it is late",
@@ -94,9 +94,11 @@ export default {
       "hint": "Select the servers, switch Autoscale on, and set the highest number to 20 with a target of 60 percent."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "autoscaling",
+      "view": "main",
       "title": "Why it is always a little late",
-      "text": "Autoscaling reacts after load rises, and a new server needs 2 to 4 minutes to start (approx.). A steep spike can break things before help arrives. Keep spare room, or scale before a known event."
+      "text": "Reacting to a spike leaves a gap before new capacity is ready. Compare that gap with servers prepared in advance."
     },
     {
       "kind": "numbers",

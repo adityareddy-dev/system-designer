@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "replication-lag",
   "title": "Copies are a little behind",
@@ -93,9 +93,11 @@ export default {
       "hint": "A dropped replica needs two links: SQL database → Read replica copies changes; App servers → Read replica carries reads. Keep App servers → SQL database. At peak, 9,000 × 92% = 8,280 reads/s and 9,000 × 8% = 720 writes/s. At size M, the primary handles ≈ 8,000 reads/s or ≈ 2,000 writes/s. Writes alone use 720 ÷ 2,000 = 36%. This model shares reads by capacity across the primary and replicas. With 4 replicas, the primary gets about one fifth of reads: 8,280 ÷ 5 ÷ 8,000 ≈ 21%. Total primary load is ≈ 36% + 21% = 57%, leaving room below 70%. Select Read replica and set its replica count to 4, keeping both databases at size M."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "replication-lag",
+      "view": "main",
       "title": "Stale on purpose",
-      "text": "Replication is usually asynchronous: the primary says \"done\" without waiting for replicas to acknowledge the change. That is fast, but a read right after your own write can show the old value. Normal lag is about 100 ms (approx.); in trouble it can reach many seconds. Synchronous replication waits for the required replicas to acknowledge before confirming a write, adding latency. Whether a replica can serve that write immediately depends on whether its acknowledgement means received, durably stored or applied."
+      "text": "An acknowledged primary write is not yet an applied replica write. Advance delivery and read the actual versions."
     },
     {
       "kind": "numbers",

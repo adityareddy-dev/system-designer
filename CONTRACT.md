@@ -602,6 +602,12 @@ export default {
 
 Advanced lessons may use a worked example in a `read` step instead of a `demo` when the engine does not model the mechanism. The `Go deeper` and `Lead the design` tracks follow Business; their lessons take 5 to 8 minutes and contain a numbers step, at least three reasoning quizzes, a transfer case and two or three defend steps.
 
+Lessons also support `{ kind: 'figure', figure: lessonId, view?: 'stage-name', title, text }`. The shell imports only `ui/figures/<lessonId>.js` when that figure opens. It calls `mountFigure(host, ctx, step)`, receiving `{ destroy() }`; navigation cancels pending mounts and destroys mounted controls, observers and motion. `view` selects a distinct mechanism or starting state within that lesson. Figure steps preserve the existing lesson ids, quiz and transfer completion rules and saved progress schema.
+
+Each figure module exports a pure `model` with `initial(view)`, `controls`, `update(state, action, value)`, `view(state)` and a visible `note` identifying its simplifying assumptions. `view` returns SVG markup, a numerical event caption and named statistics. Models count their actual records, operations or requests; hypothetical cost and planning assumptions are stated. These local teaching models never affect traffic scoring or catalog capacities.
+
+`ui/figures/bench.js` shares native labelled controls, reset, keyed SVG movement, captions, theme tokens and motion lifecycle. Its `styles.js` uses only `.fg-` selectors plus lesson-card selectors and travels with the optional release bundle. There are no new dependencies or globals. Motion respects `ctx.reducedMotion()` and the resolved document setting, uses still states under reduced motion, and pauses while off screen, while the document is hidden or when the player presses Pause motion. Every semantic step remains available as a button or native range/select/checkbox for touch and keyboard. No figure runs a background simulation clock. SVG/DOM drawings are independent of PixiJS and loaded by the lesson, with their stylesheet loaded on first use.
+
 ```js
 { kind: 'defend', q: 'A sharp colleague asks you to justify a choice. What fails next?',
   checklist: ['A concrete failure case', 'The cost of the chosen guarantee'],

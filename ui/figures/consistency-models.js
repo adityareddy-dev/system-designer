@@ -1,0 +1,17 @@
+// Session reads on a lagging replica and a two-row snapshot-isolation anomaly.
+import {mount,range,select,button,box,line,packet,text} from './bench.js';
+export const model={note:'Model: one primary, one delayed replica, integer-second delivery. Session guarantees route to the primary when the replica is behind. Snapshot isolation checks write conflicts per row, with two doctors initially on call.',
+ controls:[select('mode','Guarantee',[['eventual','Eventual reads'],['ryw','Read your writes'],['monotonic','Monotonic reads'],['snapshot','Snapshot isolation']]),range('lag','Replica lag (seconds)',0,10,4),button('write','Client A writes'),button('readA','Client A reads'),button('readB','Client B reads'),button('tick','Advance one second'),button('skew','Both doctors go off call')],
+ initial:view=>({mode:view==='skew'?'snapshot':'eventual',lag:4,time:0,primary:0,replica:0,pending:[],seenA:0,seenB:0,wroteA:0,reads:[],doctors:[1,1],message:'Two clients start at v0. Write, read before delivery, then change the guarantee.',event:0}),
+ update(s,a,v){s=structuredClone(s);s.event++;if(a==='mode'||a==='lag')s[a]=v;
+ if(a==='write'){s.primary++;s.wroteA=s.primary;s.pending.push({at:s.time+s.lag,value:s.primary});if(!s.lag)s.replica=s.primary;s.message=`Client A wrote v${s.primary} at t=${s.time}. Replica delivery at t=${s.time+s.lag}.`;}
+ if(a==='tick'){s.time++;for(const p of s.pending.filter(p=>p.at<=s.time))s.replica=Math.max(s.replica,p.value);s.pending=s.pending.filter(p=>p.at>s.time);s.message=`t=${s.time}: replica is v${s.replica}, primary v${s.primary}.`;}
+ if(a==='readA'||a==='readB'){const client=a==='readA'?'A':'B',key='seen'+client;const floor=s.mode==='ryw'&&client==='A'?s.wroteA:s.mode==='monotonic'?s[key]:0;
+ // B reads the primary on alternate requests to expose a later regression to a replica.
+ const primary=client==='B'&&s.reads.filter(r=>r.client==='B').length%2===0;const value=primary||s.replica<floor?s.primary:s.replica;s[key]=Math.max(s[key],value);s.reads.push({id:s.event,client,value,time:s.time});s.message=`Client ${client} reads v${value} from ${primary||s.replica<floor?'primary':'replica'} at t=${s.time}. ${value<s.primary?'Stale by '+(s.primary-value)+' versions.':'Latest value.'}`;}
+ if(a==='skew'){s.mode='snapshot';s.doctors=[0,0];s.message='Both snapshots saw 2 on-call doctors. Each changed a different row; both commits pass row conflict checks. 0 doctors remain on call.';}
+ return s;},
+ view(s){if(s.mode==='snapshot')return {svg:box(12,12,336,60,'Snapshot: A=on, B=on','Each transaction sees two doctors')+box(12,98,160,65,'Transaction A',`A=${s.doctors[0]?'on':'off'}`)+box(188,98,160,65,'Transaction B',`B=${s.doctors[1]?'on':'off'}`)+packet('doctorA',80,s.doctors[0]?130:212,80,45)+packet('doctorB',268,s.doctors[1]?130:212,268,45)+text(12,239,`${s.doctors[0]+s.doctors[1]} on call after commit`),caption:s.message,stats:{'on call':s.doctors[0]+s.doctors[1]}};
+ return {svg:box(12,12,160,58,'Primary',`v${s.primary}`)+box(188,12,160,58,'Replica',`v${s.replica}`)+line(20,120,340,120)+text(12,100,'Client A timeline','fg-small')+line(20,210,340,210)+text(12,190,'Client B timeline','fg-small')+s.reads.slice(-4).map((r,i)=>packet('read'+r.id,30+i*80,r.client==='A'?120:210,r.value===s.replica?268:80,65,`v${r.value}`,r.value<s.primary?'is-bad':'is-good')).join('')+packet('version',268,s.replica===s.primary?55:82,80,55),caption:s.message,stats:{'primary version':s.primary,'replica version':s.replica,'seconds elapsed':s.time}};}
+};
+export const mountFigure=(h,c,s)=>mount(h,c,s,model);

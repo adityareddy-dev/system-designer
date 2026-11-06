@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "logs-traces",
   "title": "Logs and traces",
@@ -13,14 +13,18 @@ export default {
       "icon": "el.logs"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "logs-traces",
+      "view": "index",
       "title": "Index a little or index the words",
-      "text": "A label-indexed log store maps bounded labels and time ranges to compressed chunks in object storage. It then scans selected chunks for words. Cheap ingestion and a small index suit known service and time filters; broad text searches may read many bytes. A full-text index maps words to matching records and speeds some searches, at the cost of index writes, storage and memory. Keep request ids as fields or structured metadata rather than creating millions of streams. Neither approach excuses access control or secret removal before export. Traces group spans by trace id and parent relationships; clock skew can distort cross-host placement and inferred latency. Measure a local span duration with a monotonic clock where possible; parent and link identities express relationships that wall-clock order cannot prove."
+      "text": "Search the same log rows using a label-only index or word postings. Index bytes and rows examined are measured from this data."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "logs-traces",
+      "view": "sampling",
       "title": "Worked example: sampling trade-offs",
-      "text": "Assume 10,000 traces/s, 20 spans/trace and 500 bytes/span before compression. Raw spans are about 100 MB/s or 8.64 TB/day. A 10% head sample keeps about 0.864 TB/day if chosen consistently for the whole trace. It cannot know that a later span will fail. Tail sampling waits for spans, then selects errors, slow traces and a baseline. For a sizing example, assume spans remain buffered for an average of 30 seconds. At this load that is roughly 3 GB of raw spans, before metadata and replicas. A 30-second decision timer alone does not establish average residence time: span arrival times, decision caches and late spans change memory use. Late or missing spans and collector failure can still yield incomplete traces. The sim does not implement sampling or trace assembly, so these are explicit worked assumptions."
+      "text": "The same 100 completed traces feed both samplers. Head decisions cannot know the outcome; tail decisions wait and pay to buffer the whole stream."
     },
     {
       "kind": "numbers",

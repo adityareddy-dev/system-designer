@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "realtime-connections",
   "title": "Live sockets and presence",
@@ -83,14 +83,21 @@ export default {
         "metric": "availability",
         "op": ">=",
         "value": 0.99,
-        "between": {"type": "websocket-gateway", "from": "users", "to": "app", "note": "The gateway goes between the phones and the servers, so it holds the open connections. Drop it onto that line."}
+        "between": {
+          "type": "websocket-gateway",
+          "from": "users",
+          "to": "app",
+          "note": "The gateway goes between the phones and the servers, so it holds the open connections. Drop it onto that line."
+        }
       },
       "hint": "Place a Websocket gateway between the phones and the servers."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "realtime-connections",
+      "view": "main",
       "title": "Who is online",
-      "text": "Presence (\"Sam is online\") is a stream of tiny updates. Keep it in memory, expire it fast, and accept that it is a little off. Do not write it to the main database."
+      "text": "An open connection consumes memory. Presence is a separate, expiring observation, so a silent disconnect can briefly leave a person online."
     },
     {
       "kind": "numbers",
