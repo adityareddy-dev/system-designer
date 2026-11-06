@@ -199,7 +199,8 @@ try {
   });
   await click('Start day');
   const proofPreflight = await page.$eval('.pl-modal-card', el => el.textContent);
-  assert.match(proofPreflight, /required compliance check has no proof/);
+  assert.match(proofPreflight, /Audit trail: required proof is missing/);
+  assert.match(proofPreflight, /Tested backups: required proof is missing/);
   assert.doesNotMatch(proofPreflight, /wiring guidance|Add |Connect |Put |Set /);
   assert.deepEqual(errors, []);
   console.log('Interview preparation, visible clock, typed estimates, one locked run, defense, sync and backup restoration passed at all sizes.');
