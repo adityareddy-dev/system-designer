@@ -12,11 +12,11 @@ export function previewLimits(problem, graph, estimate, catalog) {
   }
   // One directly attached consumer pool permits a transparent constant-rate calculation.
   for (const queue of queues) {
-    const consumers = graph.edges.filter(e => e.from === queue.id && e.kind === 'flow').map(e => graph.nodes.find(n => n.id === e.to)).filter(Boolean);
+    const consumers = graph.edges.filter(e => e.from === queue.id && e.kind === 'flow').map(e => graph.nodes.find(n => n.id === e.to)).filter(n => n && catalog.elementById.get(n.type)?.kind === 'compute');
     if (consumers.length !== 1) continue;
     const worker = consumers[0], el = catalog.elementById.get(worker.type);
-    if (el?.kind !== 'compute' || !el.capacity?.rps || worker.knobs?.autoscale?.on || worker.tier > 1) continue;
-    const capacity = el.capacity.rps * worker.units;
+    if (el?.kind !== 'compute' || !el.capacity?.rps || worker.knobs?.autoscale?.on) continue;
+    const capacity = el.capacity.rps * worker.units * (catalog.world.tiers?.[worker.tier]?.capacity || 1);
     for (const event of problem.events || []) {
       const effect = catalog.eventById.get(event.id)?.effects.find(e => e.op === 'traffic');
       if (!effect) continue;
