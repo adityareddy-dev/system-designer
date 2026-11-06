@@ -71,6 +71,7 @@ export function renderLesson(host, ctx, route) {
   let poolOff = null;
   let figure = null;
   let figureVersion = 0;
+  let suspended = false;
   const total = steps.length + 1; // last page is the takeaway
   let idx = Math.max(0, Math.min(total - 1, parseInt(route.query.step, 10) || 0));
   let play = null;
@@ -327,14 +328,17 @@ export function renderLesson(host, ctx, route) {
     body.append(card);
   }
 
+  const offRoute = ctx.bus.on('route', r => {
+    if (r.parts[0] !== 'learn' || r.parts[1] !== lesson.id) { suspended = true; stopPlay(); }
+  });
   draw();
   return {
     title: lesson.title,
     update(r) {
       const n = Math.max(0, Math.min(total - 1, parseInt(r.query.step, 10) || 0));
-      if (n !== idx) { idx = n; draw(); }
+      if (n !== idx || suspended) { idx = n; suspended = false; draw(); }
     },
-    destroy: stopPlay,
+    destroy() { offRoute(); stopPlay(); },
     get play() { return play; },
   };
 }
