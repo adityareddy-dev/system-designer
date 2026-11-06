@@ -96,7 +96,7 @@ export function carryRunIntoReport({ host, stage, scene, result, catalog, traces
   });
   return transitionScreen(() => {
     sources.forEach(el => el.remove());
-    render();
+    if (render() === false) return;
     const report = host.querySelector('.pl-debrief');
     if (!report) return;
     const { heading, detail } = result.passed

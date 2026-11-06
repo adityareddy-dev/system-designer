@@ -18,6 +18,7 @@ export function victoryMetric(result, before) {
 
 export function cleanSweep(result) {
   return result.passed && result.stars === 3 && result.score.total === 1000
+    && (!result.learning || (result.learning.traceChecked && !result.learning.assisted))
     && !(result.efficiency || []).length && !(result.slo.safety?.promiseFailures || []).length;
 }
 
@@ -62,7 +63,7 @@ export function victoryRepair(graph, original) {
 }
 
 export function showVictory(host, { result, before, original, catalog, reduced }) {
-  if (!result.passed) return;
+  if (!result.passed || result.learning && (!result.learning.traceChecked || result.learning.assisted)) return;
   const graph = result.graph;
   if (!graph?.nodes?.length) return;
   const { changes, route } = victoryRepair(graph, original);
@@ -88,7 +89,7 @@ export function showVictory(host, { result, before, original, catalog, reduced }
   const metric = h('strong', { text: format(value) });
   const root = h('section', { class: 'pl-victory' + (clean ? ' pl-victory--sweep' : ''), 'aria-label': 'What earned this pass' },
     h('div', { class: 'pl-victory-copy' }, h('span', { class: 'pl-small', text: clean ? 'All targets held · clean sweep' : 'All targets held · passed' }),
-      h('div', { class: 'pl-victory-marks', 'aria-hidden': 'true' }, ...(clean ? [0,1,2] : [0]).map(i => h('span', { style: { animationDelay: `${700 + i * 100}ms` }, text: clean ? '★' : '✓' }))),
+      h('div', { class: 'pl-victory-marks', 'aria-hidden': 'true' }, ...(clean ? [0,1,2] : [0]).map(i => h('span', { style: { animationDelay: `calc(var(--victory-lead, 0ms) + ${700 + i * 100}ms)` }, text: clean ? '★' : '✓' }))),
       h('h3', { text: clean ? 'Clean sweep' : changes.length ? 'Your repair carried the day' : 'Your path held through the day' }),
       h('p', { text: changes.length ? changes.map(n => catalog.elementById.get(n.type)?.name || n.type).join(' · ') : 'Follow the surviving request path.' }),
       h('div', { class: 'pl-victory-numbers' },
@@ -101,9 +102,10 @@ export function showVictory(host, { result, before, original, catalog, reduced }
   const start = performance.now();
   function frame(now) {
     if (!root.isConnected) return;
-    const elapsed = now - start, k = Math.min(1, Math.max(0, (elapsed - 400) / 450));
+    const lead = root.closest('.pl-report-arriving') ? 620 : 0;
+    const elapsed = now - start, k = Math.min(1, Math.max(0, (elapsed - lead - 400) / 450));
     metric.textContent = format((from ?? target) + (value - (from ?? target)) * k);
-    if (elapsed < 900) requestAnimationFrame(frame);
+    if (elapsed < lead + 900) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 }

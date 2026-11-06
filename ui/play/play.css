@@ -998,6 +998,12 @@
 .pl-run-evidence .pl-kicker {font-size:11px;margin:0}
 .pl-report-arriving>.pl-run-evidence .pl-run-evidence-copy {animation:pl-evidence-in 180ms ease-out 540ms both}
 .pl-report-arriving>:not(.pl-run-evidence) {animation:pl-evidence-in 220ms ease-out 620ms both}
+.pl-report-arriving {--victory-lead:620ms}
+.pl-report-arriving .pl-victory-wire {animation-delay:calc(var(--beat) + var(--victory-lead))}
+.pl-repair,.pl-learning-status,.pl-interview-priorities {overflow-wrap:anywhere;min-width:0}
+.pl-repair select {text-overflow:ellipsis}
+.pl-checkpoint .pl-trace-reason,.pl-repair [role=status]:not(:empty),.pl-nresult:not(:empty) {animation:pl-evidence-in 180ms ease-out both}
+:root[data-motion=reduce] .pl-checkpoint .pl-trace-reason,:root[data-motion=reduce] .pl-repair [role=status],:root[data-motion=reduce] .pl-nresult {animation:none}
 @keyframes pl-evidence-in {from {opacity:0;transform:translateY(12px)}to {opacity:1;transform:translateY(0)}}
 ::view-transition-group(run-token-0),::view-transition-group(run-token-1),::view-transition-group(run-token-2) {animation-duration:520ms;animation-timing-function:cubic-bezier(.2,.8,.2,1);z-index:2}
 ::view-transition-old(run-token-0),::view-transition-new(run-token-0),::view-transition-old(run-token-1),::view-transition-new(run-token-1),::view-transition-old(run-token-2),::view-transition-new(run-token-2) {height:100%;width:100%;mix-blend-mode:normal;animation:none}

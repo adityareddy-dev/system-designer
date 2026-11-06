@@ -756,6 +756,11 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     },
     setTrace(edgeIds) { edges.setTrace(edgeIds); },
     confirmConnection(edgeId) { connection = { id: edgeId, start: performance.now() }; },
+    confirmRepair(nodeId) {
+      const part = nodes.views.get(nodeId);
+      if (part && !reduced) fx.sparkle(part.x, part.y, P.ok, 2);
+      wake();
+    },
     setInsertionPreview(fn) { insertionPreview = fn; },
     // type, then world x, y (snapped). Leave x, y out to have the ghost follow the pointer.
     setGhost(type, x, y) {

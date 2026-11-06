@@ -544,8 +544,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const a = n.knobs?.autoscale;
     if (a?.on) setKnob(fix.nodeId, 'autoscale', { ...a, min: Math.max(a.min || 1, fix.units), max: Math.max(a.max || 1, fix.units) });
     announce(`${fix.word} set to ${fix.units}.`);
-    scene.flashEvent('repair', [fix.nodeId], 1);
-    later(() => { if (!S.destroyed) scene.flashEvent('repair', null, 0); }, 3100);
+    scene.confirmRepair(fix.nodeId);
   }
   function editableKnobs() { return !interview && mode !== 'challenge'; }
   function removeNode(id) {
@@ -1382,7 +1381,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.step = 'debrief';
     const traces = result.passed ? Object.entries(S.problem.requirements.mix).filter(([, share]) => share > 0).map(([type]) => S.sim.trace(type)) : [];
     carryRunIntoReport({ host: debriefWrap, stage, scene, result: S.result, catalog, traces, interview, reduced: ctx.reducedMotion(), render: () => {
-      if (S.destroyed || S.step !== 'debrief') return;
+      if (S.destroyed || S.step !== 'debrief' || S.result?.graph !== result.graph) return false;
       root.dataset.step = 'debrief';
       stepsBar.set('debrief', { clarify: false, numbers: false, draw: true, debrief: true });
       showDebrief();
@@ -1436,7 +1435,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         onShowNext: (ns) => { reset(); if (ns.nodeId) select(ns.nodeId); if (ns.elementId) toolbar.pulse(ns.elementId); },
         nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; const fix = rn && ['units', 'autoscale'].includes(ns?.knob) && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; if (fix && ns.sizing) { fix.units = ns.sizing.units; fix.label = `Set ${fix.word.toLowerCase()} to ${fix.units}`; } return fix; },
         onAssisted: () => { S.workedRepair = true; },
-        onSetNext: (fix) => { reset(); applySizeFix(fix); select(fix.nodeId); },
+        onSetNext: (fix) => transitionScreen(() => { reset(); applySizeFix(fix); select(fix.nodeId); }, { direction: 'back', reduced: ctx.reducedMotion() }),
       },
     });
     if (S.prediction) debriefWrap.querySelector('.pl-verdict-sec')?.append(h('p', { class: 'pl-prediction' }, h('b', { text: 'Your prediction before this run: ' }), S.prediction, ' Compare it with the measured cause below.'));

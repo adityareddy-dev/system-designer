@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { victoryMetric, victoryRepair, cleanSweep } from '../ui/play/victory.js';
 const full = { passed: true, stars: 3, score: { total: 1000 }, slo: { safety: {} } };
 assert(cleanSweep(full));
+assert(!cleanSweep({ ...full, learning: { traceChecked: false, assisted: false } }), 'open traces never receive a clean sweep');
+assert(!cleanSweep({ ...full, learning: { traceChecked: true, assisted: true } }), 'assisted passes never receive a clean sweep');
 assert(!cleanSweep({ ...full, score: { total: 999 } }), 'even one lost point keeps the win quiet');
 assert(!cleanSweep({ ...full, efficiency: [{ savingPerMonth: 20 }] }), 'excess capacity is never a clean sweep');
 assert(!cleanSweep({ ...full, passed: false, slo: { safety: { promiseFailures: [{}] } } }), 'failed promises never celebrate');
