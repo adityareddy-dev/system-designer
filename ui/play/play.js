@@ -15,7 +15,7 @@ import { createHud } from './hud.js';
 import { createHints } from './hints.js';
 import { renderDebrief } from './debrief.js';
 import { renderEditorial } from './editorial.js';
-import { createTrafficPanel, DEFAULT_TRAFFIC } from './traffic-panel.js';
+import { createTrafficPanel, DEFAULT_TRAFFIC, trafficInput } from './traffic-panel.js';
 import { queueDrainAdvice } from './lesson-queue.js';
 import { createRouteTrace } from './route-trace.js';
 import { renderCheckpointForm } from './correctness.js';
@@ -60,7 +60,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function pseudoProblem() {
     if (isSandbox) {
-      const t = DEFAULT_TRAFFIC;
+      const t = trafficInput(opts.traffic || (!opts.graph && store.get('draft.sandbox.sandbox', null)?.traffic));
       const sum = Object.values(t.rps).reduce((a, b) => a + b, 0);
       return { id: 'sandbox', title: 'Sandbox', difficulty: 'Easy', concepts: [], brief: 'Any component, any traffic, no game over.', clarify: [], numbers: [], hints: [], events: [], eventPool: [],
         requirements: baseRequirements({ peakRps: sum, mix: Object.fromEntries(Object.entries(t.rps).map(([k, v]) => [k, v / sum])), userRegions: t.regions, budgetPerMonth: 1e9 }),
@@ -109,7 +109,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- scene
   const scene = await createScene(stage, { catalog, palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
   const routeTrace = createRouteTrace(root, catalog, scene);
-  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && !interview && S.step === 'draw' && S.sim?.phase === 'build'); }
+  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && !interview && S.step === 'draw' && S.sim?.phase === 'build', adviceReady()); }
 
   // ---- sim
   function makeSim(problem, graph) {
@@ -150,7 +150,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (isLesson || interview) return;
     const id = S.problem?.id;
     if (!id) return;
-    store.set(`draft.${mode}.${id}`, { graph: S.sim.getGraph(), seed: S.seed, savedAt: Date.now() });
+    store.set(`draft.${mode}.${id}`, { graph: S.sim.getGraph(), seed: S.seed, ...(isSandbox ? { traffic: trafficPanel?.get() || S.traffic } : {}), savedAt: Date.now() });
   }, 1000);
 
   function graph() { return S.sim.getGraph(); }
@@ -258,24 +258,24 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     // a server group that is too small: name the setting and offer the count that would keep it near 70 percent busy
     const sizeFix = (n) => sizeFixFor(n.id, n.util);
     const out = arr.filter((n) => n.holds === false).map((n) => {
-      const fix = interview ? null : sizeFix(n);
+      const fix = interview || !adviceReady() ? null : sizeFix(n);
       const base = `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent at the normal peak. `;
       return { level: 'warn', code: 'peak-risk', nodeId: n.id, ...(fix ? { fix } : {}),
-        message: base + (interview ? '' : fix ? `Open its ${fix.word} setting (now ${fix.now}) and raise it to about ${fix.units}. If Autoscale is on, raise "Never fewer than" too.` : lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')) };
+        message: base + (interview || !adviceReady() ? 'Predict how that affects requests before choosing a repair.' : fix ? `Open its ${fix.word} setting (now ${fix.now}) and raise it to about ${fix.units}. If Autoscale is on, raise "Never fewer than" too.` : lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')) };
     });
     const sp = S.est?.spike;
     if (!out.length && sp && !sp.holds) {
       const f = Math.round(sp.factor * 10) / 10;
       for (const n of sp.nodes || []) {
         out.push({ level: 'warn', code: 'spike-risk', nodeId: n.id,
-          message: `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent in the ${sp.name.toLowerCase()} (${f} times the traffic).${interview ? '' : ' ' + lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')}` });
+          message: `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent in the ${sp.name.toLowerCase()} (${f} times the traffic).${interview || !adviceReady() ? '' : ' ' + lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')}` });
       }
       if (!out.length) out.push({ level: 'warn', code: 'spike-risk', message: `About ${Math.round((sp.successShare ?? 1) * 1000) / 10} percent of requests would succeed in the ${sp.name.toLowerCase()} (${f} times the traffic).` });
     }
     return out;
   }
   function diagnosticIssues() {
-    if (!interview) return S.issues || [];
+    if (!interview && adviceReady()) return S.issues || [];
     const facts = {
       'no-source': 'No request sources are present.',
       'no-source-type': 'No source emits this request type.',
@@ -295,6 +295,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     };
     return (S.issues || []).map(i => ({ level: i.level, code: i.code, nodeId: i.nodeId, type: i.type, source: i.source,
       message: [i.nodeId, i.type && catalog.requestById.get(i.type)?.plural, facts[i.code] || 'A design check is unresolved.'].filter(Boolean).join(': ') }));
+  }
+  function adviceReady() {
+    return mode !== 'practice' || S.triedId === S.problem?.id || ctx.progress?.get?.(S.problem?.id)?.attempts > 0;
   }
   function paintIssues() {
     issuesBox.replaceChildren();
@@ -1151,6 +1154,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- traffic day
   // Messages that differ only in the request type they name ("Reads need X", "Writes need X") become one line.
   function mergeByCause(errs) {
+    errs = errs.filter(e => e.code !== 'source-type-unserved' || !errs.some(other => other.type === e.type && other.code === 'type-unserved'));
     const groups = new Map();
     for (const e of errs) {
       const pl = e.type ? catalog.requestById.get(e.type)?.plural : null;
@@ -1196,9 +1200,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     return startTraffic();
   }
-  function startTraffic() {
+  function startTraffic(testHook = false) {
     if (interview && (interviewState.stage !== 'ready' || (interviewState.run && S.sim.phase === 'build'))) return getState();
-    if (!interview && mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id) {
+    if (!testHook && !interview && mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id) {
       modal.replaceChildren(renderCheckpointForm(S.problem.correctness, S.correctnessAnswer, (answer) => {
         S.correctnessAnswer = answer;
         S.checkpointReady = S.problem.id;
@@ -1276,6 +1280,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function finish() {
     const result = S.sim.result();
     if (!result) return;
+    S.triedId = S.problem.id;
     const isRef = !!S.refSig && S.refSig === graphSig();
     const warm = !!S.problem?.warmUp || !!S.problem?.twistDay;
     S.result = isRef ? { ...result, reference: true } : warm ? { ...result, warmUp: true, ...(S.problem?.twistDay ? { twistDay: true } : {}) } : result;
@@ -1308,7 +1313,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!isRef && S.problem?.warmUp && !S.problem?.twistDay && result.passed && mode === 'practice') {
       try { store.set('warmups', { ...(store.get('warmups', {}) || {}), [S.problem.id]: Date.now() }); bus.emit('progress:updated', { problemId: S.problem.id, warmUp: true }); } catch { /* optional */ }
     }
-    if (!interview && !isRef && !warm) bus.emit('play:day-end', { mode, problemId: S.problem.id, seed: S.seed, result, hintsUsed: hints.used() });
+    if (!interview && !isRef && !warm) {
+      if (mode === 'practice') ctx.progress?.recordCorrectness?.(S.problem.id, S.problem.correctness, S.correctnessAnswer, result.passed);
+      bus.emit('play:day-end', { mode, problemId: S.problem.id, seed: S.seed, result, hintsUsed: hints.used() });
+    }
   }
   function showDebrief() {
     if (!S.result) return;
@@ -1416,7 +1424,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
 
   // ---- hints
-  const hints = createHints(root, { getHints: () => S.problem?.hints || [], snd, onUse: (n) => { S.hintsUsed = n; } });
+  const hints = createHints(root, { getHints: () => adviceReady() ? S.problem?.hints || [] : ['Before choosing another part, trace one request through your design. Where does it wait, what happens if that step crashes, and what evidence would disprove your prediction? Run a day first; repair hints open after your attempt.'], snd, onUse: (n) => { S.hintsUsed = n; } });
   function closeHints() { hints.close(); }
 
   // ---- toolbar, inspector, HUD, requirements, traffic panel
@@ -1454,6 +1462,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     catalog,
     getNode: (id) => graph().nodes.find((n) => n.id === id),
     getHome: () => S.problem?.requirements?.homeRegion,
+    getProblem: () => S.problem,
     onKnob: setKnob, onDelete: removeNode, onDuplicate: duplicate, onConnect: startConnect, onClose: () => select(null), lesson: isLesson,
   });
   const hud = createHud(root, {
@@ -1544,7 +1553,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const sug = suggestedParts(S.problem);
     toolbar.setSuggested(interview ? null : sug?.list || null, interview ? '' : sug?.title);
     reqCard?.el.remove();
-    if (stepped) reqCard = createReqCard(right, { catalog, problem: S.problem, advice: !interview });
+    if (stepped) reqCard = createReqCard(right, { catalog, problem: S.problem, advice: !interview && adviceReady() });
     syncInterviewRequirements();
     right.prepend(...(reqCard ? [reqCard.el] : []));
     hud.setPhase('build'); hud.setSpeed(S.speed);
@@ -1648,6 +1657,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function applyTraffic(t) {
     S.traffic = t;
+    saveDraft();
     if (typeof S.sim.setTraffic === 'function') { S.sim.setTraffic(t); return; }
     rebuildSim({ requirements: { ...S.problem.requirements, peakRps: t.peakRps, mix: t.mix, userRegions: t.userRegions }, traffic: { ...S.problem.traffic, curve: t.curve } });
   }
@@ -1661,7 +1671,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     toast(`${def?.name || id} fires at ${at}.`, 'info');
   }
   if (isSandbox) {
-    trafficPanel = createTrafficPanel(right, { catalog, onChange: applyTraffic, onFire: fireEvent });
+    trafficPanel = createTrafficPanel(right, { catalog, initial: trafficInput(opts.traffic || (!opts.graph && store.get('draft.sandbox.sandbox', null)?.traffic)), onChange: applyTraffic, onFire: fireEvent });
   }
 
   // ---- keyboard
@@ -1841,6 +1851,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     wirePreview.textContent = `${name(pair.from)} → ${name(pair.to)} · ${pair.ok ? 'Release to connect' : 'This connection is not allowed'}`;
   }));
   bus.emit('play:loaded', { mode, problemId: S.problem.id ?? null, lessonId: opts.lesson?.id ?? null });
+  bus.emit('play:graph', { graph: graph() });
   if (isLesson) {
     if (S.problem.goal) { goalChip.hidden = false; goalChip.replaceChildren(iconEl('ui.hint', 16), h('span', { text: goalLabel() })); }
     // A lesson goal step waits for the first edit before the day starts, so the meters do not run red while the player reads.
@@ -1874,11 +1885,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       return getState();
     },
     placeComponent, connect, setKnob,
-    startTraffic, setSpeed, step: advanceSync, getState, pause, reset,
+    getTraffic: () => trafficPanel?.get() || null,
+    startTraffic: () => startTraffic(true), setSpeed, step: advanceSync, getState, pause, reset,
     resume,
     destroy() {
       if (S.destroyed) return;
       S.destroyed = true;
+      if (isSandbox) saveDraft();
       saveDraft.flush?.();
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('error', onErr);

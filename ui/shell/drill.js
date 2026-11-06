@@ -2,13 +2,10 @@
 import { h, ico, clear } from './dom.js';
 import { hashSeed, mulberry32 } from '../../sim/rng.js';
 import { toast } from './overlay.js';
+import { workloadTransfer } from '../../content/transfers.js';
 
 const ROUND = 10;
 const KEY = 'drill';
-
-const approx = (v) => { const s = String(v).trim(); return s.startsWith('≈') ? s : '≈ ' + s; };
-const plainHow = (h) => String(h || '').trim().replace(/[,;]?\s*approx\.?$/i, '').replace(/[,;\s]+$/, '').trim();
-const unitOf = (v) => String(v).toLowerCase().replace(/[≈~0-9.,\s-]+/g, ' ').replace(/\b(to|about|a|of)\b/g, '').replace(/\s+/g, ' ').trim();
 
 function shuffle(a, rnd = Math.random) {
   const b = a.slice();
@@ -16,33 +13,18 @@ function shuffle(a, rnd = Math.random) {
   return b;
 }
 
-// Every quiz question and every numbers row, as one pool of single-decision items.
+// A fresh situation and plausible arithmetic mistakes for each lesson.
 export function buildPool(lessons, rnd = Math.random) {
-  const quiz = [];
-  const rows = [];
+  const quiz = [], num = [];
   for (const l of lessons || []) {
-    for (const s of l.steps || []) {
-      if (s.kind === 'quiz' && Array.isArray(s.choices) && s.choices.length >= 3) {
-        quiz.push({ kind: 'quiz', lesson: l.title, q: s.q, choices: s.choices, answer: s.answer, why: s.why || '' });
-      } else if (s.kind === 'numbers') {
-        for (const r of s.rows || []) if (r.label && r.value) rows.push({ lesson: l.title, label: r.label, value: approx(r.value), how: plainHow(r.how) });
-      }
-    }
-  }
-  const num = [];
-  // a number question needs wrong answers in the same unit that are clearly far from the right one
-  const span = (v) => { const m = String(v).replace(/,/g, '').match(/\d+(?:\.\d+)?/g); return m ? [parseFloat(m[0]), parseFloat(m[m.length - 1])] : null; };
-  // two answers are far apart when the closest edges of their ranges are at least 4 times apart
-  const single = (v) => { const m = String(v).replace(/,/g, '').match(/\d+(?:\.\d+)?/g); return !!m && m.length === 1; };
-  const far = (a, b) => { if (!single(a) || !single(b)) return false; const x = span(a), y = span(b); return !!(x && y && x[0] > 0 && y[0] > 0 && (x[1] * 4 <= y[0] || y[1] * 4 <= x[0])); };
-  for (const r of rows) {
-    if (!single(r.value)) continue;
-    const same = rows.filter((x) => x !== r && x.value !== r.value && unitOf(x.value) === unitOf(r.value) && far(x.value, r.value));
-    const picks = [];
-    for (const x of shuffle(same)) if (!picks.includes(x.value) && picks.length < 3) picks.push(x.value);
-    if (picks.length < 2) continue;
-    const lbl = r.label.charAt(0).toLowerCase() + r.label.slice(1);
-    num.push({ kind: 'num', lesson: r.lesson, q: `Best estimate for: ${lbl}`, measures: r.how, correct: r.value, others: picks, why: `${r.label} is ${r.value} (approx.).${r.how ? ' ' + r.how.replace(/([^.!?])$/, '$1.') : ''}` });
+    if (l.id === 'intro') continue;
+    const test = workloadTransfer(`drill:${l.id}`, l.id, l.title);
+    quiz.push({ kind: 'quiz', lesson: l.title, ...test });
+    quiz[quiz.length - 1].kind = 'quiz';
+    const correct = `${test.value} ${test.unit}`;
+    num.push({ kind: 'num', lesson: l.title, q: `${test.q} ${test.calculation}`, correct,
+      others: [Math.round(test.value * 0.75), Math.round(test.value * 1.25), test.value * 2].map(n => `${n} ${test.unit}`),
+      why: `${test.why} The result is ${correct}.` });
   }
   return { quiz, num };
 }

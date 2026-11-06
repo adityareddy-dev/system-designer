@@ -35,6 +35,13 @@ export function createProgress(store, bus) {
       save(); bus.emit('progress:updated', { problemId });
     },
 
+    recordCorrectness(problemId, checkpoint, answer, passed) {
+      if (!checkpoint?.fields?.length || !answer || !passed || !checkpoint.fields.every((field, i) => field.correct === answer.choices?.[i])) return false;
+      const prev = probs[problemId] || { attempts: 0, bestScore: 0, stars: 0 };
+      probs[problemId] = { ...prev, correctness: { version: checkpoint.version || 1, checkedAt: Date.now(), choices: [...answer.choices], explanation: answer.text } };
+      save(); bus.emit('progress:updated', { problemId }); return true;
+    },
+
     // Returns { first, improved } so callers can celebrate.
     record(problemId, debrief, hintsUsed = 0) {
       const total = Math.round(debrief?.score?.total ?? debrief?.total ?? 0);

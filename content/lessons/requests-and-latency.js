@@ -20,7 +20,7 @@ export default {
     },
     {
       "kind": "demo",
-      "prompt": "People in Europe wait too long. Move the servers closer to them.",
+      "prompt": "People in Europe wait too long. Follow the whole request path: move both the app servers and their database to Europe so no request crosses the ocean.",
       "setup": {
         "palette": [
           "vm-fleet"

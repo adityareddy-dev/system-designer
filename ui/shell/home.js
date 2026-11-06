@@ -2,6 +2,7 @@
 import { h, ico, problemOf, lessonOf, groupIdOf, diffBadge, DIFF_ORDER, GROUP_ICON } from './dom.js';
 import { iconInner, hasIcon } from '../../assets/icons/index.js';
 import { conceptStats, weakestConcept, totalResults } from './concepts.js';
+import { nextTracks } from './next-tracks.js';
 
 function heroArt(ctx) {
   const motion = !ctx.reducedMotion();
@@ -172,6 +173,6 @@ export function renderHome(host, ctx) {
     h('span', { text: 'System Designer is free and open source (MIT). Numbers shown are approximations for learning.' }),
     h('span', null, 'Made by Aditya Reddy. Company names appear only as plain comparisons.'));
 
-  host.append(h('div', { class: 'sh-page' }, hero, cards, extras, conceptStrip, strip, foot));
+  host.append(h('div', { class: 'sh-page' }, hero, cards, nextTracks(), extras, conceptStrip, strip, foot));
   return { title: 'Home', destroy: offAccount };
 }

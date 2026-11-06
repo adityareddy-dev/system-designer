@@ -1,6 +1,7 @@
 // Learn view: lessons grouped by track, with done marks and a suggested path.
 import { h, ico } from './dom.js';
 import { sceneMarkup } from '../../assets/scenes/index.js';
+import { nextTracks } from './next-tracks.js';
 
 const TRACK_ICON = {
   'Start': 'ui.play', 'Scale the front': 'ui.speed', 'Scale the data': 'ui.units', 'Work later': 'ui.clock',
@@ -52,6 +53,6 @@ export function renderLearn(host, ctx) {
   });
 
   const empty = lessons.length ? null : h('p', { class: 'sh-muted', text: 'Lessons are on their way.' });
-  host.append(h('div', { class: 'sh-page' }, head, bar, empty, sections));
+  host.append(h('div', { class: 'sh-page' }, head, bar, nextTracks(), empty, sections));
   return { title: 'Learn' };
 }

@@ -1,5 +1,5 @@
 // End-of-day evidence and actions.
-export const duration = sec => sec < 60 ? `${Math.round(sec)} seconds` : `${Math.round(sec / 6) / 10} minutes`;
+export const duration = sec => sec < 60 ? `${Math.round(sec)} ${Math.round(sec) === 1 ? 'second' : 'seconds'}` : `${Math.round(sec / 6) / 10} ${sec === 60 ? 'minute' : 'minutes'}`;
 // The debrief: verdict, score dial, four SLO cards, timeline, event stories, trade-offs, one thing to try next.
 import { loadSummary } from './load-labels.js';
 import { renderReflection } from './reflection.js';
@@ -327,6 +327,19 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     problem?.warmUp ? h('p', { class: 'pl-warmup', 'data-act': 'warm-up' }, iconEl('ui.info', 16), 'Warm-up done, now play the real day. This first day had no traffic spike, so its score is practice only: it is not saved, not posted and not shared. Retry plays the full day, spike included.') : null));
   const reflection = renderReflection(result, catalog);
   if (reflection) root.append(reflection);
+  if (result.efficiency?.length) {
+    const choice = h('select', { class: 'pl-input', 'aria-label': 'Capacity decision' }, h('option', { value: '', text: 'Choose your next experiment' }), h('option', { value: 'cut', text: 'Test the smaller pool on the full day' }), h('option', { value: 'keep', text: 'Keep the spare capacity for a stated requirement' }));
+    const reason = h('textarea', { class: 'pl-input', rows: 2, 'aria-label': 'Reason to keep spare capacity', placeholder: 'Name a burst, failure or recovery requirement, and how you would test it.' });
+    const feedback = h('p', { role: 'status', class: 'pl-muted' });
+    root.append(h('section', { class: 'pl-sec', 'aria-label': 'Capacity tradeoff' }, h('h3', { text: 'Choose what the spare capacity buys' }),
+      result.efficiency.map(item => h('p', { text: `${item.label} used about ${Math.round(item.peakUtil * 100)}% of its capacity at peak. Testing ${item.suggestedUnits} instead of ${item.units} units could save about $${item.savingPerMonth.toLocaleString('en-US')}/month. This estimate keeps 30% headroom for the measured peak; rerun to verify recovery and dependencies.` })),
+      h('p', { text: 'Idle capacity reduces Cost points even below budget. A stated reason records your tradeoff; only testing the workload can establish whether it is worth paying for.' }), choice, reason,
+      h('button', { class: 'pl-btn', type: 'button', text: 'Record decision', onclick: () => {
+        if (!choice.value || (choice.value === 'keep' && reason.value.trim().length < 20)) { feedback.textContent = 'Choose an experiment, or give a concrete requirement and test for keeping the spare capacity.'; return; }
+        ctx?.store?.set(`capacityDecision.${problem.id}`, { choice: choice.value, reason: reason.value.trim() });
+        feedback.textContent = choice.value === 'cut' ? 'Decision recorded. Return to Draw, reduce one pool, then compare the full day.' : 'Reason recorded. Test that requirement in Sandbox before relying on the extra capacity.';
+      } }), feedback));
+  }
   if (opponent && typeof opponent.score === 'number') root.prepend(versusCard(result, opponent, handlers));
   if (result.warnings?.length) {
     root.append(h('section', { class: 'pl-watch' }, iconEl('ui.warn', 20), h('div', {}, h('b', { text: 'Held, but watch out' }),
@@ -366,6 +379,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const thinNote = thin ? `Not measured: only ${fmtPct(a.actual)} of requests were served, so this says little about a real day.` : null;
   const servedNote = a.actual < 0.999 ? `Points count only for the share of requests that were served (${fmtPct(a.actual)}).` : null;
   const safeWhy = [];
+  for (const f of s.promiseFailures || []) safeWhy.push(f.message);
   if (!okSafe && !none && s.staleShare > STALE_MAX && problem?.requirements?.readYourWrites) {
     safeWhy.push(`${fmtPct(s.staleShare, 1)} of reads showed people an old copy of their own change; this problem allows at most ${fmtPct(STALE_MAX, 1)}.`);
   }
@@ -380,7 +394,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
       lines: none ? ['Not measured: nothing was served, so no data was kept to score. Safety points are only awarded for served requests.'] : [thinNote, s.lostWrites ? `${fmtNum(s.lostWrites)} acknowledged writes were lost.` : 'No acknowledged write was lost.', s.duplicates ? `${fmtNum(s.duplicates)} duplicate effects (such as a double charge).` : 'No duplicate effects.',
         s.staleReads ? `${fmtNum(s.staleReads)} stale reads.` : null, compNames.length ? `Missing proof: ${compNames.join(', ')}.` : null, ...safeWhy, servedNote].filter(Boolean) }),
     sloCard({ key: 'cost', title: 'Cost', iconId: 'ui.cost', pts: sc.cost, max: 200, ok: okCost, flag: none || thin ? 'none' : null, target: `≤ ${fmtUsd(c.budget)} a month`, actual: `≈ ${fmtUsd(c.perMonth)} a month`,
-      lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (a.actual < 0.999 ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
+      lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (result.efficiency?.length ? 'Under budget, with avoidable idle capacity. See the capacity decision above.' : a.actual < 0.999 ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
   root.append(cards, h('p', { class: 'pl-footnote' }, approx('Every dollar and millisecond here is a sensible real-world approximation, not a quote.')));
   const checkpoint = renderCorrectness(problem?.correctness, correctnessAnswer);
   if (checkpoint) root.append(checkpoint);

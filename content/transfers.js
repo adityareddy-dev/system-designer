@@ -50,3 +50,44 @@ export function transferFor(id) {
 export function transferCorrect(test, choice, value) {
   return choice === test.answer && Number.isFinite(value) && Math.abs(value - test.value) <= Math.max(.01, test.value * .05);
 }
+
+// Independent workloads, rather than copies of the lesson's recognition question.
+export function workloadTransfer(key, concept, context) {
+  let seed = 2166136261;
+  for (const c of key) seed = Math.imul(seed ^ c.charCodeAt(0), 16777619) >>> 0;
+  const rate = 1010 + seed % 48000, spare = 110 + (seed >>> 8) % 1700;
+  const seconds = 31 + (seed >>> 16) % 240;
+  let q, choices, answer, why, calculation, value, unit;
+  if (['queues-backpressure','fanout','observability','work-across-services','running-migrations','metrics-systems','logs-traces'].includes(concept)) {
+    const backlog = spare * seconds, workers = rate + spare;
+    q = `${context}: work arrives at ${rate}/s, consumers finish ${workers}/s, and ${backlog} operations are waiting. What happens while arrivals continue?`;
+    choices = [`The backlog drains at ${spare}/s`, `It drains at ${workers}/s because that is consumer throughput`, `It stays constant because new work always joins it`]; answer = 0;
+    why = `Net drain is ${workers} − ${rate} = ${spare}/s; new arrivals use the rest of the capacity.`;
+    calculation = 'How many seconds until this backlog drains?'; value = seconds; unit = 'seconds';
+  } else if (['caching','cdn','hot-keys','search-indexing','storage-tiers','storage-engine','privacy-design'].includes(concept)) {
+    const hits = 80 + seed % 19, reads = rate * 100, misses = rate * (100 - hits);
+    q = `${context}: ${reads} reads/s arrive and ${hits}% reuse a safe answer. The origin serves the remaining requests. Which prediction fits a cold-copy failure?`;
+    choices = ['Origin traffic stays at the warm miss rate', 'Origin traffic can rise to the full arrival rate', 'Adding app capacity preserves the same hit percentage']; answer = 1;
+    why = 'Reuse removes work only while the copy is available. Plan origin headroom or admission for the cold case.';
+    calculation = 'How many reads/s reach the origin while the copy is warm?'; value = misses; unit = 'reads/s';
+  } else if (['idempotency-retries','consistency','ordering-time','leader-consensus','consistency-models','device-sync','copies-quorums'].includes(concept)) {
+    const retries = 1 + seed % 4;
+    q = `${context}: ${rate} distinct operations each arrive ${retries + 1} times after lost replies. The receiver atomically saves each operation id with its effect. What should a retry do?`;
+    choices = ['Create another effect because the reply was lost', 'Allocate a new operation id to avoid a conflict', 'Return the saved result for the original operation id']; answer = 2;
+    why = 'A lost reply is an unknown outcome. Durable operation identity and the atomic effect make a retry safe.';
+    calculation = 'How many effects should be committed after all deliveries?'; value = rate; unit = 'effects';
+  } else if (['multi-region','load-balancing','autoscaling','realtime-connections','consistent-hashing','multi-tenancy'].includes(concept)) {
+    const replicas = 3 + seed % 6, load = rate * (replicas - 1);
+    q = `${context}: ${replicas} replicas each handle ${rate}/s. Traffic is ${load}/s and one replica fails. Which claim is true?`;
+    choices = ['The survivors have no spare capacity at this load', 'Only the failed replica needs spare capacity', 'Routing around the failure guarantees 25% spare capacity']; answer = 0;
+    why = `There are ${replicas - 1} survivors, so ${load} ÷ ${replicas - 1} = ${rate}/s on each. Healthy routing does not create capacity.`;
+    calculation = 'What percent busy is each surviving replica?'; value = 100; unit = '%';
+  } else {
+    const units = 4 + seed % 25, price = 17 + (seed >>> 12) % 110;
+    q = `${context}: ${units} units cost $${price} each per month. A measured trial can remove ${units - 2} while meeting peak and failure targets. Which decision is supported?`;
+    choices = ['Keep the original count because it is under budget', 'Compare the measured saving with a stated burst or recovery requirement', 'Remove the spare units without testing scale-up time']; answer = 1;
+    why = 'A passing trial supports a smaller design for that workload. Retain extra capacity only for a concrete requirement you can test.';
+    calculation = 'How many dollars per month would the smaller pool save?'; value = (units - 2) * price; unit = 'dollars/month';
+  }
+  return { kind: 'transfer', q, choices, answer, why, calculation, value, unit };
+}

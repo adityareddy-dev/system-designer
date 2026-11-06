@@ -12,5 +12,5 @@ export function loadSummary(problem) {
 
 export function gradingContract(problem) {
   const share = problem.requirements?.latencyBar ?? (problem.difficulty === 'Easy' ? 0.9 : 0.95);
-  return `Speed passes when p99 meets the targets above for at least ${Math.round(share * 100)}% of the day (${Math.round((1 - share) * 1440)} slow minutes allowed). Each interactive request type must also meet its own target for at least 80% of its measured time. Reliability, data safety and budget must pass too.`;
+  return `Speed passes when p99 meets the targets above for at least ${Math.round(share * 100)}% of served interactive requests, weighted by traffic. Each interactive request type must also meet its own target for at least 80% of its served requests. A busy minute counts more than a quiet one. Reliability, data safety and budget must pass too. Idle capacity can reduce Cost points even below budget.`;
 }
