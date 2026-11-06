@@ -210,7 +210,7 @@ export function createNodeLayer(PIXI, parent, env) {
     const count = v.fleetUnits ?? v.units, alive = v.availableUnits ?? count;
     const cells = poolCells(count, alive, v.live ? v.du : 0);
     const cols = Math.min(cells.length, cells.length <= 3 ? 3 : 4), rows = Math.ceil(cells.length / cols);
-    const w = 56 / cols - 3, h = Math.min(10, 31 / rows - 3), g = v.pool;
+    const w = 56 / cols - 3, h = Math.min(28, 31 / rows - 3), g = v.pool;
     g.clear();
     cells.forEach((cell, i) => {
       const x = -28 + (i % cols) * (w + 3), y = -22 + Math.floor(i / cols) * (h + 3);
