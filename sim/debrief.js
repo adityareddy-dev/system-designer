@@ -1182,7 +1182,10 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
     tradeoffs: tradeoffsOf(S, cost.perNode),
     nextStep: nextStepOf(S, score, metrics, nodesOut, eventsOut),
     efficiency: efficiencyOf(S),
-    warnings: privateCacheWarnings(S).concat(sideWarnings(S, passed)).slice(0, 4),
+    warnings: model.edges.filter(e => e.back && e.kind === 'flow').map(e => ({
+      code: 'flow-cycle', nodeId: model.nodes[e.fi].id, edgeId: e.id,
+      text: `${nodeLabel(model.nodes[e.fi])} → ${nodeLabel(model.nodes[e.ti])} closes a delivery loop and is ignored by the run. Remove this closing link, then trace one request from source to destination before interpreting a repair or sizing experiment.`,
+    })).concat(privateCacheWarnings(S).concat(sideWarnings(S, passed)).slice(0, 4)),
     queues: (S.queueNodes || []).map((u) => {
       const n = model.nodes[u];
       const q = S.qHist && S.qHist.get(n.id);

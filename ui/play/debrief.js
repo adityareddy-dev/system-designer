@@ -358,9 +358,16 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
       } }), feedback));
   }
   if (opponent && typeof opponent.score === 'number') root.prepend(versusCard(result, opponent, handlers));
-  if (result.warnings?.length) {
+  const loops = (result.warnings || []).filter(w => w.code === 'flow-cycle');
+  if (loops.length) {
+    const warning = h('section', { class: 'pl-watch pl-loop-warning', role: 'status' }, iconEl('ui.warn', 20), h('div', {}, h('b', { text: 'Remove ignored delivery loops first' }),
+      h('ul', { class: 'pl-slo-why' }, loops.map(w => h('li', { text: w.text })))));
+    root.querySelector('.pl-verdict-sec').after(warning);
+  }
+  const otherWarnings = (result.warnings || []).filter(w => w.code !== 'flow-cycle');
+  if (otherWarnings.length) {
     root.append(h('section', { class: 'pl-watch' }, iconEl('ui.warn', 20), h('div', {}, h('b', { text: 'Held, but watch out' }),
-      h('ul', { class: 'pl-slo-why' }, result.warnings.map((w) => h('li', { text: w.text }))))));
+      h('ul', { class: 'pl-slo-why' }, otherWarnings.map((w) => h('li', { text: w.text }))))));
   }
 
   // Learn this: each missed check points to the lesson behind the idea
@@ -432,6 +439,8 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const summary = root.querySelector('.pl-verdict-sec');
   if (evidence) summary.after(evidence, stories);
   if (tryNext) summary.after(tryNext);
+  const loopWarning = root.querySelector('.pl-loop-warning');
+  if (loopWarning) summary.after(loopWarning);
   const details = h('details', { class: 'pl-score-details' }, h('summary', { text: 'Score details and calculations' }), cards);
   root.querySelector('.pl-learn')?.after(details);
   if (!details.isConnected) root.append(details);
