@@ -11,9 +11,10 @@ import { problems } from '../content/problems/index.js';
 if (process.argv.length === 2) {
   const lanes = Array.from({ length: Math.min(4, availableParallelism()) }, () => []);
   problems.forEach((p,i) => lanes[i % lanes.length].push(p.id));
+  const children = [];
   const outputs = await Promise.all(lanes.map(ids => new Promise((resolve,reject) => {
-    execFile(process.execPath, [fileURLToPath(import.meta.url), ...ids], { windowsHide: true, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => error ? reject(new Error(stdout + stderr)) : resolve(stdout));
-  })));
+    children.push(execFile(process.execPath, [fileURLToPath(import.meta.url), ...ids], { windowsHide: true, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => error ? reject(new Error(stdout + stderr)) : resolve(stdout)));
+  }))).catch(error => { children.forEach(child => child.kill()); throw error; });
   const totals = outputs.map(out => out.match(/Advice sweep passed: (\d+) problems, (\d+) full days, (\d+) verified path repairs, (\d+) measured sizing repairs/).slice(1).map(Number)).reduce((a,b) => a.map((v,i) => v + b[i]), [0,0,0,0]);
   assert.equal(totals[0], problems.length);
   console.log(`Advice sweep passed: ${totals[0]} problems, ${totals[1]} full days, ${totals[2]} verified path repairs, ${totals[3]} measured sizing repairs.`);
