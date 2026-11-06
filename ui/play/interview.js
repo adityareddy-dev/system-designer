@@ -1,5 +1,6 @@
 // Candidate-led preparation, graph-specific defense and an honest local interview record.
 import { h, fmtNum, fmtUsd } from './util.js';
+import { estimateUnit, estimateFeedback } from './estimate-units.js';
 import { mountDefense } from '../defense.js';
 
 const STOP = new Set('about after again also are can could does each for from have how into many more must need our should that the their them there these this what when where which who why will with would your'.split(' '));
@@ -62,10 +63,10 @@ export function renderInterviewPrep(host, problem, state, ready, onStage = () =>
     host.append(h('div', { class: 'pl-interview-compare' }, h('section', {}, h('h3', { text: 'Your scope and targets' }), h('p', { text: state.requirements })), h('section', {}, h('h3', { text: 'The actual requirements' }), h('p', { text: `${fmtNum(r.peakRps)} req/s · ${r.availability * 100}% served · p99 ${r.latencyP99Ms.default} ms · ${fmtUsd(r.budgetPerMonth)}/month · ${r.dataSafety}` }), h('p', { text: Object.entries(r.mix).map(([t,v]) => `${t}: ${Math.round(v * 100)}%`).join(', ') }), h('p', { text: (r.notes || []).join(' ') }))), button('Estimate the workload', () => { state.stage = 'numbers'; draw(); }));
   } else if (state.stage === 'numbers') {
     host.append(h('p', { text: 'Type your estimates. Commit every estimate before seeing the arithmetic.' }), h('aside', { class: 'pl-number-assumptions' }, h('b', { text: 'Given workload' }), h('p', { text: `Peak: ≈ ${fmtNum(problem.requirements.peakRps)} req/s. Mix: ${Object.entries(problem.requirements.mix).map(([t,v]) => `${t} ${Math.round(v * 100)}%`).join(', ')}.` }), h('ul', {}, (problem.requirements.notes || []).map(text => h('li', { text })))));
-    problem.numbers.forEach((row,i) => host.append(h('label', { class: 'pl-defense-field' }, h('span', { text: `${row.label} (${row.unit})` }), h('input', { class: 'pl-input', type: 'number', min: '.000001', step: 'any', value: state.estimates[i] ?? '', onInput: e => state.estimates[i] = e.target.value === '' ? null : Number(e.target.value) }))));
+    problem.numbers.forEach((source,i) => { const spec = estimateUnit(source), row = { ...source, unit: spec.unit }; host.append(h('label', { class: 'pl-defense-field' }, h('span', { text: `${row.label} (${row.unit})` }), h('input', { class: 'pl-input', type: 'number', min: String(spec.lo), max: String(spec.hi), step: 'any', value: state.estimates[i] == null ? '' : state.estimates[i] * spec.factor, onInput: e => state.estimates[i] = e.target.value === '' ? null : Number(e.target.value) / spec.factor }))); });
     host.append(notice, button('Commit estimates', () => { if (!problem.numbers.every((_,i) => state.estimates[i] > 0 && Number.isFinite(state.estimates[i]))) { notice.textContent = 'Enter a positive estimate for each question.'; return; } state.committed = true; state.stage = 'worked'; draw(); }));
   } else {
-    host.append(...problem.numbers.map((row,i) => h('section', { class: 'pl-sec' }, h('b', { text: row.label }), h('p', { text: `Your estimate: ${fmtNum(state.estimates[i])} ${row.unit}. Worked: ≈ ${fmtNum(row.value)} ${row.unit}.` }), h('p', { text: row.how }))), h('p', { text: 'Draw independently. The day runs once, without edits. Afterward, defend your choices against the observed result. The 45-minute clock is a guide and never stops play.' }), button('Start drawing', () => { state.stage = 'ready'; ready(); }));
+    host.append(...problem.numbers.map((row,i) => h('section', { class: 'pl-sec' }, h('b', { text: row.label }), h('p', { text: `Your estimate: ${fmtNum(state.estimates[i] * estimateUnit(row).factor)} ${estimateUnit(row).unit}. Worked: ≈ ${fmtNum(estimateUnit(row).value)} ${estimateUnit(row).unit}.` }), h('p', { text: estimateFeedback(row, state.estimates[i]).text }), h('p', { text: row.how }))), h('p', { text: 'Draw independently. The day runs once, without edits. Afterward, defend your choices against the observed result. The 45-minute clock is a guide and never stops play.' }), button('Start drawing', () => { state.stage = 'ready'; ready(); }));
   }
 }
 
@@ -105,7 +106,7 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     report.replaceChildren(h('h3', { text: 'Your interview report' }),
       h('p', { text: 'Questions found: ' + state.coverage.filter(Boolean).length + '/' + problem.clarify.length + '. Defense coverage, self-assessed: ' + covered + '/' + total + '. Day score: ' + result.score.total + '/1,000.' }),
       h('p', { text: state.requirements }),
-      ...problem.numbers.map((n, i) => h('p', { text: n.label + ': estimated ' + fmtNum(state.estimates[i]) + ', worked ≈ ' + fmtNum(n.value) + ' ' + n.unit + '.' })), saveButton,
+      ...problem.numbers.map((n, i) => h('p', { text: n.label + ': estimated ' + fmtNum(state.estimates[i] * estimateUnit(n).factor) + ' ' + estimateUnit(n).unit + ', worked ≈ ' + fmtNum(estimateUnit(n).value) + ' ' + estimateUnit(n).unit + '.' })), saveButton,
       ...(state.complete ? [h('p', { role: 'status', text: 'Saved on this device. Best coverage and best day score are kept separately.' })] : []),
       h('a', { class: 'pl-btn', href: '#/practice/' + problem.id + '?interview=1', onClick: () => location.reload(), text: 'New interview' }));
   };

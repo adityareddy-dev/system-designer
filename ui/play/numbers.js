@@ -1,4 +1,5 @@
 // Step 2: estimate one to three figures on a log slider, then see the worked numbers.
+import { estimateUnit, estimateFeedback } from './estimate-units.js';
 import { loadSummary } from './load-labels.js';
 import { h, fmtNum, approx } from './util.js';
 
@@ -14,14 +15,16 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
   if (problem.requirements?.notes?.length) list.append(h('aside', { class: 'pl-number-assumptions' }, h('b', { text: 'Use these assumptions' }), h('ul', {}, problem.requirements.notes.map(text => h('li', { text })))));
   const checks = [];
 
-  rows.forEach((row, i) => {
+  const canonical = guesses;
+  rows.forEach((source, i) => {
+    const spec = estimateUnit(source);
+    const row = { ...source, value: spec.value, unit: spec.unit };
+    const guesses = new Proxy(canonical, { get: (a, k) => k === String(i) ? a[k] == null ? null : a[k] * spec.factor : a[k], set: (a, k, value) => { a[k] = k === String(i) && value != null ? value / spec.factor : value; return true; } });
     const v = Math.max(row.value, 0.01);
-    const integer = /^(servers?|workers?|nodes?)$/i.test(row.unit || '');
-    const lo = Math.max(integer ? 1 : 0.1, 10 ** (Math.floor(Math.log10(v)) - 2));
-    const hi = 10 ** (Math.ceil(Math.log10(v)) + 2);
-    const toVal = (p) => lo * (hi / lo) ** (p / SL);
+    const { integer, lo, hi } = spec;
+    const toVal = (p) => spec.percent ? p / SL * 100 : lo * (hi / lo) ** (p / SL);
     const snap = (n) => Math.min(hi, Math.max(lo, integer ? Math.round(n) : n));
-    const toPos = (n) => SL * Math.log(n / lo) / Math.log(hi / lo);
+    const toPos = (n) => spec.percent ? n * SL / 100 : SL * Math.log(n / lo) / Math.log(hi / lo);
     const card = h('div', { class: 'pl-ncard' });
     card.append(h('div', { class: 'pl-nlabel', text: row.label + (i < 2 && problem.id === 'url-shortener' ? ' (normal peak)' : i < 2 && problem.id === 'concert-ticket-drop' ? ' (event peak)' : '') }));
     const out = h('div', { class: 'pl-nout' });
@@ -31,7 +34,7 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
       const touched = guesses[i] != null;
       if (touched) guesses[i] = snap(guesses[i]);
       const init = touched ? toPos(guesses[i]) : 0;
-      const slider = h('input', { class: 'pl-range' + (touched ? '' : ' pl-range--unset'), type: 'range', min: '0', max: String(SL), value: String(init), 'aria-label': `Your estimate: ${row.label}` });
+      const slider = h('input', { class: 'pl-range' + (touched ? '' : ' pl-range--unset'), type: 'range', min: '0', max: String(SL), value: String(init), 'aria-label': `Your estimate: ${row.label} (${row.unit})` });
       const input = h('input', { class: 'hp-input pl-ninput', type: 'number', min: String(lo), max: String(hi), step: integer ? '1' : 'any', value: touched ? String(guesses[i]) : '', 'aria-label': `Your estimate: ${row.label} (${row.unit || 'value'})` });
       const show = () => {
         if (guesses[i] == null) { out.replaceChildren(h('span', { class: 'pl-muted pl-nunset', text: 'Type an estimate or drag the slider' })); return; }
@@ -53,7 +56,7 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
       });
       input.addEventListener('change', () => { input.value = guesses[i] == null ? '' : String(guesses[i]); });
       show();
-      card.append(out, h('div', { class: 'pl-ncontrols' }, slider, h('label', { class: 'pl-nentry' }, input, h('span', { text: row.unit || '' }))), h('div', { class: 'pl-nscale' }, h('span', { text: `${fmtNum(lo)} ${row.unit || ''}` }), h('span', { text: 'log scale' }), h('span', { text: `${fmtNum(hi)} ${row.unit || ''}` })));
+      card.append(out, h('div', { class: 'pl-ncontrols' }, slider, h('label', { class: 'pl-nentry' }, input, h('span', { text: row.unit || '' }))), h('div', { class: 'pl-nscale' }, h('span', { text: `${fmtNum(lo)} ${row.unit || ''}` }), h('span', { text: spec.percent ? 'percent, linear scale' : 'log scale' }), h('span', { text: `${fmtNum(hi)} ${row.unit || ''}` })));
     } else {
       // Not a guess: shown up front as a worked example.
       card.append(h('div', { class: 'pl-nworked' }, h('span', { class: 'pl-muted', text: 'Worked example: ' }),
@@ -68,12 +71,8 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
         h('div', { class: 'pl-muted', text: row.how || '' }));
       let verdict = null;
       if (row.ask && guesses[i] != null) {
-        const ratio = Math.max(guesses[i] / v, v / guesses[i]);
-        const cls = ratio <= 2 ? 'ok' : ratio <= 5 ? 'warn' : 'bad';
-        const txt = ratio <= 2 ? 'Good guess: within 2 times.'
-          : ratio <= 5 ? `Close: about ${ratio.toFixed(0)} times off.`
-            : `About ${fmtNum(ratio)} times off. Worth redoing on paper.`;
-        verdict = h('div', { class: 'pl-verdict pl-verdict--' + cls, text: txt });
+        const { cls, text } = estimateFeedback(source, canonical[i]);
+        verdict = h('div', { class: 'pl-verdict pl-verdict--' + cls, text });
       }
       result.replaceChildren(...[verdict, worked].filter(Boolean));
     });

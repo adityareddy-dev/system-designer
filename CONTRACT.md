@@ -744,3 +744,8 @@ Phone captions shorten at small zoom and have an opaque ground so connections ca
 Passing replays the actual changed route in request order, counts the previous and current day measurements for the improved limiting metric: served share, p99 latency or monthly cost (or explicitly compares target and current when no previous run exists), then settles the score. This is presentation only, leaves controls available, and has an immediate still version for reduced motion. Three stars with 1,000 points and no excess capacity or failed promises receive the clean-sweep treatment; other passes remain visibly quieter.
 
 Phone lesson fits may pass `reserveY` in world units to leave one insertion row (two in the intro) below the opening graph. This reserves working room before edits; it never changes saved node coordinates or triggers a camera fit during an edit.
+
+### Learning and usability checks
+
+- Estimate rows keep canonical values in content and saved progress. Display shares (`of requests`, `of reads`, `of pieces`) as percent in both Practice and Interview, converting at the input boundary. Percent controls use 0–100 and state their unit. Unit slips receive explicit feedback.
+- The build preview is a rough capacity snapshot, never a promise of a full-day result. State unchecked deadlines, retries and event recovery. Show computable latency and constant-rate queue deadline risks with their assumptions. This UI analysis does not change the deterministic simulation or its scoring.
