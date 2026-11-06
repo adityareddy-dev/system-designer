@@ -18,6 +18,7 @@ export function createReqCard(host, { catalog, problem, advice = true }) {
   const head = h('button', { class: 'pl-req-head', type: 'button', 'aria-expanded': 'true', onClick: () => toggle() },
     iconEl('ui.info', 16), h('span', { class: 'pl-req-title', text: problem.title }), iconEl('ui.chevron-up', 16, 'pl-ic pl-req-chev'));
   const body = h('div', { class: 'pl-req-body' });
+  const guidance = [];
   if (problem.like) body.append(h('p', { class: 'pl-req-like', text: 'Think of ' + problem.like }));
   body.append(h('p', { class: 'pl-req-brief', text: problem.brief || '' }));
 
@@ -77,8 +78,8 @@ export function createReqCard(host, { catalog, problem, advice = true }) {
         'audit-log': 'An audit trail receives a copy of sensitive actions through a tap connection. Example: users → app server → SQL database, plus app server → Audit log. SQL database → Audit log is also accepted. Keep the main request path connected to the database.',
         backups: 'Connect Backups to every store holding customer data. Example: Backups → SQL database. This is a control connection beside the request path.',
       }[id];
-      if (advice && example) details.append(h('p', { text: example }));
-      else if (advice && def) details.append(h('p', { text: 'Add and connect ' + def.satisfiedBy.map((el) => catalog.elementById.get(el)?.name || el).join(' or ') + ' to provide this proof.' }));
+      const text = example || (def ? 'Add and connect ' + def.satisfiedBy.map((el) => catalog.elementById.get(el)?.name || el).join(' or ') + ' to provide this proof.' : '');
+      if (text) guidance.push({ details, help: h('p', { text }) });
       proofs.append(details);
     }
     rows.append(row('ui.shield', 'Must prove', proofs));
@@ -88,11 +89,19 @@ export function createReqCard(host, { catalog, problem, advice = true }) {
   root.append(head, body);
   host.append(root);
 
+  function setAdvice(enabled) {
+    for (const { details, help } of guidance) {
+      if (enabled) details.append(help);
+      else help.remove();
+    }
+  }
+  setAdvice(advice);
+
   function toggle(force) {
     const open = force ?? root.classList.contains('pl-req--closed');
     root.classList.toggle('pl-req--closed', !open);
     head.setAttribute('aria-expanded', String(open));
   }
   if (matchMedia('(max-width: 899px)').matches) toggle(false);
-  return { el: root, toggle };
+  return { el: root, toggle, setAdvice };
 }

@@ -1288,6 +1288,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!result) return;
     S.triedId = S.problem.id;
     refreshSuggestions();
+    reqCard?.setAdvice(!interview && adviceReady());
     const isRef = !!S.refSig && S.refSig === graphSig();
     const warm = !!S.problem?.warmUp || !!S.problem?.twistDay;
     S.result = isRef ? { ...result, reference: true } : warm ? { ...result, warmUp: true, ...(S.problem?.twistDay ? { twistDay: true } : {}) } : result;

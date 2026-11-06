@@ -44,14 +44,27 @@ try {
     await window.__game.loadProblem('bank-ledger');
     window.__game.setKnob('ledger', 'retentionDays', 1);
   });
+  const proofCopy = () => page.$eval('.pl-req', el => el.textContent);
+  assert.doesNotMatch(await proofCopy(), /Example:|Add and connect/, 'first-attempt requirements withhold wiring help');
   const safety = () => page.$eval('[data-meter="safe"]', el => ({ value: el.querySelector('.pl-m-v').textContent, explanation: el.querySelector('.pl-m-sub').textContent }));
   assert((await page.evaluate(() => window.__game.getState().slo.safety.promiseFailures)).some(f => f.nodeId === 'ledger'));
   await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(10000); window.__game.pause(); });
   assert.equal((await safety()).value, 'At risk');
   assert.match((await safety()).explanation, /keeps data for 1 days.*requires at least 2555 days/);
+  const disclosureState = () => page.$eval('.pl-req', el => ({ expanded: el.querySelector('.pl-req-head').getAttribute('aria-expanded'),
+    proofs: [...el.querySelectorAll('details')].map(d => d.open) }));
+  await page.$$eval('.pl-req details', details => details.forEach((d, i) => { d.open = i % 2 === 0; }));
+  const foldedState = await disclosureState();
   await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); });
   assert.equal((await safety()).value, 'At risk');
   assert.match((await safety()).explanation, /requires at least 2555 days/);
+  assert.match(await proofCopy(), /Example: users → app server → SQL database/, 'finishing unlocks requirements wiring help without reopening the problem');
+  assert.match(await proofCopy(), /Backups → SQL database/);
+  assert.deepEqual(await disclosureState(), foldedState, 'unlocking advice preserves the card and proof disclosure states');
+  await page.$eval('.pl-reset', el => el.click());
+  await page.waitForFunction(() => window.__game.getState().phase === 'build');
+  assert.match(await proofCopy(), /Example: users → app server → SQL database/, 'retry keeps the newly unlocked wiring help');
+  assert.deepEqual(await disclosureState(), foldedState, 'retry preserves requirements disclosures');
   assert.deepEqual(errors, []);
   console.log('HUD prediction gate and retention safety checks passed.');
 } finally {

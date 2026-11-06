@@ -58,17 +58,25 @@ export function traceRoute(model, type) {
 
 // A repair must be carried on one compiled source-to-destination path.
 function repairPath(model, t, links, queues) {
-  const walk = (u, path = [], seen = new Set()) => {
-    if (seen.has(u)) return null;
-    seen = new Set(seen).add(u);
+  const queueIds = new Set(queues), visited = new Set();
+  const allLinks = (1 << links.length) - 1;
+  const linkBits = model.edges.map(e => {
+    const i = links.findIndex(([from, to]) => e.from === from && e.to === to);
+    return i < 0 ? 0 : 1 << i;
+  });
+  const walk = (u, usedLinks = 0, usedQueue = !queues.length) => {
+    const id = model.nodes[u].id;
+    usedQueue ||= queueIds.has(id);
+    // Compiled delivery paths are acyclic; only repair conditions distinguish converging paths.
+    const key = `${u}:${usedLinks}:${usedQueue}`;
+    if (visited.has(key)) return null;
+    visited.add(key);
     const r = model.route[u * model.T + t];
     if (!r) return null;
-    const next = [...path, model.nodes[u].id];
-    if (r.mode === M.COMPLETE && links.every(([from, to]) => next.some((id, i) => id === from && next[i + 1] === to))
-      && (!queues.length || queues.some(id => next.includes(id)))) return next;
+    if (r.mode === M.COMPLETE && usedLinks === allLinks && usedQueue) return [id];
     for (const ei of [...r.P, ...r.miss]) {
-      const found = walk(model.edges[ei].ti, next, seen);
-      if (found) return found;
+      const found = walk(model.edges[ei].ti, usedLinks | linkBits[ei], usedQueue);
+      if (found) return [id, ...found];
     }
     return null;
   };

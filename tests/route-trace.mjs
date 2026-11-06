@@ -74,6 +74,38 @@ for (const spare of [null, 'consumer', 'repair-workers']) {
   if (spare === 'consumer') assert.equal(repair.addNodes.length, 0, 'reuse a safe consumer when present');
   else assert.equal(repair.addNodes.length, 1, 'add a distinct downstream consumer when needed');
 }
+// A converging synchronous branch must not hide a repair through the queue.
+const notifyOnly = { id: 'notify-repair', requirements: { peakRps: 10, mix: { notify: 1 } },
+  traffic: { curve: 'flat', sources: { 'mobile-app': 1 } }, events: [] };
+const converging = createSim({ catalog, problem: notifyOnly, mode: 'sandbox' });
+converging.loadGraph({ nodes: [
+  ['u', 'mobile-app'], ['direct', 'vm-fleet'], ['producer', 'vm-fleet'], ['q', 'queue'], ['merge', 'vm-fleet'], ['destination', 'email-provider'],
+].map(([id, type], x) => ({ id, type, x: x * 160, y: 0 })),
+edges: [['u', 'direct'], ['u', 'producer'], ['direct', 'merge'], ['producer', 'q'], ['q', 'merge']] });
+assert.deepEqual(converging.trace('notify').repair, {
+  from: 'merge', to: 'destination', path: ['u', 'producer', 'q', 'merge', 'destination'],
+}, 'reachability distinguishes paths that have traversed the required queue');
+
+// Dense DAGs within share limits must not enumerate exponentially many delivery paths.
+for (const count of [24, 28]) {
+  const dense = createSim({ catalog, problem: notifyOnly, mode: 'sandbox' });
+  const nodes = [['u', 'mobile-app'], ...Array.from({ length: count }, (_, i) => [`c${i}`, 'vm-fleet']),
+    ['q', 'queue'], ['destination', 'email-provider']].map(([id, type], x) => ({ id, type, x: x * 160, y: 0 }));
+  const edges = [['u', 'c0'], ['u', 'q']];
+  for (let i = 0; i < count; i++) for (let j = i + 1; j < count; j++) edges.push([`c${i}`, `c${j}`]);
+  assert(nodes.length <= 120 && edges.length <= 400, 'the dense regression fits supported graph limits');
+  dense.loadGraph({ nodes, edges });
+  const started = performance.now();
+  const issues = dense.validate();
+  const elapsed = performance.now() - started;
+  assert(elapsed < 1000, `${count}-server validation took ${elapsed.toFixed(0)} ms`);
+  assert(issues.some(i => i.code === 'type-unserved' && i.type === 'notify'));
+  const repair = dense.trace('notify').repair;
+  assert(repair?.path.includes('q'), 'dense graph repair preserves the deferred path');
+  for (const n of repair.addNodes || []) dense.addNode(n.type, 0, 0, { id: n.id });
+  for (const [from, to] of repair.steps || [[repair.from, repair.to]]) dense.connect(from, to);
+  assert(!dense.validate().some(i => i.type === 'notify' && /unserved/.test(i.code)));
+}
 console.log('Request routing trace checks passed.');
 
 
