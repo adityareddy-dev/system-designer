@@ -65,7 +65,7 @@ export default checkpoints;
 
 const field = (label, options, correct, explanation) => ({ label, options, correct, explanation });
 export function correctnessFor(problem) {
-  const existing = checkpoints[problem.id];
+  const existing = checkpoints[problem.id] || problem.correctness;
   const words = [problem.brief, ...problem.clarify.map(c => c.a), ...(problem.requirements.notes || [])].join(' ');
   const deliveryProblem = /twice|duplicate|exactly.once|one.time|one unique key|counted twice|repeat.*send/i.test(words);
   const ordering = /sequence|ordering|order of edits|earliest order/i.test(words);
