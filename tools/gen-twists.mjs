@@ -24,7 +24,7 @@ for (const p of problems) {
   const used = new Set(p.events.map((e) => e.id));
   const extras = [...(p.eventPool || []).filter((id) => !used.has(id) && catalog.eventById.get(id)), null];
   const h = [...p.id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
-  const shifts = h % 2 ? [90, -90, 45, -45] : [-90, 90, -45, 45];
+  const shifts = h % 2 ? [90, -90, 45, -45, 15, -15] : [-90, 90, -45, 45, -15, 15];
   const ats = ['16:40', '11:20', '04:30'];
   let found = null;
   search: for (const extra of extras) for (const shiftMin of shifts) for (const at of extra ? ats : ['']) {

@@ -16,6 +16,8 @@ const catalog = createCatalog({ elements: read('elements'), requests: read('requ
 const seen = new Set();
 let traces = 0, references = 0, repairs = 0;
 for (const problem of problems) {
+  assert(problem.twist, problem.id + ' has a reachable mastery replay');
+  assert.notDeepEqual(problem.twist.events, problem.events, problem.id + ' changes conditions for transfer');
   const cp = problem.correctness;
   const answer = cp ? { choices: cp.fields.map(f => f.correct), text: 'Preserve the stated invariant through each committed transition.' } : null;
   if (problem.difficulty !== 'Easy') {
