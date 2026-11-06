@@ -489,6 +489,7 @@ export function createNodeLayer(PIXI, parent, env) {
     // Below full zoom the names grow (up to 4.5 times, the lowest zoom) so they stay at about 13 px on screen (the base size is 12 px).
     setLabelScale(z) {
       detailZoom = z >= 1.05;
+      for (const v of list) v.icon.width = v.icon.height = detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z));
       const px = 13;
       const k = Math.max(1, px / (12 * Math.max(0.01, z)));
       if ((z < .65) !== compact) { compact = z < .65; for (const v of list) showLabel(v); }

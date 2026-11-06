@@ -869,3 +869,25 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-home-page .sh-cta-row {order:4}
  .sh-home-page .sh-fine {order:5}
 }
+/* Only the content changes position; shared navigation stays at its anchor. */
+.sh-main {view-transition-name:screen-content}
+.sh-topbar {view-transition-name:site-header}
+.sh-nav {view-transition-name:site-nav}
+::view-transition {pointer-events:none}
+::view-transition-group(root),::view-transition-group(site-header),::view-transition-group(site-nav) {animation:none}
+::view-transition-old(root),::view-transition-new(root),::view-transition-old(site-header),::view-transition-new(site-header),::view-transition-old(site-nav),::view-transition-new(site-nav) {animation:none;mix-blend-mode:normal}
+::view-transition-group(screen-content) {animation-duration:300ms}
+::view-transition-old(screen-content) {animation:sh-screen-out 220ms cubic-bezier(.2,.8,.2,1) both}
+::view-transition-new(screen-content) {animation:sh-screen-in 300ms cubic-bezier(.2,.8,.2,1) both}
+:root[data-navigation=back] {--screen-enter:-48px;--screen-exit:32px}
+:root[data-navigation=forward] {--screen-enter:48px;--screen-exit:-32px}
+@keyframes sh-screen-in {from {opacity:0;transform:translateX(var(--screen-enter,48px))}to {opacity:1;transform:translateX(0)}}
+@keyframes sh-screen-out {to {opacity:0;transform:translateX(var(--screen-exit,-32px))}}
+:root[data-motion=reduce]::view-transition-group(*) {animation-duration:0s!important}
+.sh-view {animation:sh-screen-in 280ms cubic-bezier(.2,.8,.2,1) both}
+:root[data-motion=reduce] .sh-view {animation:none}
+:root[data-transitioning=true] .sh-view {animation:none}
+.sh-problem-bar {view-transition-name:problem-header}
+.pl-top {view-transition-name:play-tools}
+::view-transition-group(problem-header),::view-transition-group(play-tools) {animation:none}
+::view-transition-old(problem-header),::view-transition-new(problem-header),::view-transition-old(play-tools),::view-transition-new(play-tools) {animation-duration:120ms;mix-blend-mode:normal}

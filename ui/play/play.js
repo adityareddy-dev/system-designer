@@ -21,6 +21,8 @@ import { createRouteTrace } from './route-trace.js';
 import { renderCheckpointForm } from './correctness.js';
 import { introPathHolds, repairInsertion } from './intro-path.js';
 import { showVictory } from './victory.js';
+import { carryRunIntoReport } from './run-transition.js';
+import { transitionScreen } from '../shell/motion.js';
 import { insertionLayout, insertionWiring } from '../../render/placement.js';
 import { goalPassed } from './goal-feedback.js';
 import { replicaReadsActive, replicaWiringAdvice } from './lesson-replica.js';
@@ -414,7 +416,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       const sp = scene.worldToScreen ? scene.worldToScreen(x, y) : null;
       if (!sp) return;
       const a = freeArea();
-      if (sp.x < a.l + 30 || sp.x > a.w - a.r - 30 || sp.y < a.t + 30 || sp.y > a.h - a.b - 30) later(() => { if (!S.destroyed && performance.now() >= (S.editUntil || 0)) fitView(true, null, true); }, 60);
+      if (sp.x < a.l + 30 || sp.x > a.w - a.r - 30 || sp.y < a.t + 30 || sp.y > a.h - a.b - 30) later(() => {
+        if (S.destroyed || S.connectFrom || performance.now() < (S.editUntil || 0)) return;
+        if (isPhone() && S.selected) {
+          const area = freeArea();
+          scene.fit({ l: 38, r: 38, t: area.t + 26, b: area.b + 26 }, true, { focusId: S.selected, maxZ: .9 });
+        } else fitView(true);
+      }, 60);
     } catch { /* optional */ }
   }
   let announcementTimer = null;
@@ -613,7 +621,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     try { scene.setSelection(id); } catch { /* render optional */ }
     if (id) { inspector.show(id); inspector.update(S.sim.state().nodes.find(n => n.id === id)); toolbar.el.classList.remove('pl-toolbar--open'); try { reqCard?.toggle(false); } catch { /* not built yet */ } } else inspector.hide();
     // on small screens the sheet that opens must not cover the part it is about
-    if (id && globalThis.matchMedia?.('(max-width: 899px)').matches) {
+    if (id) {
       later(() => { const n = graph().nodes.find((q) => q.id === id); if (n && !S.destroyed && S.selected === id) revealIfHidden(n.x, n.y); }, 120);
     }
     root.classList.toggle('pl-has-selection', !!id);
@@ -1112,7 +1120,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
 
   // ---- steps
-  const stepsBar = stepped ? createSteps(top, { onGo: (s) => go(s) }) : null;
+  const stepsBar = stepped ? createSteps(top, { onGo: (s) => go(s, true) }) : null;
   const tools = h('div', { class: 'pl-tools' });
   const btn = (iconId, label, fn, cls = '') => h('button', { class: 'pl-icon-btn ' + cls, type: 'button', 'aria-label': label, title: label, onClick: fn }, iconEl(iconId, 20));
   const undoBtn = btn('ui.undo', 'Undo (Ctrl+Z)', () => undo());
@@ -1169,20 +1177,25 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
 
   function showPanel(on) { panel.hidden = !on; scrim.hidden = !on; }
-  function go(step) {
+  function go(step, animate = false) {
     if (!stepped) return;
     if (interview && interviewState.run && step !== 'debrief') return;
     if (interview && interviewState.stage !== 'ready' && step !== 'clarify') return;
     if (step === 'day' || (step === 'debrief' && !S.result)) return;
     if ((step === 'clarify' || step === 'numbers') && S.sim.phase !== 'build') return;
+    if (animate && S.step !== step) {
+      const order = ['clarify', 'numbers', 'draw', 'day', 'debrief'];
+      transitionScreen(() => { if (!S.destroyed) go(step); }, { reduced: ctx.reducedMotion(), direction: order.indexOf(step) < order.indexOf(S.step) ? 'back' : 'forward' });
+      return;
+    }
     S.step = step;
     root.dataset.step = step;
     closeMenu();
     debriefWrap.hidden = step !== 'debrief';
     showPanel(step === 'clarify' || step === 'numbers');
-    if (interview && step === 'clarify') renderInterviewPrep(panel, S.problem, interviewState, () => go('draw'), syncInterviewRequirements);
-    if (!interview && step === 'clarify') renderClarify(panel, { problem: S.problem, revealed: S.revealed, snd, warm: !!S.problem?.warmUp, onNext: () => go('numbers') });
-    if (!interview && step === 'numbers') renderNumbers(panel, { problem: S.problem, guesses: S.guesses, snd, progress: ctx.progress, onBack: () => go('clarify'), onNext: () => go('draw') });
+    if (interview && step === 'clarify') renderInterviewPrep(panel, S.problem, interviewState, () => go('draw', true), syncInterviewRequirements);
+    if (!interview && step === 'clarify') renderClarify(panel, { problem: S.problem, revealed: S.revealed, snd, warm: !!S.problem?.warmUp, onNext: () => go('numbers', true) });
+    if (!interview && step === 'numbers') renderNumbers(panel, { problem: S.problem, guesses: S.guesses, snd, progress: ctx.progress, onBack: () => go('clarify', true), onNext: () => go('draw', true) });
     if (step === 'draw') { toolbar.setEnabled(canStructure(), ''); }
     stepsBar.set(step, { clarify: S.sim.phase === 'build', numbers: S.sim.phase === 'build', draw: true, debrief: !!S.result });
     if (step === 'debrief') showDebrief();
@@ -1354,11 +1367,15 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     try {
       S.prevBest = mode === 'practice' ? bestOf(ctx.progress?.get(S.problem.id)) : bestOf(ctx.compete?.bests?.get?.(`${mode}:${S.problem.id}:${S.seed}`));
     } catch { S.prevBest = null; }
-    S.step = 'debrief'; root.dataset.step = 'debrief';
-    stepsBar.set('debrief', { clarify: false, numbers: false, draw: true, debrief: true });
-    showDebrief();
-    root.dataset.outcome = result.passed ? 'pass' : 'fail';
-    updateEditable();
+    S.step = 'debrief';
+    carryRunIntoReport({ host: debriefWrap, stage, scene, result: S.result, catalog, interview, reduced: ctx.reducedMotion(), render: () => {
+      if (S.destroyed || S.step !== 'debrief') return;
+      root.dataset.step = 'debrief';
+      stepsBar.set('debrief', { clarify: false, numbers: false, draw: true, debrief: true });
+      showDebrief();
+      root.dataset.outcome = result.passed ? 'pass' : 'fail';
+      updateEditable();
+    } });
     snd(result.passed ? 'pass' : 'miss');
     for (let i = 0; i < result.stars; i++) later(() => snd('star'), 500 + i * 220);
     // A passed warm-up leaves a mark in the list (a tick and 'Warm-up passed'), but no score is saved.
@@ -1387,8 +1404,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       opponent: mode === 'beat' && opts.overlay ? opts.overlay : null,
       hasNext: mode === 'practice' && idx >= 0 && idx < list.length - 1,
       handlers: {
-        onRetry: () => { reset(); },
-        onBack: () => { reset(); },
+        onRetry: () => transitionScreen(reset, { direction: 'back', reduced: ctx.reducedMotion() }),
+        onBack: () => transitionScreen(reset, { direction: 'back', reduced: ctx.reducedMotion() }),
         onHints: () => { hints.open(); hints.el.focus?.(); },
         onEditorial: () => openEditorial(),
         onShare: () => openShare(),
