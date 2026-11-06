@@ -49,7 +49,7 @@ export function createNodeLayer(PIXI, parent, env) {
   let compact = false;
   let tiny = false; // zoomed out so far that names cannot be read without overlapping: only the picked part keeps its name
   const showLabel = (v) => { v.labelT.visible = true; v.labelT.text = compact ? shortName(v) : v.label; };
-  const shortName = v => ({ 'vm-fleet': 'Servers', 'sql-primary': 'SQL', 'sql-replica': 'Replica', 'mobile-app': 'Mobile', 'web-browser': 'Web', 'regional-lb': 'Balancer', 'worker-pool': 'Workers', 'object-storage': 'Objects', 'api-gateway': 'Gateway', 'identity-provider': 'Identity', 'web-firewall': 'Firewall', 'distributed-cache': 'Cache' }[v.type] || v.label?.replace(/\s*\([^)]*\)/g, '').split(' ')[0].slice(0, 9) || v.type);
+  const shortName = v => ({ 'vm-fleet': 'Servers', 'sql-primary': 'SQL', 'sql-replica': 'Replica', 'mobile-app': 'Mobile', 'web-browser': 'Web', 'regional-lb': 'Balancer', 'worker-pool': 'Workers', 'object-storage': 'Objects', 'api-gateway': 'Gateway', 'identity-provider': 'Identity', 'waf': 'Firewall', 'distributed-cache': 'Cache' }[v.type] || v.label?.replace(/\s*\([^)]*\)/g, '').split(' ')[0].slice(0, 9) || v.type);
   let labelK = 1; // label scale that keeps names readable when zoomed out
   let multiRegion = false;
   let mainRegion = null; // most common region; only nodes elsewhere get a region chip

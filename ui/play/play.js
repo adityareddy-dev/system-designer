@@ -356,7 +356,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const a = freeArea();
     const pad = isPhone() ? 20 : 36;
     // a big build zooms out far enough to sit between the panels instead of running underneath them
-    const zoom = isPhone() ? { minZ: minZoom ?? 0, maxZ: 0.9 } : { minZ: minZoom ?? 0, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
+    const zoom = isPhone() ? { minZ: minZoom ?? 0, maxZ: 0.9, reserveY: isLesson ? (mode === 'intro' ? 288 : 144) : 0 } : { minZ: minZoom ?? 0, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
     // names sit under the parts and are about 80 px wide, so the sides keep room for half a name (never under 12 px) and the bottom for a name line
     const side = Math.max(pad, 46);
 

@@ -731,3 +731,5 @@ Insertion reserves 120 world units horizontally or 144 vertically between faces.
 Phone captions shorten at small zoom and have an opaque ground so connections cannot obscure names. Selection exposes the full name in the inspector and an explicit Enlarge part control, alongside a persistent complete diagram that returns to Fit all.
 
 Passing replays the actual changed route in request order, counts the previous and current day measurements for the improved limiting metric: served share, p99 latency or monthly cost (or explicitly compares target and current when no previous run exists), then settles the score. This is presentation only, leaves controls available, and has an immediate still version for reduced motion. Three stars with at least 950 points receive the clean-sweep treatment; other passes remain visibly quieter.
+
+Phone lesson fits may pass `reserveY` in world units to leave one insertion row (two in the intro) below the opening graph. This reserves working room before edits; it never changes saved node coordinates or triggers a camera fit during an edit.
