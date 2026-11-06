@@ -32,7 +32,7 @@ function finishersFor(S, t) {
     for (const n of d.graph?.nodes || []) { const k = catalog.elementById.get(n.type)?.kind; if (done(n.type) && k !== 'source' && k !== 'cache') seen.set(n.type, (seen.get(n.type) || 0) + 1); }
   }
   const list = [...seen.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
-  for (const id of FINISHERS[tid] || []) if (!list.includes(id) && catalog.elementById.has(id)) list.push(id);
+  if (!list.length) for (const id of FINISHERS[tid] || []) if (!list.includes(id) && catalog.elementById.has(id)) list.push(id);
   const allowed = problem.palette && problem.palette.length ? new Set(problem.palette) : null;
   const ok = allowed ? list.filter((id) => allowed.has(id)) : list;
   return (ok.length ? ok : list).slice(0, tid === 'notify' ? 3 : 2);

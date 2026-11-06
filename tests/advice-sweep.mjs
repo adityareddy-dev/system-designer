@@ -26,7 +26,10 @@ for (const p of problems) {
   variants.push(['everything calls directly', allCalls.getGraph()]);
   for (const [label, graph] of variants) {
     const where = `${p.id}/${label}`, sim = createSim({ catalog, problem: p }); sim.loadGraph(graph);
-    for (const issue of sim.validate()) plain(issue.message, where + ' warning');
+    for (const issue of sim.validate()) {
+      plain(issue.message, where + ' warning');
+      if (p.id === 'job-scheduler') assert.doesNotMatch(issue.message, /Payment processor/, where + ' keeps the customer-endpoint domain');
+    }
     for (const id of Object.keys(p.requirements.mix)) {
       const trace = sim.trace(id);
       for (const rejection of trace.rejected) plain(rejection.reason, where + ' connection');

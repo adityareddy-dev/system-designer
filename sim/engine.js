@@ -56,6 +56,7 @@ export function normalizeProblem(problem, catalog, mode = 'practice') {
     palette: p.palette || null,
     concepts: Array.isArray(p.concepts) ? p.concepts.slice() : [],
     services: p.services || {},
+    editorial: p.editorial || null,
   };
 }
 
