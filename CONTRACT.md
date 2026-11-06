@@ -409,6 +409,8 @@ Scene = {
   sync(graph, flowVersion)                // diff-sync nodes and edges; cheap when unchanged
   setFlows(flowFrame, { speed, dtWallMs }) // after each frame's sim ticks
   setSelection(nodeId | null)
+  confirmConnection(edgeId)                // one visual request follows this edge, then its destination responds; no simulation change
+  setInsertionPreview(fn)                  // fn(type, edgeId) → {kind: 'side' | 'route', position?: {x,y}} | null; shared with the editor's drop action
   setGhost(type | null, x, y)             // placement preview while dragging from the toolbar
   setOverlay(graph | null)                // faint ghost of a friend's design
   setValidation(issues)                   // small warning glyphs on nodes
@@ -426,6 +428,9 @@ Scene = {
 ```
 - World units: grid 20, node 72 by 72, origin at canvas centre, y down.
 - Render owns pointer and touch input on the canvas (pan, pinch, drag, long-press 450 ms, port-ring drag to connect, double-tap to fit) and emits the events above; it never changes the graph itself.
+- `placement:preview` emits `{ type, edgeId }` or `null` while placing a part. `connect:preview` emits `{ from, to, ok }` or `null` while dragging a connection. Panels clear the target area during connection choice. `stats().labelPx` measures the smallest rendered node name in CSS pixels.
+- At overview zoom, parts retain an icon, a status cue and a short name at least 13 CSS pixels tall. Pool details appear at closer zoom; selection reveals counts. Dropping a catalog `lookaside` part or a part with `params.lookasideFor` onto a flow edge keeps that edge and adds a call from its source. Other eligible insertions replace the edge with two flow edges. Preview and drop use the same wiring rule.
+- Shell navigation uses the View Transitions API when available, with immediate DOM updates as fallback. Workbench preparation steps update synchronously and animate their entering content. Transitions never intercept input, keep the shared header stationary, and reverse direction when returning to a shallower screen. At day end, measured parts travel from their canvas positions into an evidence card in the report or interview defense before the explanation fades in. Reduced motion renders the same evidence immediately, without travel or delayed explanation. Targets, thresholds and saved scores never count up; an achieved metric may move from its target or its previous measured value.
 - Particle, glow, status and motion rules: DESIGN.md 9.3 to 9.5 and 11. Icons are rasterised from `iconInner('el.<id>')` once per theme at 64 px times pixel ratio.
 - Done when: a 40-node, 60-edge graph at 1,500 particles holds under 7 ms render time in the server's headless Chrome perf run, and every request shape and status reads correctly in both themes.
 

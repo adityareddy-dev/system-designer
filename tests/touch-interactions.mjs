@@ -38,7 +38,7 @@ const context = vm.createContext({
 vm.runInContext(connectSource + fitSource, context);
 vm.runInContext("startConnect('a'); fitView();", context);
 assert.equal(stopped, 1);
-assert.equal(hidden, 1);
+assert.equal(hidden, 0, 'connection choice hides the panel container without losing inspector state');
 assert.equal(folded, 0);
 assert.equal(fits, 0);
 S.connectFrom = null;
@@ -46,7 +46,7 @@ vm.runInContext('fitView();', context);
 assert.equal(fits, 1);
 phone = false;
 vm.runInContext("startConnect('a'); fitView();", context);
-assert.equal(folded, 1);
+assert.equal(folded, 0, 'desktop connection choice also clears the full panel container');
 assert.equal(fits, 1);
 S.connectFrom = null;
 vm.runInContext('fitView();', context);

@@ -869,3 +869,20 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-home-page .sh-cta-row {order:4}
  .sh-home-page .sh-fine {order:5}
 }
+/* Capture titles and evidence tokens while controls remain live. */
+:root {view-transition-name:none}
+.sh-view {animation:sh-screen-in 280ms cubic-bezier(.2,.8,.2,1) both}
+.sh-view--native {animation:none}
+.sh-view--native>.sh-page>:not(:has(h1)):not(h1) {animation:sh-screen-in 280ms cubic-bezier(.2,.8,.2,1) both}
+.sh-view h1 {view-transition-name:screen-title}
+:root[data-transition-kind=run] .sh-view h1 {view-transition-name:none}
+::view-transition,::view-transition-group(*),::view-transition-image-pair(*),::view-transition-old(*),::view-transition-new(*) {pointer-events:none}
+::view-transition-group(screen-title) {animation-duration:280ms;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+::view-transition-old(screen-title) {animation:sh-screen-out 180ms ease-out both}
+::view-transition-new(screen-title) {animation:sh-screen-in 280ms ease-out both}
+:root[data-navigation=back] {--screen-enter:-48px;--screen-exit:32px}
+:root[data-navigation=forward] {--screen-enter:48px;--screen-exit:-32px}
+@keyframes sh-screen-in {from {opacity:0;transform:translateX(var(--screen-enter,48px))}to {opacity:1;transform:translateX(0)}}
+@keyframes sh-screen-out {to {opacity:0;transform:translateX(var(--screen-exit,-32px))}}
+:root[data-motion=reduce] .sh-view,:root[data-motion=reduce] .sh-view--native>.sh-page>* {animation:none}
+:root[data-motion=reduce]::view-transition-group(*),:root[data-motion=reduce]::view-transition-old(*),:root[data-motion=reduce]::view-transition-new(*) {animation:none!important}

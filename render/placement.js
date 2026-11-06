@@ -1,4 +1,17 @@
-// Local insertion spacing: preserve every part that the new face does not touch.
+// Wiring and local spacing for a part dropped onto a connection.
+export function insertionWiring(graph, type, edgeId, catalog, canConnect) {
+  const edge = graph.edges.find(e => e.id === edgeId && e.kind === 'flow');
+  const part = catalog.elementById.get(type);
+  const source = graph.nodes.find(n => n.id === edge?.from);
+  const target = graph.nodes.find(n => n.id === edge?.to);
+  if (!part || !source || !target) return null;
+  const a = canConnect(source.type, type);
+  if (!a.ok || a.swap || a.kind !== 'flow') return null;
+  if (part.kind === 'lookaside' || part.params?.lookasideFor?.length) return { kind: 'side', edge, source, target };
+  const b = canConnect(type, target.type);
+  return b.ok && !b.swap && b.kind === 'flow' ? { kind: 'route', edge, source, target } : null;
+}
+
 export function insertionLayout(graph, edgeId) {
   const edge = graph.edges.find(e => e.id === edgeId);
   const a = graph.nodes.find(n => n.id === edge?.from), b = graph.nodes.find(n => n.id === edge?.to);

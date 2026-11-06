@@ -97,18 +97,13 @@ export function showVictory(host, { result, before, original, catalog, reduced }
   const summary = host.querySelector('.pl-verdict-sec');
   if (summary) summary.insertBefore(root, summary.querySelector('.pl-score-row'));
   if (reduced) return;
-  const score = host.querySelector('.pl-dial-n'), arc = host.querySelector('.pl-dial-arc');
-  const start = performance.now(), total = Math.round(result.score.total);
+  metric.textContent = format(from ?? target);
+  const start = performance.now();
   function frame(now) {
     if (!root.isConnected) return;
     const elapsed = now - start, k = Math.min(1, Math.max(0, (elapsed - 400) / 450));
-    const beforeNumber = root.querySelector('.pl-victory-numbers b');
-    if (beforeNumber) beforeNumber.textContent = format((from ?? target) * Math.min(1, Math.max(0, elapsed - 250) / 350));
     metric.textContent = format((from ?? target) + (value - (from ?? target)) * k);
-    const landing = Math.min(1, Math.max(0, (elapsed - 850) / 400));
-    if (score) score.textContent = Math.round(total * landing).toLocaleString('en-US');
-    if (arc) { const c = 2 * Math.PI * 54; arc.setAttribute('stroke-dasharray', `${total * landing / 1000 * c} ${c}`); }
-    if (elapsed < 1300) requestAnimationFrame(frame);
+    if (elapsed < 900) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 }
