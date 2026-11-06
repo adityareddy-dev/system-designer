@@ -69,6 +69,8 @@ export function renderLesson(host, ctx, route) {
   let transferDone = false;
   const defenses = new Map();
   let poolOff = null;
+  let figure = null;
+  let figureVersion = 0;
   const total = steps.length + 1; // last page is the takeaway
   let idx = Math.max(0, Math.min(total - 1, parseInt(route.query.step, 10) || 0));
   let play = null;
@@ -81,6 +83,8 @@ export function renderLesson(host, ctx, route) {
   host.append(wrap);
 
   function stopPlay() {
+    figureVersion++;
+    figure?.destroy(); figure = null;
     poolOff?.(); poolOff = null;
     if (goalOff) { goalOff(); goalOff = null; }
     if (play) { play.destroy(); play = null; }
@@ -119,7 +123,7 @@ export function renderLesson(host, ctx, route) {
     if (!step) return drawTakeaway();
     const card = h('section', { class: 'sh-card sh-lp-card', 'aria-live': 'polite' });
     body.append(card);
-    if (step.kind === 'read' && !step.tap) {
+    if (step.kind === 'read' && !step.tap && (idx === 0 || !lesson.steps.some(s => s.kind === 'figure'))) {
       card.classList.add('sh-lp-card--illustrated');
       card.append(h('figure', { class: 'sh-concept-plate', 'aria-label': `${lesson.title}: a diagram of the mechanism`, html: sceneMarkup(lesson.id) }));
     }
@@ -131,6 +135,21 @@ export function renderLesson(host, ctx, route) {
         step.title ? h('h2', { class: 'sh-h2', text: step.title }) : null,
         h('p', { class: 'sh-lp-text', text: step.text }),
         navRow({})]);
+    } else if (step.kind === 'figure') {
+      const version = figureVersion;
+      card.append(h('h2', { class: 'sh-h2', text: step.title }), h('p', { class: 'sh-lp-text', text: step.text || '' }));
+      const stage = h('div', { class: 'sh-figure-host', 'aria-busy': 'true' }, h('p', { text: 'Opening the figure...' }));
+      card.append(stage, navRow({}));
+      // The lesson id is validated against content, never an arbitrary import path.
+      import(`../figures/${lesson.id}.js`).then(module => {
+        if (version !== figureVersion) return;
+        clear(stage); stage.removeAttribute('aria-busy');
+        figure = module.mountFigure(stage, ctx, step);
+      }).catch(() => {
+        if (version !== figureVersion) return;
+        stage.removeAttribute('aria-busy'); clear(stage);
+        stage.append(h('p', { text: 'The figure could not open. Reload this page to try again.' }));
+      });
     } else if (step.kind === 'numbers') {
       card.append(
         h('h2', { class: 'sh-h2', text: 'The numbers' }),
