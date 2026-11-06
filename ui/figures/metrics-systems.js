@@ -1,7 +1,7 @@
 // Cartesian label sets, samples through a storage path and a split-query cache.
 import {mount,range,button,toggle,box,packet,text} from './bench.js';
 export const seriesFor=(hosts,paths,users)=>Array.from({length:hosts},(_,h)=>Array.from({length:paths},(_,p)=>Array.from({length:users},(_,u)=>`h${h}/p${p}/u${u}`))).flat(2);
-export const model={note:'Model: all combinations of host, path and optional user labels exist. One 16-byte sample per series per tick, excluding index and compression overhead. Query cache keys include the time slice and storage generation; each query has four equal slices.',
+export const model={note:'Model: all combinations of host, path and optional user labels exist. One 16-byte sample per series per tick, excluding index and compression overhead. Query cache keys include the time slice and storage generation; each query has four equal slices and one read per uncached slice. Queries cover sealed blocks; active WAL reads bypass this cache.',
  controls:[range('hosts','Hosts',1,8,3),range('paths','Paths',1,6,2),range('users','User label values',1,20,1),button('ingest','Ingest one tick'),button('block','Seal a block'),button('compact','Compact blocks'),button('query','Run split query'),button('advance','Query next time range')],
  initial:view=>({hosts:3,paths:2,users:view==='cardinality'?10:1,wal:0,blocks:[],writes:0,generation:0,cache:[],offset:0,hits:0,ticks:0,message:'Each distinct label tuple is a series. Add a label before ingesting a tick.',event:0}),
  update(s,a,v){s=structuredClone(s);s.event++;if(['hosts','paths','users'].includes(a)){s[a]=v;s.message=`Now ${seriesFor(s.hosts,s.paths,s.users).length} series, one per label tuple.`;}

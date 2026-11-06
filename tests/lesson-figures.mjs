@@ -23,6 +23,7 @@ assert.equal(run('consistent-hashing',action('snapshot','write','fence','replay'
 assert.equal(run('copies-quorums',[['r',1],['write'],['read']]).s.result,0);
 assert.equal(run('copies-quorums',action('write','read')).s.result,1);
 assert.equal(run('copies-quorums',action('kill','write','read')).s.result,1);
+const changedQuorum=run('copies-quorums',[['w',1],['write'],['w',3],['r',1],['read']]);assert.equal(changedQuorum.s.result,0);assert.equal(changedQuorum.v.stats['last-write overlap floor'],0);
 let r=run('leader-consensus',action('kill','elect','stale'));assert.equal(r.s.term,2);assert.equal(r.s.accepted,0);
 assert.equal(run('leader-consensus',[['split',true],['write']]).s.commits,0);
 assert.equal(run('leader-consensus',[['split',true],['elect'],['write']]).s.commits,1);
