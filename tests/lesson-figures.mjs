@@ -36,6 +36,9 @@ const storage=await import('../ui/figures/storage-engine.js');for(const key of [
 r=run('work-across-services',action('step','step','step','compensate','compensate'));assert.deepEqual(r.s.undone,['charge','reserve']);assert.equal(r.s.done.length,0);
 r=run('work-across-services',[['mode','outbox'],...action('step','crash','recover','recover')]);assert.equal(r.s.consumed.length,1);assert.equal(r.s.published.length,2);
 r=run('work-across-services',[['mode','direct'],...action('step','crash','recover')]);assert.equal(r.s.consumed.length,0);
+r=run('work-across-services',[['mode','direct'],...action('step','crash','recover','step','recover','step')]);assert.equal(r.s.published.length,0,'a crashed direct publisher cannot recreate its lost intent');assert.equal(r.s.consumed.length,0);
+r=run('work-across-services',[['mode','direct'],...action('step','step')]);assert.equal(r.s.consumed.length,1,'a live direct publisher can deliver its pending event');
+r=run('work-across-services',[['mode','outbox'],...action('step','crash','recover','step')]);assert.equal(r.s.published.length,2);assert.equal(r.s.consumed.length,1,'durable replay deduplicates consumer effects');
 const ordering=await import('../ui/figures/ordering-time.js');assert(!ordering.dominates([3,1],[2,2]));assert.deepEqual(ordering.merge([4,0],[0,3]),[4,3]);
 r=run('ordering-time',[['mode','counter'],...action('a','a','a','a','b','b','b','merge','merge')]);assert.deepEqual(r.s.ca,[4,3]);assert.deepEqual(r.s.cb,[4,3]);
 r=run('device-sync',action('editA','editB','delete','sync'));assert(r.s.conflict);assert.equal(r.s.delta,207);assert(r.s.delta<r.s.full);assert.equal(r.s.wakeups,2);assert.equal(r.s.polls,6);
@@ -69,6 +72,11 @@ assert.equal(run('idempotency-retries',[['dedupe',true],...action('pay','retry')
 assert.equal(run('rate-limiting',action('send','send','send')).s.rejected,2);
 assert.equal(run('circuit-breakers',action('call','call','call','call')).s.upstream,3);
 assert.equal(run('multi-region',action('write','replicate','write','fail','promote')).v.stats['unreplicated versions'],1);
+for(const writes of [1,3]){
+ r=run('multi-region',action('write','replicate','write','fail','promote',...Array(writes).fill('write'),'fail','promote','replicate'));
+ assert.equal(r.v.stats['unreplicated versions'],1,'new standby writes and repeated failover controls cannot recover an old-region write');
+}
+assert.equal(run('multi-region',action('write','write','replicate','fail','promote','write')).v.stats['unreplicated versions'],0,'catch-up before failure protects the acknowledged writes');
 assert.equal(run('observability',action('incident')).v.stats['failed requests'],3500);
 assert.equal(run('cost',[['scale',true]]).v.stats['server-hours/day'],64);
 assert.equal(run('security-compliance',[['least',true],['try']]).s.blocked,1);
