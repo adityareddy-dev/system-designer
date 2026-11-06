@@ -1416,7 +1416,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!S.result && !(ctx.progress?.get?.(S.problem.id)?.attempts > 0)) { toast('The editorial unlocks after one finished traffic day.', 'info'); return; }
     renderEditorial(editorialWrap, {
       problem: S.problem, catalog, passed: !!(S.result?.passed || ctx.progress?.get?.(S.problem.id)?.stars > 0),
-      onClose: closeEditorial, onLoad: loadDesign,
+      onClose: closeEditorial, onLoad: loadDesign, onShown: () => { S.workedRepair = true; },
     });
     editorialWrap.hidden = false; editorialWrap.scrollTop = 0;
   }
