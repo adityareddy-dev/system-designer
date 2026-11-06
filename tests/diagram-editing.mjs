@@ -65,11 +65,14 @@ try {
   assert.equal(await page.$eval('.pl-dragchip', e => e.hidden), true);
   console.log('The 15-part phone diagram fits; the selected-part view keeps an overview.');
 
-  for (const width of [320, 390]) {
-    await page.setViewport({ width, height: 844, isMobile: true, hasTouch: true });
+  for (const [width, height] of [[320, 844], [390, 844], [320, 568], [568, 320], [667, 375]]) {
+    await page.setViewport({ width, height, isMobile: true, hasTouch: true });
     await page.goto(base + '#/learn/load-balancing?step=1');
+    await page.reload();
     await page.waitForFunction(() => window.__game.getState().nodes.some(n => n.id === 'app'));
     await sleep(900);
+    await page.$eval('.pl-stage', e => e.scrollIntoView({ block: 'end' }));
+    await sleep(150);
     const position = await page.evaluate(() => {
       const s = window.__game.getState(), n = s.view.screen.find(n => n.id === 'app');
       const r = document.querySelector('.pl-stage').getBoundingClientRect();
@@ -80,11 +83,28 @@ try {
     await sleep(350);
     const bounds = await page.evaluate(() => {
       const box = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
-      return { map: box('.pl-focus-map'), goal: box('.pl-goal'), inspector: box('.pl-inspector'), button: box('.pl-focus-map .pl-btn'), width: innerWidth, height: innerHeight };
+      return { map: box('.pl-focus-map'), goal: box('.pl-goal'), inspector: box('.pl-inspector'), button: box('.pl-focus-map .pl-btn'),
+        compact: document.querySelector('.pl-focus-map').classList.contains('is-compact'),
+        scrollHeight: document.querySelector('.pl-insp-scroll').clientHeight, width: innerWidth, height: innerHeight };
     });
-    assert(bounds.map.top >= bounds.goal.bottom + 8, `${width}px overview clears the lesson goal`);
+    if (!bounds.compact) assert(bounds.map.top >= bounds.goal.bottom + 8, `${width}px overview clears the lesson goal`);
     assert(bounds.button.bottom <= bounds.inspector.top, `${width}px full overview and Enlarge control clear the inspector`);
     assert(bounds.map.left >= 0 && bounds.map.right <= bounds.width && bounds.map.bottom <= bounds.height, `${width}px overview fits on screen`);
+    assert(bounds.inspector.bottom - bounds.inspector.top >= 148, `${width}x${height} keeps a usable inspector`);
+    assert(bounds.scrollHeight >= 44, `${width}x${height} keeps a touch-height scroll area`);
+    const unitsBefore = await page.evaluate(() => window.__game.getState().nodes.find(n => n.id === 'app').units);
+    const control = '.pl-inspector [data-knob="units"] button:last-child';
+    await page.$eval(control, e => e.scrollIntoView({ block: 'nearest' }));
+    await sleep(150);
+    const target = await page.$eval(control, e => {
+      const r = e.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
+      return { x, y, reachable: e.contains(document.elementFromPoint(x, y)) };
+    });
+    assert(target.reachable, `${width}x${height} exposes the server-count control for touch`);
+    await page.touchscreen.tap(target.x, target.y);
+    assert((await page.evaluate(() => window.__game.getState().nodes.find(n => n.id === 'app').units)) > unitsBefore,
+      `${width}x${height} lets the player adjust the required server count`);
+    console.log(`Server controls work at ${width}x${height}.`);
   }
-  console.log('Lesson overview and Enlarge control remain visible at 320px and 390px.');
+  console.log('Lesson overview and server controls remain usable in tall, short portrait and landscape phone viewports.');
 } finally { await browser.close(); }

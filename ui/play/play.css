@@ -912,7 +912,12 @@
 }
 @media(max-width:719px) {
  .pl-focus-map {position:absolute;right:10px;top:var(--pl-focus-top,calc(var(--pl-hud-end,220px) + 10px));display:flex;flex-direction:column;align-items:end;gap:6px;z-index:21;max-width:140px;animation:pl-panel-settle 220ms ease-out both}
- .pl-root:has(.pl-focus-map) .pl-right {max-height:min(40%,calc(100% - var(--pl-focus-end,0px) - 56px))}
+ .pl-root:has(.pl-focus-map) .pl-right {max-height:max(148px,min(40%,calc(100% - var(--pl-focus-end,0px) - 56px)))}
+ .pl-root:has(.pl-focus-map.is-compact) .pl-right {max-height:max(206px,40%)}
+ .pl-root:has(.pl-focus-map.is-compact) .pl-inspector:not(.pl-inspector--folded) {min-height:148px}
+ .pl-focus-map.is-compact {position:static;flex:none;flex-direction:row;align-items:center;justify-content:flex-end;max-width:none}
+ .pl-focus-map.is-compact .pl-map-drawing {width:64px;height:44px}
+ .pl-insp-head {flex:none}
  .pl-map-drawing {width:116px;height:76px;background:var(--surface-solid);border:1px solid var(--border-strong);border-radius:8px;padding:6px;cursor:pointer}
  .pl-map-drawing svg {width:100%;height:100%}
  .pl-focus-map .pl-btn {font-size:12px;padding:8px;min-height:36px}

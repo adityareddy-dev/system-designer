@@ -42,3 +42,20 @@ for (const vertical of [false, true]) for (const sign of [-1, 1]) for (const spa
   }
 }
 console.log('Swept insertion preserves spacing in both axes and directions, independently of node order.');
+
+for (const vertical of [false, true]) for (const sign of [-1, 1]) for (const crowded of [false, true]) {
+  const gap = vertical ? 144 : 120, cross = vertical ? 112 : 128;
+  const nodes = [{ id: 'source', x: 0, y: 0 }, { id: 'target', x: 2 * gap, y: 0 },
+    { id: 'observer', x: gap, y: 0 },
+    ...(crowded ? [{ id: 'upper', x: gap, y: -cross }, { id: 'lower', x: gap, y: cross }] : [])];
+  for (const n of nodes) { n.x *= sign; if (vertical) [n.x, n.y] = [n.y, n.x]; }
+  const graph = { nodes, edges: [{ id: 'route', from: 'source', to: 'target' }] };
+  const original = JSON.stringify(graph), placed = insertionLayout(graph, 'route');
+  assert.equal(JSON.stringify(graph), original);
+  assert.deepEqual(placed.moves, [], 'an occupied midpoint does not displace unrelated parts or endpoints');
+  for (const n of nodes) {
+    assert(Math.abs(placed.x - n.x) >= (vertical ? cross : gap) || Math.abs(placed.y - n.y) >= (vertical ? gap : cross),
+      `the inserted face clears ${n.id} in both axes and directions`);
+  }
+}
+console.log('Insertion clears occupied midpoints and nearby observers without moving unrelated parts.');

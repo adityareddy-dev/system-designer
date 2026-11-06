@@ -24,7 +24,12 @@ export function insertionLayout(graph, edgeId) {
       }
     }
   }
-  return { x: (a.x + target.x) / 2, y: (a.y + target.y) / 2,
+  const inserted = { x: (a.x + target.x) / 2, y: (a.y + target.y) / 2 };
+  const nearby = [...positions.values()].filter(n => Math.abs(n[axis] - inserted[axis]) < gap);
+  const candidates = [inserted[other], ...nearby.flatMap(n => [n[other] + cross, n[other] - cross])]
+    .sort((u, v) => Math.abs(u - inserted[other]) - Math.abs(v - inserted[other]) || v - u);
+  inserted[other] = candidates.find(value => nearby.every(n => Math.abs(n[other] - value) >= cross));
+  return { ...inserted,
     moves: graph.nodes.filter(n => n.x !== positions.get(n.id).x || n.y !== positions.get(n.id).y)
       .map(n => ({ id: n.id, x: positions.get(n.id).x, y: positions.get(n.id).y })) };
 }

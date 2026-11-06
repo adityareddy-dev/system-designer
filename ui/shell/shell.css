@@ -651,7 +651,7 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-lesson-page:has(.sh-demo-stage) .sh-lp-head {display:flex;justify-content:space-between;align-items:center;min-height:32px;margin-bottom:4px}
  .sh-lesson-page:has(.sh-demo-stage) .sh-lp-title {display:none}
  .sh-lesson-page:has(.sh-demo-stage) .sh-demo-prompt {max-height:60px;overflow:auto;padding:6px 10px}
- .sh-lesson-page:has(.sh-demo-stage) .sh-demo-stage {height:calc(100dvh - 200px);min-height:0}
+ .sh-lesson-page:has(.sh-demo-stage) .sh-demo-stage {height:calc(100dvh - 200px);min-height:360px}
  .sh-lesson-page:has(.sh-demo-stage) .sh-lp-nav {min-height:56px;padding:4px 8px;margin:0;position:static;background:var(--surface-solid)}
  .sh-lesson-page:has(.sh-demo-stage) .sh-allocation {display:none}
  .sh-lp-card--demo {gap:4px}

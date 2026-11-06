@@ -612,6 +612,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const minX = Math.min(...g.nodes.map(n => n.x)) - 60, minY = Math.min(...g.nodes.map(n => n.y)) - 60;
     const width = Math.max(...g.nodes.map(n => n.x)) - minX + 60, height = Math.max(...g.nodes.map(n => n.y)) - minY + 60;
     const map = h('div', { class: 'pl-focus-map' });
+    // A selection tap can finish over the overview that it just opened.
+    let pressed = false;
+    map.addEventListener('pointerdown', () => { pressed = true; });
+    map.addEventListener('click', e => {
+      if (e.detail && !pressed) { e.preventDefault(); e.stopPropagation(); }
+      pressed = false;
+    }, true);
     const drawing = h('button', { class: 'pl-map-drawing', type: 'button', 'aria-label': 'Return to the whole diagram', onClick: () => { select(null); fitAll(); } });
     drawing.innerHTML = `<svg viewBox="${minX} ${minY} ${width} ${height}" aria-hidden="true"><g stroke="var(--edge-idle)" stroke-width="6">${g.edges.map(e => { const a = g.nodes.find(n => n.id === e.from), b = g.nodes.find(n => n.id === e.to); return a && b ? `<path d="M${a.x} ${a.y}L${b.x} ${b.y}"/>` : ''; }).join('')}</g>${g.nodes.map(p => `<rect x="${p.x - 26}" y="${p.y - 26}" width="52" height="52" rx="8" fill="${p.id === id ? 'var(--accent)' : 'var(--surface-solid)'}" stroke="var(--text-2)" stroke-width="4"/>`).join('')}</svg>`;
     const enlarge = h('button', { class: 'pl-btn', type: 'button', text: 'Enlarge part', onClick: () => {
@@ -631,8 +638,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     for (const el of [caption, goalChip]) {
       if (!el.hidden && el.offsetParent) top = Math.max(top, el.getBoundingClientRect().bottom);
     }
+    map.classList.remove('is-compact');
+    if (map.parentElement !== root) root.append(map);
+    const bottom = parseFloat(getComputedStyle(right).bottom) || 0;
+    const compact = r.bottom - bottom - (top + 10 + map.offsetHeight + 8) < 148;
     root.style.setProperty('--pl-focus-top', Math.ceil(top - r.top + 10) + 'px');
     root.style.setProperty('--pl-focus-end', Math.ceil(top - r.top + 10 + map.offsetHeight + 8) + 'px');
+    if (compact) { map.classList.add('is-compact'); right.prepend(map); }
   }
   function startConnect(from) {
     S.connectFrom = from;

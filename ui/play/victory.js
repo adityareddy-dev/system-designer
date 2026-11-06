@@ -16,21 +16,50 @@ export function victoryMetric(result, before) {
     target: availability.target * 100, label: 'Requests served', format: n => n.toFixed(2) + '%' };
 }
 
-export function showVictory(host, { result, before, original, catalog, reduced }) {
-  const graph = result.graph;
-  if (!graph?.nodes?.length) return;
+export function victoryRepair(graph, original) {
   const baseline = new Map((original?.nodes || []).map(n => [n.id, n]));
-  const changes = graph.nodes.filter(n => {
+  const changed = new Set(graph.nodes.filter(n => {
     const old = baseline.get(n.id);
     return !old || ['units', 'tier', 'zones', 'region'].some(k => old[k] !== n[k]) || JSON.stringify(old.knobs) !== JSON.stringify(n.knobs);
-  });
-  const repaired = new Set(changes.flatMap(n => [...pathsThrough(graph, n.id).edges]));
-  const relevant = graph.edges.filter(e => e.kind === 'flow' && (!changes.length || repaired.has(e.id)));
+  }).map(n => n.id));
+  const repaired = new Set([...changed].flatMap(id => [...pathsThrough(graph, id).edges]));
+  const key = e => `${e.kind}:${e.from}>${e.to}`;
+  const currentEdges = new Set(graph.edges.map(key)), oldEdges = new Set((original?.edges || []).map(key));
+  let connectionChanged = false;
+  for (const [g, otherEdges] of [[graph, oldEdges], [original, currentEdges]]) {
+    for (const edge of g?.edges || []) {
+      if (edge.kind !== 'flow' || otherEdges.has(key(edge))) continue;
+      connectionChanged = true;
+      changed.add(edge.from); changed.add(edge.to); repaired.add(edge.id);
+      // Follow each side of the repaired connection without entering sibling branches.
+      for (const [direction, start] of [['to', edge.from], ['from', edge.to]]) {
+        const seen = new Set([start]), pending = [start];
+        while (pending.length) {
+          const id = pending.pop();
+          for (const next of g.edges) {
+            if (next.kind !== 'flow' || next[direction] !== id) continue;
+            repaired.add(next.id);
+            const target = next[direction === 'from' ? 'to' : 'from'];
+            if (!seen.has(target)) { seen.add(target); pending.push(target); }
+          }
+        }
+      }
+    }
+  }
+  const changes = graph.nodes.filter(n => changed.has(n.id));
+  const relevant = graph.edges.filter(e => e.kind === 'flow' && ((!changed.size && !connectionChanged) || repaired.has(e.id)));
   const ranks = new Map();
   const incoming = new Set(relevant.map(e => e.to));
   for (const n of graph.nodes) if (!incoming.has(n.id)) ranks.set(n.id, 0);
   for (let pass = 0; pass < graph.nodes.length; pass++) for (const e of relevant) if (ranks.has(e.from) && !ranks.has(e.to)) ranks.set(e.to, ranks.get(e.from) + 1);
   const route = [...relevant].sort((a, b) => (ranks.get(a.from) || 0) - (ranks.get(b.from) || 0));
+  return { changes, route };
+}
+
+export function showVictory(host, { result, before, original, catalog, reduced }) {
+  const graph = result.graph;
+  if (!graph?.nodes?.length) return;
+  const { changes, route } = victoryRepair(graph, original);
   const x0 = Math.min(...graph.nodes.map(n => n.x)) - 62, y0 = Math.min(...graph.nodes.map(n => n.y)) - 50;
   const width = Math.max(...graph.nodes.map(n => n.x)) - x0 + 62, height = Math.max(...graph.nodes.map(n => n.y)) - y0 + 70;
   const art = svg('svg', { viewBox: `${x0} ${y0} ${width} ${height}`, role: 'img', 'aria-label': 'The repaired request path, highlighted in request order' });
