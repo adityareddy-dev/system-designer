@@ -302,7 +302,8 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const traceChecked = !problem?.correctness || checkpointCorrect(problem.correctness, correctnessAnswer);
   const assisted = result.learning?.assisted || hintsUsed >= 3;
   let learningMessage = 'Traffic passed, but the central responsibility trace is still open. Complete it on your next run before a clean sweep or mastery counts.';
-  if (traceChecked) learningMessage = result.learning?.independentTwist ? 'Full mastery earned: changed conditions passed without hints, and the responsibility trace is checked.'
+  if (result.mode && result.mode !== 'practice') learningMessage = 'Traffic passed. Open this problem in Practice to check its central responsibility and earn mastery on a later New twist.';
+  else if (traceChecked) learningMessage = result.learning?.independentTwist ? 'Full mastery earned: changed conditions passed without hints, and the responsibility trace is checked.'
     : result.learning?.needsOriginal ? 'Traffic and trace passed on the twist. Pass the original day with its trace first, then return for an unhinted twist to earn full mastery.'
     : problem?.twistDay ? 'Traffic and trace passed, but this twist used help. Retry the twist without hints or worked repairs for full mastery.'
     : assisted ? 'Traffic passed with assistance. Your trace is checked. Next: pass New twist with no hints for full mastery.'
@@ -338,6 +339,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     result.passed && problem?.correctness && !problem?.warmUp ? h('p', { class: 'pl-learning-status', role: 'status', text: learningMessage }) : null,
     result.passed && handlers.onTwist && !problem?.twistDay && !problem?.warmUp ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', 'data-act': 'mastery-twist', onClick: handlers.onTwist, text: 'Next: New twist without hints' }) : null,
     result.passed && problem?.twistDay && !result.learning?.independentTwist ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: result.learning?.needsOriginal ? handlers.onTwist : handlers.onIndependentRetry, text: result.learning?.needsOriginal ? 'Next: Pass the original day with its trace' : 'Next: Retry twist without hints' }) : null,
+    result.passed && problem?.correctness && result.mode && result.mode !== 'practice' ? h('a', { class: 'pl-btn pl-btn--primary', href: '#/practice/' + problem.id, text: 'Next: Check the trace in Practice' }) : null,
     tryNext,
     problem?.warmUp ? h('p', { class: 'pl-warmup', 'data-act': 'warm-up' }, iconEl('ui.info', 16), 'Warm-up done, now play the real day. This first day had no traffic spike, so its score is practice only: it is not saved, not posted and not shared. Retry plays the full day, spike included.') : null));
   const reflection = renderReflection(result, catalog);
