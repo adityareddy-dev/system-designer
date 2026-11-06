@@ -34,7 +34,7 @@ try{
    const examples={
     'consistent-hashing':stage.view==='migration'?[['snapshot'],['write'],['unsafe'],['staleWrite'],['diagnose']]:[['n',4]],
     'copies-quorums':[['r',1],['write'],['read']],
-    'leader-consensus':[['kill'],['elect'],['stale']],
+    'leader-consensus':stage.view==='fence'?[['stale']]:[['kill'],['elect'],['stale']],
     'consistency-models':stage.view==='skew'?[['skew']]:[['write'],['readA']],
     'storage-engine':stage.view==='read'?[['read']]:[['write'],['key','b'],['write'],['flush'],['key','c'],['write'],['flush'],['compact']],
     'work-across-services':stage.view==='outbox'?[['step'],['crash'],['recover']]:[['step'],['step'],['step'],['compensate']],
