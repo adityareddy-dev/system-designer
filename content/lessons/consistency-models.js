@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "consistency-models",
   "title": "What consistent really means",
@@ -13,14 +13,18 @@ export default {
       "icon": "ev.replication-lag"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "consistency-models",
+      "view": "session",
       "title": "Separate time from transactions",
-      "text": "Linearizability makes each operation appear to take effect at one instant between its call and reply, respecting real-time order. Serializability makes concurrent transactions equivalent to some serial order. That order need not respect wall-clock order; strict serializability adds that requirement. Snapshot isolation lets a transaction read a stable committed snapshot and prevents concurrent transactions that write the same item from both committing. It can still allow write skew across different items. Read-your-writes prevents your later reads missing your own successful writes. Monotonic reads prevent a session moving backwards through versions. Neither session guarantee alone makes every reader see the latest value."
+      "text": "Write on client A and read before replication. Read-your-writes carries the writer’s floor. Client B alternates primary and replica reads so monotonic reads have a regression to prevent."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "consistency-models",
+      "view": "skew",
       "title": "Worked example: nobody is on call",
-      "text": "Two doctors are on call. Each transaction reads a snapshot with both doctors present, checks that another doctor remains, and turns its own row off. They write different rows, so snapshot isolation can let both commit. The result has zero doctors. Serializable execution would reject at least one transaction or force it to see the first change. A shared roster guard can work if every writer locks it before checking current roster state; acquiring it after a stale snapshot check is insufficient. An atomic conditional update on one roster record can also enforce the invariant. This is a transaction schedule, not a demo: the sim cannot execute concurrent SQL transactions."
+      "text": "Two doctors each decide to go off call after reading the same snapshot. The writes touch different rows. Watch what row-level conflict checks leave behind."
     },
     {
       "kind": "numbers",

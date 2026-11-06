@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "leader-consensus",
   "title": "Agreeing on one leader",
@@ -13,9 +13,11 @@ export default {
       "icon": "el.coordination-service"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "leader-consensus",
+      "view": "election",
       "title": "Raft in plain words",
-      "text": "Raft keeps a replicated sequence of decisions. A follower whose randomized election timeout expires without valid leader contact becomes a candidate in a new term and asks for votes. Each voter persists at most one vote per term and only votes for a candidate whose log is sufficiently up to date. A majority elects a leader. The leader appends entries and replicates them; it can advance commit by counting a majority for an entry from its current term, which also commits the preceding log. Servers apply committed decisions in order. A linearizable read also needs a current-term committed entry, confirmation of current authority, and application through the read index; a stale leader cannot safely answer from memory alone. Elections alone are not consensus: log rules preserve decisions through later elections. This assumes crash faults, not malicious voters."
+      "text": "Stop the leader and run an election. A term needs a majority of the fixed voter set. Try writes on a partition before and after electing its majority."
     },
     {
       "kind": "read",
@@ -64,9 +66,11 @@ export default {
       "model": "A paused old leader can still send a delayed provider call after a new leader takes over. I would fence our local state and persist one invoice intent with an outbox. Every leader and retry reuses the same provider idempotency key. A status lookup helps reconcile, but a negative result alone cannot rule out a request still in flight. Without provider deduplication or another atomic acceptance rule, election alone cannot guarantee exactly one external effect. I would document the duplicate-versus-missing risk and the manual reconciliation path."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "leader-consensus",
+      "view": "fence",
       "title": "Make stale ownership harmless",
-      "text": "Give each ownership grant a durable increasing fencing token. The resource that accepts a write atomically compares the token, records the highest accepted token and performs the write, rejecting older tokens. If owner 41 pauses and owner 42 writes, a later request carrying 41 is rejected by the resource. A check in the old process is insufficient. A coordination service is useful for small shared decisions: membership, leases and ownership maps. It is a poor place for every user record or high-volume event. If a database transaction, a unique constraint or a managed queue already owns the invariant, use that instead. Keep the coordination cluster independent enough to survive the failures it must resolve."
+      "text": "An election does not by itself stop an old process from writing to external storage. Advance the term and compare the old token with the storage fence."
     },
     {
       "kind": "quiz",

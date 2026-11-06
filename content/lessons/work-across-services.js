@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "work-across-services",
   "title": "Work across services",
@@ -13,14 +13,18 @@ export default {
       "icon": "el.queue"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "work-across-services",
+      "view": "saga",
       "title": "Choose the transaction boundary",
-      "text": "Two-phase commit asks participants to prepare, then asks them to commit once the coordinator decides. Prepared resources can hold locks while a failed coordinator or network delays the decision. It is useful in some managed transactional systems, but uncommon across independently operated services and external APIs that do not support it. A saga commits local steps and uses explicit compensating actions when later steps fail. Compensation is a new business action, such as a refund, not time travel. Fees, messages already seen and shipments already sent cannot always be undone."
+      "text": "Choose a step to fail, then run the saga. Undo completed effects in reverse order. A compensation is a new action that can need its own retries."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "work-across-services",
+      "view": "outbox",
       "title": "Worked example: one durable order",
-      "text": "In one local transaction, save order 730 as pending and an outbox row with event id 730:created. A relay publishes it, then crashes before marking it sent. It publishes again after restart. Inventory records the event id and the reservation in one local transaction, so a repeat returns the saved result. Payments use one stable payment key and store pending, succeeded or failed. A timeout means unknown, so reconcile with the provider. If payment later succeeds after stock was released, refund it and explain that state to the customer. This worked schedule exposes crash boundaries that the sim does not execute."
+      "text": "Commit the order, crash before publishing, then restart. Compare a durable outbox intent with a direct publish. Repeated delivery must still deduplicate at the consumer."
     },
     {
       "kind": "numbers",

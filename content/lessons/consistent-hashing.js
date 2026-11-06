@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "consistent-hashing",
   "title": "Consistent hashing and moving data",
@@ -13,9 +13,11 @@ export default {
       "icon": "el.sharded-sql"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "consistent-hashing",
+      "view": "placement",
       "title": "Keep most owners in place",
-      "text": "With hash(key) mod N, changing N changes nearly every remainder. For uniform hashes and a move from 8 to 9, only about 1/9 of keys keep the same numbered owner. About 8/9 move. On a ring, hash both keys and node positions into the same space. A key belongs to the next node clockwise. A new ring position takes part of its clockwise successor's range. With virtual nodes, one physical machine takes ranges from several owners. In a balanced 8 to 9 expansion, about 1/9 of logical data changes owner. Virtual nodes put many positions per machine on the ring. They smooth random imbalance and let larger machines take more ranges. They do not make one hot key smaller."
+      "text": "Add or remove an owner under modulo and ring placement. Green marks identify keys that changed owner. Virtual positions can improve spread; a popular key still stays whole."
     },
     {
       "kind": "read",
@@ -64,9 +66,11 @@ export default {
       "model": "I would first ask how often capacity changes. A stable small database may need no custom ring at all. For frequent changes, reducing a 7.11 TB copy to about 0.89 TB matters. I would reserve migration bandwidth, watch p99 and replica lag, copy and catch up each range, then fence the old owner and switch a versioned map. Stale routers must forward or retry rather than creating another writable copy. Counts and checksums plus write-log offsets establish that the new owner is ready. Old owners stay until verification and a bounded rollback window finish."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "consistent-hashing",
+      "view": "migration",
       "title": "Move ownership as carefully as bytes",
-      "text": "Publish a versioned placement map. Copy a snapshot of a range, replay changes made during the copy, then fence the old writer and switch routing with an explicit ownership version. Reject or forward writes carrying stale ownership; a new map alone does not stop them. Keep a forwarding or retry path while clients learn the new map. Delete the old copy only after checking the new owner and the rollback window. Rate limit copying against foreground p99, not just available bandwidth. A hot tenant may need subkeys, a cache for repeated reads, or a dedicated placement. More virtual nodes cannot split a single record's writes."
+      "text": "Move a range while writes arrive. Try snapshot, replay, fence and route in your own order. Check which acknowledged writes the new owner is missing, then reset and fix the sequence."
     },
     {
       "kind": "quiz",

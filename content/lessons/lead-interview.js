@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "lead-interview",
   "title": "How to lead a design interview",
@@ -13,9 +13,11 @@ export default {
       "icon": "ui.clock"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "lead-interview",
+      "view": "clock",
       "title": "A flexible plan for sixty minutes",
-      "text": "Use roughly 0 to 8 minutes for users, scope, exclusions and failure promises. Spend 8 to 15 on traffic, payload and storage estimates. Use 15 to 30 to draw one complete request path and explain the data model. Spend 30 to 47 on the hardest constraint: a hot key, a partial failure, consistency or recovery. Use 47 to 55 to test failures, cost and operations, and leave 55 to 60 to summarize decisions and open questions. These are checkpoints, not a script. If a requirement reveals a major risk, move the depth earlier and say why."
+      "text": "Spend the sixty minutes deliberately. Scope and numbers make the design testable; leave time for one failure and a trade-off you can defend. The clock only shows what went untouched."
     },
     {
       "kind": "read",

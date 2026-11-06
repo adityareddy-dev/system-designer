@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "simplest-design",
   "title": "The simplest thing that works",
@@ -13,9 +13,11 @@ export default {
       "icon": "ui.budget"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "simplest-design",
+      "view": "cost",
       "title": "Put build and buy on the same horizon",
-      "text": "Compare three-year total cost, including engineering, infrastructure, support, upgrades, incidents, compliance work, egress and migration out. List which costs are assumptions. A managed service can charge more per unit and still save months of work. Building can win when control, unusual scale, residency or product differentiation justifies ownership. Check contracts, exit formats and operating limits before deciding. A modular service with a clear internal boundary may preserve future choices without a network boundary today. Do not shard just because the data may grow; measure write headroom, index size, maintenance time and recovery time first."
+      "text": "Move load, growth and team size over three years. Compare costs under explicit assumptions and observe the capacity and ownership triggers. A cost worksheet cannot decide a business requirement for you."
     },
     {
       "kind": "read",

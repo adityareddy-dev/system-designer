@@ -1,4 +1,5 @@
-/* Lesson instruments on the game's drafting paper. */
+// Scoped lesson figure styles, also carried by the optional release bundle.
+export const styles = `/* Lesson instruments on the game's drafting paper. */
 .fg-bench {margin:0;display:grid;gap:14px;min-width:0}
 .fg-drawing {display:block;width:100%;max-width:600px;max-height:300px;margin:auto;color:var(--text);background-color:var(--canvas);background-image:radial-gradient(var(--border-strong) .7px,transparent .7px);background-size:16px 16px;border:1px solid var(--border-strong);border-radius:6px;font:17px var(--font-ui, sans-serif)}
 .fg-drawing text {fill:var(--text);stroke:none}
@@ -30,3 +31,13 @@
 .sh-lp-card:has(.fg-bench)>.sh-lp-text {font-size:15px}
 @media(max-width:719px) {.sh-lp-card:has(.fg-bench){padding:16px;min-width:0}.fg-drawing{max-height:none}.fg-stats{gap:6px 14px}.fg-stats strong{font-size:18px}.fg-controls{gap:8px}.fg-control{flex:1 1 auto}.fg-control:has(select),.fg-control:has(input[type=range]){flex-basis:120px}.fg-caption{min-height:0}.fg-note{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.fg-bench *{scroll-behavior:auto}}
+
+.fg-bench[data-motion=reduce] * {transition:none;animation:none}
+
+.fg-control[hidden]{display:none}
+.fg-mark.fg-owner-0 circle{fill:var(--cat-edge)}
+.fg-mark.fg-owner-1 circle{fill:var(--cat-compute)}
+.fg-mark.fg-owner-2 circle{fill:var(--cat-data)}
+.fg-mark.fg-owner-3 circle{fill:var(--cat-messaging)}
+.fg-mark.fg-owner-4 circle{fill:var(--cat-platform)}
+.fg-mark.fg-owner-5 circle{fill:var(--cat-ops)}`;

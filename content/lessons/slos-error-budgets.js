@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "slos-error-budgets",
   "title": "SLOs and error budgets",
@@ -13,9 +13,11 @@ export default {
       "icon": "el.alerting"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "slos-error-budgets",
+      "view": "burn",
       "title": "A budget for decisions",
-      "text": "For a 99.9% success SLO, the allowed bad fraction is 0.1%. At a steady 1,000 requests/s over 30 days, there are about 2.592 billion requests and a budget of 2.592 million bad requests. A request-based budget is not automatically 43.2 minutes of downtime: that equivalence assumes uniform traffic and total failure during those minutes. Use remaining budget to choose between feature work and reliability work. A shared policy might pause risky launches when budget is exhausted while still allowing repairs. Agree the policy with the people who own releases; a graph alone cannot make that decision."
+      "text": "Change incident size and length, then inspect time. Compare the error budget consumed with paired fast and slow rolling-window alerts."
     },
     {
       "kind": "read",
