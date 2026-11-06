@@ -1,4 +1,18 @@
 // Wiring and local spacing for a part dropped onto a connection.
+export function createInsertionPlanner({ graph, version, catalog, canConnect, freeSpot }) {
+  let cachedVersion = -1, plans = new Map();
+  return (type, edgeId) => {
+    const current = version();
+    if (current !== cachedVersion) { cachedVersion = current; plans = new Map(); }
+    const key = `${edgeId}:${type}`;
+    if (plans.has(key)) return plans.get(key);
+    const plan = insertionWiring(graph(), type, edgeId, catalog, canConnect);
+    if (plan?.kind === 'side') plan.position = freeSpot((plan.source.x + plan.target.x) / 2, (plan.source.y + plan.target.y) / 2 - 160);
+    plans.set(key, plan);
+    return plan;
+  };
+}
+
 export function insertionWiring(graph, type, edgeId, catalog, canConnect) {
   const edge = graph.edges.find(e => e.id === edgeId && e.kind === 'flow');
   const part = catalog.elementById.get(type);

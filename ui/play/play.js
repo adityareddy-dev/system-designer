@@ -25,7 +25,8 @@ import { introPathHolds, repairInsertion } from './intro-path.js';
 import { showVictory } from './victory.js';
 import { carryRunIntoReport } from './run-transition.js';
 import { transitionScreen } from '../shell/motion.js';
-import { insertionLayout, insertionWiring } from '../../render/placement.js';
+import { insertionLayout, createInsertionPlanner } from '../../render/placement.js';
+import { connectionCaption } from './connection-caption.js';
 import { goalPassed } from './goal-feedback.js';
 import { replicaReadsActive, replicaWiringAdvice } from './lesson-replica.js';
 
@@ -160,9 +161,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }, 1000);
 
   function graph() { return S.sim.getGraph(); }
+  let graphVersion = 0;
   function flowVersion() { try { return S.sim.flows().version; } catch { return 0; } }
 
   function afterChange() {
+    graphVersion++;
     const g = graph();
     try { scene.sync(g, flowVersion()); } catch (e) { S.errors.push({ code: 'render', message: String(e?.message || e) }); }
     bus.emit('play:graph', { graph: g });
@@ -480,12 +483,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       snd('connect');
       note('connect', { from, to });
       scene.confirmConnection(id);
-      const edge = graph().edges.find(e => e.id === id), target = graph().nodes.find(n => n.id === to);
-      const part = catalog.elementById.get(target?.type);
-      const traffic = edge?.kind === 'observe' ? 'Measurements now travel here.' : edge?.kind === 'replication' ? 'Data copies now travel here.' : edge?.kind === 'control' ? 'Control signals now travel here.'
-        : part?.kind === 'lookaside' || part?.params?.lookasideFor?.length ? 'Checks travel here and answers return to the caller.'
-        : 'Requests now travel in this direction.';
-      showCaption(`${nameOf(from)} → ${nameOf(to)}. ${traffic}`, 2600);
+      const edge = graph().edges.find(e => e.id === id);
+      showCaption(connectionCaption(edge, graph(), catalog), 2600);
       // once a part is connected its description has done its job: fold it so it stops covering the part the learner just placed
       if (isLesson && (S.selected === from || S.selected === to)) { try { inspector.fold(true); } catch { /* optional */ } }
       return id;
@@ -494,11 +493,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function canSplice(type, edgeId) {
     return !!wiringFor(type, edgeId);
   }
-  const wiringFor = (type, edgeId) => {
-    const plan = insertionWiring(graph(), type, edgeId, catalog, (a, b) => S.sim.canConnect(a, b));
-    if (plan?.kind === 'side') plan.position = freeSpot((plan.source.x + plan.target.x) / 2, (plan.source.y + plan.target.y) / 2 - 160);
-    return plan;
-  };
+  const wiringFor = createInsertionPlanner({ graph, version: () => graphVersion, catalog,
+    canConnect: (a, b) => S.sim.canConnect(a, b), freeSpot });
   scene.setInsertionPreview(wiringFor);
   // A part placed on its own gets one line on how to connect it: the first time in a session, and every time in a lesson.
   function connectCoach(id, el) {
@@ -548,6 +544,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const a = n.knobs?.autoscale;
     if (a?.on) setKnob(fix.nodeId, 'autoscale', { ...a, min: Math.max(a.min || 1, fix.units), max: Math.max(a.max || 1, fix.units) });
     announce(`${fix.word} set to ${fix.units}.`);
+    scene.flashEvent('repair', [fix.nodeId], 1);
+    later(() => { if (!S.destroyed) scene.flashEvent('repair', null, 0); }, 3100);
   }
   function editableKnobs() { return !interview && mode !== 'challenge'; }
   function removeNode(id) {
@@ -1621,6 +1619,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     return { ...problem, events: problem.events.filter((e) => e.id !== 'viral-spike'), requirements: { ...problem.requirements, peakRps: Math.max(1, Math.round((problem.requirements?.peakRps || 1000) * 0.25)) }, normalPeakRps: problem.requirements.peakRps, warmUp: true };
   }
   function configure(problem, initialGraph) {
+    graphVersion++;
     // a twist day plays the same problem on its other event list (content/problems/twists.js); it is practice only
     const base = S.twist && problem.twist ? { ...problem, events: problem.twist.events, twistDay: true } : problem;
     S.problem = withSource(spreadClients(warmUpOf(base)));
@@ -1949,10 +1948,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     wirePreview.hidden = !pair?.to;
     if (!pair?.to) return;
     const name = id => { const n = graph().nodes.find(n => n.id === id); return catalog.elementById.get(n?.type)?.name || id; };
-    wirePreview.textContent = `${name(pair.from)} → ${name(pair.to)} · ${pair.ok ? 'Release to connect' : 'This connection is not allowed'}`;
+    const a = graph().nodes.find(n => n.id === pair.from), b = graph().nodes.find(n => n.id === pair.to);
+    const normalized = S.sim.canConnect(a?.type, b?.type);
+    wirePreview.textContent = `${name(normalized.swap ? pair.to : pair.from)} → ${name(normalized.swap ? pair.from : pair.to)} · ${pair.ok ? 'Release to connect' : 'This connection is not allowed'}`;
   }));
   offs.push(scene.on('placement:preview', preview => {
-    const plan = preview && wiringFor(preview.type, preview.edgeId);
+    const plan = preview?.plan;
     wirePreview.hidden = !preview;
     if (!preview) return;
     wirePreview.textContent = !plan ? 'Place beside this route. Connect it separately.' : plan.kind === 'side'

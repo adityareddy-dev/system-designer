@@ -265,10 +265,11 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const ev = edges.hitMiddle(sp.x, sp.y, dropTol());
     ghost.edgeId = ev ? ev.id : null;
     dropWires.clear();
+    let plan = null;
     if (ev) {
       const edge = graph?.edges.find(e => e.id === ev.id);
       const a = nodes.views.get(edge?.from), b = nodes.views.get(edge?.to);
-      const plan = insertionPreview?.(ghost.type, ev.id);
+      plan = insertionPreview?.(ghost.type, ev.id);
       if (plan?.position) { ghost.x = plan.position.x; ghost.y = plan.position.y; }
       if (a && b && plan) {
         dropWires.moveTo(a.x, a.y).lineTo(ghost.x, ghost.y);
@@ -277,7 +278,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       }
     }
     if (ghost.view) { ghost.view.position.set(ghost.x, ghost.y); ghost.view.visible = true; ghost.shown = true; }
-    emitter.emit('placement:preview', ghost.edgeId ? { type: ghost.type, edgeId: ghost.edgeId } : null);
+    emitter.emit('placement:preview', ghost.edgeId ? { type: ghost.type, edgeId: ghost.edgeId, plan } : null);
     edges.setHighlight(ghost.edgeId);
     return sp;
   }
