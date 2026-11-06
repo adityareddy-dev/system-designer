@@ -30,6 +30,16 @@ try {
   console.log('Measured existing-part displacement:', JSON.stringify(displacement));
 
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+  await page.reload();
+  await page.waitForFunction(() => window.__game?.getState().nodes.length === 3);
+  await sleep(900);
+  const phoneBefore = await page.evaluate(() => window.__game.getState().view);
+  await page.evaluate(() => { const game = window.__game; game.placeComponent('regional-lb', 0, 0, game.getState().edges[0].id); });
+  await sleep(900);
+  const phoneAfter = await page.evaluate(() => window.__game.getState().view);
+  assert.equal(phoneAfter.zoom, phoneBefore.zoom, 'phone insertion keeps the opening camera');
+  for (const n of phoneAfter.screen) assert(n.y + 48 * phoneAfter.zoom + 26 < phoneAfter.free.h - phoneAfter.free.b, 'the reserved insertion row keeps every part and caption above the dock');
+
   await page.evaluate(() => {
     const types = ['dns', 'cdn', 'waf', 'api-gateway', 'regional-lb', 'web-browser', 'mobile-app', 'vm-fleet', 'cache', 'queue', 'worker-pool', 'object-storage', 'sql-primary', 'metrics', 'email-provider'];
     const graph = { nodes: types.map((type, i) => ({ id: 'n' + i, type, x: i % 5 * 200, y: Math.floor(i / 5) * 180, units: type === 'vm-fleet' ? 3 : 1 })), edges: [[5,7],[6,7],[7,8],[8,12],[0,1],[1,2],[2,3],[3,4],[4,7],[7,9],[9,10],[10,14],[7,11],[7,13]].map(([a,b]) => ({ id: `n${a}>n${b}`, from: 'n' + a, to: 'n' + b, kind: 'flow' })) };
