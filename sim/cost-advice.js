@@ -7,7 +7,7 @@ export function costAdvice(el) {
   if (c.perGB) actions.push('This is billed per GB transferred. Reduce payloads and repeated transfers; compare the edge and origin bill together.');
   if (c.perGBMonth) {
     actions.push('This is billed per GB stored each month. Keep the promised retention and recovery policy; compare compression, deduplication and cheaper storage for older data.');
-    if (knobs.includes('retentionDays')) { actions.push('Only lower Keep for (days) when it still covers the required history and replay window.'); knob = 'retentionDays'; }
+    if (['queue', 'tap'].includes(el.kind) && knobs.includes('retentionDays')) { actions.push('Only lower Keep for (days) when it still covers the required history and replay window.'); knob = 'retentionDays'; }
   }
   if (c.perUnit) {
     if (knobs.includes('units') && el.units.max > 1) { actions.push('Units have a monthly price. Test a smaller pool against the full peak and failure day before keeping the saving.'); knob = 'units'; }
