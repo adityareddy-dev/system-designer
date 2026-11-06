@@ -22,9 +22,9 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
     const guesses = new Proxy(canonical, { get: (a, k) => k === String(i) ? a[k] == null ? null : a[k] * spec.factor : a[k], set: (a, k, value) => { a[k] = k === String(i) && value != null ? value / spec.factor : value; return true; } });
     const v = Math.max(row.value, 0.01);
     const { integer, lo, hi } = spec;
-    const toVal = (p) => spec.percent ? p / SL * 100 : lo * (hi / lo) ** (p / SL);
+    const toVal = (p) => spec.percent ? p : lo * (hi / lo) ** (p / SL);
     const snap = (n) => Math.min(hi, Math.max(lo, integer ? Math.round(n) : n));
-    const toPos = (n) => spec.percent ? n * SL / 100 : SL * Math.log(n / lo) / Math.log(hi / lo);
+    const toPos = (n) => spec.percent ? n : SL * Math.log(n / lo) / Math.log(hi / lo);
     const card = h('div', { class: 'pl-ncard' });
     card.append(h('div', { class: 'pl-nlabel', text: row.label + (i < 2 && problem.id === 'url-shortener' ? ' (normal peak)' : i < 2 && problem.id === 'concert-ticket-drop' ? ' (event peak)' : '') }));
     const out = h('div', { class: 'pl-nout' });
@@ -34,7 +34,7 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
       const touched = guesses[i] != null;
       if (touched) guesses[i] = snap(guesses[i]);
       const init = touched ? toPos(guesses[i]) : 0;
-      const slider = h('input', { class: 'pl-range' + (touched ? '' : ' pl-range--unset'), type: 'range', min: '0', max: String(SL), value: String(init), 'aria-label': `Your estimate: ${row.label} (${row.unit})` });
+      const slider = h('input', { class: 'pl-range' + (touched ? '' : ' pl-range--unset'), type: 'range', min: '0', max: String(spec.percent ? 100 : SL), step: spec.percent ? '0.1' : '1', value: String(init), 'aria-label': `Your estimate: ${row.label} (${row.unit})` });
       const input = h('input', { class: 'hp-input pl-ninput', type: 'number', min: String(lo), max: String(hi), step: integer ? '1' : 'any', value: touched ? String(guesses[i]) : '', 'aria-label': `Your estimate: ${row.label} (${row.unit || 'value'})` });
       const show = () => {
         if (guesses[i] == null) { out.replaceChildren(h('span', { class: 'pl-muted pl-nunset', text: 'Type an estimate or drag the slider' })); return; }

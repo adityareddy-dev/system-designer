@@ -33,6 +33,7 @@ for (const problem of problems) {
     const spec = estimateUnit(row), input = controls[i];
     assert(input['aria-label'].includes(spec.unit), problem.id);
     assert(sliders[i]['aria-label'].includes(spec.unit), problem.id);
+    if (spec.percent) assert.equal(sliders[i].max, '100', 'the native slider uses percent too');
     assert(+input.min <= spec.value && +input.max >= spec.value);
     input.value = String(spec.value); input.valueAsNumber = spec.value; input.listeners.input();
   });
