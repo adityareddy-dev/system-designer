@@ -30,6 +30,12 @@ for (const p of problems) {
       sim.reset(); sim.loadGraph(short);
       assert(sim.validate().some(i => i.code === 'retention'), p.id + ' cannot silently shorten promised history'); retention++;
     }
+    if (r.maxRetentionDays) {
+      const stale = sim.getGraph();
+      stale.nodes = stale.nodes.map(n => catalog.elementById.get(n.type).kind === 'store' ? { ...n, knobs: { ...n.knobs, retentionDays: 7 } } : n);
+      sim.reset(); sim.loadGraph(stale);
+      assert(sim.validate().some(i => i.code === 'expiry'), p.id + ' cannot keep expired stories indefinitely'); retention++;
+    }
   }
   const words = [p.brief, ...p.clarify.map(c => c.a)].join(' ');
   if (/exactly.once|twice|duplicates|sequence|order of edits|never.*lost|never lose/i.test(words) || r.dataSafety !== 'best-effort') {
