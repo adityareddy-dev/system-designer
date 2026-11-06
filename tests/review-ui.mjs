@@ -27,6 +27,33 @@ try {
   }
   assert.match(await page.$eval('.sh-drill', el => el.textContent), /Finish today's review/);
 
+  for (const completed of [['intro'], ['intro', 'caching']]) {
+    await page.evaluate(ids => {
+      localStorage.setItem('hotpath.v1.lessons', JSON.stringify(Object.fromEntries(ids.map(id => [id, Date.now()]))));
+      localStorage.removeItem('hotpath.v1.drill');
+    }, completed);
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForSelector('.sh-drill-q');
+    for (let round = 0; round < 2; round++) {
+      if (round) await page.evaluate(() => [...document.querySelectorAll('.sh-drill button')].find(b => b.textContent === 'Another round').click());
+      const counter = await page.$eval('.sh-drill .sh-progress-num', el => el.textContent);
+      assert.match(counter, /^1\/[1-9]\d*$/, 'daily and repeat rounds both contain questions');
+      if (completed.length > 1) assert.equal(counter, '1/2');
+      if (completed.length > 1) assert.equal(await page.$eval('.sh-lp-card .sh-eyebrow', el => el.textContent), 'From the lesson: Remembering answers');
+      await page.evaluate(() => {
+        for (let i = 0; i < 10 && document.querySelector('.sh-drill-q'); i++) {
+          document.querySelector('.sh-choice').click();
+          document.querySelector('.sh-lp-nav .sh-btn--primary').click();
+        }
+      });
+      assert.equal(await page.$eval('.sh-drill h1', el => el.textContent), 'Round done');
+    }
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('hotpath.v1.drill')).rounds), 2);
+  }
+  await page.evaluate(() => localStorage.removeItem('hotpath.v1.lessons'));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('.sh-drill-q');
+
   for (const reduced of [false, true]) {
     await page.evaluate(reduce => {
       document.documentElement.dataset.motion = reduce ? 'reduce' : 'full';

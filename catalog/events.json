@@ -43,7 +43,7 @@
     "poison": { "params": { "durationSec": "untilFixed; consumers of the target queue process nothing unless a dead-letter queue is connected" } },
     "duplicate": { "params": { "share": "share of messages delivered twice", "durationSec": "seconds" } },
     "partition": { "params": { "durationSec": "seconds; regions cannot reach each other" } },
-    "limit": { "params": { "rpsCapFactor": "new capacity as a share of the target's current load", "durationSec": "seconds" } },
+    "limit": { "params": { "rpsCapFactor": "new capacity as a share of the target's configured quota, including active units and tier", "durationSec": "seconds" } },
     "corrupt": { "params": { "share": "share of rows damaged; replicas copy the damage" } },
     "blockWrites": { "params": { "durationSec": "seconds, or untilFixed" } },
     "scaleBlock": { "params": { "durationSec": "seconds during which autoscaling cannot add units" } },
@@ -620,7 +620,7 @@
     },
     {
       "id": "third-party-rate-limit", "name": "Provider rate limit", "group": "dependency", "severity": 2,
-      "description": "An outside service starts answering 'too many requests' above half your current rate.",
+      "description": "An outside service lowers its configured request quota and answers 'too many requests' above the reduced limit.",
       "effects": [ { "op": "limit", "target": "busiest:cat:external", "params": { "rpsCapFactor": 0.5, "durationSec": 3600 } } ],
       "counters": [
         { "element": "queue", "how": "Send at the allowed pace and let the rest wait." },

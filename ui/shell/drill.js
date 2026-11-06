@@ -59,9 +59,11 @@ export function renderDrill(host, ctx) {
   const today = ctx.compete?.daily?.todayLocal?.() || localDay();
   // A stable daily review drawn from concepts the player has studied.
   const dailyRnd = () => mulberry32(hashSeed('drill-' + today));
-  const studied = (ctx.content.lessons || []).filter(l => ctx.progress.isLessonDone(l.id));
-  const dailyPool = buildPool(studied.length ? studied : (ctx.content.lessons || []).filter(l => l.track === 'Start'), dailyRnd());
-  const pool = buildPool(studied.length ? studied : (ctx.content.lessons || []).filter(l => l.track === 'Start'));
+  const eligible = (ctx.content.lessons || []).filter(l => l.id !== 'intro');
+  const studied = eligible.filter(l => ctx.progress.isLessonDone(l.id));
+  const review = studied.length ? studied : eligible.filter(l => l.track === 'Start');
+  const dailyPool = buildPool(review, dailyRnd());
+  const pool = buildPool(review);
   const saved = () => ctx.store.get(KEY, null) || { best: 0, rounds: 0, days: {} };
   const page = h('div', { class: 'sh-page sh-page--narrow sh-drill' });
   host.append(page);

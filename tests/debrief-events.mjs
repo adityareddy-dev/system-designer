@@ -7,6 +7,24 @@ import { eventDescription } from '../ui/play/event-copy.js';
 
 const read = (name) => JSON.parse(fs.readFileSync(new URL(`../catalog/${name}.json`, import.meta.url)));
 const catalog = createCatalog(Object.fromEntries(['elements', 'requests', 'events', 'world'].map((name) => [name, read(name)])));
+{
+  const problem = { id: 'provider-quota-copy', requirements: { peakRps: 10, mix: { webhook: 1 } },
+    traffic: { curve: 'flat', sources: { 'partner-system': 1 } },
+    events: [{ id: 'third-party-rate-limit', at: '01:00' }] };
+  const sim = createSim({ catalog, problem });
+  sim.addNode('partner-system', 0, 0, { id: 'u' });
+  sim.addNode('vm-fleet', 100, 0, { id: 'app' });
+  sim.addNode('third-party-api', 200, 0, { id: 'api' });
+  sim.connect('u', 'app'); sim.connect('app', 'api');
+  sim.start(); sim.advance(86400000);
+  const event = sim.result().events.find(e => e.id === 'third-party-rate-limit');
+  assert.equal(event.vars.cap, '100', 'a 200 requests/s quota is halved regardless of the 10 requests/s demand');
+  assert.match(event.story.headline, /100 req\/s/);
+  assert.match(event.description, /configured request quota/);
+  assert.doesNotMatch(event.description, /current rate|current load/);
+  assert.match(eventDescription(catalog.eventById.get(event.id), event.vars), /configured request quota/);
+  assert.match(catalog.ops.limit.params.rpsCapFactor, /configured quota/);
+}
 const duplicate = catalog.eventById.get('duplicate-delivery');
 for (const share of ['3', '1', '2.5', '0']) {
   assert.match(eventDescription(duplicate, { share }), new RegExp(`redelivers ${share.replace('.', '\\.')} percent`));
