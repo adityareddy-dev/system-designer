@@ -21,7 +21,7 @@ export function mount(host, ctx, step, model) {
     const css = document.createElement('style'); css.textContent=styles; css.dataset.figures=''; document.head.append(css);
   }
   let state=model.initial(step.view), destroyed=false, animations=[], visible=true, paused=false, revision=0;
-  const root=document.createElement('figure'); root.className='fg-bench'; root.dataset.figure=step.figure;
+  const root=document.createElement('figure'); root.className='fg-bench'; root.dataset.figure=step.figure; root.dataset.view=step.view||'main';
   const controls=document.createElement('div'); controls.className='fg-controls'; controls.setAttribute('role','group'); controls.setAttribute('aria-label','Figure controls');
   const drawing=document.createElementNS('http://www.w3.org/2000/svg','svg'); drawing.setAttribute('viewBox','0 0 360 250'); drawing.setAttribute('role','img'); drawing.classList.add('fg-drawing');
   const stats=document.createElement('div'); stats.className='fg-stats';

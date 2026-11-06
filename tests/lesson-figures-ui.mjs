@@ -18,7 +18,8 @@ try{
   await page.setViewport({width,height:width===390?844:800,isMobile:width===390,hasTouch:width===390});
   for(const stage of stages){
    await page.goto(`${base}#/learn/${stage.id}?step=${stage.step}`,{waitUntil:'domcontentloaded'});
-   await page.waitForSelector('.fg-bench');await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.motion='full';},theme);await page.evaluate(()=>document.fonts.ready);
+   await page.waitForFunction(stage=>{const e=document.querySelector('.fg-bench');return e?.dataset.figure===stage.id&&e.dataset.view===stage.view;},{},stage);
+   await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.documentElement.dataset.motion='full';},theme);await page.evaluate(()=>document.fonts.ready);
    await page.waitForFunction(()=>document.querySelector('.fg-bench').dataset.motion==='full');
    assert.equal(await page.$eval('.fg-bench',e=>e.dataset.figure),stage.id);
    const controls=await page.$$eval('.fg-controls [data-control]',es=>es.map(e=>({id:e.dataset.control,type:e.tagName==='SELECT'?'select':e.type})));
