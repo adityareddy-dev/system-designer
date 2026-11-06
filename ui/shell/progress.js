@@ -42,6 +42,17 @@ export function createProgress(store, bus) {
       save(); bus.emit('progress:updated', { problemId }); return true;
     },
 
+    recordLearning(problemId, credit) {
+      const prev = probs[problemId] || { attempts: 0, bestScore: 0, stars: 0 };
+      const old = prev.learning || {}, now = Date.now();
+      const learning = { ...old,
+        ...(credit.eligible ? { eligibleAt: old.eligibleAt || now } : {}),
+        ...(credit.eligible && credit.assisted ? { assistedAt: old.assistedAt || now } : {}),
+        ...(credit.independentTwist ? { masteredAt: old.masteredAt || now } : {}) };
+      probs[problemId] = { ...prev, learning };
+      save(); bus.emit('progress:updated', { problemId });
+    },
+
     // Returns { first, improved } so callers can celebrate.
     record(problemId, debrief, hintsUsed = 0) {
       const total = Math.round(debrief?.score?.total ?? debrief?.total ?? 0);

@@ -1,6 +1,8 @@
 // End-of-day evidence and actions.
 export const duration = sec => sec < 60 ? `${Math.round(sec)} ${Math.round(sec) === 1 ? 'second' : 'seconds'}` : `${Math.round(sec / 6) / 10} ${sec === 60 ? 'minute' : 'minutes'}`;
 // The debrief: verdict, score dial, four SLO cards, timeline, event stories, trade-offs, one thing to try next.
+import { renderRepair } from './repair.js';
+import { checkpointCorrect } from './correctness.js';
 import { loadSummary } from './load-labels.js';
 import { renderReflection } from './reflection.js';
 import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, clockLabel, minuteLabel, fill, approx } from './util.js';
@@ -116,7 +118,7 @@ function twistTip(problem, catalog) {
   const shift = Math.abs(t.shiftMin || 0);
   const when = shift ? `Events move ${shift >= 60 ? (shift / 60) + (shift === 60 ? ' hour' : ' hours') : shift + ' minutes'} ${t.shiftMin < 0 ? 'earlier' : 'later'}` : 'Events keep their times';
   const extra = t.extra ? ` and ${(catalog.eventById.get(t.extra.id)?.name || t.extra.id).toLowerCase()} is added at ${t.extra.at}` : '';
-  return `${when}${extra}. Your design stays. Practice only, not saved.`;
+  return `${when}${extra}. Your design stays. Pass without hints after a checked original day to earn full mastery.`;
 }
 
 export function verdictLine(result, catalog, problem) {
@@ -214,7 +216,7 @@ function timeline(result, catalog, onMarker) {
   return root;
 }
 
-function eventStory(ev, i, result, catalog) {
+function eventStory(ev, i, result, catalog, demanding = false) {
   const def = catalog.eventById.get(ev.id);
   const inGraph = new Set((result.graph?.nodes || []).map((n) => n.type));
   // autoscaling set on a server counts as the autoscaler being there
@@ -224,10 +226,11 @@ function eventStory(ev, i, result, catalog) {
   if (vars.helper == null || vars.helper === '') vars.helper = 'Nothing in your design';
   const st = ev.story;
   const lines = st ? [st.headline, ev.durations ? st.hurt?.replace(/in the first (\S+) (minutes?)/, 'during $1 $2 of the observation window') : st.hurt, st.helped, st.fix] : [fill(t.headline, vars), fill(t.hurt, vars), fill(t.helped, vars), fill(t.fix, vars)];
+  if (demanding) lines[3] = 'Choose a repair and predict its effect in the next experiment. Measure this event again after changing one boundary.';
   // An event the design never met still teaches: say what it would have done to a design that was exposed to it.
   const unreached = !!(st && (st.none || !lines[1] || (Array.isArray(ev.hurt) && ev.hurt.length === 0)));
   const would = unreached && def ? [eventDescription(def, vars, ev.description), def.lesson].filter(Boolean).join(' ') : '';
-  const missing = st && !st.fix && !unreached ? [] : (ev.counters || def?.counters || []).filter((c) => c.element && !inGraph.has(c.element));
+  const missing = demanding ? [] : st && !st.fix && !unreached ? [] : (ev.counters || def?.counters || []).filter((c) => c.element && !inGraph.has(c.element));
   const card = h('article', { class: 'pl-story', id: 'pl-ev-' + i, tabindex: '-1' },
     h('header', { class: 'pl-story-head' }, iconEl('ev.' + ev.id, 28, 'pl-ic pl-story-ic'),
       h('div', {}, h('b', { text: ev.name || def?.name || ev.id }), h('div', { class: 'pl-muted pl-small', text: `${clockLabel(ev.atMs)} to ${clockLabel(ev.endMs || ev.atMs)}` }))),
@@ -284,7 +287,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     [1, 2, 3].map((n) => iconEl(n <= result.stars ? 'ui.star' : 'ui.star-empty', 28, 'pl-ic pl-star' + (n <= result.stars ? ' pl-star--on' : ''))));
   const isBest = prevBest == null || sc.total > prevBest;
   const bestBadge = result.warmUp
-    ? h('span', { class: 'pl-badge' }, iconEl('ui.info', 14), result.twistDay ? 'New twist day: practice only, not saved' : 'Warm-up: not saved')
+    ? h('span', { class: 'pl-badge' }, iconEl('ui.info', 14), result.twistDay ? 'New twist: mastery check, traffic best unchanged' : 'Warm-up: not saved')
     : result.reference
     ? h('span', { class: 'pl-badge' }, iconEl('ui.info', 14), 'Reference design: not saved to your results')
     : prevBest == null
@@ -295,8 +298,11 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const ckm = result.checks || {};
   const missedKeys = Object.keys(CHECK_NAME).filter((k) => ckm[k] === false);
   const near = !result.passed && !result.reference && missedKeys.length === 1 && slo.availability.actual > 0.5;
+  const demanding = !!problem?.difficulty && problem.difficulty !== 'Easy';
+  const traceChecked = !problem?.correctness || checkpointCorrect(problem.correctness, correctnessAnswer);
+  const assisted = result.learning?.assisted || hintsUsed >= 3;
   const passBadge = result.passed
-    ? h('span', { class: 'pl-badge pl-badge--ok' }, iconEl('ui.check', 14), 'Passed')
+    ? h('span', { class: 'pl-badge pl-badge--ok' }, iconEl('ui.check', 14), assisted ? 'Passed with assistance' : 'Traffic passed')
     : near
     ? h('span', { class: 'pl-badge pl-badge--near', 'data-near': missedKeys[0] }, iconEl('ui.info', 14), `Almost there: one bar missed (${CHECK_NAME[missedKeys[0]]})`)
     : h('span', { class: 'pl-badge pl-badge--bad' }, iconEl('ui.warn', 14), 'Not passed yet');
@@ -307,7 +313,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     cost: 'Look at the biggest line in the Cost card and trim it, or cache more so you need less.',
   };
   const tryText = result.nextStep?.text || (missedKeys.length ? TRY[missedKeys[0]] : null);
-  const tryNext = !result.passed && !result.reference && tryText
+  const tryNext = demanding && !result.passed && !result.reference ? renderRepair(result, problem, catalog, handlers) : !result.passed && !result.reference && tryText
     ? h('div', { class: 'pl-try' + (near ? ' pl-try--near' : ''), 'data-act': 'try-next' }, iconEl('ui.hint', 20),
       h('div', { class: 'pl-try-body' }, h('b', { text: 'Next experiment' }), h('p', { text: tryText.split(/(?<=\.)\s+/).slice(0, 2).join(' ') }), h('details', { class: 'pl-sizing-detail' }, h('summary', { text: 'Evidence and sizing assumptions' }), h('p', { text: tryText }))),
       (result.nextStep?.elementId || result.nextStep?.nodeId) ? h('div', { class: 'pl-try-btns' },
@@ -323,6 +329,8 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
         bestBadge,
         result.reference || result.warmUp ? null : h('button', { class: 'pl-btn pl-btn--primary pl-challenge-friend', type: 'button', 'data-act': 'challenge-friend', onClick: () => handlers.onShare?.() }, iconEl('ui.share', 16), 'Challenge a friend'),
         h('span', { class: 'pl-muted pl-small', text: `Hints used: ${hintsUsed}. Hints are free and never lower the score.` }))),
+    result.passed && problem?.correctness && !problem?.warmUp ? h('p', { class: 'pl-learning-status', role: 'status', text: traceChecked ? assisted ? 'Traffic passed with assistance. Your trace is checked. Next: pass New twist with no hints for full mastery.' : result.learning?.independentTwist ? 'Full mastery earned: changed conditions passed without hints, and the responsibility trace is checked.' : 'Traffic and responsibility trace passed. Next: pass New twist without hints for full mastery.' : 'Traffic passed, but the central responsibility trace is still open. Complete it on your next run before a clean sweep or mastery counts.' }) : null,
+    result.passed && handlers.onTwist && !problem?.twistDay && !problem?.warmUp ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', 'data-act': 'mastery-twist', onClick: handlers.onTwist, text: 'Next: New twist without hints' }) : null,
     tryNext,
     problem?.warmUp ? h('p', { class: 'pl-warmup', 'data-act': 'warm-up' }, iconEl('ui.info', 16), 'Warm-up done, now play the real day. This first day had no traffic spike, so its score is practice only: it is not saved, not posted and not shared. Retry plays the full day, spike included.') : null));
   const reflection = renderReflection(result, catalog);
@@ -332,7 +340,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     const reason = h('textarea', { class: 'pl-input', rows: 2, 'aria-label': 'Reason to keep spare capacity', placeholder: 'Name a burst, failure or recovery requirement, and how you would test it.' });
     const feedback = h('p', { role: 'status', class: 'pl-muted' });
     root.append(h('section', { class: 'pl-sec', 'aria-label': 'Capacity tradeoff' }, h('h3', { text: 'Choose what the spare capacity buys' }),
-      result.efficiency.map(item => h('p', { text: `${item.label} used about ${Math.round(item.peakUtil * 100)}% of its capacity at peak. Testing ${item.suggestedUnits} instead of ${item.units} units could save about $${item.savingPerMonth.toLocaleString('en-US')}/month. This estimate keeps 30% headroom for the measured peak; rerun to verify recovery and dependencies.` })),
+      result.efficiency.map(item => h('p', { text: demanding ? `${item.label}: ${item.units} units at about ${Math.round(item.peakUtil * 100)}% peak busy. Work out a trial size at 70% utilization, round up and check the failure floor. Then compare the full day and cost.` : `${item.label} used about ${Math.round(item.peakUtil * 100)}% of its capacity at peak. Testing ${item.suggestedUnits} instead of ${item.units} units could save about $${item.savingPerMonth.toLocaleString('en-US')}/month. This estimate keeps 30% headroom for the measured peak; rerun to verify recovery and dependencies.` })),
       h('p', { text: 'Idle capacity reduces Cost points even below budget. A stated reason records your tradeoff; only testing the workload can establish whether it is worth paying for.' }), choice, reason,
       h('button', { class: 'pl-btn', type: 'button', text: 'Record decision', onclick: () => {
         if (!choice.value || (choice.value === 'keep' && reason.value.trim().length < 20)) { feedback.textContent = 'Choose an experiment, or give a concrete requirement and test for keeping the spare capacity.'; return; }
@@ -409,7 +417,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   // 5: what happened
   stories.append(h('h3', { text: 'What happened' }));
   if (!(result.events || []).length) stories.append(h('p', { class: 'pl-muted', text: 'No events hit this day. Smooth traffic is the easy part.' }));
-  (result.events || []).forEach((ev, i) => stories.append(eventStory(ev, i, result, catalog)));
+  (result.events || []).forEach((ev, i) => stories.append(eventStory(ev, i, result, catalog, demanding)));
   root.append(stories);
   const evidence = root.querySelector('.pl-sec:has(.pl-tl)');
   const summary = root.querySelector('.pl-verdict-sec');
@@ -433,7 +441,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   root.append(tr);
 
   // 7: next
-  if (result.nextStep?.text && !tryNext) {
+  if (result.nextStep?.text && !tryNext && !demanding) {
     const ns = result.nextStep;
     root.append(h('section', { class: 'pl-next' }, iconEl('ui.hint', 22), h('div', {}, h('b', { text: 'One thing to try next' }), h('p', { text: ns.text })),
       (ns.elementId || ns.nodeId) ? h('button', { class: 'pl-btn', type: 'button', onClick: () => handlers.onShowNext?.(ns) }, 'Show me') : null));

@@ -126,6 +126,7 @@ for (const file of files) {
     if (conceptLinks[p.id]) prob.concepts = [...new Set([...prob.concepts, ...conceptLinks[p.id]])];
     const checkpoint = correctnessFor(prob);
     if (checkpoint) prob.correctness = checkpoint;
+    if (prob.difficulty !== 'Easy' && checkpoint?.responsibility) prob.hints = [prob.hints[0], prob.hints[1], checkpoint.fields.at(-1).explanation + ' Measure the failed boundary, waiting time and retry work before choosing a change.'];
     // the "new twist" replay: the same problem with its events moved and one more added (tools/gen-twists.mjs)
     const tw = twists[p.id];
     if (tw && !tw.none) prob.twist = { shiftMin: tw.shiftMin, extra: tw.extra, events: twistEvents(prob, tw) };

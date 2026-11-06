@@ -1,0 +1,50 @@
+// Earned credit survives the real controls: open trace, assisted pass, then independent changed conditions.
+import assert from 'node:assert/strict';
+import puppeteer from 'puppeteer-core';
+import { problemById } from '../content/problems/index.js';
+import { checkFor } from '../ui/play/design-check.js';
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage();
+const base = process.argv[2] || 'http://localhost:8765/';
+const errors = []; page.on('pageerror', e => errors.push(e.message));
+const click = text => page.evaluate(text => { const el = [...document.querySelectorAll('button')].find(e => e.checkVisibility() && e.textContent.trim() === text); if (!el) throw Error('Missing ' + text); el.click(); }, text);
+const p = problemById.get('search-autocomplete');
+const gates = async () => {
+  if (await page.$('.pl-modal:not([hidden]) .pl-design-check')) await page.evaluate(t => {
+    const f = document.querySelector('.pl-design-check'); f.querySelectorAll('.sh-choice')[t.answer].click(); f.querySelector('input').value = t.value;
+    f.querySelector('textarea').value = 'Queue delay and duplicate effects need separate checks under the changed traffic conditions.'; f.requestSubmit();
+  }, checkFor(p));
+  await page.waitForSelector('.pl-modal:not([hidden]) .pl-checkpoint');
+  await page.evaluate(choices => { const f = document.querySelector('.pl-checkpoint'); f.querySelectorAll('select').forEach((e,i) => e.value = choices[i]); f.querySelector('input').value = 'Fence ownership, reuse the occurrence key and park permanent failure with a controlled replay policy.'; f.requestSubmit(); }, p.correctness.fields.map(f => f.correct));
+};
+try {
+  await page.setViewport({ width: 1366, height: 900 });
+  await page.evaluateOnNewDocument(() => { localStorage.setItem('hotpath.v1.seenIntro', 'true'); localStorage.setItem('hotpath.v1.settings', JSON.stringify({ soundMuted: true, reducedMotion: 'reduce' })); });
+  await page.goto(base);
+  await page.waitForFunction(() => !!window.__game);
+  await page.evaluate(async id => window.__game.loadProblem(id), p.id);
+  await page.evaluate(graph => {
+    const game = window.__game, ids = new Map(game.getState().nodes.map(n => [n.id,n.id]));
+    for (const n of graph.nodes) { let id = ids.get(n.ref); if (!id) { id = game.placeComponent(n.type,n.x,n.y); ids.set(n.ref,id); } for (const k of ['units','zones','tier','region']) if (n[k] != null) game.setKnob(id,k,n[k]); for (const [k,v] of Object.entries(n.knobs || {})) game.setKnob(id,k,v); }
+    for (const [a,b] of graph.edges) game.connect(ids.get(a),ids.get(b));
+    game.startTraffic(); game.step(86400000);
+  }, p.editorial.designs[0].graph);
+  await page.waitForSelector('.pl-learning-status');
+  assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /trace is still open/);
+  assert.equal(await page.$('.pl-victory'), null);
+  await click('Hints'); for (let n = 1; n <= 3; n++) await click('Show hint ' + n);
+  await page.$eval('.pl-hints [aria-label="Close hints"]',e => e.click());
+  await click('Retry'); await click('Start day'); await gates();
+  await page.evaluate(() => window.__game.step(86400000));
+  assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /with assistance/);
+  const before = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);
+  assert(before.learning.eligibleAt && before.learning.assistedAt && !before.learning.masteredAt);
+  await click('Next: New twist without hints'); await click('Start day'); await gates();
+  await page.evaluate(() => window.__game.step(86400000));
+  assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /Full mastery earned/);
+  const after = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);
+  assert(after.learning.masteredAt);
+  assert.equal(after.bestScore, before.bestScore); assert.equal(after.attempts, before.attempts);
+  assert.deepEqual(errors, []);
+  console.log('Open trace cannot earn mastery; assisted original pass then an unhinted checked New twist earns mastery without altering traffic bests.');
+} finally { await browser.close(); }

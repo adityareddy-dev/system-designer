@@ -16,7 +16,7 @@ const all = (node) => [node, ...(node.children || []).flatMap(all)];
 const copy = (node) => all(node).map((el) => el.textContent || '').join(' ');
 for (const id of ['bank-ledger', 'concert-ticket-drop', 'notification-service']) {
   const checkpoint = problemById.get(id).correctness;
-  assert.equal(checkpoint.fields.length, 2);
+  assert.ok(checkpoint.fields.length >= 3 && checkpoint.fields.length <= 5);
   assert.equal(checkpointComplete(checkpoint, { text: 'A transaction', choices: [] }), false);
   const answer = { text: 'Keep the operation atomic and reuse its key.', choices: checkpoint.fields.map((field) => field.correct) };
   assert.equal(checkpointComplete(checkpoint, answer), true);
@@ -34,7 +34,7 @@ for (const id of ['bank-ledger', 'concert-ticket-drop', 'notification-service'])
   assert.ok(debrief.includes(answer.text));
   assert.ok(debrief.includes(checkpoint.limits));
   assert.ok(debrief.includes(checkpoint.discussion));
-  assert.equal((debrief.match(/Matches the reference/g) || []).length, 2);
+  assert.equal((debrief.match(/Matches the reference/g) || []).length, checkpoint.fields.length);
   assert.ok(copy(renderCorrectness(checkpoint, { ...answer, choices: answer.choices.map((n) => 1 - n) })).includes('Revisit this choice'));
 }
 delete globalThis.document;

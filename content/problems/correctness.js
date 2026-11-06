@@ -1,4 +1,5 @@
 // Concrete failure traces check correctness separately from the deterministic traffic score.
+import centralTraces from './central-traces.js';
 const delivery = {
   prompt: 'A worker sends a message, then crashes before recording success. What key and delivery states would you store so a retry does not send it twice?',
   discussion: 'Give each logical message a stable key, scoped to its recipient and channel, and enforce a unique constraint on that key. Save the request and an outbox entry in one transaction, then track pending, sending and delivered states. A queue alone does not prevent duplicates. If the provider accepts the send but the worker crashes, retry with the same provider idempotency key or query its status. Without provider support, exactly-once external delivery cannot be guaranteed: discuss whether a possible duplicate or a possible missed message is acceptable.'
@@ -70,7 +71,8 @@ export function correctnessFor(problem) {
   const deliveryProblem = /twice|duplicate|exactly.once|one.time|one unique key|counted twice|repeat.*send/i.test(words);
   const ordering = /sequence|ordering|order of edits|earliest order/i.test(words);
   const durable = problem.requirements.dataSafety !== 'best-effort';
-  if (!existing && !deliveryProblem && !ordering && !durable) return null;
+  const central = centralTraces[problem.id];
+  if (!central && !existing && !deliveryProblem && !ordering && !durable) return null;
   const base = existing || (deliveryProblem && (problem.requirements.mix.notify || problem.requirements.mix.webhook || problem.requirements.mix.payment) ? delivery : record);
   const fields = base.fields || (base === booking ? [
     field('Two requests read the last available slot; one commits, then loses its reply. What protects the retry?', ['A cached availability check before each insert', 'A unique reservation key and an atomic conditional claim in the authoritative store'], 1, 'The committed reservation owns the resource. Retrying its stable key returns the same reservation; an independent read and insert can oversell.'),
@@ -85,8 +87,12 @@ export function correctnessFor(problem) {
     field('The server commits a change, then crashes before replying. The client retries. What happens?', ['Commit the operation id, effect and result atomically; return that result on retry', 'Record the id first, then apply the change in a separate write'], 0, 'Recording the id separately can either lose an operation or apply it twice. The effect and deduplication result must commit together.'),
     field('The server acknowledges a write just before its storage fails. Which evidence meets the stated recovery point?', ['A queued backup request with no completed durable copy', problem.requirements.dataSafety === 'no-loss' ? 'A durable copy across the required failure boundary before acknowledgement' : 'A measured replication or backup gap of at most 60 seconds, with a tested replay plan'], 1, 'A scheduled copy is not a completed copy. Match acknowledgement and recovery to the stated loss boundary.'),
   ]);
-  const checkpoint = { ...base, fields, version: 2 };
-  if (!existing) checkpoint.prompt = `${problem.title}: ${base.prompt}`;
+  const checkpoint = { ...base, fields: central?.fields || fields, responsibility: central?.responsibility, version: central ? 3 : 2 };
+  if (central) {
+    checkpoint.discussion = [existing ? base.discussion : central.responsibility, ...central.fields.map(f => f.explanation)].join(' ');
+    checkpoint.limits = 'The traffic model does not execute this protocol. The checked trace covers its central responsibility; the written explanation is retained for review.';
+  }
+  if (!existing) checkpoint.prompt = central ? `${problem.title}: which invariant does this trace protect, and what failure would break it?` : `${problem.title}: ${base.prompt}`;
   // Preserve the named checkpoints for saved answers and callers that link to this registry.
   checkpoints[problem.id] = checkpoint;
   return checkpoint;

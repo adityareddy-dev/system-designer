@@ -10,6 +10,7 @@ export function checkpointCorrect(checkpoint, answer) {
 }
 
 export function renderCheckpointForm(checkpoint, answer = {}, onSubmit, onCancel) {
+  answer ||= {};
   const selects = (checkpoint.fields || []).map((field, i) => h('select', { class: 'pl-input', required: true },
     h('option', { value: '', text: 'Choose an answer' }), field.options.map((text, j) => h('option', { value: j, selected: answer.choices?.[i] === j, text }))));
   const line = h('input', { class: 'pl-input', type: 'text', required: true, maxlength: 500, value: answer.text || '' });
@@ -21,8 +22,13 @@ export function renderCheckpointForm(checkpoint, answer = {}, onSubmit, onCancel
     else if (checkpointComplete(checkpoint, value)) feedback.textContent = checkpoint.fields.filter((field, i) => value.choices[i] !== field.correct).map(field => field.explanation).join(' ') + ' Walk through the failure again before starting.';
     else { line.setCustomValidity('Write one line explaining your choice.'); line.reportValidity(); }
   } }, h('h3', { text: 'Correctness checkpoint' }),
-  h('p', { text: 'Trace the failure before the day. Both choices are checked and count toward correctness mastery when your traffic day passes. Your explanation is saved for comparison.' }),
-  selects.map((select, i) => h('label', {}, h('p', { text: checkpoint.fields[i].label }), select)),
+  checkpoint.responsibility ? h('p', {}, h('b', { text: 'Central responsibility: ' }), checkpoint.responsibility) : null,
+  h('p', { text: 'Trace the failure before the day. Each step is checked. Traffic success and a completed trace are separate requirements. Your explanation is saved for comparison.' }),
+  selects.map((select, i) => {
+    const reason = h('p', { class: 'pl-trace-reason pl-muted', role: 'status' });
+    select.addEventListener('change', () => { reason.textContent = select.value === '' ? '' : 'Your choice: ' + checkpoint.fields[i].options[Number(select.value)] + '. ' + (Number(select.value) === checkpoint.fields[i].correct ? 'Checked. ' : 'Revisit this step. ') + checkpoint.fields[i].explanation; });
+    return h('label', {}, h('p', { text: checkpoint.fields[i].label }), select, reason);
+  }),
   h('label', {}, h('p', { text: checkpoint.prompt }), line),
   feedback,
   h('div', { class: 'pl-actions' }, h('button', { class: 'pl-btn', type: 'button', onClick: onCancel, text: 'Keep drawing' }),
@@ -35,7 +41,7 @@ export function renderCorrectness(checkpoint, savedAnswer) {
   if (!checkpoint) return null;
   if (savedAnswer) return h('section', { class: 'pl-sec', 'aria-label': 'Correctness checkpoint' },
     h('h3', { text: 'Correctness checkpoint' }),
-    h('p', { class: 'pl-muted', text: checkpointCorrect(checkpoint, savedAnswer) ? 'Failure trace checked. Correctness mastery is recorded when the full traffic day passes.' : 'Failure trace needs revision before correctness mastery can be recorded.' }),
+    h('p', { class: 'pl-muted', text: checkpointCorrect(checkpoint, savedAnswer) ? 'Responsibility trace checked. Full mastery needs a later New twist pass without hints.' : 'Failure trace needs revision before correctness mastery can be recorded.' }),
     h('p', { class: 'pl-muted', text: checkpoint.limits || 'The traffic score does not verify schema constraints, atomic transactions or business state transitions.' }),
     (checkpoint.fields || []).map((field, i) => h('div', {},
       h('h4', { text: field.label }),

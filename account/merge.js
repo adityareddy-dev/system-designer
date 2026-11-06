@@ -35,11 +35,19 @@ function cleanCorrectness(c) {
   return { version: c.version, checkedAt: ts(c.checkedAt), choices: [...c.choices], explanation: c.explanation.slice(0, 4096) };
 }
 
+function cleanLearning(value) {
+  if (!isObj(value)) return null;
+  const out = {};
+  for (const key of ['eligibleAt', 'assistedAt', 'masteredAt']) if (ts(value[key])) out[key] = ts(value[key]);
+  return Object.keys(out).length ? out : null;
+}
+
 function cleanProblem(p) {
   if (!isObj(p)) return null;
   const correctness = cleanCorrectness(p.correctness);
   return {
     ...(correctness ? { correctness } : {}),
+    ...(cleanLearning(p.learning) ? { learning: cleanLearning(p.learning) } : {}),
     ...(Array.isArray(p.estimates) && ts(p.estimatesAt) ? {
       estimates: p.estimates.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 1e30 ? v : null),
       estimatesAt: ts(p.estimatesAt),
@@ -152,6 +160,7 @@ function mergeProblem(a, b) {
   const lead = a.bestScore !== b.bestScore ? (a.bestScore > b.bestScore ? a : b) : (a.hintsUsed <= b.hintsUsed ? a : b);
   return {
     ...(correctness ? { correctness } : {}),
+    ...((a.learning || b.learning) ? { learning: Object.fromEntries(['eligibleAt', 'assistedAt', 'masteredAt'].map(k => [k, minTs(a.learning?.[k], b.learning?.[k])]).filter(([,v]) => v)) } : {}),
     ...(estimates && (a.estimatesAt || b.estimatesAt) ? { estimates, estimatesAt: maxTs(a.estimatesAt, b.estimatesAt) } : {}),
     attempts: Math.max(a.attempts, b.attempts),
     bestScore: Math.max(a.bestScore, b.bestScore),

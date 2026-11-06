@@ -18,6 +18,7 @@ import { renderEditorial } from './editorial.js';
 import { createTrafficPanel, DEFAULT_TRAFFIC, trafficInput } from './traffic-panel.js';
 import { queueDrainAdvice } from './lesson-queue.js';
 import { createRouteTrace } from './route-trace.js';
+import { learningCredit } from './mastery.js';
 import { previewLimits } from './capacity-preview.js';
 import { renderCheckpointForm } from './correctness.js';
 import { introPathHolds, repairInsertion } from './intro-path.js';
@@ -262,7 +263,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     // a server group that is too small: name the setting and offer the count that would keep it near 70 percent busy
     const sizeFix = (n) => sizeFixFor(n.id, n.util);
     const out = arr.filter((n) => n.holds === false).map((n) => {
-      const fix = interview || !adviceReady() ? null : sizeFix(n);
+      const fix = interview || S.problem.difficulty !== 'Easy' || !adviceReady() ? null : sizeFix(n);
       const base = `${nameOf2(n)} would run at about ${Math.round(n.util * 100)} percent at the normal peak. `;
       return { level: 'warn', code: 'peak-risk', nodeId: n.id, ...(fix ? { fix } : {}),
         message: base + (interview || !adviceReady() ? 'Predict how that affects requests before choosing a repair.' : fix ? `Open its ${fix.word} setting (now ${fix.now}) and raise it to about ${fix.units}. If Autoscale is on, raise "Never fewer than" too.` : lever(n.type, catalog.elementById.get(n.type)?.kind === 'compute')) };
@@ -522,6 +523,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   // One tap from a heads-up: more units, and a higher autoscale floor when autoscaling is on.
   function applySizeFix(fix) {
+    if (S.problem.difficulty === 'Easy') S.workedRepair = true;
     if (interview) return;
     const n = graph().nodes.find((x) => x.id === fix.nodeId);
     if (!n) return;
@@ -588,6 +590,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     } catch { return null; }
   }
   function loadDesign(design, { run = false } = {}) {
+    S.workedRepair = true;
     closeEditorial();
     if (S.sim.phase !== 'build') resetToDraw();
     S.sim.loadGraph(designToGraph(design));
@@ -1323,7 +1326,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     reqCard?.setAdvice(!interview && adviceReady());
     const isRef = !!S.refSig && S.refSig === graphSig();
     const warm = !!S.problem?.warmUp || !!S.problem?.twistDay;
+    const credit = learningCredit(S.problem, S.correctnessAnswer, { passed: result.passed, hintsUsed: hints.used(), workedRepair: S.workedRepair, reference: isRef }, ctx.progress?.get(S.problem.id)?.learning);
     S.result = isRef ? { ...result, reference: true } : warm ? { ...result, warmUp: true, ...(S.problem?.twistDay ? { twistDay: true } : {}) } : result;
+    S.result = { ...S.result, learning: credit };
+    if (mode === 'practice' && !interview && !isRef && !S.problem.warmUp) ctx.progress?.recordLearning?.(S.problem.id, credit);
     toolbar.clearTransient();
     hud.setPhase('done');
     hud.hideBanner();
@@ -1358,6 +1364,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       bus.emit('play:day-end', { mode, problemId: S.problem.id, seed: S.seed, result, hintsUsed: hints.used() });
     }
   }
+  function creditForVictory() { return S.result.learning?.traceChecked && !S.result.learning?.assisted; }
   function showDebrief() {
     if (!S.result) return;
     if (interview) {
@@ -1385,17 +1392,19 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
           const p = ctx.content?.problemById?.get(S.problem.id);
           if (!p?.twist) return;
           const g = graph(), on = !S.twist;
+          hints.reset(); S.workedRepair = false; S.correctnessAnswer = undefined; S.refSig = null; S.prediction = null;
           resetHostForProblem(); S.twist = on;
           configure(p, g); go('draw'); fitView(false);
-          toast(on ? 'New twist: the same brief, with the events moved and one more added. This day is practice only.' : 'Back to the original day.', 'info', 5000);
+          toast(on ? 'New twist: the same brief, with the events moved and one more added. Pass with no hints to earn full mastery after a checked original day.' : 'Back to the original day.', 'info', 5000);
         } : null,
         onShowNext: (ns) => { reset(); if (ns.nodeId) select(ns.nodeId); if (ns.elementId) toolbar.pulse(ns.elementId); },
         nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; const fix = rn && ['units', 'autoscale'].includes(ns?.knob) && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; if (fix && ns.sizing) { fix.units = ns.sizing.units; fix.label = `Set ${fix.word.toLowerCase()} to ${fix.units}`; } return fix; },
+        onAssisted: () => { S.workedRepair = true; },
         onSetNext: (fix) => { reset(); applySizeFix(fix); select(fix.nodeId); },
       },
     });
     if (S.prediction) debriefWrap.querySelector('.pl-verdict-sec')?.append(h('p', { class: 'pl-prediction' }, h('b', { text: 'Your prediction before this run: ' }), S.prediction, ' Compare it with the measured cause below.'));
-    if (S.result.passed) showVictory(debriefWrap, { result: S.result, before: S.winBefore, original: S.winOriginal, catalog, reduced: ctx.reducedMotion() });
+    if (S.result.passed && !S.problem.warmUp && creditForVictory()) showVictory(debriefWrap, { result: S.result, before: S.winBefore, original: S.winOriginal, catalog, reduced: ctx.reducedMotion() });
     debriefWrap.hidden = false;
     debriefWrap.scrollTop = 0;
   }
@@ -1965,6 +1974,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   };
   function resetHostForProblem() {
     S.twist = false;
+    S.correctnessAnswer = undefined; S.checkpointReady = null; S.workedRepair = false; S.refSig = null; S.prediction = null; hints.reset();
     S.revealed.clear(); S.guesses = {}; S.selected = null; inspector.hide(); debriefWrap.hidden = true; editorialWrap.hidden = true;
     hud.hideBanner(); hud.resetHistory();
   }
