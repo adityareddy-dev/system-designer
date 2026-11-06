@@ -24,6 +24,9 @@ try {
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('hotpath.v1.sandbox.slots'))[0].traffic.peakRps),100100);
   await click('Close');await route('#/practice/job-scheduler');await page.waitForFunction(()=>window.__game.getState().problemId==='job-scheduler');
   await page.evaluate(()=>window.__game.loadProblem('job-scheduler'));
+  const warnings = await page.$eval('.pl-issues',el=>el.textContent);
+  assert.match(warnings,/Job callers/);
+  assert.doesNotMatch(warnings,/\bjobs:/,'build facts use the visible source name');
   await page.keyboard.press('h');await page.waitForSelector('.pl-hints:not([hidden])');await click('Show hint 1');
   const first = await page.$eval('.pl-hints-list',el=>el.textContent);
   assert.match(first,/Run a day first/);assert.doesNotMatch(first,/Background workers|idempotency store|SQL database/);

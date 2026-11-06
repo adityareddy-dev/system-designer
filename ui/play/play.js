@@ -294,8 +294,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       'flow-cycle': 'A delivery loop includes a closing link that the run ignores. Trace where a request would repeat.',
       'compliance-missing': 'A required compliance check has no proof in this graph.',
     };
-    return (S.issues || []).map(i => ({ level: i.level, code: i.code, nodeId: i.nodeId, type: i.type, source: i.source,
-      message: [i.nodeId, i.type && catalog.requestById.get(i.type)?.plural, facts[i.code] || 'A design check is unresolved.'].filter(Boolean).join(': ') }));
+    return (S.issues || []).map(i => {
+      const n = graph().nodes.find(n => n.id === i.nodeId);
+      const label = n && (n.label || catalog.elementById.get(n.type)?.name);
+      const proof = i.code === 'compliance-missing' && /Missing proof for "([^"]+)"/.exec(i.message)?.[1];
+      return { level: i.level, code: i.code, nodeId: i.nodeId, type: i.type, source: i.source,
+        message: [label, i.type && catalog.requestById.get(i.type)?.plural, proof ? `${proof}: required proof is missing from this graph.` : facts[i.code] || 'A design check is unresolved.'].filter(Boolean).join(': ') };
+    });
   }
   function adviceReady() {
     return mode !== 'practice' || S.triedId === S.problem?.id || ctx.progress?.get?.(S.problem?.id)?.attempts > 0;
