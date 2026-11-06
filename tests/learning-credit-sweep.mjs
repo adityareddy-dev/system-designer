@@ -80,7 +80,7 @@ for (const problem of problems) {
 }
 const memory = new Map([['progress', { legacy: { attempts: 8, bestScore: 1000, stars: 3, solvedAt: 1700000000000 } }]]);
 const progress = createProgress({ get: (k,f) => memory.get(k) ?? f, set: (k,v) => memory.set(k,v) }, { emit() {} });
-progress.recordLearning('legacy', { eligible: true, assisted: true });
+progress.recordLearning('legacy', { eligible: true, assistedPass: true });
 progress.recordLearning('legacy', { independentTwist: true });
 const saved = progress.exportAll();
 const merged = mergeProgress(saved, { problems: { legacy: { bestScore: 400, stars: 1, attempts: 2 } } });
@@ -88,6 +88,38 @@ assert.equal(merged.problems.legacy.bestScore, 1000);
 assert.equal(merged.problems.legacy.solvedAt, 1700000000000);
 assert.deepEqual(merged.problems.legacy.learning, saved.problems.legacy.learning);
 assert.deepEqual(merged, mergeProgress({ problems: { legacy: { bestScore: 400, stars: 1, attempts: 2 } } }, saved));
+const learningProblem = problems.find(p => p.id === 'search-autocomplete');
+const learningAnswer = { choices: learningProblem.correctness.fields.map(f => f.correct), text: 'Protect the authoritative transition.' };
+for (const twistDay of [false, true]) {
+  for (const help of [{ hintsUsed: 3 }, { workedRepair: true }]) {
+    const id = learningProblem.id;
+    const prior = { eligibleAt: Date.UTC(2025, 0, 1) };
+    const learningMemory = new Map([['progress', { [id]: { learning: prior } }]]);
+    const local = createProgress({ get: (k,f) => learningMemory.get(k) ?? f, set: (k,v) => learningMemory.set(k,v) }, { emit() {} });
+    const credit = learningCredit({ ...learningProblem, twistDay }, learningAnswer, { passed: true, ...help }, prior);
+    assert(credit.assistedPass); assert(!credit.independentTwist);
+    local.recordLearning(id, credit);
+    const first = { ...local.get(id).learning };
+    assert(first.assistedAt); assert.equal(first.eligibleAt, prior.eligibleAt); assert(!first.masteredAt);
+    local.recordLearning(id, credit);
+    const restored = createProgress({ get: (k,f) => learningMemory.get(k) ?? f, set() {} }, { emit() {} });
+    assert.deepEqual(restored.get(id).learning, first, 'assisted history survives reload and retains its first timestamp');
+    for (const [problemOverride, runOverride, answer] of [
+      [{}, { passed: false }, learningAnswer],
+      [{ warmUp: true }, {}, learningAnswer],
+      [{}, { reference: true }, learningAnswer],
+      [{}, {}, null],
+    ]) {
+      const excluded = learningCredit({ ...learningProblem, twistDay, ...problemOverride }, answer, { passed: true, ...help, ...runOverride }, prior);
+      assert(!excluded.assistedPass && !excluded.eligible && !excluded.independentTwist);
+      local.recordLearning('excluded', excluded);
+      assert.deepEqual(local.get('excluded').learning, {});
+    }
+    const synced = mergeProgress(local.exportAll(), { problems: { [id]: { learning: { masteredAt: first.assistedAt + 1000 } } } });
+    assert.equal(synced.problems[id].learning.assistedAt, first.assistedAt);
+    assert.equal(synced.problems[id].learning.eligibleAt, prior.eligibleAt);
+  }
+}
 assert.equal(questionCoverage('What idempotency guarantees do we need?', [{ q: 'What if the same message is asked for twice?' }])[0], true);
 assert.equal(questionCoverage('Can the counter fail open during an outage?', [{ q: 'If the limiter itself breaks, do we let traffic through or block it?' }])[0], true);
 assert.equal(questionCoverage('How is consent enforced when a recipient opts out?', [{ q: 'Do people opt out?' }])[0], true);

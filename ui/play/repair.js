@@ -6,22 +6,26 @@ function rawRepairCase(result, problem, catalog) {
   const node = result.nodes?.find(n => n.id === ns.nodeId);
   const placed = result.graph.nodes.find(n => n.id === ns.nodeId);
   const el = placed && catalog.elementById.get(placed.type);
-  if (node?.effectiveRpsPerUnit > 0 && node.peakRequests > 0 && ['units', 'autoscale'].includes(ns.knob) && el?.units?.max > 1) {
+  const checks = result.checks || {};
+  const route = /route|connect|path|finish anywhere|nothing was served/i.test(result.verdict + ' ' + ns.text);
+  const kind = ns.kind || (checks.availability === false ? 'reliability' : checks.latency === false ? 'latency' : checks.safety === false ? 'safety' : checks.cost === false ? 'cost' : null);
+  const safety = !route && kind === 'safety';
+  const cost = !route && kind === 'cost';
+  const capacity = !route && ['reliability', 'latency'].includes(kind) && (checks.availability === false || checks.latency === false);
+  if (capacity && node?.peakUtil > .7 && node.effectiveRpsPerUnit > 0 && node.peakRequests > 0 && node.peakUnits > 0 && ['units', 'autoscale'].includes(ns.knob) && el?.units?.max > 1) {
     const rate = Math.round(node.peakRequests * 100) / 100;
     const perUnit = Math.round(node.effectiveRpsPerUnit * 100) / 100;
+    const active = node.peakUnits, installed = node.peakInstalledUnits || active;
+    const activeNeeded = Math.ceil(node.peakUtil * active / .7);
     const floor = Math.max(el.units.min || 1, placed.zones || 1);
-    const value = Math.min(el.units.max, Math.max(floor, Math.ceil(rate / (perUnit * .7))));
+    const value = Math.min(el.units.max, Math.max(floor, Math.ceil(activeNeeded * installed / active)));
     return { kind: 'capacity', nodeId: node.id, word: el.units.label, rate, perUnit, value,
       choices: ['Increase this pool with measured headroom', 'Increase timeout and retry allowances for transient errors', 'Buffer the burst while keeping the same consumer capacity'], answer: 0,
       effects: ['Less waiting at this pool; downstream limits still need a test', 'More downstream throughput with unchanged waiting at this pool', 'Longer waiting but a lower external provider quota'], effect: 0,
-      evidence: `${el.name}: ≈ ${rate} internal operations/s at the measured peak, including retries and repeat visits. One active unit processed ≈ ${perUnit} operations/s at full utilization. Target 70% utilization; minimum ${floor}, maximum ${el.units.max} units.`,
-      calculation: `How many ${el.units.label} units cover that measured peak at 70% utilization? Round up, respect the minimum and cap at the maximum. If capped, reduce work as well.`,
-      arithmetic: `ceil(${rate} ÷ (${perUnit} × 0.7)), bounded to ${floor}…${el.units.max} = ${value}. This is a trial size, not a recovery guarantee.`, unit: el.units.label };
+      evidence: `${el.name}: ≈ ${rate} internal operations/s at the measured peak, including retries and repeat visits. One active unit processed ≈ ${perUnit} operations/s at full utilization. At that peak, ${active} of ${installed} installed units survived. Target 70% utilization; minimum ${floor}, maximum ${el.units.max} units.`,
+      calculation: `How many installed ${el.units.label} units cover that measured peak at 70% utilization while preserving the surviving share? Round up the active requirement, then multiply by ${installed} ÷ ${active} and round up again. Respect the minimum and cap at the maximum. If capped, reduce work as well.`,
+      arithmetic: `ceil(peak work ÷ (effective capacity per active unit × 0.7)) = ${activeNeeded} active units. Then ceil(${activeNeeded} × ${installed} ÷ ${active}), bounded to ${floor}…${el.units.max} = ${value} installed units. Calculations use unrounded measurements. This is a trial size, not a recovery guarantee.`, unit: el.units.label };
   }
-  const checks = result.checks || {};
-  const route = /route|connect|path|finish anywhere|nothing was served/i.test(result.verdict + ' ' + ns.text);
-  const safety = !route && checks.safety === false;
-  const cost = !route && !safety && checks.cost === false;
   const type = Object.entries(problem.requirements.mix).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1])[0];
   const rate = problem.requirements.peakRps, percent = Math.round(type[1] * 10000) / 100;
   return { kind: 'manual', value: rate * percent / 100,

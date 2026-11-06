@@ -47,7 +47,7 @@ export function createProgress(store, bus) {
       const old = prev.learning || {}, now = Date.now();
       const learning = { ...old,
         ...(credit.eligible ? { eligibleAt: old.eligibleAt || now } : {}),
-        ...(credit.eligible && credit.assisted ? { assistedAt: old.assistedAt || now } : {}),
+        ...(credit.assistedPass ? { assistedAt: old.assistedAt || now } : {}),
         ...(credit.independentTwist ? { masteredAt: old.masteredAt || now } : {}) };
       probs[problemId] = { ...prev, learning };
       save(); bus.emit('progress:updated', { problemId });
