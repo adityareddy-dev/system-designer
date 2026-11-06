@@ -19,16 +19,20 @@ const gates = async () => {
 };
 try {
   await page.setViewport({ width: 1366, height: 900 });
-  await page.evaluateOnNewDocument(() => { localStorage.setItem('hotpath.v1.seenIntro', 'true'); localStorage.setItem('hotpath.v1.settings', JSON.stringify({ soundMuted: true, reducedMotion: 'reduce' })); });
+  await page.evaluateOnNewDocument(() => { localStorage.setItem('hotpath.v1.seenIntro', 'true'); localStorage.setItem('hotpath.v1.progress', JSON.stringify({ 'search-autocomplete': { attempts: 1, bestScore: 0, stars: 0 } })); localStorage.setItem('hotpath.v1.settings', JSON.stringify({ soundMuted: true, reducedMotion: 'reduce' })); });
   await page.goto(base);
   await page.waitForFunction(() => !!window.__game);
   await page.evaluate(async id => window.__game.loadProblem(id), p.id);
-  await page.evaluate(graph => {
+  const missing = await page.evaluate(graph => {
     const game = window.__game, ids = new Map(game.getState().nodes.map(n => [n.id,n.id]));
     for (const n of graph.nodes) { let id = ids.get(n.ref); if (!id) { id = game.placeComponent(n.type,n.x,n.y); ids.set(n.ref,id); } for (const k of ['units','zones','tier','region']) if (n[k] != null) game.setKnob(id,k,n[k]); for (const [k,v] of Object.entries(n.knobs || {})) game.setKnob(id,k,v); }
-    for (const [a,b] of graph.edges) game.connect(ids.get(a),ids.get(b));
-    game.startTraffic(); game.step(86400000);
+    for (const [a,b] of graph.edges.slice(2)) game.connect(ids.get(a),ids.get(b));
+    return graph.edges.slice(0,2).map(edge => edge.map(id => ids.get(id)));
   }, p.editorial.designs[0].graph);
+  await page.$eval('.pl-trace', e => e.open = true);
+  await page.waitForFunction(() => document.querySelector('.pl-trace-output').textContent.length > 0);
+  assert.doesNotMatch(await page.$eval('.pl-trace-output', e => e.textContent), /Complete repair path:|Add Background workers/);
+  await page.evaluate(edges => { for (const [a,b] of edges) window.__game.connect(a,b); window.__game.startTraffic(); window.__game.step(86400000); }, missing);
   await page.waitForSelector('.pl-learning-status');
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /trace is still open/);
   assert.equal(await page.$('.pl-victory'), null);

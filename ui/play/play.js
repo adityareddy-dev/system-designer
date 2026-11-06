@@ -113,7 +113,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- scene
   const scene = await createScene(stage, { catalog, palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
   const routeTrace = createRouteTrace(root, catalog, scene);
-  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && !interview && S.step === 'draw' && S.sim?.phase === 'build', adviceReady()); }
+  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && !interview && S.step === 'draw' && S.sim?.phase === 'build', adviceReady() && (mode !== 'practice' || S.problem?.difficulty === 'Easy')); }
 
   // ---- sim
   function makeSim(problem, graph) {
