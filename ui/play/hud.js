@@ -333,9 +333,9 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
         const tip = limits;
         if (sp && !sp.holds) chip = h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: tip }, iconEl('ui.warn', 14), `Capacity snapshot: peak below limit; ${ev} above it`);
         else if (warns.length) chip = h('span', { class: 'pl-chip', title: tip }, iconEl('ui.info', 14), 'Capacity snapshot below limit; check warnings');
-        else chip = h('span', { class: 'pl-chip pl-chip--ok', title: tip }, iconEl('ui.check', 14), sp ? `Capacity snapshot below limit, including ${ev}` : 'Capacity snapshot below limit');
+        else chip = h('span', { class: 'pl-chip', title: tip }, iconEl('ui.info', 14), sp ? `Capacity snapshot below limit, including ${ev}` : 'Capacity snapshot below limit');
       }
-      buildNote.append(chip, h('span', { class: 'pl-preview-limits pl-small', text: limits }));
+      buildNote.append(chip, h('details', { class: 'pl-preview-limits pl-small' }, h('summary', { text: /already above|above the .*deadline/.test(limits) ? 'Rough capacity check: a speed or deadline risk is already visible' : 'Rough capacity check: deadlines, retries and event recovery are unchecked' }), h('p', { text: limits }))); 
     }
     const errs = list.filter((i) => i.level !== 'info');
     if (errs.length && hasParts) buildNote.append(h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: 'Show the list' }, iconEl('ui.warn', 14), `${errs.length} thing${errs.length > 1 ? 's' : ''} to check`));

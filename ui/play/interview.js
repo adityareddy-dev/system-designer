@@ -3,14 +3,8 @@ import { h, fmtNum, fmtUsd } from './util.js';
 import { estimateUnit, estimateFeedback } from './estimate-units.js';
 import { mountDefense } from '../defense.js';
 
-const STOP = new Set('about after again also are can could does each for from have how into many more must need our should that the their them there these this what when where which who why will with would your'.split(' '));
-export function questionCoverage(text, questions) {
-  const words = new Set(text.toLowerCase().match(/[a-z0-9]+/g) || []);
-  return questions.map(q => {
-    const keys = [...new Set((q.q.toLowerCase().match(/[a-z0-9]+/g) || []).filter(w => w.length > 2 && !STOP.has(w)))];
-    return keys.filter(k => words.has(k) || [...words].some(w => w.length > 3 && k.startsWith(w.slice(0, -1)))).length >= Math.min(2, Math.max(1, keys.length));
-  });
-}
+import { questionAnalysis } from './question-topics.js';
+export function questionCoverage(text, questions) { return questionAnalysis(text, questions).coverage; }
 
 export function defenseQuestions(problem, graph, result, catalog) {
   const name = n => n.label || catalog.elementById.get(n.type)?.name || n.type;
@@ -32,7 +26,22 @@ export function defenseQuestions(problem, graph, result, catalog) {
   questions.push({ q: `This costs about ${fmtUsd(cost)}/month. Remove 30%, about ${fmtUsd(cost * .3)}. What do you cut, and what breaks?`, model: `Start with the largest cost line: ${[...result.slo.cost.lines].sort((a,b) => (b.usd || b.perMonth || 0) - (a.usd || a.perMonth || 0))[0]?.label || 'inspect the cost breakdown'}. Compare reducing idle units, retained data and usage. Preserve the required durability and show the loss of burst or failure headroom. State the metric you would watch before keeping the saving.`, checklist: ['Identify a real cost line and saving', 'Name a resulting reliability, speed or data tradeoff', 'Describe a measurement and rollback threshold'] });
   if (questions.length < 3) questions.push({ q: `Your graph has ${graph.nodes.length} parts and ${graph.edges.filter(e => e.kind === 'flow').length} delivery connections. Trace a ${Object.keys(problem.requirements.mix)[0]} request from its source to an answer. Where can it stop?`, model: `${result.nextStep.text} A complete path must start at the source that sends that request type and end at a capable destination. A disconnected store does not help.`, checklist: ['Name the source and every hop', 'Identify the destination or missing route', 'Explain what the caller sees when a hop fails'] });
   if (questions.length < 3) questions.push({ q: `Your users span ${Object.keys(problem.requirements.userRegions).join(', ')}. Which network round trips belong in your latency budget?`, model: 'Include the user-to-service trip and every synchronous cross-region dependency. Moving one service alone can leave the slowest round trip intact. Distinguish observed latency from requests that never got a response.', checklist: ['Trace user and dependency round trips', 'Separate service time from network time', 'Explain one region placement tradeoff'] });
-  return questions.slice(0, 5);
+  return questions.slice(0, 5).map((question, i) => {
+    const related = /cache|miss/i.test(question.q) ? cache : /partition/i.test(question.q) ? store : /units|replica/i.test(question.q) ? pool : graph.nodes.find(n => n.id === measured?.id);
+    const metrics = result.nodes?.find(n => n.id === related?.id);
+    const alternative = /cache|miss/i.test(question.q) ? 'Compare coalesced refill with request shedding; state the availability cost.' : /partition/i.test(question.q) ? 'Compare tenant bucketing with a single tenant shard; state the read fanout cost.' : /replica|units/i.test(question.q) ? 'Compare health-aware routing with static distribution; state the detection-delay risk.' : /costs/i.test(question.q) ? 'Compare trimming idle capacity with reducing usage; state which required guarantee each risks.' : 'Compare a capacity repair with a routing or dependency repair; say which measured symptom distinguishes them.';
+    const evidence = [
+      ...(/costs/i.test(question.q) ? [...result.slo.cost.lines].sort((a,b) => (b.usd || b.perMonth || 0) - (a.usd || a.perMonth || 0)).slice(0,3).map(line => line.label + ': ≈ ' + fmtUsd(line.usd || line.perMonth || 0) + '/month.') : []),
+      'Your run: ' + (result.slo.availability.actual * 100).toFixed(2) + '% served, target ' + (result.slo.availability.target * 100).toFixed(2) + '%.',
+      'Worst p99: ≈ ' + Math.round(result.slo.latency.worstP99Ms) + ' ms. Cost: ≈ ' + fmtUsd(cost) + '/month, budget ' + fmtUsd(result.slo.cost.budget) + '.',
+      metrics ? name(related) + ': peak ' + Math.round(metrics.peakUtil * 100) + '% busy; ' + (metrics.minutesOverloaded || 0) + ' overloaded minutes; ' + fmtNum(metrics.failed || 0) + ' failed operations.' : 'No utilization was measured for this part. Do not infer spare capacity from missing data.',
+      event ? 'Event at ' + new Date(event.atMs).toISOString().slice(11,16) + ': ' + event.name + '. ' + (event.story?.headline || '') + ' ' + (event.story?.hurt || '') : 'No event evidence was recorded.',
+    ];
+    const costQuestion = /costs/i.test(question.q);
+    const measuredPoint = costQuestion ? 'Quote the largest monthly cost line, calculate the 30% saving, and compare the result with the ' + fmtUsd(result.slo.cost.budget) + ' budget.' : metrics ? 'Quote ' + name(related) + ' at ' + Math.round(metrics.peakUtil * 100) + '% peak busy and ' + (metrics.minutesOverloaded || 0) + ' overloaded minutes; relate it to the ' + (result.slo.availability.actual * 100).toFixed(2) + '% served result.' : 'Quote the event time and served share above; distinguish an unmeasured part from a part with available capacity.';
+    const stopPoint = costQuestion ? 'Set a numeric stop threshold for served share or p99 after the cut, using the stated targets; name the previous capacity or retention setting to restore.' : 'Set a numeric failure or p99 stop threshold against the ' + (result.slo.availability.target * 100).toFixed(2) + '% served target; name the previous routing, retry or ownership configuration to restore.';
+    return { ...question, evidence, checklist: [question.checklist[0], measuredPoint, alternative, stopPoint] };
+  });
 }
 
 export function createInterview(problem) {
@@ -48,13 +57,14 @@ export function renderInterviewPrep(host, problem, state, ready, onStage = () =>
   const draw = () => renderInterviewPrep(host, problem, state, ready, onStage);
   const notice = h('p', { role: 'status', class: 'pl-muted' });
   if (state.stage === 'questions') {
-    host.append(h('p', { text: 'Ask your own questions before seeing the interviewer’s list. Include scale, scope and failure expectations. Matching checks shared keywords only; it cannot judge meaning.' }), writing('What would you ask?', state.questions, v => state.questions = v), notice,
+    host.append(h('p', { text: 'Ask your own questions before seeing the interviewer’s list. Include scale, scope and failure expectations. Matching checks keywords and topic synonyms. Unmatched wording gets a closest-topic comparison; it is not graded wrong.' }), writing('What would you ask?', state.questions, v => state.questions = v), notice,
       button('Commit questions', () => {
         if (state.questions.trim().length < 20) { notice.textContent = 'Write your questions first, at least 20 characters.'; return; }
-        state.coverage = questionCoverage(state.questions, problem.clarify); state.stage = 'answers'; draw();
+        const analysis = questionAnalysis(state.questions, problem.clarify); state.coverage = analysis.coverage; state.closest = analysis.closest; state.stage = 'answers'; draw();
       }));
   } else if (state.stage === 'answers') {
-    host.append(h('p', { text: `${state.coverage.filter(Boolean).length} of ${problem.clarify.length} topics matched. Read every answer, including topics the keyword check may have missed.` }), ...problem.clarify.map((q,i) => h('section', { class: 'pl-sec' }, h('b', { text: `${state.coverage[i] ? 'Found' : 'Missed'} · ${q.q}` }), h('p', { text: q.a }), h('small', { text: `Design implication: ${implication(q)}` }))), button('Write requirements', () => { state.stage = 'requirements'; draw(); }));
+    host.append(h('p', { text: `${state.coverage.filter(Boolean).length} of ${problem.clarify.length} topics matched. Read every answer, including topics the keyword check may have missed.` }), ...problem.clarify.map((q,i) => h('section', { class: 'pl-sec' }, h('b', { text: `${state.coverage[i] ? 'Topic matched' : 'Not matched automatically'} · ${q.q}` }), h('p', { text: q.a }), h('small', { text: `Design implication: ${implication(q)}` }))), button('Write requirements', () => { state.stage = 'requirements'; draw(); }));
+    host.append(...(state.closest || []).filter(q => !q.matched).map(q => h('p', { class: 'pl-muted', text: `Your question: ${q.text}. Closest topic to compare: ${problem.clarify[q.question]?.q} This is a wording suggestion, not a wrong answer.` })));
   } else if (state.stage === 'requirements') {
     host.append(writing('What will you build, exclude, and measure? State your target numbers.', state.requirements, v => state.requirements = v), notice,
       button('Commit requirements', () => { if (state.requirements.trim().length < 20) { notice.textContent = 'State your scope and targets first.'; return; } state.stage = 'compare'; draw(); }));
@@ -86,9 +96,13 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     h('p', { text: result.score.total + '/1,000 · ' + fmtUsd(result.slo.cost.perMonth) + '/month' }),
     h('p', { text: 'Write before each reveal. Checklist coverage is your assessment, separate from the simulated score.' }));
   host.replaceChildren(root);
+  const priorities = h('section', { class: 'pl-interview-priorities', 'aria-live': 'polite' });
+  root.append(priorities);
   const report = h('section', { class: 'pl-sec pl-interview-report', hidden: '' });
   const controls = [];
   const update = () => {
+    const gaps = questions.flatMap((q,i) => q.checklist.filter((_,j) => !state.defense[i]?.checked[j]).map(text => 'Follow-up ' + (i + 1) + ': ' + text));
+    priorities.replaceChildren(h('h3', { text: 'What to work on next' }), h('p', { text: gaps[0] || 'All checklist points reviewed. Test your explanation on changed conditions next.' }), h('small', { text: 'Self-assessed coverage guides practice; it does not certify the written answer.' }));
     if (!questions.every((_, i) => state.defense[i]?.revealed)) return;
     const covered = state.defense.reduce((a, d) => a + d.checked.filter(Boolean).length, 0);
     const total = questions.reduce((a, q) => a + q.checklist.length, 0);
@@ -96,9 +110,10 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
       if (state.complete) return;
       save({ questionCount: state.coverage.filter(Boolean).length, questionsTotal: problem.clarify.length,
         estimates: state.estimates, scope: state.requirements, questions: state.questions,
-        defense: state.defense, covered, total, score: result.score.total, passed: result.passed });
+        defense: state.defense.map((d,i) => ({ ...d, question: questions[i].q, evidence: questions[i].evidence, checklist: questions[i].checklist })), covered, total, score: result.score.total, passed: result.passed });
       state.complete = true;
       controls.forEach(control => control.lock());
+      root.querySelectorAll('.pl-defense-card').forEach(card => card.open = false);
       update();
     });
     saveButton.disabled = state.complete;
@@ -112,9 +127,15 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
   };
   questions.forEach((q, i) => {
     const d = state.defense[i] ||= { answer: '', revealed: false, checked: q.checklist.map(() => false) };
-    const section = h('section', { class: 'pl-sec pl-defense-card' },
+    const section = h('details', { class: 'pl-sec pl-defense-card', open: true }, h('summary', { text: 'Follow-up ' + (i + 1) + ': ' + q.q }),
       h('span', { class: 'pl-kicker', text: 'Follow-up ' + (i + 1) + ' of ' + questions.length }), h('h3', { text: q.q }));
-    controls.push(mountDefense(section, q, d, { id: 'pl-defense-' + i, locked: state.complete, onReveal: update, onChange: update }));
+    const columns = h('div', { class: 'pl-defense-columns' });
+    section.append(columns);
+    const response = h('div', { class: 'pl-defense-response' });
+    const evidence = h('aside', { class: 'pl-defense-evidence' }, h('h4', { text: 'Evidence from your run' }), q.evidence.map(text => h('p', { text })));
+    columns.append(response, evidence);
+    controls.push(mountDefense(response, q, d, { id: 'pl-defense-' + i, locked: state.complete, onReveal: update, onChange: () => { if (d.revealed && q.checklist.every((_,j) => d.checked[j])) section.open = false; update(); } }));
+    evidence.append(response.querySelector('.pl-defense-model'));
     root.append(section);
   });
   root.append(report); update();

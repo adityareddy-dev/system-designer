@@ -948,3 +948,33 @@
 /* Keep the earned route visible throughout its sequence. */
 .pl-root[data-outcome=pass][data-phase=done] .pl-overlay--debrief {animation:pl-panel-settle 220ms cubic-bezier(.2,.8,.2,1) both}
 :root[data-motion=reduce] .pl-root[data-outcome=pass][data-phase=done] .pl-overlay--debrief {animation:none}
+
+/* Learning decisions and interview comparisons keep evidence beside the player's work. */
+.pl-preview-limits {display:block;max-width:76ch;color:var(--text-2);white-space:normal;line-height:1.4}
+.pl-buildnote:has(.pl-preview-limits) {flex-wrap:wrap}
+.pl-repair {padding:20px;border:1px solid var(--accent);border-radius:12px;background:var(--accent-soft);display:grid;gap:12px}
+.pl-repair label {display:grid;gap:6px}
+.pl-repair p {margin:0}
+.pl-repair .pl-input {width:100%;height:auto;min-height:44px;white-space:normal}
+.pl-trace-reason:empty {display:none}
+.pl-learning-status,.pl-interview-priorities {padding:16px;border-left:3px solid var(--accent);background:var(--accent-soft)}
+.pl-defense-card > summary {font-size:18px;font-weight:700;cursor:pointer;line-height:1.5;overflow-wrap:anywhere}
+.pl-defense-card > .pl-kicker,.pl-defense-card > h3 {display:none}
+.pl-defense-columns {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;margin-top:16px;align-items:start}
+.pl-defense-columns > * {min-width:0}
+.pl-defense-response textarea {width:100%;height:auto;min-height:220px;padding:12px;font:16px/1.5 var(--font-ui);resize:vertical}
+.pl-defense-evidence {border:1px solid var(--border);border-radius:10px;padding:16px;overflow-wrap:anywhere;background:var(--surface-solid)}
+.pl-defense-evidence h4 {margin-top:0}
+.pl-defense-evidence p {font-size:14px;line-height:1.5}
+.pl-defense-evidence .pl-defense-model {margin:16px -4px 0;padding:12px}
+.pl-defense-evidence .pl-defense-check {align-items:flex-start}
+.pl-defense-evidence .pl-defense-check input {margin-top:4px}
+.pl-interview-priorities {margin:16px 0 24px}
+.pl-interview-priorities h3 {margin-top:0}
+@media(max-width:719px) {
+ .pl-defense-columns {grid-template-columns:minmax(0,1fr);gap:12px}
+ .pl-defense-card {padding-block:16px}
+ .pl-defense-response textarea {min-height:160px}
+ .pl-repair {padding:14px}
+ .pl-preview-limits {font-size:11px;max-height:72px;overflow-y:auto}
+}
