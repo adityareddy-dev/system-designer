@@ -617,6 +617,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     for (const fn of frameFns) {
       try { fn(dt); } catch (err) { queueMicrotask(() => { throw err; }); }
     }
+    if (destroyed) return;
     // nothing is moving: skip drawing and the GPU pass until something wakes the scene
     if (now - lastActive > IDLE_AFTER_MS && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
       idleFrames++; isIdle = true;
@@ -638,6 +639,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const wake = () => { lastActive = performance.now(); };
 
   const ro = new ResizeObserver(() => {
+    if (destroyed) return;
     wake();
     const w = Math.max(1, hostEl.clientWidth), h = Math.max(1, hostEl.clientHeight);
     const { w: cw, h: ch } = camera.size;
@@ -872,6 +874,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       destroyed = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      globalThis.removeEventListener?.('keydown', wake);
+      globalThis.document?.removeEventListener?.('visibilitychange', wake);
       input.destroy();
       frameFns.clear();
       ghostClear();

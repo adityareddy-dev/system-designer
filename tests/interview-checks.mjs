@@ -39,7 +39,7 @@ assert.equal(progress.get('local-only'), null, 'backup replaces progress rather 
 assert.deepEqual(data.progress.legacy.interview, interviewReport, 'restored reports are saved through the store');
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
-const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
+const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.stack || e.message));
 const base = process.argv[2] || 'http://localhost:8765/';
 const click = text => page.evaluate(text => { const el = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === text && b.checkVisibility()); assertButton(el); function assertButton(el) { if (!el) throw new Error('Missing visible button: ' + text); el.click(); } }, text);
 try {
