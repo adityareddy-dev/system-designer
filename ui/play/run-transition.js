@@ -6,6 +6,8 @@ export function runEvidence(result) {
   const graph = result.graph;
   if (!graph?.nodes?.length) return [];
   if (!result.passed) {
+    const first = graph.nodes.find(n => n.id === result.firstFailure?.nodeId);
+    if (first) return [first];
     const measured = [...(result.nodes || [])];
     const cost = result.slo.cost.perMonth > result.slo.cost.budget;
     measured.sort((a, b) => cost ? b.usd - a.usd : b.failed - a.failed || b.peakUtil - a.peakUtil);
@@ -44,10 +46,15 @@ export function carryRunIntoReport({ host, stage, scene, result, catalog, interv
     const report = host.querySelector('.pl-debrief');
     if (!report || !parts.length) return;
     const measure = result.nodes?.find(n => n.id === parts[0].id);
-    const costMissed = result.slo.cost.perMonth > result.slo.cost.budget;
+    const first = result.firstFailure?.nodeId === parts[0].id ? result.firstFailure : null;
+    const costMissed = !first && result.slo.cost.perMonth > result.slo.cost.budget;
+    const name = parts[0].label || catalog.elementById.get(parts[0].type)?.name;
+    const heading = result.passed ? 'The path that held' : costMissed ? 'The part behind the cost' : first?.kind === 'routing' ? 'Where the route stopped' : first?.kind === 'dependency' ? 'The part to inspect' : 'The part that reached its limit';
     const detail = result.passed ? `${(result.slo.availability.actual * 100).toFixed(2)}% served through the day.`
-      : costMissed ? `${catalog.elementById.get(parts[0].type)?.name}: ≈ ${fmtUsd(measure?.usd || 0)} a month.`
-      : `${catalog.elementById.get(parts[0].type)?.name}: ${fmtNum(measure?.failed || 0)} failed requests · peak ${Math.round((measure?.peakUtil || 0) * 100)}% busy.`;
+      : costMissed ? `${name}: ≈ ${fmtUsd(measure?.usd || 0)} a month.`
+      : first?.kind === 'routing' ? `${name}: requests had no complete delivery route.`
+      : first?.util === null ? `${name}: capacity was unavailable when requests first failed.`
+      : `${name}: ${fmtNum(measure?.failed || 0)} failed requests · peak ${measure?.peakUtil > 5 ? 'over 500' : Math.round((measure?.peakUtil || 0) * 100)}% busy.`;
     const chain = h('div', { class: 'pl-run-chain', 'aria-label': parts.map(n => catalog.elementById.get(n.type)?.name).join(' to ') });
     parts.forEach((part, i) => {
       if (i) chain.append(h('span', { class: 'pl-run-arrow', 'aria-hidden': 'true', text: result.graph.edges.some(e => e.from === parts[i - 1].id && e.to === part.id) ? '→' : '…' }));
@@ -55,7 +62,7 @@ export function carryRunIntoReport({ host, stage, scene, result, catalog, interv
     });
     const evidence = h('section', { class: 'pl-run-evidence', 'data-outcome': result.passed ? 'pass' : 'fail' }, chain,
       h('div', { class: 'pl-run-evidence-copy' }, h('span', { class: 'pl-kicker', text: interview ? 'From traffic day to your defense' : 'From your traffic day' }),
-        h('h3', { text: result.passed ? 'The path that held' : costMissed ? 'The part behind the cost' : 'The part that reached its limit' }), h('p', { text: detail })));
+        h('h3', { text: heading }), h('p', { text: detail })));
     report.prepend(evidence); report.classList.add('pl-report-arriving');
-  }, { reduced, direction: 'forward' }).finally(() => sources.forEach(el => el.remove()));
+  }, { reduced, direction: 'forward', kind: 'run' }).finally(() => sources.forEach(el => el.remove()));
 }

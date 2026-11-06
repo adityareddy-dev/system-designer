@@ -151,7 +151,7 @@ export function mountShell(rootEl, ctx) {
         nav.querySelectorAll('.sh-tab').forEach(a => {
           if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
         });
-        const page = h('div', { class: 'sh-view' }); main.append(page);
+        const page = h('div', { class: 'sh-view' + (document.documentElement.dataset.transitioning ? ' sh-view--native' : '') }); main.append(page);
         try { view = error || !spec ? (page.append(notFound(error ? 'This page could not load. Check your connection and try again.' : undefined)), {}) : spec.make(mod, page, r) || {}; }
         catch (err) { console.error(err); page.append(notFound('Something went wrong drawing this page.')); view = {}; }
         finish(opts);

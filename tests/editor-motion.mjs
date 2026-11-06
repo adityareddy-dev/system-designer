@@ -103,6 +103,23 @@ try {
     assert(await page.$('.pl-run-evidence'), `${motion}: the same measured evidence survives every motion setting`);
     await page.goto(base + '#/practice'); await page.waitForSelector('.sh-practice-page');
     assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement, '::view-transition').pointerEvents), 'none');
+    if (motion === 'full') {
+      const clickable = await page.evaluate(async () => {
+        const { transitionScreen } = await import('./ui/shell/motion.js');
+        await transitionScreen(() => document.querySelector('.sh-main').dataset.test = 'changed');
+        const button = document.querySelector('#sh-theme-btn'), r = button.getBoundingClientRect();
+        return !!document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('#sh-theme-btn');
+      });
+      assert(clickable, 'shared header controls receive input during the transition');
+    }
+    await page.evaluate(async () => {
+      for (const route of ['settings', 'learn', 'practice']) {
+        location.hash = '#/' + route;
+        await new Promise(resolve => setTimeout(resolve, 40));
+      }
+    });
+    await sleep(500);
+    assert.deepEqual(await page.evaluate(() => window.__game.getState().errors), [], 'interrupting navigation produces no rejected transition promises');
     await page.close();
   }
   assert.deepEqual(errors, []);

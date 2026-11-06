@@ -1185,7 +1185,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if ((step === 'clarify' || step === 'numbers') && S.sim.phase !== 'build') return;
     if (animate && S.step !== step) {
       const order = ['clarify', 'numbers', 'draw', 'day', 'debrief'];
-      transitionScreen(() => { if (!S.destroyed) go(step); }, { reduced: ctx.reducedMotion(), direction: order.indexOf(step) < order.indexOf(S.step) ? 'back' : 'forward' });
+      const back = order.indexOf(step) < order.indexOf(S.step);
+      go(step);
+      if (!ctx.reducedMotion()) {
+        const entering = panel.hidden ? stage : panel;
+        const base = getComputedStyle(entering).transform;
+        entering.animate([{ opacity: .3, transform: `${base === 'none' ? '' : base} translateX(${back ? -24 : 24}px)` }, { opacity: 1, transform: base }], { duration: 240, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      }
       return;
     }
     S.step = step;

@@ -5,7 +5,7 @@ import { problemById } from '../content/problems/index.js';
 import { checkFor } from '../ui/play/design-check.js';
 
 const base=process.argv[2] || 'http://localhost:8765/';
-const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH || '/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--use-gl=swiftshader','--enable-unsafe-swiftshader']});
+const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH || '/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try {
   const errors=[];
   for (const [width,theme] of [[1366,'light'],[390,'dark']]) {
