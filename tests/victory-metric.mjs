@@ -1,6 +1,11 @@
 // A pass compares the measured repair, including a latency repair at unchanged availability.
 import assert from 'node:assert/strict';
-import { victoryMetric, victoryRepair } from '../ui/play/victory.js';
+import { victoryMetric, victoryRepair, cleanSweep } from '../ui/play/victory.js';
+const full = { passed: true, stars: 3, score: { total: 1000 }, slo: { safety: {} } };
+assert(cleanSweep(full));
+assert(!cleanSweep({ ...full, score: { total: 999 } }), 'even one lost point keeps the win quiet');
+assert(!cleanSweep({ ...full, efficiency: [{ savingPerMonth: 20 }] }), 'excess capacity is never a clean sweep');
+assert(!cleanSweep({ ...full, passed: false, slo: { safety: { promiseFailures: [{}] } } }), 'failed promises never celebrate');
 const result = { slo: { availability: { actual: 1, target: .999 }, latency: { worstP99Ms: 150 }, cost: { perMonth: 800, budget: 1000 } } };
 assert.equal(victoryMetric(result, { availability: .8, p99: 1200 }).label, 'Requests served');
 const latency = victoryMetric(result, { availability: 1, p99: 1200 });

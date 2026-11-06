@@ -16,6 +16,11 @@ export function victoryMetric(result, before) {
     target: availability.target * 100, label: 'Requests served', format: n => n.toFixed(2) + '%' };
 }
 
+export function cleanSweep(result) {
+  return result.passed && result.stars === 3 && result.score.total === 1000
+    && !(result.efficiency || []).length && !(result.slo.safety?.promiseFailures || []).length;
+}
+
 export function victoryRepair(graph, original) {
   const baseline = new Map((original?.nodes || []).map(n => [n.id, n]));
   const changed = new Set(graph.nodes.filter(n => {
@@ -57,6 +62,7 @@ export function victoryRepair(graph, original) {
 }
 
 export function showVictory(host, { result, before, original, catalog, reduced }) {
+  if (!result.passed) return;
   const graph = result.graph;
   if (!graph?.nodes?.length) return;
   const { changes, route } = victoryRepair(graph, original);
@@ -77,7 +83,7 @@ export function showVictory(host, { result, before, original, catalog, reduced }
     g.append(svg('text', { x: 0, y: 49, 'text-anchor': 'middle' }, name.replace(/\s*\([^)]*\)/g, '')));
     art.append(g);
   });
-  const clean = result.stars >= 3 && result.score.total >= 950;
+  const clean = cleanSweep(result);
   const { value, from, target, label, format } = victoryMetric(result, before);
   const metric = h('strong', { text: format(value) });
   const root = h('section', { class: 'pl-victory' + (clean ? ' pl-victory--sweep' : ''), 'aria-label': 'What earned this pass' },
