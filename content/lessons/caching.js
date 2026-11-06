@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "caching",
   "title": "Remembering answers",
@@ -84,14 +84,21 @@ export default {
         "node": "db",
         "op": "<=",
         "value": 0.7,
-        "between": {"type": "cache", "from": "app", "to": "db", "note": "A cache helps most between the servers and the database, so the servers ask it first. Drop it onto the line between them."}
+        "between": {
+          "type": "cache",
+          "from": "app",
+          "to": "db",
+          "note": "A cache helps most between the servers and the database, so the servers ask it first. Drop it onto the line between them."
+        }
       },
       "hint": "Drag Cache from the Data stores group onto the line from the servers to the database."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "caching",
+      "view": "main",
       "title": "Fresh versus fast",
-      "text": "A cache entry has a time to live (TTL), how long it is kept. A long TTL means more hits but older answers. A short TTL means fresher answers but more trips to the database."
+      "text": "Fill the cache, change the original, then read again. A TTL bounds how long this cached answer can survive without invalidation."
     },
     {
       "kind": "numbers",

@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "cdn",
   "title": "Copies near users",
@@ -7,10 +7,12 @@ export default {
   "summary": "A CDN keeps copies of files and pages close to people, so your servers see far fewer requests.",
   "steps": [
     {
-      "kind": "read",
+      "icon": "el.cdn",
+      "kind": "figure",
+      "figure": "cdn",
+      "view": "main",
       "title": "Do not cross the world for a picture",
-      "text": "Pictures, videos and pages that look the same for everyone can be copied to many small sites near people. That network of copies is a content delivery network (CDN). The nearest copy answers; your own servers are asked only when the copy is missing.",
-      "icon": "el.cdn"
+      "text": "A nearby copy saves the trip to origin only after it has the object. Try visitors at two different edges, then purge the copies."
     },
     {
       "kind": "demo",
@@ -83,7 +85,12 @@ export default {
         "node": "app",
         "op": "<=",
         "value": 0.7,
-        "between": {"type": "cdn", "from": "users", "to": "app", "note": "A CDN sits between the browser and the servers, so pages are answered close to the visitor. Drop it onto that line."}
+        "between": {
+          "type": "cdn",
+          "from": "users",
+          "to": "app",
+          "note": "A CDN sits between the browser and the servers, so pages are answered close to the visitor. Drop it onto that line."
+        }
       },
       "hint": "Drag CDN between the browser and the servers."
     },

@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "fanout",
   "title": "One post, millions of feeds",
@@ -96,9 +96,11 @@ export default {
       "hint": "Put a Queue and Worker pool on the write path so the copies are made in the background."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "fanout",
+      "view": "main",
       "title": "A mix",
-      "text": "Big systems mix both: copy into feeds for everyday accounts, and for celebrities merge their latest posts in when the feed is read."
+      "text": "Compare copying a post when it is written with merging it when a feed is opened. A mix can spare large authors the biggest write bursts."
     },
     {
       "kind": "numbers",

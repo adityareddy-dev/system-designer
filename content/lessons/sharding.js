@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "sharding",
   "title": "Splitting data",
@@ -86,9 +86,11 @@ export default {
       "hint": "Remove the single database, place Sharded SQL, connect the servers to it, and set Units to 4 or more."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "sharding",
+      "view": "main",
       "title": "Choosing the key",
-      "text": "A good key spreads people evenly, like a user id. A bad key piles them up, like a country with half your users. Questions across all shards, such as \"everyone named Sam\", are slower because every shard must answer."
+      "text": "A partition field decides which records must stay together. Compare user ids with a country that holds most users."
     },
     {
       "kind": "numbers",

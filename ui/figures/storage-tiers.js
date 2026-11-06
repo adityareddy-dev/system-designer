@@ -1,0 +1,6 @@
+// Age-based tier transitions with explicitly assumed storage and restore costs.
+import {mount,range,button,box,packet} from './bench.js';
+export const tierFor=age=>age<7?0:age<30?1:age<90?2:3;
+const tiers=['Hot','Warm','Cold','Archive'],prices=[20,10,4,1],waits=[0,0,1,240];
+export const model={note:'Model: one 100 GB object, ages 7/30/90 days trigger tier moves. Invented prices are $20/$10/$4/$1 per 100 GB-month, excluding retrieval and transfer fees. Restore delays of 0/0/1/240 minutes are scenario assumptions.',controls:[range('age','Object age (days)',0,120,0),button('week','Age by one week'),button('restore','Request a restore')],initial:()=>({age:0,restore:false,event:0}),update:(s,a,v)=>({...s,...(a==='week'?{age:Math.min(120,s.age+7)}:a==='restore'?{restore:true}:{age:v,restore:false}),event:s.event+1}),view(s){const tier=tierFor(s.age);return {svg:tiers.map((t,i)=>box(12,12+i*58,336,48,t,'',i===tier?'is-good':'')).join('')+packet('object',300,35+tier*58,300,35),caption:`At ${s.age} days the object is in ${tiers[tier].toLowerCase()} storage: $${prices[tier]} per month under these assumptions.${s.restore?' Restore wait: '+waits[tier]+' minutes.':''}`,stats:{'GB stored':100,'monthly cost ($)':prices[tier],'restore delay (min)':waits[tier]}};}};
+export const mountFigure=(h,c,s)=>mount(h,c,s,model);

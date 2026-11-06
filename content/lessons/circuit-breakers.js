@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "circuit-breakers",
   "title": "Timeouts and failing fast",
@@ -87,14 +87,21 @@ export default {
         "metric": "p99",
         "op": "<=",
         "value": 1000,
-        "between": {"type": "circuit-breaker", "from": "app", "to": "maps", "note": "The breaker goes between the servers and the map service, so a slow map cannot drag the servers down. Drop it onto that line."}
+        "between": {
+          "type": "circuit-breaker",
+          "from": "app",
+          "to": "maps",
+          "note": "The breaker goes between the servers and the map service, so a slow map cannot drag the servers down. Drop it onto that line."
+        }
       },
       "hint": "Set the servers' Timeout to 300 ms and place a Circuit breaker between the servers and the map service."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "circuit-breakers",
+      "view": "main",
       "title": "Open, closed, half open",
-      "text": "A closed breaker lets calls through. After too many failures it opens: calls fail at once, with a fallback such as \"map unavailable\". After about 30 seconds it half-opens to test one call, and closes if it works."
+      "text": "Closed calls go through. Repeated failures open the breaker; one probe after a cooldown tests whether it can close again."
     },
     {
       "kind": "numbers",

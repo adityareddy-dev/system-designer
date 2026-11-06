@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "search-indexing",
   "title": "Search is a copy",
@@ -89,9 +89,11 @@ export default {
       "hint": "Place a Search index and connect the servers to it. Then add a Change feed from the database to the index."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "search-indexing",
+      "view": "main",
       "title": "Slightly behind again",
-      "text": "The index is updated after the database changes, so a brand new item can take a second or more to become searchable (approx.). The database stays the source of truth; the index can be rebuilt from it."
+      "text": "The database is authoritative; the word index is a maintained copy. Change a document, search before delivery, then catch the index up."
     },
     {
       "kind": "numbers",

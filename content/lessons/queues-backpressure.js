@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "queues-backpressure",
   "title": "Waiting instead of breaking",
@@ -95,9 +95,11 @@ export default {
       "hint": "Place a Queue and Background workers, so the path is servers, queue, workers, database. Then give the workers enough units for the normal 1,500 writes a second (about 10, at about 200 jobs a second each, approx.), or the line grows all day and work waits past its limit. The size M database handles ≈ 2,000 writes/s, so adding workers beyond that cannot raise completed drain. The burst brings ≈ 4,500 writes/s: the queue must wait for arrivals to fall, or you must increase database capacity or slow senders."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "queues-backpressure",
+      "view": "main",
       "title": "Backpressure",
-      "text": "If the line keeps growing, the system must push back: slow senders, say \"try later\", or drop the least important work. Without it, the queue fills up and delays grow until the data is stale."
+      "text": "A queue buys time only when it can eventually drain. Admit more than the workers can serve, then bound the waiting work."
     },
     {
       "kind": "numbers",
