@@ -53,6 +53,7 @@ try {
       await page.evaluate(()=>{document.activeElement?.blur();document.body.focus();});
       await page.keyboard.press('Enter');
       await page.waitForSelector('.pl-design-check');
+      assert.equal(await page.$$eval('.pl-design-check .sh-choice[aria-pressed=true]', es=>es.length), 0, 'Enter opens the check without choosing its first answer');
       const test=checkFor(p);
       await page.evaluate(({answer,value})=>{
         const form=document.querySelector('.pl-design-check');
@@ -64,11 +65,13 @@ try {
       await page.waitForSelector('.pl-modal:not([hidden]) form select');
       await page.evaluate(choices=>{
         const form=[...document.querySelectorAll('.pl-modal:not([hidden]) form')].find(f=>f.querySelector('select'));
-        form.querySelectorAll('select').forEach((el,i)=>{el.value=String(choices[i]);});
+        form.querySelectorAll('select').forEach((el,i)=>{el.value=String(choices[i]);el.dispatchEvent(new Event('change',{bubbles:true}));});
         form.querySelector('input').value='Use stable identities, durable state and an explicit recovery policy across each failure boundary.';
+        form.querySelector('input').dispatchEvent(new Event('input',{bubbles:true}));
         form.requestSubmit();
       },p.correctness.fields.map(f=>f.correct));
       const result=await page.evaluate(()=>window.__game.step(86400000));
+      if (result.phase !== 'done') console.log('TRACE STATE', JSON.stringify(await page.evaluate(() => ({ header:document.querySelector('.sh-problem-h1')?.textContent, modal:document.querySelector('.pl-modal')?.textContent, fields:[...document.querySelectorAll('.pl-modal select')].map(s=>s.value), invalid:[...document.querySelectorAll('.pl-modal input')].map(e=>({value:e.value,error:e.validationMessage})),feedback:document.querySelector('.pl-modal [role=status]')?.textContent,phase:window.__game.getState().phase }))));
       assert.equal(result.phase,'done',id+' day finishes');
       assert(result.score.passed,id+' browser reference passes '+JSON.stringify(result.score));
       assert.deepEqual(result.errors,[]);
