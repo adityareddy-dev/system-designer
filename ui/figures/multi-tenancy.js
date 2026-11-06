@@ -6,6 +6,6 @@ export const model={note:'Model: six tenants, four workers with eight slots per 
  controls:[range('flood','Noisy tenant requests',4,100,60),toggle('quota','Per-tenant quota'),toggle('fair','Fair queueing'),toggle('shuffle','Shuffle sharding'),button('run','Dispatch one round')],
  initial:()=>({flood:60,quota:false,fair:false,shuffle:false,round:0,event:0}),
  update(s,a,v){return {...s,...(a==='run'?{round:s.round+1}:{[a]:v}),event:s.event+1};},
- view(s){const r=dispatch(s);return {svg:bars(r.served.map((n,i)=>[i?'Tenant '+String.fromCharCode(65+i):'Noisy A',n,i&&n<4?'is-bad':'']),32)+r.used.map((n,i)=>packet('worker'+i,135+n*4.5,18+i*37,135,18+i*37)).join(''),caption:`Round ${s.round}: ${r.hurt} of 5 quiet tenants received fewer than 4 slots. Noisy A got ${r.served[0]} of ${s.flood}; ${r.used.reduce((a,b)=>a+b,0)} of 32 worker slots used.`,stats:{'other tenants hurt':r.hurt,'noisy requests served':r.served[0],'quiet requests served':r.served.slice(1).reduce((a,b)=>a+b,0)}};}
+ view(s){const r=dispatch(s);return {svg:bars(r.served.map((n,i)=>[i?'Tenant '+String.fromCharCode(65+i):'Noisy A',n,i&&n<4?'is-bad':'']),32),caption:`Round ${s.round}: ${r.hurt} of 5 quiet tenants received fewer than 4 slots. Noisy A got ${r.served[0]} of ${s.flood}; ${r.used.reduce((a,b)=>a+b,0)} of 32 worker slots used.`,stats:{'other tenants hurt':r.hurt,'noisy requests served':r.served[0],'quiet requests served':r.served.slice(1).reduce((a,b)=>a+b,0)}};}
 };
 export const mountFigure=(h,c,s)=>mount(h,c,s,model);
