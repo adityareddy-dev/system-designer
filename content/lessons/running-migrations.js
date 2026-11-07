@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: how long it takes",
-      "text": "A table has 500 million rows. At a safe 5,000 rows/s, a backfill alone takes 100,000 seconds, or about 27.8 hours. At 500 bytes/row that is about 250 GB of logical data before indexes and replicas. Retries, live changes and reconciliation make the real operation longer. If writes continue at 2,000/s and the change consumer handles 5,000/s, a backlog of 30 million changes drains at 3,000/s, about 2.8 hours. A canary might start at 1%, then 5%, 25% and all eligible traffic, but percentages do not replace minimum observation time or coverage of large tenants. The sim does not execute schema changes row by row."
+      "text": "Retries, live changes, reconciliation, indexes and replicas add work beyond these lower bounds. A canary might admit 1%, 5%, 25% and then all eligible traffic. Percentages do not replace minimum observation time or coverage of large tenants. The traffic engine does not execute schema changes row by row.",
+      "diagram": {
+        "label": "Copy time and catch-up time differ",
+        "parts": [
+          [
+            "Backfill: 27.8 hours",
+            "500 million rows / 5,000 rows/s. About 250 GB at 500 bytes/row."
+          ],
+          [
+            "Catch up: 2.8 hours",
+            "30 million changes / (5,000 − 2,000 live changes/s)."
+          ],
+          [
+            "Verify before routing",
+            "Include minimum observation time and large-tenant coverage in the canary."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -68,7 +85,24 @@ export default {
     {
       "kind": "read",
       "title": "Rollback is a data decision",
-      "text": "Before cutover, define which versions can read new writes and what happens to writes accepted during the canary. A code rollback is unsafe if the old code cannot understand the new representation. Preserve compatible writes or provide a tested reverse transform where possible. Watch mismatch rate, lag, p99, lock time and support signals with stop thresholds. Agree ownership with application and data teams, on-call, security and product; support needs user-facing failure states. Reserve time for review, a full backfill, verification, staged traffic, a stable rollback period and old-client deprecation. Calendar time can be weeks even when copying bytes takes a day."
+      "text": "Define which reader versions understand new writes and what happens to writes accepted during a canary. A code rollback is unsafe when old readers cannot understand the new representation. Preserve compatible writes or test a reverse transform. Agree ownership with application and data teams, on-call, security, product and support. Calendar time can be weeks even when copying bytes takes a day.",
+      "diagram": {
+        "label": "Rollback follows the data",
+        "parts": [
+          [
+            "Preserve old readers",
+            "Keep compatible writes during backfill and the canary."
+          ],
+          [
+            "Watch stop thresholds",
+            "Mismatch rate, lag, p99 and lock time can pause the rollout."
+          ],
+          [
+            "Contract only after proof",
+            "Dropping old data ends a code-only rollback. Reserve a stable rollback period first."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",

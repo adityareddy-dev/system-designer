@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: burn rate",
-      "text": "Burn rate is observed bad fraction divided by allowed bad fraction. At 1.44% failures against a 99.9% target, burn is 14.4. One hour at that rate uses about 14.4/720 = 2% of a 30-day budget under steady traffic. An example fast page requires burn above 14.4 in both the last hour and the last five minutes. The long window establishes impact; the short window checks that it is still happening. A slower page might require burn above 6 in both six hours and thirty minutes. Six hours at burn 6 uses about 5% of the budget. These are starting policies with worked assumptions, not universal thresholds or a simulated alert evaluator."
+      "text": "The fast policy requires high burn in both windows. A slower policy can use six hours and thirty minutes at burn above 6. Under steady traffic, six hours at burn 6 spends about 5% of a 30-day budget. These are starting policies under explicit assumptions, not universal thresholds. Measure the user outcome independently of trace sampling.",
+      "diagram": {
+        "label": "Two windows must agree",
+        "parts": [
+          [
+            "Allowed failures: 0.1%",
+            "A 99.9% SLO defines the denominator."
+          ],
+          [
+            "Observed failures: 1.44%",
+            "1.44 / 0.1 = 14.4 times burn. One hour spends about 2% of a steady 30-day budget."
+          ],
+          [
+            "Page only while active",
+            "Both the 1-hour and 5-minute windows must exceed the fast threshold."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -68,7 +85,24 @@ export default {
     {
       "kind": "read",
       "title": "Make a page worth answering",
-      "text": "Combine each pair with AND, then combine fast and slow policies with OR. Deduplicate related pages and attach an owner, dashboard and runbook. Recovered short windows should stop paging even if a long window still contains an old incident. Low-traffic services need special handling: a handful of failures can produce unstable percentages, so consider minimum event counts, synthetic checks and user-impact judgement. Avoid hiding a critical small population in a global average; define important cohorts. Keep all eligible-request counters independent of biased trace sampling. Review pages that needed no action and incidents that produced no page. Alert fatigue is a design failure with a human cost."
+      "text": "Give each page an owner, dashboard and runbook. Low traffic can turn a handful of failures into unstable percentages; consider minimum event counts, synthetic checks and user impact. Define important cohorts so a global average cannot hide a critical small population. Review both pages requiring no action and incidents that produced no page. Alert fatigue has a human cost.",
+      "diagram": {
+        "label": "A useful page is a decision",
+        "parts": [
+          [
+            "Long AND short",
+            "A long window establishes impact. A short window checks it is still happening."
+          ],
+          [
+            "Fast OR slow",
+            "Either paired policy can page the owner. Deduplicate related incidents."
+          ],
+          [
+            "Recovery stops paging",
+            "The short window clears even while the long window still includes old failures."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",

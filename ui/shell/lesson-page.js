@@ -4,8 +4,10 @@ import { mountPlayHost } from './playhost.js';
 import { modal } from './overlay.js';
 import { transferFor, transferCorrect } from '../../content/transfers.js';
 import { sceneMarkup } from '../../assets/scenes/index.js';
+import { lessonScene } from '../../assets/scenes/workloads.js';
 import { mountAllocation } from './allocation.js';
 import { drawDefend } from './defend.js';
+import { lessonVisualStyles, readingDiagram } from './lesson-visuals.js';
 
 function notFoundLesson() {
   return h('div', { class: 'sh-page sh-page--narrow sh-empty' },
@@ -64,10 +66,12 @@ export function renderLesson(host, ctx, route) {
   if (!lesson) { host.append(notFoundLesson()); return {}; }
   if (lesson.id === 'intro') { ctx.router.replace('#/intro'); return {}; }
 
-  const transfer = transferFor(lesson.id);
+  lessonVisualStyles();
+  const transfer = lesson.transfer || transferFor(lesson.id);
   const steps = [...(lesson.steps || []), ...(transfer ? [transfer] : [])];
   let transferDone = false;
   const defenses = new Map();
+  const estimates = new Map();
   let poolOff = null;
   let figure = null;
   let figureVersion = 0;
@@ -126,7 +130,7 @@ export function renderLesson(host, ctx, route) {
     body.append(card);
     if (step.kind === 'read' && !step.tap && (idx === 0 || !lesson.steps.some(s => s.kind === 'figure'))) {
       card.classList.add('sh-lp-card--illustrated');
-      card.append(h('figure', { class: 'sh-concept-plate', 'aria-label': `${lesson.title}: a diagram of the mechanism`, html: sceneMarkup(lesson.id) }));
+      card.append(h('figure', { class: 'sh-concept-plate', 'aria-label': `${lesson.title}: the people behind the workload`, html: sceneMarkup(lessonScene(lesson.id)) }));
     }
     if (step.kind === 'read' && step.tap) {
       drawTap(card, step);
@@ -134,6 +138,7 @@ export function renderLesson(host, ctx, route) {
       append(card, [
         step.icon ? h('div', { class: 'sh-lp-hero-ico' }, ico(step.icon, 40)) : null,
         step.title ? h('h2', { class: 'sh-h2', text: step.title }) : null,
+        step.diagram ? readingDiagram(step.diagram) : null,
         h('p', { class: 'sh-lp-text', text: step.text }),
         navRow({})]);
     } else if (step.kind === 'figure') {
@@ -265,8 +270,24 @@ export function renderLesson(host, ctx, route) {
       h('div', { class: 'sh-demo-prompt' }, ico('ui.sandbox', 20), h('p', { class: 'sh-lp-text', text: step.prompt })),
       hintBox);
     const stage = h('div', { class: 'sh-demo-stage' });
-    if (lesson.id === 'load-balancing') poolOff = mountAllocation(card, ctx);
-    card.append(stage, h('div', { class: 'sh-lp-nav' },
+    const guidance = h('div', { class: 'sh-demo-guidance', hidden: !estimates.has(idx) });
+    // Keep the workbench's sizing advice out of view until the learner records a first estimate.
+    {
+      const saved=estimates.get(idx);
+      const recorded=value=>step.estimate?`Your first estimate: ${value} servers. Test it below, then compare with the measured load.`:`Your first prediction: ${value}`;
+      const receipt=h('p',{class:'sh-estimate-receipt',hidden:!saved,text:saved?recorded(saved):''});
+      stage.hidden=!saved;
+      const input=step.estimate?h('input',{class:'sh-input',type:'number',min:'1',max:'10000',step:'1',required:true,'aria-label':'Your first server estimate'}):h('textarea',{class:'sh-input',rows:'3',required:true,'aria-label':'Your first prediction'});
+      const form=h('form',{class:'sh-estimate-form',hidden:!!saved,onsubmit:event=>{
+        event.preventDefault();if(!input.checkValidity()||!input.value.trim())return;
+        estimates.set(idx,input.value);receipt.textContent=recorded(input.value);
+        receipt.hidden=false;stage.hidden=false;guidance.hidden=false;form.hidden=true;hintBtn&&(hintBtn.hidden=false);
+      }},h('h2',{class:'sh-h2',text:step.estimate?'Make your first estimate':'Predict before you try'}),h('p',{class:'sh-lp-text',text:step.estimate||'Name the first limit you would measure. Predict what will happen to the user outcome after your first change, then test it in the workbench.'}),h('label',null,h('span',{text:step.estimate?'How many app servers would you start with?':'What do you expect, and why?'}),input),h('button',{class:'sh-btn sh-btn--primary',type:'submit',text:step.estimate?'Commit my estimate':'Commit my prediction'}));
+      if(hintBtn)hintBtn.hidden=!saved;
+      card.append(form,receipt);
+    }
+    if (lesson.id === 'load-balancing') poolOff = mountAllocation(guidance, ctx);
+    card.append(guidance, stage, h('div', { class: 'sh-lp-nav' },
       idx > 0 ? h('button', { type: 'button', class: 'sh-btn sh-btn--ghost', onclick: () => go(idx - 1) }, ico('ui.chevron-left', 18), 'Back') : h('span'),
       hintBtn, cont));
     play = mountPlayHost(stage, ctx, { mode: 'lesson', lesson: touchWording(lesson), stepIndex: idx, seed: 'lesson-' + lesson.id });

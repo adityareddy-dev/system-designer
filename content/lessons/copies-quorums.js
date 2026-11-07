@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: a zone goes dark",
-      "text": "Put one replica in each of three zones. R = 2 and W = 2 can continue with one replica down, if both remaining replicas answer. W = 3 cannot complete then. Suppose local durable work is 2 ms and reaching the fastest remote replica adds a 3 ms round trip. A write waiting for local plus remote has a rough floor of 5 ms. If it needs an 80 ms cross-region trip instead, expect about 82 ms before queueing. Fan-out can be parallel; do not sum every replica trip. The sim cannot reproduce individual replica acknowledgements, so these are protocol calculations."
+      "text": "Replica trips can happen in parallel. The write waits for its required responders, not the sum of every trip. Quorum overlap depends on fixed membership and version reconciliation; it does not by itself prove linearizability. The traffic engine does not reproduce individual acknowledgements.",
+      "diagram": {
+        "label": "Failure boundary",
+        "parts": [
+          [
+            "3 zones, 3 replicas",
+            "R = 2 and W = 2 need both survivors after losing one replica. W = 3 cannot complete."
+          ],
+          [
+            "Local + remote",
+            "2 ms durable work + 3 ms remote round trip gives a rough 5 ms floor."
+          ],
+          [
+            "Cross a region",
+            "An 80 ms trip gives about 82 ms before queueing. Parallel fan-out does not sum every replica trip."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -68,7 +85,24 @@ export default {
     {
       "kind": "read",
       "title": "Repair is scheduled work",
-      "text": "Read repair compares returned versions and updates stale replicas on the read path. Hinted handoff stores a reminder of a missed write and replays it when the missing owner returns. Hints have bounded lifetime and consume disk; they do not replace anti-entropy repair of all ranges. A quiet record may never be read. Repair within the deletion-retention window. In Cassandra, a replica that missed a deletion can resurrect data after the tombstone is purged. If the outage exceeds that window, rebuild the stale replica from current data rather than trusting ordinary repair alone. Otherwise compare and repair all affected ranges before declaring it current. Keep repair bandwidth below the level that breaks foreground requests. Count physical copies in the storage bill, and place them across failure domains rather than three processes on one host."
+      "text": "Read repair fixes versions encountered by reads; a quiet record may never be read. Hinted handoff remembers missed writes for a bounded time and consumes disk. Neither replaces anti-entropy repair of all ranges. Repair within the deletion-retention window. A replica absent beyond it may need rebuilding to prevent a purged tombstone from resurrecting data. Verify every affected range and keep repair below the bandwidth that harms foreground requests.",
+      "diagram": {
+        "label": "Repair competes for capacity",
+        "parts": [
+          [
+            "Detect a gap",
+            "Compare versions and checksums; a live replica can still be stale."
+          ],
+          [
+            "Budget repair traffic",
+            "Keep disk and network headroom for foreground requests."
+          ],
+          [
+            "Verify convergence",
+            "Track oldest gap, bytes remaining and failed repairs."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",

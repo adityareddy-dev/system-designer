@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: cardinality and bytes",
-      "text": "Suppose 100 services each expose 20 routes in 3 regions with 5 status classes. If all combinations exist, one metric has 30,000 series. Sampling every 15 seconds gives 2,000 samples/s. At the catalog's roughly 1.5 compressed bytes/sample, 15 days hold about 3.89 GB of sample payload before replication, indexes and metadata. Multiplying by a million possible request ids can make the upper bound enormous, though actual cardinality depends on observed combinations. At an assumed 2 KB of active metadata per series, even 10 million active series need about 20 GB before samples. This example is not a simulated memory allocation."
+      "text": "Each distinct metric name and label set identifies a series. A request_id label can add a new series for almost every request. The theoretical product of label values is an upper bound; observed combinations determine actual cardinality. Payload and metadata have different costs. This worksheet is not a simulated memory allocation.",
+      "diagram": {
+        "label": "Labels multiply before samples arrive",
+        "parts": [
+          [
+            "30,000 series",
+            "100 services × 20 routes × 3 regions × 5 statuses."
+          ],
+          [
+            "2,000 samples/s",
+            "One sample every 15 seconds. About 3.89 GB over 15 days at 1.5 B/sample."
+          ],
+          [
+            "Metadata comes too",
+            "10 million active series × 2 KB is about 20 GB, before sample payload."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -68,7 +85,24 @@ export default {
     {
       "kind": "read",
       "title": "Do not let queries starve writes",
-      "text": "A query frontend splits long time ranges into bounded pieces and schedules them across workers. Each worker selects relevant blocks and series, then merges partial results. Cache historical results with tenant, authorization scope and full query semantics in the key. Immutable blocks do not guarantee immutable results: late data, deletions, lookback windows and query evaluation times can change them. Use a stable-data cutoff, invalidation or a bounded TTL. Fresh ranges need a short TTL or an explicit cutoff. Limit query concurrency, scanned bytes, range length, samples and wall time per tenant, independently of ingest limits. Limit active series, new-series rate and samples/s on writes. Fair queues let a small tenant make progress beside an expensive scan. Replication multiplies recent write work; object storage durability is a separate mechanism. Measure both query p99 and data freshness, since acknowledging buffered writes is not the same as making them queryable."
+      "text": "Split long queries into bounded pieces and schedule them fairly. Cache keys need tenant, authorization scope and full query semantics. Immutable blocks do not guarantee immutable results: late data, deletions and evaluation time can change an answer. Use a stable-data cutoff, invalidation or bounded TTL. Replication of recent writes and object storage durability are separate mechanisms. Acknowledging buffered samples does not make them queryable.",
+      "diagram": {
+        "label": "Separate query and ingest budgets",
+        "parts": [
+          [
+            "Ingest admission",
+            "Bound active series, new series/s and samples/s per tenant."
+          ],
+          [
+            "Query admission",
+            "Bound scanned bytes, time range, concurrency and wall time."
+          ],
+          [
+            "Keep fresh writes visible",
+            "Measure data freshness as well as query p99. A buffered write is not yet queryable."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",

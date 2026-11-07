@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: the on-call bill",
-      "text": "Assume four services each produce two actionable pages a week, and each page consumes 45 minutes including follow-up. That is eight pages and six hours/week, or about 312 hours/year. If only three engineers can operate the stack, those pages and recovery work constrain delivery. Combining services will not automatically remove pages; eliminating duplicated failure paths or clarifying ownership might. For an API deprecation with 200 callers, suppose 180 migrate in month one. The last 20 may include the least observable batch jobs. Count actual endpoint use and caller identity rather than declaring 90% migration complete enough. This is an operating model, not a simulated page count."
+      "text": "An operating model constrains delivery even when the infrastructure bill is small. Combining services does not automatically remove pages; eliminating repeated failure paths or clarifying ownership may help. The last callers in an API migration can include the least observable batch jobs. This is an operating worksheet, not a simulated page count.",
+      "diagram": {
+        "label": "Count the operating bill",
+        "parts": [
+          [
+            "8 pages/week",
+            "4 services × 2 actionable pages each."
+          ],
+          [
+            "312 hours/year",
+            "8 × 45 minutes × 52 weeks. Three operators still need delivery time."
+          ],
+          [
+            "20 callers remain",
+            "180 of 200 migrated. Identify the last batch jobs before retiring the old API."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -68,7 +85,24 @@ export default {
     {
       "kind": "read",
       "title": "Write a document people can disagree with",
-      "text": "Start with the problem, user promises, explicit non-goals and measured constraints. Show one request path, data ownership and the key invariant. Record alternatives and why they lost, then failures, costs, security boundaries, rollout and open questions. Ask reviewers to challenge a specific decision. API contracts need field semantics, error states, idempotency, rate limits and compatibility rules; data contracts need schema, meaning, freshness and deletion behavior. Prefer additive changes, tolerant readers where safe and explicit versions for incompatible meaning. Publish deprecation dates, contact owners, instrument use, offer a migration path and test old clients. Remove the old endpoint only with evidence that consumers have moved or under an agreed exception policy. An empty dashboard is not proof if an annual job has not run."
+      "text": "Start a design document with user promises, non-goals and measured constraints. Show the request path, data owner and invariant, then alternatives, failure cases, cost and open questions. Ask reviewers to challenge one decision. Prefer additive changes and explicit versions for incompatible meaning. Publish deprecation dates, contact consumers and agree exception policies. A quiet dashboard cannot prove that an annual caller has migrated.",
+      "diagram": {
+        "label": "A contract needs evidence",
+        "parts": [
+          [
+            "Publish the meaning",
+            "Fields, errors, freshness, deletion and compatibility need explicit semantics."
+          ],
+          [
+            "Observe actual consumers",
+            "Instrument caller identities. An annual job may be absent from a quiet dashboard."
+          ],
+          [
+            "Retire with agreement",
+            "Offer migration paths, contact owners and test old clients before removal."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",

@@ -70,7 +70,24 @@ export default {
     {
       "kind": "read",
       "title": "Partitions and ordinary days",
-      "text": "CAP says that during a network partition you cannot guarantee both linearizable behavior and a successful response to every request at every nonfailed node. Its availability definition is stricter than an uptime percentage. It does not say pick two features forever, and partition tolerance is not a convenient switch in a real network. PACELC extends this: during partitions, consider availability versus consistency; otherwise ask what latency you pay for coordination to get the chosen consistency. Suppose an app and local store take 10 ms while a remote round trip takes 80 ms. A protocol requiring that remote reply has a rough floor near 90 ms. Choose per screen: session versions or primary reads for confirmation, a serializable reservation for the last seat, and bounded staleness for a public count. State how each screen behaves while separated."
+      "text": "On an ordinary day, stronger reads still pay for coordination, distance or waiting. During a partition, a node cannot both answer every request and guarantee the strongest view. Session guarantees can offer a narrower promise, such as seeing your own save. Define the required observation per operation and explain the degraded behavior instead of choosing one consistency label for the whole product.",
+      "diagram": {
+        "label": "A missing reply forces a choice",
+        "parts": [
+          [
+            "Replica cannot catch up",
+            "The network may be slow or partitioned. A timeout cannot distinguish them."
+          ],
+          [
+            "Wait or reject",
+            "Preserve the strong guarantee at the cost of availability."
+          ],
+          [
+            "Serve an older value",
+            "Keep a weaker read path available and expose its freshness."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",
