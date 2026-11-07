@@ -39,6 +39,7 @@ export function lessonVisualStyles(){
  .sh-estimate-form{display:grid;gap:16px;padding:24px;border:1px solid var(--border-strong);background:var(--canvas);border-radius:8px}
  .sh-estimate-form label{display:grid;gap:8px}.sh-estimate-form .sh-input{width:100%;max-width:360px}
  .sh-estimate-receipt{border-left:3px solid var(--cat-compute);padding-left:12px;font-size:14px;color:var(--text-2)}
+ .sh-lesson-page .sh-lp-card--demo .sh-demo-prompt[data-prediction-brief]{max-height:none;overflow:visible}
  .sh-demo-prompt[hidden],.sh-demo-stage[hidden],.sh-demo-guidance[hidden],.sh-estimate-form[hidden],.sh-estimate-receipt[hidden],.sh-lp-card--demo .sh-btn[hidden]{display:none}
  @media(max-width:719px){.sh-reading-figure{padding:16px}.sh-reading-parts{grid-template-columns:1fr;gap:22px}.sh-reading-parts[data-flow] li+li:before{content:'↓';left:auto;right:4px;top:-23px}.sh-estimate-form{padding:16px}}
  `});document.head.append(style);

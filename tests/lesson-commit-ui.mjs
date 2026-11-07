@@ -6,6 +6,7 @@ const base=process.argv[2]||'http://localhost:8765/';
 const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:'new',args:['--no-sandbox']});
 try{
  const page=await browser.newPage();
+ await page.setViewport({width:390,height:844,isMobile:true,hasTouch:true});
  await page.evaluateOnNewDocument(()=>{localStorage.setItem('hotpath.v1.seenIntro','true');localStorage.setItem('lesson-estimate-sentinel','keep');});
  for(const lesson of lessons.filter(l=>l.id!=='intro'))for(const [i,s]of lesson.steps.entries())if(s.kind==='demo'){
   // Reload to test the first visit rather than an in-memory prediction.
@@ -15,6 +16,7 @@ try{
   assert.deepEqual(before,{stage:0,hints:0,advice:false},lesson.id+' hides sizing and hints before commitment');
   assert(await page.$eval('[data-demo-instructions]',e=>!e.getClientRects().length),'worked instructions wait for a prediction');
   assert(await page.$eval('[data-prediction-brief]',e=>e.innerText.trim().length>25),'the prediction has workload facts');
+  assert(await page.$eval('[data-prediction-brief]',e=>e.scrollHeight<=e.clientHeight+1),'all workload facts fit without a nested scroll');
   const input=await page.$('.sh-estimate-form input,.sh-estimate-form textarea');
   await input.type(s.estimate?'9':'I expect the downstream limit to dominate. I would measure queue age and useful completions before adding capacity.');
   await page.click('.sh-estimate-form button[type=submit]');
