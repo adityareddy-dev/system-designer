@@ -116,7 +116,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, HALF + 6);
     v.labelT = makeText('', 12, P.text2, false, '500', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
-    v.evidenceT = makeText('', 11, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
+    v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
     v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
     v.leader = new PIXI.Graphics();
     v.regionC = new PIXI.Container(); v.regionC.y = -HALF - 12; v.regionC.visible = false;
@@ -462,7 +462,7 @@ export function createNodeLayer(PIXI, parent, env) {
       v.evidenceT.text = failRps > .5 ? `× ${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(failRps)}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Requests recovered' : '';
       if (live && v.kind === 'queue' && v.telemetry) v.evidenceT.text = queuePressure(v.telemetry).text;
       else if (live && v.telemetry?.retryRps > .5) v.evidenceT.text += `\n↶ ${count(v.telemetry.retryRps)}/s retry`;
-      v.evidenceT.style.fill = failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
+      v.evidenceT.style.fill = (v.kind === 'queue' && queuePressure(v.telemetry).late) || failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
       if (!live) {
         if (v.live) {
           v.live = false; v.busy.clear(); v.drawnU = -1; v.drawnColor = -1; v.statusG.visible = false;
@@ -555,14 +555,14 @@ export function createNodeLayer(PIXI, parent, env) {
     // Below full zoom the names grow (up to 4.5 times, the lowest zoom) so they stay at about 13 px on screen (the base size is 12 px).
     setLabelScale(z) {
       detailZoom = z >= 1.05;
-      for (const v of list) v.icon.width = v.icon.height = detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z));
+      for (const v of list) { v.icon.width = v.icon.height = detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z)); v.evidenceT.scale.set(1 / Math.max(.01, z)); }
       const px = 13;
       const k = Math.max(1, px / (12 * Math.max(0.01, z)));
       if ((z < .65) !== compact) { compact = z < .65; for (const v of list) showLabel(v); }
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
       if (Math.abs(k - labelK) < 0.0001) return;
       labelK = k;
-      for (const v of list) { v.labelT.scale.set(k); v.evidenceT.scale.set(k); }
+      for (const v of list) v.labelT.scale.set(k);
     },
     setTextResolution(r) {
       if (r === textRes) return;
