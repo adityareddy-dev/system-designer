@@ -1,6 +1,6 @@
 // Edge views: smooth cubic curves between ports, load-scaled width, direction chevrons, dashed links, hot-path glow ropes.
 
-import { routePoints, routedLut, inkPath } from './routing.js';
+import { createRouter, routedLut, inkPath } from './routing.js';
 import { makeLut, edgeSides, lutAt, distToLut, LUT_SEGS } from './geom.js';
 
 const MAX_GLOWS = 12;
@@ -140,9 +140,8 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
     },
     invalidateGeometry() { structDirty = true; },
     // Recomputes curves when nodes moved or edges changed; ports on a shared side fan out in order.
-    updateGeometry(nodeViews, zoom = 1) {
-      let moved = structDirty || this.routeZoom !== Math.round(zoom * 100);
-      this.routeZoom = Math.round(zoom * 100);
+    updateGeometry(nodeViews) {
+      let moved = structDirty;
       for (const v of list) {
         const a = nodeViews.get(v.from), b = nodeViews.get(v.to);
         if (!a || !b) { if (v.ok) { v.ok = false; v.dirty = true; } continue; }
@@ -172,15 +171,23 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
         const gap = n > 1 ? Math.min(12, 44 / (n - 1)) : 0;
         g.forEach((it, i) => { const off = (i - (n - 1) / 2) * gap; if (it.end === 0) it.v.oa = off; else it.v.ob = off; });
       }
+      const endpoints = new Map();
+      for (const v of list) {
+        const a = nodeViews.get(v.from), b = nodeViews.get(v.to);
+        if (!a || !b) continue;
+        const sign = b.x >= a.x ? 1 : -1;
+        endpoints.set(v.id, [[a.x + sign * ((a.renderHalf||44)+8), a.y + (v.oa || 0)], [b.x - sign * ((b.renderHalf||44)+8), b.y + (v.ob || 0)]]);
+      }
+      const router = createRouter(obstacles, [...endpoints.values()].flat());
       for (const v of list) {
         const a = nodeViews.get(v.from), b = nodeViews.get(v.to);
         if (!a || !b) continue;
         v.ax = a.x; v.ay = a.y; v.bx = b.x; v.by = b.y;
         // Side ports leave a short clear stub before entering shared routing corridors.
         const sign = b.x >= a.x ? 1 : -1;
-        const start = [a.x + sign * ((a.renderHalf||44)+8), a.y + (v.oa || 0)], end = [b.x - sign * ((b.renderHalf||44)+8), b.y + (v.ob || 0)];
+        const [start, end] = endpoints.get(v.id);
         // Endpoint bodies are obstacles too, apart from their own port stubs.
-        const points = routePoints(start, end, obstacles);
+        const points = router.route(start, end);
         routedLut(v.lut, [[a.x + sign * (a.portHalf||36), start[1]], ...points, [b.x - sign * (b.portHalf||36), end[1]]]);
         const { lut } = v;
         v.minX = Math.min(...lut.xs) - 16; v.maxX = Math.max(...lut.xs) + 16;

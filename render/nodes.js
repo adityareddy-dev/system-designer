@@ -414,9 +414,11 @@ export function createNodeLayer(PIXI, parent, env) {
     // Names and failure facts get separate, fixed-width lanes.
     layoutLabels(camera, area) {
       const z = camera.zoom, P = env.kit().P;
-      const key = [Math.round(z*1000), camera.center.x.toFixed(1), camera.center.y.toFixed(1), JSON.stringify(area), ...list.map(v=>`${v.x.toFixed(1)},${v.y.toFixed(1)},${v.labelT.text},${v.evidenceT.visible}`)].join('/');
+      // Panning translates captions with their parts without changing world-space obstacles.
+      const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live}`)].join('/');
       if (key === this.captionKey) return false;
       this.captionKey = key;
+      const previous = list.map(v => [v.renderHalf, v.captionBoxes]);
       const free = { x:area?.l||8,y:area?.t||8,width:camera.size.w-(area?.l||8)-(area?.r||8),height:camera.size.h-(area?.t||8)-(area?.b||8) };
       const parts = list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.live&&v.kind==='queue'?Math.max(42*z,26):42*z;v.portHalf=half/z-6;v.renderHalf=half/z;return {x:p.x-half-8,y:p.y-half,width:half*2+16,height:half*2};});
       const occupied = [...parts];
@@ -442,7 +444,8 @@ export function createNodeLayer(PIXI, parent, env) {
       const factsById=new Map();
       for(const v of ordered.filter(v=>v.evidenceT.visible).sort((a,b)=>Number(b.evidenceT.text.startsWith('First limit'))-Number(a.evidenceT.text.startsWith('First limit')))){
         const p=camera.worldToScreen(v.x,v.y);
-        const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-(v.kind==='queue'?58:76)-8,width:114,height:v.kind==='queue'?58:76},p);
+        const height = v.kind === 'queue' ? 112 : 76;
+        const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-height-8,width:114,height},p);
         factsById.set(v.id,facts);if(visible(p))occupied.push(facts);
       }
       for (const v of ordered) {
@@ -464,7 +467,11 @@ export function createNodeLayer(PIXI, parent, env) {
         v.captionBoxes=boxes.map(r=>({x:v.x+(r.x-p.x)/z-4/z,y:v.y+(r.y-p.y)/z-4/z,width:(r.width+8)/z,height:(r.height+8)/z}));
         v.captionScreen=name;
       }
-      return true;
+      return list.some((v,i) => {
+        const [half, boxes] = previous[i];
+        return half !== v.renderHalf || !boxes || boxes.length !== v.captionBoxes.length || boxes.some((r,j) =>
+          ['x','y','width','height'].some(k => Math.abs(r[k] - v.captionBoxes[j][k]) > .01));
+      });
     },
     // Live values from the flow frame; pass live = false to hide them (build phase).
     setLive(v, live, util = 0, status = 0, queue = 0, over = 0, pileType = -1, failRps = 0) {
@@ -538,6 +545,7 @@ export function createNodeLayer(PIXI, parent, env) {
       }
     },
     applyKit(kit) {
+      this.captionKey = null;
       const P = kit.P;
       for (const v of [...list, ...dying]) {
         v.glow.texture = kit.fx.glow; v.pulse.texture = kit.fx.ring;

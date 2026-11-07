@@ -2,6 +2,8 @@
 import { LUT_SEGS } from './geom.js';
 export const intersects = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 export function crossesRect(ax, ay, bx, by, r) {
+  if (ay === by) return ay > r.y && ay < r.y + r.height && Math.max(ax,bx) > r.x && Math.min(ax,bx) < r.x + r.width;
+  if (ax === bx) return ax > r.x && ax < r.x + r.width && Math.max(ay,by) > r.y && Math.min(ay,by) < r.y + r.height;
   let lo = 0, hi = 1;
   const dx = bx - ax, dy = by - ay;
   for (const [p, q] of [[-dx, ax-r.x], [dx, r.x+r.width-ax], [-dy, ay-r.y], [dy, r.y+r.height-ay]]) {
@@ -11,30 +13,54 @@ export function crossesRect(ax, ay, bx, by, r) {
   return lo < hi && hi > 0 && lo < 1;
 }
 export function routePoints(a, b, obstacles) {
+  return createRouter(obstacles, [a,b]).route(a,b);
+}
+
+// One lazy grid and segment cache serve all wires for the current obstacles.
+export function createRouter(obstacles, endpoints) {
   const clear = (p,q) => !obstacles.some(r=>crossesRect(p[0],p[1],q[0],q[1],r));
+  let xs, ys, W, links;
+  const unique = values => [...new Set(values)].sort((a,b)=>a-b);
+  function grid() {
+    xs=unique([...endpoints.map(p=>p[0]),...obstacles.flatMap(r=>[r.x-8,r.x+r.width+8])]);
+    ys=unique([...endpoints.map(p=>p[1]),...obstacles.flatMap(r=>[r.y-8,r.y+r.height+8])]);
+    W=xs.length; links=new Uint8Array(W*ys.length*2);
+  }
+  const pt=i=>[xs[i%W],ys[Math.floor(i/W)]];
+  function route(a,b) {
   for (const points of [[a,[b[0],a[1]],b],[a,[a[0],b[1]],b]]) {
     if (points.slice(1).every((p,i)=>clear(points[i],p))) return points;
   }
-  const unique = values => [...new Set(values.map(v=>Math.round(v*10)/10))].sort((a,b)=>a-b);
-  const xs=unique([a[0],b[0],...obstacles.flatMap(r=>[r.x-8,r.x+r.width+8])]);
-  const ys=unique([a[1],b[1],...obstacles.flatMap(r=>[r.y-8,r.y+r.height+8])]);
-  const W=xs.length, start=ys.indexOf(Math.round(a[1]*10)/10)*W+xs.indexOf(Math.round(a[0]*10)/10), end=ys.indexOf(Math.round(b[1]*10)/10)*W+xs.indexOf(Math.round(b[0]*10)/10);
-  const scores=new Float64Array(W*ys.length).fill(Infinity), prev=new Int32Array(scores.length).fill(-1), closed=new Uint8Array(scores.length), open=[start];scores[start]=0;
-  const pt=i=>[xs[i%W],ys[Math.floor(i/W)]];
+  if (!xs) grid();
+  const start=ys.indexOf(a[1])*W+xs.indexOf(a[0]), end=ys.indexOf(b[1])*W+xs.indexOf(b[0]);
+  const scores=new Float64Array(W*ys.length).fill(Infinity), prev=new Int32Array(scores.length).fill(-1), closed=new Uint8Array(scores.length), open=[];scores[start]=0;
+  const push=(u,f)=>{
+    let i=open.length;open.push([u,f]);
+    while(i){const parent=(i-1)>>1;if(open[parent][1]<=f)break;open[i]=open[parent];i=parent;}open[i]=[u,f];
+  };
+  const pop=()=>{
+    const first=open[0],last=open.pop();
+    if(open.length){let i=0;while(i*2+1<open.length){let child=i*2+1;if(child+1<open.length&&open[child+1][1]<open[child][1])child++;if(last[1]<=open[child][1])break;open[i]=open[child];i=child;}open[i]=last;}
+    return first[0];
+  };
+  push(start,0);
   while(open.length) {
-    let best=0, priority=Infinity;
-    for(let i=0;i<open.length;i++){const p=pt(open[i]),f=scores[open[i]]+Math.abs(p[0]-b[0])+Math.abs(p[1]-b[1]);if(f<priority){priority=f;best=i;}}
-    const u=open.splice(best,1)[0]; if(u===end){const path=[];for(let i=end;i>=0;i=prev[i])path.push(pt(i));return path.reverse();}
+    const u=pop(); if(u===end){const path=[];for(let i=end;i>=0;i=prev[i])path.push(pt(i));return path.reverse();}
     if(closed[u])continue;closed[u]=1;
     const x=u%W,y=Math.floor(u/W),p=pt(u);
     for(const v of [x?u-1:-1,x<W-1?u+1:-1,y?u-W:-1,y<ys.length-1?u+W:-1]) {
-      if(v<0||closed[v])continue;const q=pt(v);if(!clear(p,q))continue;
+      if(v<0||closed[v])continue;const q=pt(v);
+      const link=Math.min(u,v)*2+(Math.abs(u-v)===W?1:0);
+      if(!links[link])links[link]=clear(p,q)?1:2;
+      if(links[link]===2)continue;
       const turn=prev[u]>=0 && ((prev[u]%W===x)!==(v%W===x))?18:0;
       const cost=scores[u]+Math.abs(p[0]-q[0])+Math.abs(p[1]-q[1])+turn;
-      if(cost<scores[v]){scores[v]=cost;prev[v]=u;open.push(v);}
+      if(cost<scores[v]){scores[v]=cost;prev[v]=u;push(v,cost+Math.abs(q[0]-b[0])+Math.abs(q[1]-b[1]));}
     }
   }
   return [a,b];
+  }
+  return { route };
 }
 export function routedLut(lut, points) {
   // Keep every corner exactly, so a particle never cuts across an obstacle.

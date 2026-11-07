@@ -604,7 +604,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const m = applyFlows(dt, now);
     const captionsMoved = nodes.layoutLabels(camera, captionArea);
     if (captionsMoved) edges.invalidateGeometry();
-    const geo = edges.updateGeometry(nodes.views, camera.zoom + (captionsMoved ? 0.00001 : 0));
+    const geo = edges.updateGeometry(nodes.views);
     if (viewChanged || geo) cull();
     edges.update(dt);
     for (const v of nodes.list) v.c.alpha = pathFocus && !pathFocus.nodes.has(v.id) ? 0.16 : 1;
