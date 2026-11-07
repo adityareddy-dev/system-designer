@@ -1,6 +1,7 @@
 // Edge views: smooth cubic curves between ports, load-scaled width, direction chevrons, dashed links, hot-path glow ropes.
 
-import { makeLut, edgeCurve, edgeSides, lutAt, distToLut, LUT_SEGS } from './geom.js';
+import { routePoints, routedLut, inkPath } from './routing.js';
+import { makeLut, edgeSides, lutAt, distToLut, LUT_SEGS } from './geom.js';
 
 const MAX_GLOWS = 12;
 const ROPE_PTS = 13;
@@ -76,10 +77,10 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
     const wq = Math.round(w * 4) / 4;
     const color = hi ? P.accent : flowing ? P.edgeFlow : P.edgeIdle;
     if (v.band > 0) {
-      g.moveTo(lut.p0x, lut.p0y).bezierCurveTo(lut.c1x, lut.c1y, lut.c2x, lut.c2y, lut.p3x, lut.p3y)
+      inkPath(g, lut)
         .stroke({ width: v.band, color: v.bandColor, alpha: P.dark ? 0.42 : 0.32 });
     }
-    g.moveTo(lut.p0x, lut.p0y).bezierCurveTo(lut.c1x, lut.c1y, lut.c2x, lut.c2y, lut.p3x, lut.p3y)
+    inkPath(g, lut)
       .stroke({ width: v.kind === 'tap' ? wq * 0.75 : wq, color, alpha: hi ? 1 : v.kind === 'tap' ? 0.75 : 0.95 });
     // direction marks every 80 units; with reduced motion (no moving dots) a flowing line gets bold chevrons in its
     // traffic colour, closer together, so direction and load still read at a glance
@@ -137,9 +138,11 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
       if (changed) structDirty = true;
       return changed;
     },
+    invalidateGeometry() { structDirty = true; },
     // Recomputes curves when nodes moved or edges changed; ports on a shared side fan out in order.
-    updateGeometry(nodeViews) {
-      let moved = structDirty;
+    updateGeometry(nodeViews, zoom = 1) {
+      let moved = structDirty || this.routeZoom !== Math.round(zoom * 100);
+      this.routeZoom = Math.round(zoom * 100);
       for (const v of list) {
         const a = nodeViews.get(v.from), b = nodeViews.get(v.to);
         if (!a || !b) { if (v.ok) { v.ok = false; v.dirty = true; } continue; }
@@ -147,6 +150,10 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
       }
       if (!moved) return false;
       structDirty = false;
+      const obstacles = [...nodeViews.values()].flatMap(n => [
+        { id: n.id, body: true, x: n.x - (n.renderHalf||44), y: n.y - (n.renderHalf||44), width: 2*(n.renderHalf||44), height: 2*(n.renderHalf||44) },
+        ...(n.captionBoxes || []),
+      ]);
       const sides = new Map();
       const put = (key, item) => { let g = sides.get(key); if (!g) sides.set(key, g = []); g.push(item); };
       for (const v of list) {
@@ -169,10 +176,15 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
         const a = nodeViews.get(v.from), b = nodeViews.get(v.to);
         if (!a || !b) continue;
         v.ax = a.x; v.ay = a.y; v.bx = b.x; v.by = b.y;
-        edgeCurve(v.lut, a.x, a.y, b.x, b.y, 0, v.oa || 0, v.ob || 0);
+        // Side ports leave a short clear stub before entering shared routing corridors.
+        const sign = b.x >= a.x ? 1 : -1;
+        const start = [a.x + sign * ((a.renderHalf||44)+8), a.y + (v.oa || 0)], end = [b.x - sign * ((b.renderHalf||44)+8), b.y + (v.ob || 0)];
+        // Endpoint bodies are obstacles too, apart from their own port stubs.
+        const points = routePoints(start, end, obstacles);
+        routedLut(v.lut, [[a.x + sign * (a.portHalf||36), start[1]], ...points, [b.x - sign * (b.portHalf||36), end[1]]]);
         const { lut } = v;
-        v.minX = Math.min(lut.p0x, lut.c1x, lut.c2x, lut.p3x) - 16; v.maxX = Math.max(lut.p0x, lut.c1x, lut.c2x, lut.p3x) + 16;
-        v.minY = Math.min(lut.p0y, lut.c1y, lut.c2y, lut.p3y) - 16; v.maxY = Math.max(lut.p0y, lut.c1y, lut.c2y, lut.p3y) + 16;
+        v.minX = Math.min(...lut.xs) - 16; v.maxX = Math.max(...lut.xs) + 16;
+        v.minY = Math.min(...lut.ys) - 16; v.maxY = Math.max(...lut.ys) + 16;
         v.ok = true; v.dirty = true;
       }
       return true;
@@ -209,7 +221,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
         const v = it.v;
         if (r.edge !== v || r.ver !== v.lut.ver) {
           for (let k = 0; k < ROPE_PTS; k++) {
-            const idx = Math.round((k / (ROPE_PTS - 1)) * LUT_SEGS);
+            const idx = Math.round((k / (ROPE_PTS - 1)) * (v.lut.segs || LUT_SEGS));
             r.points[k].x = v.lut.xs[idx]; r.points[k].y = v.lut.ys[idx];
           }
           r.edge = v; r.ver = v.lut.ver;

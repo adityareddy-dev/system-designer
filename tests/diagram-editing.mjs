@@ -48,6 +48,13 @@ try {
   await page.goto(base + '#/sandbox');
   await page.waitForFunction(() => window.__game.getState().nodes.length === 15);
   await sleep(900);
+  const entry = await page.evaluate(() => window.__game.getState().view);
+  for (const id of ['n5', 'n7', 'n8', 'n12']) {
+    const n = entry.screen.find(n => n.id === id);
+    assert(n.x >= 24 && n.x <= 366, `${id} is on the entry request path`);
+  }
+  await page.$eval('.pl-overview button:last-child', b => b.click());
+  await sleep(500);
   const view = await page.evaluate(() => window.__game.getState().view);
   for (const n of view.screen) {
     assert(n.x >= 24 && n.x <= 366, `${n.id} fits horizontally`);

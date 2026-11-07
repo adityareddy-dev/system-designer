@@ -1023,3 +1023,28 @@
  .pl-run-evidence h3 {font-size:17px}
  .pl-run-evidence .pl-kicker {font-size:10px}
 }
+/* Embedded workbenches keep a full palette behind an explicit drawer. */
+.pl-item-ic {flex:none}
+.pl-item-name {white-space:normal;overflow:visible;overflow-wrap:anywhere;line-height:1.25}
+@media(min-width:720px) {
+ .pl-root[data-mode=lesson] .pl-left {width:280px}
+ .pl-root[data-mode=lesson] .pl-toolbar--folded:not(.pl-toolbar--open) {height:auto;overflow:visible;border:0;background:transparent}
+ .pl-root[data-mode=lesson] .pl-toolbar--folded:not(.pl-toolbar--open)>:not(.pl-tb-grab) {display:none}
+ .pl-root[data-mode=lesson] .pl-toolbar--folded .pl-tb-grab {display:flex;position:static;align-items:center;gap:8px;padding:12px 16px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface-solid);color:var(--text);cursor:pointer;min-height:44px}
+ .pl-root[data-mode=lesson] .pl-left:has(.pl-toolbar--folded:not(.pl-toolbar--open)) {width:auto}
+}
+.pl-camera-map {flex:none;width:64px;height:44px;padding:3px;border:1px solid var(--border-strong);border-radius:6px;background:var(--canvas);cursor:pointer;overflow:hidden}
+.pl-camera-map svg {width:100%;height:100%;overflow:hidden}
+.pl-camera-window {transition:opacity 120ms}
+@media(max-width:719px) {
+ .pl-root:has(.pl-overview:not([hidden])) .pl-tb-grab {top:-112px}
+ .pl-root .pl-overview {bottom:8px;min-height:58px}
+ .pl-overview select {font-size:12px;padding-inline:6px}
+}
+@media(min-width:720px) {
+ .pl-root[data-mode=lesson] .pl-goal {top:72px;left:12px;right:12px;max-width:none;width:auto;transform:none;text-align:left}
+ .pl-root[data-mode=lesson] .pl-banner {top:64px;left:196px;right:160px;max-width:none;transform:none;min-height:36px}
+ .pl-root[data-mode=lesson]:has(.pl-banner:not([hidden])) .pl-goal {top:112px}
+}
+/* Opening a workbench drawer reveals its controls with the same short settling motion. */
+.pl-toolbar--open .pl-tb-body,.pl-toolbar--open .pl-tb-head,.pl-traffic:not(.pl-traffic--closed) .pl-tp-pane {animation:pl-panel-settle 200ms cubic-bezier(.2,.8,.2,1) both}

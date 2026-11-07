@@ -10,6 +10,7 @@ import { createFx } from './fx.js';
 import { createInput, PORT_R, DND_TYPE, DND_PREFIX } from './input.js';
 import { makeLut, edgeCurve, lutAt, HALF, niceCeil } from './geom.js';
 import { createGrid } from './grid.js';
+import { inkPath, crossesRect, intersects } from './routing.js';
 import { pathsThrough } from './diagram.js';
 
 export { DND_TYPE, DND_PREFIX };
@@ -71,6 +72,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;
 
   let failureLead = null;
+  let captionArea = null;
   let reduced = !!reducedMotion;
   let highContrast = false;
   let qualitySetting = QUALITY[quality] || quality === 'auto' ? quality : 'auto';
@@ -86,6 +88,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const ghost = { type: null, follow: false, x: 0, y: 0, view: null, ring: null, edgeId: null, preview: false, shown: false };
   const env = {
     kit: () => kit,
+    dotScale: () => dotScale,
+    zoom: () => camera.zoom,
     reduced: () => reduced,
     highContrast: () => highContrast,
     pathEdge: id => !!pathFocus?.edges.has(id),
@@ -196,6 +200,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     portRing.stroke({ width: ringHot ? 2.4 : 1.6, color: P.accent, alpha: ringHot ? 0.95 : 0.6, cap: 'round' });
     if (ringHot) portRing.circle(0, 0, PORT_R + 6).stroke({ width: 10, color: P.accent, alpha: 0.12 });
     // the handle: a clear dot with an arrow, big enough to find and to grab with a finger
+    portRing.circle(PORT_R, 0, 22 * k).fill({ color: P.accent, alpha: .08 });
     portRing.circle(PORT_R, 0, 10 * k).fill({ color: P.accent }).stroke({ width: 2 * k, color: P.surfaceSolid });
     portRing.moveTo(PORT_R - 3.5 * k, -4 * k).lineTo(PORT_R + 3 * k, 0).lineTo(PORT_R - 3.5 * k, 4 * k).stroke({ width: 2 * k, color: P.surfaceSolid, cap: 'round', join: 'round' });
   }
@@ -470,9 +475,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       }
       const over = fail > 0 && inn > 0 ? fail / (inn + fail) : 0;
       nodes.setLive(v, true, util[i] || 0, status ? status[i] : 0, queue ? queue[i] || 0 : 0, over, pile >= 0 ? map.tex[pile] : -1, fail);
-      if (failureLead && now < failureLead.until) {
-        if (v.id !== failureLead.id) v.evidenceT.visible = false;
-        else if (v.evidenceT.visible) v.evidenceT.text = 'First limit · ' + v.evidenceT.text;
+      if (failureLead) {
+        if (v.id !== failureLead.id && v.kind !== 'queue') v.evidenceT.visible = false;
+        else if (v.id === failureLead.id && v.evidenceT.visible) v.evidenceT.text = 'First limit · ' + v.evidenceT.text;
       }
       if (running && fail > 0 && inn <= 0) {
         map.srcAcc[i] += (fail * inv * dt) / 1000;
@@ -483,7 +488,11 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       }
     }
     // particle textures follow the frame's type order
-    for (const v of map.carrying) v.texMap = map.tex;
+    for (const v of map.carrying) {
+      v.texMap = map.tex;
+      v.quiet = !!failureLead && v.to !== failureLead.id && v.from !== failureLead.id;
+      if(v.quiet) for(let t=0;t<T;t++)v.rates[t]*=.2;
+    }
     return map;
   }
 
@@ -499,7 +508,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const items = [];
     const util = flow.nodeUtil;
     for (const v of map.carrying) {
-      if (v.toIdx < 0 || !(v.rps > 0)) continue;
+      if (v.toIdx < 0 || !(v.rps > 0) || v.quiet) continue;
       const u = util[v.toIdx] || 0;
       if (u <= 0.7) continue;
       const strength = Math.min(1.2, (u - 0.7) / 0.3);
@@ -591,12 +600,14 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     }
     updateTextRes(now);
     nodes.update(dt, now, visualTime);
-    const geo = edges.updateGeometry(nodes.views);
-    if (viewChanged || geo) cull();
     const m = applyFlows(dt, now);
+    const captionsMoved = nodes.layoutLabels(camera, captionArea);
+    if (captionsMoved) edges.invalidateGeometry();
+    const geo = edges.updateGeometry(nodes.views, camera.zoom + (captionsMoved ? 0.00001 : 0));
+    if (viewChanged || geo) cull();
     edges.update(dt);
     for (const v of nodes.list) v.c.alpha = pathFocus && !pathFocus.nodes.has(v.id) ? 0.16 : 1;
-    for (const v of edges.list) v.g.alpha = pathFocus && !pathFocus.edges.has(v.id) ? 0.1 : 1;
+    for (const v of edges.list) v.g.alpha = pathFocus && !pathFocus.edges.has(v.id) ? 0.1 : v.quiet ? .35 : 1;
     particleLayer.visible = !pathFocus;
     glowLayer.visible = !pathFocus;
     fxLayer.visible = !pathFocus;
@@ -623,7 +634,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       else {
         const z = camera.zoom, path = edge.lut;
         const p = lutAt(path, path.len * (reduced ? 1 : Math.min(1, elapsed / 720)), {});
-        connectionInk.moveTo(path.p0x, path.p0y).bezierCurveTo(path.c1x, path.c1y, path.c2x, path.c2y, path.p3x, path.p3y).stroke({ width: 4 / z, color: P.accent, alpha: .22 });
+        inkPath(connectionInk, path).stroke({ width: 4 / z, color: P.accent, alpha: .22 });
         if (elapsed < 720 && !reduced) {
           connectionInk.circle(p.x, p.y, 12 / z).fill({ color: P.accent, alpha: .15 });
           connectionInk.circle(p.x, p.y, 5 / z).fill({ color: P.accent }).stroke({ width: 2 / z, color: P.surfaceSolid });
@@ -732,7 +743,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (autoFit && graph?.nodes?.length) { autoFit = false; api.fit(80, false); }
     },
     setFlows(frameData, opts = {}) {
-      if (opts.nodeStates) for (const state of opts.nodeStates) { const v = nodes.views.get(state.id); if (v) { v.fleetUnits = state.units; v.availableUnits = state.availableUnits; v.motionActive = opts.speed > 0; } }
+      if (opts.nodeStates) for (const state of opts.nodeStates) { const v = nodes.views.get(state.id); if (v) { v.fleetUnits = state.units; v.availableUnits = state.availableUnits; v.motionActive = opts.speed > 0; v.telemetry = state; } }
       if (opts && typeof opts.speed === 'number') speed = opts.speed;
       if (!!frameData !== !!flow) wake();
       if (!frameData) {
@@ -845,6 +856,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     setEditable(b) { editable = !!b; if (!editable) { input.cancel(); ui.setPortRing(null); } },
     // Extra: fn(fromId, toId) → boolean, colours the connect band while dragging.
     setConnectCheck(fn) { connectCheck = typeof fn === 'function' ? fn : null; },
+    setCaptionArea(area) { captionArea = area; wake(); },
     // opts: { minZ, maxZ } keep a fitted view readable: a big graph is panned rather than shrunk past minZ.
     fit(padding = 80, animate = true, opts = {}) {
       const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
@@ -869,6 +881,25 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       draw(dt, t0);
       if (!renderCanvas()) { lastRenderMs = 0; return; }
       lastRenderMs = performance.now() - t0;
+    },
+    measureDiagram() {
+      const z = camera.zoom;
+      const labels = nodes.list.flatMap(v => [v.labelT, v.evidenceT].filter(t => t.visible && t.text && v.c.visible).map(t => {
+        const b = t.getBounds(); return { id: v.id, kind: t === v.labelT ? 'name' : 'failure', text: t.text, x: b.x, y: b.y, width: b.width, height: b.height };
+      }));
+      const parts = nodes.list.map(v => { const p = camera.worldToScreen(v.x, v.y); return { id: v.id, x: p.x - (v.renderHalf||36)*z, y: p.y - (v.renderHalf||36)*z, width: 2*(v.renderHalf||36)*z, height: 2*(v.renderHalf||36)*z }; });
+      const wires = edges.list.map(v => ({ id: v.id, from: v.from, to: v.to, points: Array.from({ length: (v.lut.segs || 24) + 1 }, (_, i) => camera.worldToScreen(v.lut.xs[i], v.lut.ys[i])) }));
+      let labelOverlaps = 0, wirePartCrossings = 0, wireLabelCrossings = 0, labelPartOverlaps = 0;
+      for (let i=0; i<labels.length; i++) {
+        for (let j=i+1; j<labels.length; j++) if (intersects(labels[i],labels[j])) labelOverlaps++;
+        for (const p of parts) if (intersects(labels[i],p)) labelPartOverlaps++;
+      }
+      for (const w of wires) {
+        const hits = r => w.points.slice(1).some((p,i) => crossesRect(w.points[i].x,w.points[i].y,p.x,p.y,r));
+        for (const p of parts) if (p.id !== w.from && p.id !== w.to && hits(p)) wirePartCrossings++;
+        for (const l of labels) if (hits(l)) wireLabelCrossings++;
+      }
+      return { labels, parts, wires, labelOverlaps, wirePartCrossings, wireLabelCrossings, labelPartOverlaps };
     },
     stats() {
       let sum = 0;

@@ -4,6 +4,8 @@ import { poolCells } from './pool.js';
 import { outline, HALF } from './geom.js';
 import { statusColor, severityColor } from './theme.js';
 import { P_SHAPE, BODY_BOX } from './textures.js';
+import { queuePressure, count } from './pressure.js';
+import { intersects } from './routing.js';
 
 const FONT_UI = 'Atkinson Hyperlegible, Arial, sans-serif';
 const FONT_MONO = 'IBM Plex Mono, monospace';
@@ -104,6 +106,7 @@ export function createNodeLayer(PIXI, parent, env) {
       v.pile.addChild(s); return s;
     });
     v.qbar = new PIXI.Graphics(); v.qbar.visible = false;
+    v.retryG = new PIXI.Graphics();
     v.statusG = new PIXI.Graphics(kit.glyphs.status[0]); v.statusG.position.set(-HALF + 7, -HALF + 7); v.statusG.visible = false;
     v.valid = new PIXI.Graphics(kit.glyphs.valid.warn); v.valid.position.set(HALF - 7, -HALF + 7); v.valid.visible = false;
     v.lock = new PIXI.Graphics(kit.glyphs.lock); v.lock.position.set(-HALF + 8, HALF - 8); v.lock.visible = false;
@@ -113,7 +116,9 @@ export function createNodeLayer(PIXI, parent, env) {
     v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, HALF + 6);
     v.labelT = makeText('', 12, P.text2, false, '500', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
-    v.evidenceT = makeText('', 10, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
+    v.evidenceT = makeText('', 11, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
+    v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108;
+    v.leader = new PIXI.Graphics();
     v.regionC = new PIXI.Container(); v.regionC.y = -HALF - 12; v.regionC.visible = false;
     v.regionBg = new PIXI.Graphics(); v.regionC.addChild(v.regionBg);
     v.regionT = null;
@@ -121,8 +126,8 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeBg = new PIXI.Graphics(); v.badge.addChild(v.badgeBg);
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
-    c.addChild(v.glow, v.pulse, v.shadow, v.body, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.pile, v.statusG, v.valid, v.lock,
-      v.chip, v.zonesG, v.labelBg, v.labelT, v.regionC, v.badge, v.evidenceT);
+    c.addChild(v.glow, v.pulse, v.shadow, v.body, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
+      v.chip, v.zonesG, v.leader, v.labelBg, v.labelT, v.regionC, v.badge, v.evidenceT);
     c.alpha = 0;
     c.scale.set(v.s);
     parent.addChild(c);
@@ -194,12 +199,32 @@ export function createNodeLayer(PIXI, parent, env) {
     v.drawnU = v.du; v.drawnColor = color;
   }
 
-  function drawQueue(v, P) {
-    const f = Math.min(1, Math.log10(1 + v.queue) / 7);
-    v.qbar.clear();
-    v.qbar.roundRect(-22, HALF - 6, 44, 4, 2).fill({ color: P.text3, alpha: 0.18 });
-    if (f > 0.005) v.qbar.roundRect(-22, HALF - 6, Math.max(4, 44 * f), 4, 2).fill({ color: f > 0.6 ? P.hot : P.cat.messaging });
-    v.drawnQ = f;
+  function drawQueue(v, P, dt, reduced) {
+    const pressure=queuePressure(v.telemetry);
+    v.ageFill=reduced?pressure.fill:(v.ageFill||0)+(pressure.fill-(v.ageFill||0))*(1-Math.exp(-dt/180));
+    const fill=v.ageFill, color=pressure.late?P.bad:fill>.7?P.warn:P.cat.messaging;
+    const g=v.qbar;g.clear().roundRect(-25,-22,50,42,4).fill({color:P.surfaceSolid}).stroke({width:1.5,color:P.text3});
+    if(fill>.001)g.rect(-21,16-34*fill,42,34*fill).fill({color,alpha:.7});
+    for(let i=1;i<4;i++)g.moveTo(-24,16-i*8.5).lineTo(-19,16-i*8.5).stroke({width:1,color:P.text3,alpha:.6});
+    // The top rule is the actual deadline, not a capacity limit.
+    g.moveTo(-28,-18).lineTo(28,-18).stroke({width:2,color:pressure.late?P.bad:P.warn,alpha:1});
+    if(pressure.late)g.poly([-4,-27,4,-27,0,-21]).fill({color:P.bad});
+    const change=Math.abs(pressure.net);
+    if(change>.01){const direction=pressure.net>0?-1:1;g.moveTo(30,-direction*8).lineTo(30,direction*8).lineTo(27,direction*4).moveTo(30,direction*8).lineTo(33,direction*4).stroke({width:2,color});}
+  }
+
+  function drawRetries(v,P,time,reduced) {
+    const rate=v.telemetry?.retryRps||0,g=v.retryG;g.clear();
+    if(!v.live||rate<.5)return;
+    g.moveTo(38,6).bezierCurveTo(64,-54,-64,-54,-38,6).stroke({width:2,color:P.bad,alpha:.65});
+    g.poly([-38,6,-46,1,-38,-3]).fill({color:P.bad});
+    // One marker is a dot-scale group of the engine's retry arrivals.
+    const scale=env.dotScale?.()||1,n=Math.min(4,Math.ceil(rate/scale));
+    for(let i=0;i<n;i++){
+      const t=reduced?.5:((time/1100+i/n)%1),u=1-t;
+      const x=u*u*u*38+3*u*u*t*64+3*u*t*t*(-64)+t*t*t*(-38),y=u*u*u*6+3*u*u*t*(-54)+3*u*t*t*(-54)+t*t*t*6;
+      g.circle(x,y,3).fill({color:P.bad});
+    }
   }
 
   function drawPool(v, P, now, reduced, time) {
@@ -268,7 +293,7 @@ export function createNodeLayer(PIXI, parent, env) {
         const k = 0.5 + 0.5 * Math.sin(time * 0.001 * Math.PI * 2 * 1.2);
         v.busy.alpha = 1;
       } else v.busy.alpha = 1;
-      if (v.kind === 'queue' && Math.abs(Math.min(1, Math.log10(1 + v.queue) / 7) - v.drawnQ) > 0.01) drawQueue(v, P);
+      if (v.kind === 'queue') drawQueue(v, P, dt, reduced);
       // waiting pile at the input of an overloaded element
       const count = v.over > 0.01 ? Math.min(6, Math.ceil(v.over * 6)) : 0;
       v.pile.visible = count > 0;
@@ -283,6 +308,8 @@ export function createNodeLayer(PIXI, parent, env) {
     }
 
     drawPool(v, P, now, reduced, time);
+    if(v.live && v.kind==='queue') v.icon.visible=false;
+    drawRetries(v,P,time,reduced);
     // glow: overload pulse > event > selection
     const over = v.live && (v.down || v.tu > 1 || v.status >= 3);
     const isSel = selected === v.id;
@@ -365,19 +392,15 @@ export function createNodeLayer(PIXI, parent, env) {
         v.chip.scale.set(detailZoom ? 1 : labelK * 1.1);
         v.zonesG.visible = detailZoom;
         v.busy.visible = detailZoom;
-        v.qbar.visible = detailZoom && v.queue > 0;
+        v.qbar.visible = v.live && v.kind === 'queue';
+        v.qbar.scale.set(Math.max(1,.85/(env.zoom?.()||1)));
         v.pile.visible = detailZoom && v.over > .01;
         v.lock.visible = detailZoom && v.locked;
         v.regionC.visible = detailZoom && multiRegion && v.region !== mainRegion && !v.event;
-        v.statusG.visible = !detailZoom || v.status > 0;
+        v.statusG.visible = v.live && v.status > 0;
         if (!detailZoom) { v.statusG.context = env.kit().glyphs.status[v.status]; v.statusG.scale.set(Math.max(1, labelK * .7)); }
         else v.statusG.scale.set(1);
-        v.labelT.y = HALF + 10;
-        const key = `${v.labelT.text}/${labelK}/${P.canvas}`;
-        if (v.labelBgKey !== key) {
-          v.labelBgKey = key; const b = v.labelT.getLocalBounds();
-          v.labelBg.clear().roundRect(-b.width * labelK / 2 - 3, HALF + 8, b.width * labelK + 6, b.height * labelK + 4, 3).fill({ color: P.canvas, alpha: .97 });
-        }
+
       }
       for (let i = dying.length - 1; i >= 0; i--) {
         const v = dying[i];
@@ -388,14 +411,57 @@ export function createNodeLayer(PIXI, parent, env) {
         if (k >= 1) { v.c.destroy({ children: true }); dying.splice(i, 1); }
       }
     },
+    // Names and failure facts get separate, fixed-width lanes.
+    layoutLabels(camera, area) {
+      const z = camera.zoom, P = env.kit().P;
+      const key = [Math.round(z*1000), camera.center.x.toFixed(1), camera.center.y.toFixed(1), JSON.stringify(area), ...list.map(v=>`${v.x.toFixed(1)},${v.y.toFixed(1)},${v.labelT.text},${v.evidenceT.visible}`)].join('/');
+      if (key === this.captionKey) return false;
+      this.captionKey = key;
+      const free = { x:area?.l||8,y:area?.t||8,width:camera.size.w-(area?.l||8)-(area?.r||8),height:camera.size.h-(area?.t||8)-(area?.b||8) };
+      const parts = list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.live&&v.kind==='queue'?Math.max(42*z,26):42*z;v.portHalf=half/z-6;v.renderHalf=half/z;return {x:p.x-half-8,y:p.y-half,width:half*2+16,height:half*2};});
+      const occupied = [...parts];
+      const ordered = [...list].sort((a,b)=>a.y-b.y||a.x-b.x);
+      for (const v of ordered) {
+        const p = camera.worldToScreen(v.x,v.y), width = Math.max(40,v.labelT.width*z+8), height = v.labelT.height*z+6;
+        const visible=p.x>=free.x && p.x<=free.x+free.width && p.y>=free.y && p.y<=free.y+free.height;
+        const preferred={x:p.x-width/2,y:p.y+v.renderHalf*z+5,width,height};
+        const clear=r=>!occupied.some(o=>intersects(r,o));
+        const inside=r=>r.x>=free.x&&r.y>=free.y&&r.x+r.width<=free.x+free.width&&r.y+r.height<=free.y+free.height;
+        const choose=(base)=>{
+          if(!visible)return base;
+          const candidates=[];
+          for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160])candidates.push({...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy});
+          return candidates.find(r=>inside(r)&&clear(r))||candidates.find(clear)||base;
+        };
+        const name=choose(preferred); if(visible)occupied.push(name);
+        const labelX=(name.x+width/2-p.x)/z,labelY=(name.y-p.y)/z;
+        v.labelT.position.set(labelX,labelY);
+        v.labelBg.clear().roundRect((name.x-p.x)/z,labelY,width/z,height/z,3/z).fill({color:P.canvas,alpha:.97});
+        v.leader.clear();
+        if(visible&&(Math.abs(labelX*z)>8||Math.abs(name.y-preferred.y)>8))v.leader.moveTo(0,0).lineTo(labelX,labelY).stroke({width:1/z,color:P.edgeIdle,alpha:.6});
+        const boxes=[name];
+        if(v.evidenceT.visible){
+          const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-(v.kind==='queue'?58:44)-8,width:114,height:v.kind==='queue'?58:44});
+          if(visible)occupied.push(facts);
+          v.evidenceT.anchor.set(.5,0);v.evidenceT.position.set((facts.x+57-p.x)/z,(facts.y-p.y)/z);
+          v.labelBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.canvas,alpha:.97});
+          boxes.push(facts);
+        }
+        v.captionBoxes=boxes.map(r=>({x:v.x+(r.x-p.x)/z-4/z,y:v.y+(r.y-p.y)/z-4/z,width:(r.width+8)/z,height:(r.height+8)/z}));
+        v.captionScreen=name;
+      }
+      return true;
+    },
     // Live values from the flow frame; pass live = false to hide them (build phase).
     setLive(v, live, util = 0, status = 0, queue = 0, over = 0, pileType = -1, failRps = 0) {
       const recovering = live && failRps < .5 && v.failRps > .5;
       if (recovering) v.recoverUntil = performance.now() + 1000;
       v.failRps = failRps;
       const recovered = performance.now() < (v.recoverUntil || 0);
-      v.evidenceT.visible = live && (failRps > .5 || queue > 1 || recovered);
-      v.evidenceT.text = failRps > .5 ? `× ${Math.round(failRps).toLocaleString('en-US')}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Requests recovered' : '';
+      v.evidenceT.visible = live && (failRps > .5 || queue > 1 || recovered || v.kind === 'queue' || v.telemetry?.retryRps > .5);
+      v.evidenceT.text = failRps > .5 ? `× ${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(failRps)}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Requests recovered' : '';
+      if (live && v.kind === 'queue' && v.telemetry) v.evidenceT.text = queuePressure(v.telemetry).text;
+      else if (live && v.telemetry?.retryRps > .5) v.evidenceT.text += `\n↶ ${count(v.telemetry.retryRps)}/s retry`;
       v.evidenceT.style.fill = failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
       if (!live) {
         if (v.live) {
@@ -494,7 +560,7 @@ export function createNodeLayer(PIXI, parent, env) {
       const k = Math.max(1, px / (12 * Math.max(0.01, z)));
       if ((z < .65) !== compact) { compact = z < .65; for (const v of list) showLabel(v); }
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
-      if (Math.abs(k - labelK) < 0.03) return;
+      if (Math.abs(k - labelK) < 0.0001) return;
       labelK = k;
       for (const v of list) { v.labelT.scale.set(k); v.evidenceT.scale.set(k); }
     },

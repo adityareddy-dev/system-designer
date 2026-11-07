@@ -1,0 +1,46 @@
+// Canvas gestures and crowded layouts retain positions and readable, collision-free facts.
+import assert from 'node:assert/strict';
+import puppeteer from 'puppeteer-core';
+const base=process.argv[2]||'http://localhost:8765/';
+const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--enable-unsafe-swiftshader']});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const types=['web-browser','mobile-app','regional-lb','vm-fleet','cache','sql-primary','object-storage','queue','worker-pool','third-party-api','metrics','logs','alerting','backups','cdn'];
+const graph={nodes:types.map((type,i)=>({id:'n'+i,type,x:i%5*260,y:Math.floor(i/5)*240,units:3})),edges:[[0,14],[14,2],[1,2],[2,3],[3,4],[4,5],[3,6],[3,7],[7,8],[8,9],[10,3],[11,3],[12,10],[5,13]].map(([a,b])=>({id:`n${a}>n${b}`,from:'n'+a,to:'n'+b,kind:'flow'}))};
+const errors=[];
+try{
+ for(const width of [1366,390])for(const theme of ['light','dark']){
+  const p=await browser.newPage();p.on('pageerror',e=>errors.push(e.stack));
+  await p.setViewport({width,height:width===390?844:800,isMobile:width===390,hasTouch:width===390});
+  await p.evaluateOnNewDocument((graph,theme)=>{localStorage.setItem('hotpath.v1.seenIntro','true');localStorage.setItem('hotpath.v1.settings',JSON.stringify({theme,soundMuted:true}));localStorage.setItem('hotpath.v1.draft.sandbox.sandbox',JSON.stringify({graph,traffic:{rps:{read:7900000,write:100},curve:'flat',regions:{us:1}}}));},graph,theme);
+  await p.goto(base+'#/sandbox');await p.waitForFunction(()=>window.__game?.getState().nodes.length===15);await sleep(700);
+  const saved=await p.evaluate(()=>__game.getState().nodes.map(({id,x,y})=>({id,x,y})));
+  assert.deepEqual(saved,graph.nodes.map(({id,x,y})=>({id,x,y})),'entry preserves saved positions');
+  await p.evaluate(()=>[...document.querySelectorAll('summary')].find(e=>e.textContent==='Diagram tools').click());
+  await p.evaluate(()=>[...document.querySelectorAll('button')].find(e=>e.textContent==='Tidy request paths').click());await sleep(800);
+  const check=async()=>{const v=await p.evaluate(()=>__game.getState().view);assert(v.labelPx>=12.99);for(const key of ['labelOverlaps','labelPartOverlaps','wirePartCrossings','wireLabelCrossings'])assert.equal(v.diagram[key],0,`${width} ${theme} ${key}`);};
+  await check();
+  await p.evaluate(()=>__game.startTraffic());await sleep(600);await p.evaluate(()=>{__game.pause();__game.step(120000);});await sleep(400);await check();
+  const before=await p.evaluate(()=>__game.getState().view.diagram.labels.filter(l=>l.kind==='failure').map(({id,x,y})=>({id,x,y})));
+  await p.evaluate(()=>__game.step(120000));await sleep(200);await check();
+  const after=await p.evaluate(()=>__game.getState().view.diagram.labels.filter(l=>l.kind==='failure').map(({id,x,y})=>({id,x,y})));
+  assert.deepEqual(after,before,'changing failure counts do not move caption lanes');await p.close();
+ }
+ for(const touch of [false,true]){
+  const p=await browser.newPage();await p.setViewport({width:touch?390:1366,height:touch?844:800,isMobile:touch,hasTouch:touch});
+  await p.evaluateOnNewDocument(()=>{localStorage.clear();localStorage.setItem('hotpath.v1.seenIntro','true');localStorage.setItem('hotpath.v1.settings',JSON.stringify({soundMuted:true}));});
+  await p.goto(base+'#/sandbox');await p.waitForFunction(()=>window.__game?.getState().nodes.length===4);await sleep(700);
+  await p.evaluate(()=>__game.placeComponent('cache',520,260));await sleep(600);
+  await p.$eval('.pl-tool--fit',b=>b.click());await sleep(600);
+  const data=await p.evaluate(()=>{const s=__game.getState(),r=document.querySelector('.pl-stage').getBoundingClientRect();return {s,r:{x:r.x,y:r.y}};});
+  const app=data.s.nodes.find(n=>n.id==='app'),target=data.s.nodes.find(n=>n.type==='cache');
+  const point=id=>{const n=data.s.view.screen.find(n=>n.id===id);return{x:n.x+data.r.x,y:n.y+data.r.y};};
+  const a=point(app.id),b=point(target.id),port={x:a.x+36*data.s.view.zoom,y:a.y};
+  if(touch){const c=await p.createCDPSession();await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[port]});await c.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[b]});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
+  else {await p.mouse.move(port.x,port.y);await p.mouse.down();await p.mouse.move(b.x,b.y,{steps:12});await p.mouse.up();}
+  await sleep(350);let state=await p.evaluate(()=>__game.getState());assert(state.edges.some(e=>e.from===app.id&&e.to===target.id),'dragging the visible output port connects');assert.equal(state.nodes.find(n=>n.id===app.id).x,app.x,'connecting never moves the source');
+  if(touch){const c=await p.createCDPSession();await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[a]});await c.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:a.x-50,y:a.y+45}]});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
+  else {await p.mouse.move(a.x,a.y);await p.mouse.down();await p.mouse.move(a.x-50,a.y+45,{steps:12});await p.mouse.up();}
+  await sleep(350);state=await p.evaluate(()=>__game.getState());assert.notEqual(state.nodes.find(n=>n.id===app.id).x,app.x,'dragging the body moves the part');await p.close();
+ }
+ assert.deepEqual(errors,[]);console.log('Saved positions, 15-part tidy and overload collisions, stable failure lanes, mouse ports and bodies, and touch ports and bodies passed.');
+}finally{await browser.close();}
