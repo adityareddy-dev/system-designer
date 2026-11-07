@@ -46,7 +46,7 @@ try {
     localStorage.setItem('hotpath.v1.draft.sandbox.sandbox', JSON.stringify({ graph }));
   });
   await page.goto(base + '#/sandbox');
-  await page.waitForFunction(() => window.__game.getState().nodes.length === 15);
+  await page.waitForFunction(() => window.__game?.getState().nodes.length === 15);
   await sleep(900);
   const view = await page.evaluate(() => window.__game.getState().view);
   for (const n of view.screen) {
@@ -69,7 +69,7 @@ try {
     await page.setViewport({ width, height, isMobile: true, hasTouch: true });
     await page.goto(base + '#/learn/load-balancing?step=1');
     await page.reload();
-    await page.waitForFunction(() => window.__game.getState().nodes.some(n => n.id === 'app'));
+    await page.waitForFunction(() => window.__game?.getState().nodes.some(n => n.id === 'app'));
     await sleep(900);
     await page.$eval('.pl-stage', e => e.scrollIntoView({ block: 'end' }));
     await sleep(150);

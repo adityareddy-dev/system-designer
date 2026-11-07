@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { createCatalog } from '../sim/catalog.js';
 import { createSim } from '../sim/engine.js';
 import { checkClaim } from '../content/problems/defense-claims.js';
+import { problemById } from '../content/problems/index.js';
 const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(name => [name, JSON.parse(fs.readFileSync(new URL(`../catalog/${name}.json`, import.meta.url)))])));
 function fixture({ rate = 100, units = 4, zones = 1, dbTier = 'M', cache = false, alternate = false } = {}) {
   const problem = { id: 'claim-fixture', difficulty: 'Hard', requirements: { peakRps: rate, mix: { read: 1 }, availability: .99, latencyP99Ms: { default: 10000 }, dataSafety: 'best-effort', budgetPerMonth: 1e9, userRegions: { us: 1 }, homeRegion: 'us', storageTb: .01 }, traffic: { curve: 'flat', sources: { 'web-browser': 1 } }, events: [] };
@@ -41,4 +42,19 @@ check('route', fixture({ alternate: true }), true);
 // The hot read working set fits a cache; bypassing it exposes an 8,000/s primary to 15,000/s.
 check('cold', fixture({ rate: 15000, units: 24, cache: true }), false, 'cache');
 check('cold', fixture({ rate: 15000, units: 24, dbTier: 'XL', cache: true }), true, 'cache');
-console.log('12 independent claim fixtures: surviving capacity, growth, minimum fleets, whole-bill savings, alternate routes and cold origins passed.');
+// A hot event needs a modeled boundary carrying relevant traffic when it starts.
+assert.equal(check('hot', fixture(), false).applied, false);
+assert.equal(check('hot', fixture({ cache: true }), true).applied, true);
+const disconnected = fixture();
+disconnected.graph.nodes.push({ id: 'idle-cache', type: 'cache', x: 0, y: 200 });
+assert.equal(check('hot', disconnected, false).applied, false);
+const uncached = fixture({ cache: true });
+uncached.problem.requirements.mix = { write: 1 };
+assert.equal(check('hot', uncached, false).applied, false, 'a cache carrying only uncacheable writes cannot test hot reads');
+for (const id of ['health-records', 'device-notes']) {
+  const problem = problemById.get(id), sim = createSim({ catalog, problem });
+  sim.loadGraph(problem.editorial.designs[0].graph); sim.start(); sim.advance(86400000);
+  const result = sim.result();
+  assert.equal(check('hot', { catalog, problem, result, graph: result.graph }, false).applied, false, id);
+}
+console.log('Claim fixtures passed for surviving capacity, growth, minimum fleets, whole-bill savings, alternate routes, cold origins and applicable hot items.');

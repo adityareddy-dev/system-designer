@@ -7,13 +7,16 @@ import { createCatalog } from '../sim/catalog.js';
 import { createSim } from '../sim/engine.js';
 import { defenseQuestions } from '../ui/play/interview.js';
 import { checkClaim } from '../content/problems/defense-claims.js';
+import sizing, { twistSizing } from '../content/sizing.js';
 const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(name => [name, JSON.parse(fs.readFileSync(new URL(`../catalog/${name}.json`, import.meta.url)))])));
 const run = (problem, graph) => { const sim = createSim({ catalog, problem, seed: 'practice' }); sim.loadGraph(graph); sim.start(); sim.advance(86400000); return sim.result(); };
 let references = 0, prompts = 0, claims = 0, held = 0, failed = 0;
 for (const problem of problems) {
   const twist = twistProblem(problem);
   assert(twist.requirements.budgetPerMonth < problem.requirements.budgetPerMonth, problem.id + ' has a binding changed constraint');
-  assert.equal(twist.numbers[0].value, twist.requirements.peakRps);
+  const crowd = twist.events.find(e => e.id === 'flash-crowd');
+  const arrivals = twist.requirements.peakRps * (twist.traffic.curve === 'drop' && crowd ? .1 * (crowd.params?.factor || 25) : 1);
+  assert(Math.abs(twist.numbers[0].value - arrivals) < 1e-8, problem.id + ' arrival estimate follows the scenario curve and event');
   assert.equal(twist.numbers[2].value, twist.requirements.budgetPerMonth);
   const results = [];
   for (const design of problem.editorial.designs) {
@@ -23,6 +26,19 @@ for (const problem of problems) {
   }
   const reference = run(twist, twist.editorial.designs[0].graph);
   assert(reference.passed && reference.score.total === 1000, problem.id + ' twist reference');
+  if (problem.difficulty === 'Hard') {
+    const measured = twistSizing[problem.id].find(m => m.graphKey === JSON.stringify(twist.editorial.designs[0].graph));
+    assert(measured, problem.id + ' twist evidence matches the actual graph');
+    assert.equal(measured.score, reference.score.total);
+    assert.equal(measured.passed, reference.passed);
+    assert.equal(measured.cost, reference.slo.cost.perMonth);
+    for (const row of measured.rows) {
+      const node = reference.graph.nodes.find(n => n.id === row.id), metric = reference.nodes.find(n => n.id === row.id);
+      assert.equal(row.type, node.type); assert.equal(row.installed, node.units); assert.equal(row.tier, node.tier);
+      assert.equal(row.peakUtil, metric.peakUtil); assert.equal(row.peakRequests, Math.round(metric.peakRequests));
+    }
+    for (const design of problem.editorial.designs) assert(sizing[problem.id].some(m => m.graphKey === JSON.stringify(design.graph)), problem.id + ' original evidence retained');
+  }
   for (const result of results) {
   const graph = result.graph;
   const broken = { ...graph, edges: graph.edges.filter(e => !graph.nodes.some(n => n.id === e.from && catalog.elementById.get(n.type).kind === 'source')) };

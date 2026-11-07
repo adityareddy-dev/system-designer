@@ -315,9 +315,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     });
   }
   function adviceReady() {
-    if (S.problem?.twistDay && S.result && !S.result.passed && !S.result.transferReflection) return false;
+    if (transferPending()) return false;
     return mode !== 'practice' || S.triedId === S.problem?.id || ctx.progress?.get?.(S.problem?.id)?.attempts > 0;
   }
+  function transferPending() { return S.problem?.twistDay && S.pendingTransfer && !S.pendingTransfer.transferReflection; }
   function paintIssues() {
     issuesBox.replaceChildren();
     // errors first, then missing proof (it costs Data safety points), then the rest
@@ -608,7 +609,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function loadDesign(design, { run = false } = {}) {
     S.workedRepair = true;
     closeEditorial();
-    if (S.sim.phase !== 'build') resetToDraw();
+    if (S.sim.phase !== 'build' && resetToDraw() === false) return;
     S.sim.loadGraph(designToGraph(design));
     commit();
     S.refSig = graphSig();
@@ -1326,6 +1327,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function resetToDraw() {
     if (interview && interviewState.run) { toast('The interview day runs once. Finish your defense to review it.', 'info'); return; }
+    if (transferPending()) {
+      S.result = S.pendingTransfer;
+      go('debrief');
+      toast('Commit the changed tradeoff and experiment before starting another drawing.', 'info');
+      return false;
+    }
     if (S.warm && S.fullEvents) {
       // the second run is the full day, spike included
       const full = S.fullEvents, fullReq = S.fullRequirements;
@@ -1343,7 +1350,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     updateEditable();
     refreshChecks();
   }
-  function reset() { resetToDraw(); if (stepped) go('draw'); }
+  function reset() { if (resetToDraw() !== false && stepped) go('draw'); }
 
   function bestOf(x) {
     if (x == null) return null;
@@ -1354,13 +1361,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const result = S.sim.result();
     if (!result) return;
     S.triedId = S.problem.id;
-    refreshSuggestions();
-    reqCard?.setAdvice(!interview && adviceReady());
     const isRef = !!S.refSig && S.refSig === graphSig();
     const warm = !!S.problem?.warmUp || !!S.problem?.twistDay;
     const credit = learningCredit(S.problem, S.correctnessAnswer, { passed: result.passed, hintsUsed: hints.used(), workedRepair: S.workedRepair, reference: isRef }, ctx.progress?.get(S.problem.id)?.learning);
     S.result = isRef ? { ...result, reference: true } : warm ? { ...result, warmUp: true, ...(S.problem?.twistDay ? { twistDay: true } : {}) } : result;
     S.result = { ...S.result, learning: credit };
+    if (S.problem.twistDay && !result.passed) S.pendingTransfer = S.result;
+    refreshSuggestions();
+    reqCard?.setAdvice(!interview && adviceReady());
     if (mode === 'practice' && !interview && !isRef && !S.problem.warmUp) ctx.progress?.recordLearning?.(S.problem.id, credit);
     toolbar.clearTransient();
     hud.setPhase('done');
@@ -1448,7 +1456,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
 
   // ---- editorial
   function openEditorial() {
-    if (S.problem?.twistDay && S.result && !S.result.passed && !S.result.transferReflection) { toast('Commit the changed tradeoff and experiment in the report first.', 'info'); return; }
+    if (transferPending()) { toast('Commit the changed tradeoff and experiment in the report first.', 'info'); return; }
     if (!stepped || interview) return;
     if (!S.result && !(ctx.progress?.get?.(S.problem.id)?.attempts > 0)) { toast('The editorial unlocks after one finished traffic day.', 'info'); return; }
     renderEditorial(editorialWrap, {
@@ -1512,7 +1520,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
 
   // ---- hints
-  const hints = createHints(root, { getHints: () => S.problem?.twistDay && S.result && !S.result.passed && !S.result.transferReflection ? ['Commit the changed tradeoff, two explanations and a discriminating experiment in the report before opening repair guidance.'] : adviceReady() ? S.problem?.hints || [] : ['Before choosing another part, trace one request through your design. Where does it wait, what happens if that step crashes, and what evidence would disprove your prediction? Run a day first; repair hints open after your attempt.'], snd, onUse: (n) => { S.hintsUsed = n; } });
+  const hints = createHints(root, { getHints: () => transferPending() ? ['Commit the changed tradeoff, two explanations and a discriminating experiment in the report before opening repair guidance.'] : adviceReady() ? S.problem?.hints || [] : ['Before choosing another part, trace one request through your design. Where does it wait, what happens if that step crashes, and what evidence would disprove your prediction? Run a day first; repair hints open after your attempt.'], snd, onUse: (n) => { S.hintsUsed = n; } });
   function closeHints() { hints.close(); }
 
   // ---- toolbar, inspector, HUD, requirements, traffic panel
@@ -1627,6 +1635,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const base = S.twist && problem.twist ? twistProblem(problem) : problem;
     S.problem = withSource(spreadClients(warmUpOf(base)));
     S.result = null;
+    S.pendingTransfer = null;
     S.undo.length = 0; S.redo.length = 0;
     S.lastStatus.clear();
     if (S.sim) { try { S.sim.pause?.(); } catch { /* old sim */ } }
