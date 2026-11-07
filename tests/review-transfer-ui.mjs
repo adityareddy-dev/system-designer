@@ -37,7 +37,7 @@ try {
   await page.$eval('.pl-tool--editorial', el => el.click());
   assert.equal(await page.$eval('.pl-overlay--editorial', el => el.hidden), true);
   await page.$eval('.pl-tool--hint', el => el.click());
-  await click('Show hint 1');
+  assert.equal(await page.$eval('.pl-hints-foot button', el => el.hidden), true, 'the reflection instruction is outside counted hint tiers');
   assert.match(await page.$eval('.pl-hints', el => el.textContent), /Commit the changed tradeoff, two explanations/);
   await page.$eval('.pl-hints [aria-label="Close hints"]', el => el.click());
   await page.$eval('.pl-step[data-step="debrief"]', el => el.click());

@@ -120,7 +120,7 @@ export function renderDrill(host, ctx) {
       S.qs[S.i].prediction = prediction.value.trim(); prediction.readOnly = true;
       choices.hidden = false; reveal.hidden = true; buttons[0]?.focus();
     } });
-    prediction.addEventListener('input', () => reveal.disabled = prediction.value.trim().length < 3);
+    prediction.addEventListener('input', () => reveal.disabled = !prediction.value.trim());
     page.append(head(S), bar,
       S.qs.length < ROUND ? h('p', { class: 'sh-muted', text: `This short set covers ${S.qs.length} distinct lesson mechanisms. Finish more lessons for a longer drill.` }) : null,
       h('section', { class: 'sh-card sh-lp-card', 'aria-live': 'polite' },

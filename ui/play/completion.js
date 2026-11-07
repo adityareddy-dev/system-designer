@@ -19,7 +19,7 @@ export function completionState(problem = {}, result = {}, answer, saved = {}) {
   if (result.reference) { key = 'reference'; label = 'Reference design'; message = 'Reference run: compare the evidence. This run does not earn learning credit.'; }
   else if (problem.warmUp && !problem.twistDay) { key = 'warm-up'; label = 'Warm-up'; message = 'Warm-up only. Try the full day to earn learning credit.'; }
   else if (credit.independentTwist || saved.learning?.masteredAt) { key = 'mastered'; label = 'Mastered'; message = 'Full mastery earned: changed conditions passed without hints, and the responsibility trace is checked.'; }
-  else if (result.mode && result.mode !== 'practice') { key = 'practice'; message = 'Traffic passed. Open this problem in Practice to check its central responsibility and earn mastery on a later New twist.'; }
+  else if (result.passed && result.mode && result.mode !== 'practice') { key = 'practice'; message = 'Traffic passed. Open this problem in Practice to check its central responsibility and earn mastery on a later New twist.'; }
   const next = ['checked','assisted'].includes(key) ? 'twist' : key === 'needs-original' ? 'original' : key === 'twist-assisted' ? 'retry' : key === 'practice' ? 'practice' : null;
   return { key, label, message, traceChecked, assisted, next };
 }

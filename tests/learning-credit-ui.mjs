@@ -63,7 +63,34 @@ try {
   assert(assisted.learning.assistedAt && !assisted.learning.masteredAt);
   assert.equal(await page.$('.pl-victory'), null, 'assisted twist keeps the pass quiet');
   assert.equal(assisted.learning.eligibleAt, before.learning.eligibleAt);
-  await click('Next: Retry twist without hints'); await click('Start day'); await gates();
+  await click('Next: Retry twist without hints');
+  const setUnits = async graph => page.evaluate(graph => {
+    for (const n of graph.nodes) if (n.units != null) {
+      const actual = window.__game.getState().nodes.find(node => node.type === n.type);
+      window.__game.setKnob(actual.id, 'units', n.units);
+      window.__game.setKnob(actual.id, 'tier', n.tier || 'M');
+    }
+  }, graph);
+  await setUnits(p.editorial.designs[0].graph);
+  await click('Start day'); await gates();
+  await page.evaluate(() => window.__game.step(86400000));
+  assert.equal(await page.evaluate(() => window.__game.getState().score.passed), false);
+  await page.$eval('.pl-tool--hint', e => e.click());
+  assert.match(await page.$eval('.pl-hints', e => e.textContent), /Commit the changed tradeoff/);
+  assert.equal(await page.$eval('.pl-hints-foot button', e => e.hidden), true);
+  assert.equal(await page.$('.pl-hints .pl-hint'), null, 'the reflection instruction is not a revealed hint');
+  await page.$eval('.pl-hints [aria-label="Close hints"]', e => e.click());
+  await page.$$eval('.pl-transfer-reflection textarea', inputs => {
+    inputs.forEach((input, i) => input.value = [
+      'The lower bill competes with enough reserve for the unchanged recovery promise.',
+      'Either idle compute capacity or retained data dominates this bill.',
+      'Cut only compute units. A lower bill supports idle compute; an unchanged bill supports retained data. Check served share during the outage.'
+    ][i]);
+    inputs[0].closest('form').requestSubmit();
+  });
+  await click('Retry');
+  await setUnits(p.twist.design.graph);
+  await click('Start day'); await gates();
   await page.evaluate(() => window.__game.step(86400000));
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /Full mastery earned/);
   const after = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);

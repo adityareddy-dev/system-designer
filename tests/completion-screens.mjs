@@ -5,6 +5,8 @@ import { problems } from '../content/problems/index.js';
 import { completionState } from '../ui/play/completion.js';
 const cases = [
   { key: 'failed', run: { passed: false } },
+  { key: 'failed', run: { passed: false, mode: 'challenge' } },
+  { key: 'failed', run: { passed: false, mode: 'beat' } },
   { key: 'trace-open', run: { passed: true, learning: { traceChecked: false } } },
   { key: 'checked', run: { passed: true, learning: { traceChecked: true } } },
   { key: 'assisted', run: { passed: true, learning: { traceChecked: true, assisted: true } } },
@@ -14,7 +16,8 @@ const cases = [
   { key: 'mastered', saved: { learning: { masteredAt: 1 } }, run: { passed: true, learning: { traceChecked: true } } },
   { key: 'reference', run: { passed: true, reference: true } },
   { key: 'warm-up', warm: true, run: { passed: true } },
-  { key: 'practice', run: { passed: true, mode: 'challenge' } }
+  { key: 'practice', run: { passed: true, mode: 'challenge' } },
+  { key: 'practice', run: { passed: true, mode: 'beat' } }
 ];
 for (const p of problems) for (const test of cases) assert.equal(completionState({ ...p, twistDay: test.twist, warmUp: test.warm }, test.run, null, test.saved).key, test.key, p.id);
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox','--enable-unsafe-swiftshader'] });
@@ -43,6 +46,7 @@ try {
   }, cases);
   for (const state of checked) {
     assert.equal(state.actual, state.key);
+    if (state.key === 'failed') assert.doesNotMatch(state.lower, /Traffic passed/);
     if (state.upper) assert.equal(state.upper, state.expected);
     assert.equal(state.lower, state.expected);
   }

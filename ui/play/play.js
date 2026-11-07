@@ -1520,7 +1520,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
 
   // ---- hints
-  const hints = createHints(root, { getHints: () => transferPending() ? ['Commit the changed tradeoff, two explanations and a discriminating experiment in the report before opening repair guidance.'] : adviceReady() ? S.problem?.hints || [] : ['Before choosing another part, trace one request through your design. Where does it wait, what happens if that step crashes, and what evidence would disprove your prediction? Run a day first; repair hints open after your attempt.'], snd, onUse: (n) => { S.hintsUsed = n; } });
+  const hints = createHints(root, {
+    getNotice: () => transferPending() ? 'Commit the changed tradeoff, two explanations and a discriminating experiment in the report before opening repair guidance.' : '',
+    getHints: () => adviceReady() ? S.problem?.hints || [] : ['Before choosing another part, trace one request through your design. Where does it wait, what happens if that step crashes, and what evidence would disprove your prediction? Run a day first; repair hints open after your attempt.'],
+    snd, onUse: (n) => { S.hintsUsed = n; }
+  });
   function closeHints() { hints.close(); }
 
   // ---- toolbar, inspector, HUD, requirements, traffic panel
