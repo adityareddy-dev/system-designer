@@ -491,7 +491,6 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     for (const v of map.carrying) {
       v.texMap = map.tex;
       v.quiet = !!failureLead && v.to !== failureLead.id && v.from !== failureLead.id;
-      if(v.quiet) for(let t=0;t<T;t++)v.rates[t]*=.2;
     }
     return map;
   }
