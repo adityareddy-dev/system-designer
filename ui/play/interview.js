@@ -141,8 +141,9 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     columns.append(response, evidence);
     controls.push(mountDefense(response, q, d, { id: 'pl-defense-' + i, locked: state.complete, onReveal: update, onChange: () => {
       if (d.revealed && q.checklist.every((_,j) => d.checked[j])) {
-        if (section.contains(document.activeElement)) section.querySelector('summary').focus();
+        const restoreFocus = section.contains(document.activeElement);
         section.open = false;
+        if (restoreFocus) section.querySelector('summary').focus();
       }
       update();
     } }));

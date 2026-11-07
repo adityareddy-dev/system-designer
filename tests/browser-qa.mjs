@@ -5,6 +5,7 @@ import puppeteer from 'puppeteer-core';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
+import { lessons } from '../content/lessons/index.js';
 
 const BASE = process.argv[2] || 'http://localhost:8765/';
 const OUT = process.argv[3] || path.join(os.tmpdir(), 'system-designer-browser-qa');
@@ -51,10 +52,10 @@ for (const id of ids) {
 }
 
 // Every lesson through __game
-const lessonIds = await ev(async () => (await import('./content/lessons/index.js')).lessons.map((l) => l.id));
-for (const id of lessonIds) {
+for (const lesson of lessons) {
+  const id = lesson.id;
   try {
-    const worked = await ev(async id => !(await import('./content/lessons/index.js')).lessonById.get(id).steps.some(s => s.kind === 'demo' || s.kind === 'script'), id);
+    const worked = !lesson.steps.some(s => s.kind === 'demo' || s.kind === 'script');
     if (worked) {
       await ev(id => { location.hash = '#/learn/' + id; }, id);
       await page.waitForFunction(id => location.hash === '#/learn/' + id && !!document.querySelector('.sh-lp-card'), {}, id);

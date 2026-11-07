@@ -16,6 +16,7 @@ try {
   for (const motion of ['full', 'reduce']) {
     await page.goto(base + '#/learn/load-balancing?step=2');
     await page.waitForSelector('.fg-bench[data-figure="load-balancing"]');
+    await page.waitForFunction(() => document.documentElement.dataset.ready === '1' && !document.querySelector('.sh-main[aria-busy="true"]'));
     await page.evaluate(motion => { document.documentElement.dataset.motion = motion; }, motion);
     await page.waitForFunction(motion => document.querySelector('.fg-bench').dataset.motion === motion, {}, motion);
     let previous;
