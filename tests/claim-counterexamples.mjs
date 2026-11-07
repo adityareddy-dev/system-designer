@@ -6,6 +6,11 @@ import { createSim } from '../sim/engine.js';
 import { checkClaim } from '../content/problems/defense-claims.js';
 import { problemById } from '../content/problems/index.js';
 const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(name => [name, JSON.parse(fs.readFileSync(new URL(`../catalog/${name}.json`, import.meta.url)))])));
+function baseline(problem, graph) {
+  const sim = createSim({ catalog, problem }); sim.loadGraph(graph); sim.start(); sim.advance(86400000);
+  const result = sim.result(); assert(result.passed, 'the analytical fixture must serve its baseline workload');
+  return { problem, graph: result.graph, result, catalog };
+}
 function fixture({ rate = 100, units = 4, zones = 1, dbTier = 'M', cache = false, alternate = false } = {}) {
   const problem = { id: 'claim-fixture', difficulty: 'Hard', requirements: { peakRps: rate, mix: { read: 1 }, availability: .99, latencyP99Ms: { default: 10000 }, dataSafety: 'best-effort', budgetPerMonth: 1e9, userRegions: { us: 1 }, homeRegion: 'us', storageTb: .01 }, traffic: { curve: 'flat', sources: { 'web-browser': 1 } }, events: [] };
   const graph = { nodes: [
@@ -15,9 +20,7 @@ function fixture({ rate = 100, units = 4, zones = 1, dbTier = 'M', cache = false
     ...(cache ? [{ id: 'cache', type: 'cache', x: 400, y: 0, knobs: { ttlSec: 86400, coalesce: true } }] : []),
     ...(alternate ? [{ id: 'other', type: 'vm-fleet', x: 200, y: 200, units }] : [])
   ], edges: [['client','app'], ...(cache ? [['app','cache'],['cache','db']] : [['app','db']]), ...(alternate ? [['client','other'],['other','db']] : [])] };
-  const sim = createSim({ catalog, problem }); sim.loadGraph(graph); sim.start(); sim.advance(86400000);
-  const result = sim.result(); assert(result.passed, 'the analytical fixture must serve its baseline workload');
-  return { problem, graph: result.graph, result, catalog };
+  return baseline(problem, graph);
 }
 function check(kind, context, held, nodeId = 'app') {
   const result = checkClaim({ id: kind, kind, nodeId }, context);
@@ -57,4 +60,27 @@ for (const id of ['health-records', 'device-notes']) {
   const result = sim.result();
   assert.equal(check('hot', { catalog, problem, result, graph: result.graph }, false).applied, false, id);
 }
-console.log('Claim fixtures passed for surviving capacity, growth, minimum fleets, whole-bill savings, alternate routes, cold origins and applicable hot items.');
+// A retry claim requires lost replies at an active compute target at noon.
+assert.equal(check('retry', fixture(), true).applied, true);
+const notes = problemById.get('device-notes');
+const direct = baseline(notes, notes.editorial.designs[0].graph);
+const compute = direct.graph.nodes.find(n => catalog.elementById.get(n.type).kind === 'compute');
+assert(compute, 'the Device notes reference has a compute fleet to bypass');
+const upstream = direct.graph.edges.filter(e => e.to === compute.id && e.kind === 'flow');
+const downstream = direct.graph.edges.filter(e => e.from === compute.id);
+const bypass = {
+  nodes: direct.graph.nodes.filter(n => n !== compute),
+  edges: direct.graph.edges.filter(e => e.to !== compute.id && e.from !== compute.id)
+    .concat(upstream.flatMap(a => downstream.map(b => ({ from: a.from, to: b.to }))))
+};
+assert(!bypass.nodes.some(n => catalog.elementById.get(n.type).kind === 'compute'));
+assert.equal(check('retry', baseline(notes, bypass), false).applied, false, 'no compute target');
+bypass.nodes.push(compute);
+assert.equal(check('retry', baseline(notes, bypass), false).applied, false, 'an idle fleet cannot receive lost replies');
+const blocked = fixture();
+blocked.graph.nodes.push({ id: 'limiter', type: 'rate-limiter', x: 100, y: 0 });
+blocked.graph.edges = blocked.graph.edges.filter(e => e.from !== 'client')
+  .concat([{ from: 'client', to: 'limiter' }, { from: 'limiter', to: 'app' }]);
+blocked.problem.events = [{ id: 'bad-deploy', at: '11:59', params: { target: 'limiter', errorRate: 1, durationSec: 120 } }];
+assert.equal(check('retry', baseline(blocked.problem, blocked.graph), false).applied, false, 'a fleet active earlier and later must carry traffic at the intervention tick');
+console.log('Claim fixtures passed for surviving capacity, growth, minimum fleets, whole-bill savings, alternate routes, cold origins, applicable hot items and retry targets.');

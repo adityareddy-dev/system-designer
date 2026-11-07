@@ -55,8 +55,7 @@ export function checkClaim(claim, { problem, graph, result, catalog }) {
     steps.push(`Cut ${label(node.id)} from ${before} to ${node.units} paid units, bounded by its catalog and zone floors. Disable autoscaling so it cannot undo the saving.`);
     if (!applied) steps.push('The minimum fleet prevents this cut. Keeping the original unit count does not support a claim about removing 30%.');
   } else if (claim.kind === 'retry') {
-    applied = true;
-    addEvent('retry-storm'); steps.push('At 12:00 a 30-second error burst loses replies. The configured retry count and backoff drive the subsequent retry load. This checks throughput and deadlines, not exactly-once business effects.');
+    addEvent('retry-storm'); steps.push('At 12:00 schedule a 30-second error burst at the busiest compute part. The configured retry count and backoff drive the subsequent retry load. This checks throughput and deadlines, not exactly-once business effects.');
   } else if (claim.kind === 'hot') {
     addEvent('hot-key', { share: .6 }); steps.push('At 12:00 direct 60% of keyed traffic to one item for an hour. The engine uses one keyed unit and any upstream cache; it does not model a tenant isolation policy.');
   } else if (claim.kind === 'growth') {
@@ -74,21 +73,29 @@ export function checkClaim(claim, { problem, graph, result, catalog }) {
   }
   const replay = createSim({ catalog, problem: { ...problem, events, requirements }, seed: result.seed || 'practice' });
   replay.loadGraph(candidate); replay.start();
-  if (claim.kind === 'hot') {
+  if (['hot', 'retry'].includes(claim.kind)) {
     replay.advance(12 * 3600000);
-    // Observe the intervention tick: disconnected and idle boundaries do not test a hot item.
+    // Observe the intervention tick: disconnected and idle boundaries cannot test the claim.
     replay.tick();
     const state = replay.state();
     const flows = replay.flows();
-    const targets = new Set(state.events.findLast(e => e.id === 'hot-key' && e.atMs === 12 * 3600000)?.nodeIds || []);
+    const eventId = claim.kind === 'hot' ? 'hot-key' : 'retry-storm';
+    const targets = new Set(state.events.findLast(e => e.id === eventId && e.atMs === 12 * 3600000)?.nodeIds || []);
     applied = candidate.nodes.some(n => {
       if (!targets.has(n.id)) return false;
       const el = catalog.elementById.get(n.type);
+      if (claim.kind === 'retry') {
+        const offset = flows.nodeIds.indexOf(n.id) * flows.typeIds.length;
+        return el.kind === 'compute' && flows.nodeFailRps.subarray(offset, offset + flows.typeIds.length).some(rps => rps > 0);
+      }
       const cachedTraffic = el.kind === 'cache' && flows.typeIds.some((type, t) => catalog.requestById.get(type)?.cacheable && candidate.edges.some(edge => edge.to === n.id && flows.edgeRps[flows.edgeIds.indexOf(edge.id) * flows.typeIds.length + t] > 0));
       const modeled = el.params?.keyed && (n.units > 1 || el.params.perKeyReadRps) || cachedTraffic;
       if (!modeled) return false;
       return state.nodes.find(s => s.id === n.id)?.incomingRps > 0;
     });
+    if (claim.kind === 'retry') steps.push(applied
+      ? `At the intervention tick, the error burst lost replies at ${[...targets].map(label).join(', ')}.`
+      : 'At the intervention tick, the error burst reached no compute part carrying requests.');
   }
   replay.advance(86400000);
   const checked = replay.result(), slo = checked.slo;
