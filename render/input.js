@@ -38,8 +38,8 @@ export function createInput(canvas, host, d) {
     if (!v) return false;
     // The visible side port and the arrow share one finger-sized target.
     const px = (w.x - v.x) * camera.zoom, py = (w.y - v.y) * camera.zoom;
-    if (px > Math.min(HALF * camera.zoom * .6, 14) && Math.abs(py) <= 22 &&
-      (Math.abs(px - HALF * camera.zoom) <= 22 || Math.abs(px - PORT_R * camera.zoom) <= 22)) return true;
+    if (px >= Math.max(HALF * camera.zoom - 12, HALF * camera.zoom * .6) &&
+      px <= HALF * camera.zoom + 44 && Math.abs(py) <= 22) return true;
     const dd = Math.hypot(w.x - v.x, w.y - v.y);
     const t = tolFor(type);
     const inBody = Math.abs(w.x - v.x) <= HALF && Math.abs(w.y - v.y) <= HALF && dd < PORT_IN;
@@ -70,8 +70,9 @@ export function createInput(canvas, host, d) {
     if (type !== 'mouse' || mode !== 'idle') return;
     const w = camera.screenToWorld(p.x, p.y);
     hoverWorld = w;
-    const ring = d.editable() && nodes.list.find(v => inRing(v, w, 'mouse')) || activeRingNode('mouse');
-    if (ring && inRing(ring, w, 'mouse')) { setCursor('crosshair'); d.ui.setPortRing(ring, true); return; }
+    const body = nodes.hit(w.x, w.y, 0);
+    const ring = d.editable() && nodes.list.find(v => (!body || body.id === v.id) && inRing(v, w, 'mouse')) || activeRingNode('mouse');
+    if (ring && (!body || body.id === ring.id) && inRing(ring, w, 'mouse')) { setCursor('crosshair'); d.ui.setPortRing(ring, true); return; }
     const v = nodes.hit(w.x, w.y, tolFor('mouse'));
     nodes.setHover(v ? v.id : null);
     d.ui.setPortRing(activeRingNode('mouse'), false);
@@ -109,8 +110,9 @@ export function createInput(canvas, host, d) {
     if (e.button === 2) { mode = 'idle'; return; }
     if (e.button === 1 || spaceDown) { mode = 'pan'; setCursor('grabbing'); return; }
     if (d.ghost.type()) { d.ghost.pointer(w.x, w.y); mode = 'pendingCanvas'; return; }
-    const ring = d.editable() && nodes.list.find(v => inRing(v, w, e.pointerType)) || activeRingNode(e.pointerType);
-    if (ring && inRing(ring, w, e.pointerType)) {
+    const body = nodes.hit(w.x, w.y, 0);
+    const ring = d.editable() && nodes.list.find(v => (!body || body.id === v.id) && inRing(v, w, e.pointerType)) || activeRingNode(e.pointerType);
+    if (ring && (!body || body.id === ring.id) && inRing(ring, w, e.pointerType)) {
       mode = 'connect'; connectFrom = ring; connectTarget = null;
       d.ui.drawBand(ring, w.x, w.y, null, true);
       return;

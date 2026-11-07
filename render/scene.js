@@ -199,10 +199,12 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     }
     portRing.stroke({ width: ringHot ? 2.4 : 1.6, color: P.accent, alpha: ringHot ? 0.95 : 0.6, cap: 'round' });
     if (ringHot) portRing.circle(0, 0, PORT_R + 6).stroke({ width: 10, color: P.accent, alpha: 0.12 });
-    // the handle: a clear dot with an arrow, big enough to find and to grab with a finger
-    portRing.circle(PORT_R, 0, 22 * k).fill({ color: P.accent, alpha: .08 });
-    portRing.circle(PORT_R, 0, 10 * k).fill({ color: P.accent }).stroke({ width: 2 * k, color: P.surfaceSolid });
-    portRing.moveTo(PORT_R - 3.5 * k, -4 * k).lineTo(PORT_R + 3 * k, 0).lineTo(PORT_R - 3.5 * k, 4 * k).stroke({ width: 2 * k, color: P.surfaceSolid, cap: 'round', join: 'round' });
+    // The handle keeps a full finger target outside the body, even at overview zoom.
+    const handleX = HALF + 22 / camera.zoom;
+    portRing.moveTo(HALF, 0).lineTo(handleX, 0).stroke({width:1.6*k,color:P.accent,alpha:.65});
+    portRing.circle(handleX, 0, 22 / camera.zoom).fill({ color: P.accent, alpha: .08 });
+    portRing.circle(handleX, 0, 10 * k).fill({ color: P.accent }).stroke({ width: 2 * k, color: P.surfaceSolid });
+    portRing.moveTo(handleX - 3.5 * k, -4 * k).lineTo(handleX + 3 * k, 0).lineTo(handleX - 3.5 * k, 4 * k).stroke({ width: 2 * k, color: P.surfaceSolid, cap: 'round', join: 'round' });
   }
 
   const ui = {
@@ -649,7 +651,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (ringNode.removing || !nodes.views.has(ringNode.id)) ui.setPortRing(null);
       else portRing.position.set(ringNode.x, ringNode.y);
     }
-    portHint.visible = !!ringNode && ringNode.id === selected && editable && input.mode !== 'connect';
+    portHint.visible = !!ringNode && ringNode.id === selected && editable && !flow && input.mode !== 'connect';
     if (portHint.visible) { portHint.position.set(ringNode.x, ringNode.y - PORT_R - 16 / camera.zoom); portHint.scale.set(1 / camera.zoom); portHint.style.fill = P.accent; }
     if (viewChanged && ringNode) drawPortRing();
     if (!editable && ringNode) ui.setPortRing(null);
