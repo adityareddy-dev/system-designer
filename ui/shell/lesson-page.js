@@ -270,6 +270,10 @@ export function renderLesson(host, ctx, route) {
       h('div', { class: 'sh-demo-prompt' }, ico('ui.sandbox', 20), h('p', { class: 'sh-lp-text', text: step.prompt })),
       hintBox);
     const stage = h('div', { class: 'sh-demo-stage' });
+    const openWorkbench = () => {
+      play?.destroy();
+      play = mountPlayHost(stage, ctx, { mode: 'lesson', lesson: touchWording(lesson), stepIndex: idx, seed: 'lesson-' + lesson.id });
+    };
     const guidance = h('div', { class: 'sh-demo-guidance', hidden: !estimates.has(idx) });
     // Keep the workbench's sizing advice out of view until the learner records a first estimate.
     {
@@ -282,6 +286,8 @@ export function renderLesson(host, ctx, route) {
         event.preventDefault();if(!input.checkValidity()||!input.value.trim())return;
         estimates.set(idx,input.value);receipt.textContent=recorded(input.value);
         receipt.hidden=false;stage.hidden=false;guidance.hidden=false;form.hidden=true;hintBtn&&(hintBtn.hidden=false);
+        // Measure the visible stage for its opening camera, after the prediction form leaves the layout.
+        openWorkbench();
       }},h('h2',{class:'sh-h2',text:step.estimate?'Make your first estimate':'Predict before you try'}),h('p',{class:'sh-lp-text',text:step.estimate||'Name the first limit you would measure. Predict what will happen to the user outcome after your first change, then test it in the workbench.'}),h('label',null,h('span',{text:step.estimate?'How many app servers would you start with?':'What do you expect, and why?'}),input),h('button',{class:'sh-btn sh-btn--primary',type:'submit',text:step.estimate?'Commit my estimate':'Commit my prediction'}));
       if(hintBtn)hintBtn.hidden=!saved;
       card.append(form,receipt);
@@ -290,7 +296,7 @@ export function renderLesson(host, ctx, route) {
     card.append(guidance, stage, h('div', { class: 'sh-lp-nav' },
       idx > 0 ? h('button', { type: 'button', class: 'sh-btn sh-btn--ghost', onclick: () => go(idx - 1) }, ico('ui.chevron-left', 18), 'Back') : h('span'),
       hintBtn, cont));
-    play = mountPlayHost(stage, ctx, { mode: 'lesson', lesson: touchWording(lesson), stepIndex: idx, seed: 'lesson-' + lesson.id });
+    openWorkbench();
     const mark = () => { cont.classList.add('is-goal'); cont.classList.remove('sh-btn--ghost'); cont.classList.add('sh-btn--primary'); cont.removeAttribute('title'); cont.firstChild.textContent = 'Goal reached. Continue';
       try { cont.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch { /* optional */ }
     };
