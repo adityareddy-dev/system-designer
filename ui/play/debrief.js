@@ -471,6 +471,6 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     handlers.onTwist ? h('button', { class: 'pl-btn', type: 'button', 'data-act': 'twist', title: problem?.twistDay ? 'Play the original day again' : twistTip(problem, catalog), onClick: () => handlers.onTwist() }, iconEl('ui.restart', 16), problem?.twistDay ? 'Original day' : 'New twist') : null,
     hasNext ? h('button', { class: 'pl-btn', type: 'button', onClick: () => handlers.onNext?.() }, 'Next problem', iconEl('ui.chevron-right', 16)) : null,
     h('button', { class: 'pl-btn pl-btn--ghost', type: 'button', onClick: () => handlers.onBack?.() }, iconEl('ui.back', 16), 'Back to my design')));
-  gateTransfer(root, problem, result);
+  gateTransfer(root, problem, result, catalog);
   host.append(root);
 }

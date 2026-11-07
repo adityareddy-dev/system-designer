@@ -1493,6 +1493,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (S.result.passed && !S.problem.warmUp && creditForVictory()) showVictory(debriefWrap, { result: S.result, before: S.winBefore, original: S.winOriginal, catalog, reduced: ctx.reducedMotion() });
     debriefWrap.hidden = false;
     debriefWrap.scrollTop = 0;
+    debriefWrap.querySelector('.pl-transfer-reflection h2')?.focus({ preventScroll: true });
   }
 
   // ---- editorial

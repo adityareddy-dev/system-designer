@@ -23,6 +23,8 @@ export function failureEvidence(result, catalog) {
     return { nodeId: step?.nodeId, heading: 'The safety requirement that missed', detail: facts.join(' ') };
   }
   const first = result.checks?.availability === true ? null : result.firstFailure;
+  const waiting = result.queues?.find(q => q.id === first?.nodeId && q.lateMessages > 0);
+  if (waiting) return { nodeId: waiting.id, heading: 'Where work waited too long', detail: `${name(waiting.id)}: oldest observed wait about ${fmtNum(waiting.maxWaitSec)} seconds against a ${fmtNum(waiting.limitSec)} second deadline; ${fmtNum(waiting.lateMessages)} jobs late.` };
   if (first?.nodeId) {
     const measure = nodes.find(n => n.id === first.nodeId);
     if (first.kind === 'routing') return { nodeId: first.nodeId, heading: 'Where the route stopped', detail: `${name(first.nodeId)}: requests had no complete delivery route.` };
