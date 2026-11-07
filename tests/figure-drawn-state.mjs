@@ -18,7 +18,7 @@ const checks = {
  'queues-backpressure': (s,d) => {d.has(s.queue.length+' waiting');s.queue.slice(0,48).forEach((q,i)=>d.mark('job'+q.id,25+i%16*20,100+Math.floor(i/16)*35));assert.equal(d.keys.length,Math.min(48,s.queue.length));},
  fanout: (s,d) => {d.has(s.posts+' posts');if(s.posts){d.mark('author',320,45);for(const key of d.keys.filter(k=>/^(copy|read):/.test(k)))assert.equal(d.marks[key][1],s.mode==='on write'?229:65);}},
  'realtime-connections': (s,d) => d.has(s.connected?'Open · 64 KB':'Closed · 0 KB',s.time<s.expires?'Online':'Offline'),
- consistency: (s,d) => {d.mark('primary:'+s.primary,300,55);d.mark('replica:'+s.replica,300,210);if(s.answer!==null)d.mark('answer:'+s.event,180,120);},
+ consistency: (s,d) => {d.mark('primary:'+s.primary,300,55);d.mark('replica:'+s.replica,300,210);if(s.lastRead)d.mark('answer:'+s.lastRead.id,180,120);},
  'idempotency-retries': (s,d) => {d.has(s.charges+' charges');if(s.last==='pay')assert(!d.keys.some(k=>k.startsWith('receipt:')));if(s.last==='retry')d.mark('receipt:'+s.event,220,55);},
  'rate-limiting': (s,d) => {d.has(s.tokens+'/10 tokens',s.accepted+' allowed');assert.equal(d.keys.filter(k=>k.startsWith('token')).length,s.tokens);if(s.last==='send')for(let i=0;i<4;i++)d.mark('batch:'+s.event+':'+i,240+i*25,i<s.batch?210:135);},
  'circuit-breakers': (s,d) => {d.has('Breaker: '+s.state,s.upstream+' calls reached');if(s.last==='call')d.mark('call:'+s.event,300,s.reached?210:130);},

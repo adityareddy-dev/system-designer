@@ -45,6 +45,22 @@ try {
   assert.deepEqual(await page.$eval('[data-key="cached:1"]', el => ({ key: el.dataset.key, x: el.dataset.x, y: el.dataset.y })), cached, 'changing the origin retains the cache copy');
   assert.equal(await page.$eval('[data-key="cached:1"]', el => el.getAnimations().length), 0, 'the cache copy is not sent again');
 
+  await page.goto(base + '#/learn/consistency?step=2');
+  await page.waitForSelector('.fg-bench[data-figure="consistency"]');
+  await page.evaluate(() => { document.documentElement.dataset.motion = 'full'; });
+  await page.waitForFunction(() => document.querySelector('.fg-bench').dataset.motion === 'full');
+  await page.click('[data-control="read"]');
+  assert.equal(await page.$eval('[data-key="answer:1"]', el => el.getAnimations().length), 1, 'a replica read animates a response');
+  for (const action of ['write', 'mode', 'deliver']) {
+    if (action === 'mode') await page.select('[data-control="mode"]', 'strong');
+    else await page.click(`[data-control="${action}"]`);
+    const answer = await page.$eval('[data-key="answer:1"]', el => ({ sourceY: +el.dataset.fromY, animations: el.getAnimations().length }));
+    assert.deepEqual(answer, { sourceY: 210, animations: 0 }, 'unrelated actions cannot replay or reroute the replica response');
+  }
+  await page.click('[data-control="read"]');
+  const primaryRead = await page.$eval('[data-key="answer:2"]', el => ({ sourceY: +el.dataset.fromY, frames: el.getAnimations()[0]?.effect.getKeyframes().map(frame => frame.transform) }));
+  assert.deepEqual(primaryRead, { sourceY: 55, frames: ['translate(120px, -65px)', 'translate(0px, 0px)'] }, 'an explicit primary read starts a new response at the primary');
+
   await page.goto(base + '#/learn/queues-backpressure?step=2');
   await page.waitForSelector('.fg-bench[data-figure="queues-backpressure"]');
   await page.click('[data-control="step"]');

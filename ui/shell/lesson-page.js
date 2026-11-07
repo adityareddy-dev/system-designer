@@ -79,6 +79,7 @@ export function renderLesson(host, ctx, route) {
   const total = steps.length + 1; // last page is the takeaway
   let idx = Math.max(0, Math.min(total - 1, parseInt(route.query.step, 10) || 0));
   let play = null;
+  let prepareDemo = null;
   let goalOff = null;
 
   const wrap = h('div', { class: 'sh-lesson-page' });
@@ -88,6 +89,7 @@ export function renderLesson(host, ctx, route) {
   host.append(wrap);
 
   function stopPlay() {
+    prepareDemo = null;
     figureVersion++;
     figure?.destroy(); figure = null;
     poolOff?.(); poolOff = null;
@@ -294,6 +296,13 @@ export function renderLesson(host, ctx, route) {
         openWorkbench();
         play.ready.then(() => { if (stage.isConnected && !stage.hidden) stage.scrollIntoView({ block: 'nearest' }); });
       }},h('h2',{class:'sh-h2',text:step.estimate?'Make your first estimate':'Predict before you try'}),h('p',{class:'sh-lp-text',text:step.estimate||'Name the first limit you would measure. Predict what will happen to the user outcome after your first change, then test it in the workbench.'}),h('label',null,h('span',{text:step.estimate?'How many app servers would you start with?':'What do you expect, and why?'}),input),h('button',{class:'sh-btn sh-btn--primary',type:'submit',text:step.estimate?'Commit my estimate':'Commit my prediction'}));
+      // The documented loadLesson testing hook opens a demo without inventing a prediction.
+      prepareDemo=()=>{
+        stage.hidden=false;guidance.hidden=false;form.hidden=true;
+        brief.hidden=true;instructions.hidden=false;
+        if(hintBtn)hintBtn.hidden=false;
+        if(!play)openWorkbench();
+      };
       if(hintBtn)hintBtn.hidden=!saved;
       card.append(form,receipt);
     }
@@ -301,7 +310,7 @@ export function renderLesson(host, ctx, route) {
     card.append(guidance, stage, h('div', { class: 'sh-lp-nav' },
       idx > 0 ? h('button', { type: 'button', class: 'sh-btn sh-btn--ghost', onclick: () => go(idx - 1) }, ico('ui.chevron-left', 18), 'Back') : h('span'),
       hintBtn, cont));
-    openWorkbench();
+    if (committed) openWorkbench();
     const mark = () => { cont.classList.add('is-goal'); cont.classList.remove('sh-btn--ghost'); cont.classList.add('sh-btn--primary'); cont.removeAttribute('title'); cont.firstChild.textContent = 'Goal reached. Continue';
       try { cont.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch { /* optional */ }
     };
@@ -366,6 +375,7 @@ export function renderLesson(host, ctx, route) {
   draw();
   return {
     title: lesson.title,
+    preparePlay() { prepareDemo?.(); },
     update(r) {
       const n = Math.max(0, Math.min(total - 1, parseInt(r.query.step, 10) || 0));
       if (n !== idx || suspended) { idx = n; suspended = false; draw(); }
