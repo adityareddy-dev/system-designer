@@ -41,7 +41,13 @@ const checks = {
  'slos-error-budgets': (s,d) => {d.has(s.error+'% errors for '+s.duration);d.mark('clock',20+s.minute/720*320,210);},
  'multi-tenancy': (s,d) => {for(let i=0;i<6;i++)d.has(i?'Tenant '+String.fromCharCode(65+i):'Noisy A');assert.equal((d.svg.match(/class="fg-bar/g)||[]).length,6);},
  'lead-interview': (s,d) => {for(const p of ['scope','numbers','design','depth'])d.bar(p,s[p]);d.has((60-s.scope-s.numbers-s.design-s.depth)+' minutes left');},
- 'simplest-design': (s,d) => s.focus==='timeline'?d.has('Write ceiling','Restore ceiling'):d.has('Buy, 3 years','Build, 3 years',s.load+' RPS'),
+ 'simplest-design': (s,d) => {if(s.focus==='timeline'){
+  d.has('Write ceiling','Restore ceiling');assert(s.start+s.lead<=36,'the full plan fits the measured horizon');
+  const x=m=>20+m/36*320;d.mark('start',x(s.start),172);d.mark('finish',x(s.start+s.lead),172);
+  const write=Array.from({length:37},(_,m)=>600*s.growth**(m/12)).findIndex(n=>n>=s.ceiling);
+  if(write>=0)d.mark('write-limit',x(write),76);
+  const restore=Math.ceil((s.recovery-10)/2);if(restore<=36)d.mark('restore-limit',x(restore),121);
+ }else d.has('Buy, 3 years','Build, 3 years',s.load+' RPS');},
  'running-migrations': (s,d) => {d.has(s.stage+'/6');for(const [i,r]of s.rows.entries())d.has(`Row ${i+1}: ${r.old??'dropped'}`,`New: ${r.new??'not copied'}`);},
  'team-boundaries': (s,d) => {for(const name of ['Mobile','Billing','Export'])d.has(name);assert.equal((d.svg.match(/<text[^>]*>[^<]*100 calls/g)||[]).length,3);},
 };
