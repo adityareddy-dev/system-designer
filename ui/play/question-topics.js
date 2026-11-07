@@ -44,7 +44,8 @@ export function questionAnalysis(text, questions) {
     const lexical = [...b].filter(w => a.has(w) || [...a].some(v => v.length > 4 && w.startsWith(v.slice(0,-1)))).length;
     const shared = topics.filter(([,pattern]) => pattern.test(line) && pattern.test(question.q)).length;
     const phrases = topics.filter(([,pattern]) => pattern.test(line) && pattern.test(question.q)).map(([,pattern]) => line.match(pattern)?.[0]);
-    return { score: lexical + shared * 2, matched: shared > 0 || lexical >= Math.min(2, b.size || 2), phrase: phrases.filter(Boolean).join(', ') || [...b].filter(w => a.has(w)).join(', ') };
+    const matchedWords = [...a].filter(v => [...b].some(w => v === w || v.length > 4 && w.startsWith(v.slice(0,-1))));
+    return { score: lexical + shared * 2, matched: shared > 0 || lexical >= Math.min(2, b.size || 2), phrase: phrases.filter(Boolean).join(', ') || matchedWords.join(', ') };
   };
   const coverage = questions.map(q => own.some(line => score(line, q).matched));
   const closest = own.map(line => {

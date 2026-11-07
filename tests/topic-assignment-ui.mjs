@@ -22,6 +22,7 @@ try {
   for (const result of results) {
     assert(result.phrase.length > 0, result.id); assert(result.before.includes('Matched phrase:'));
     assert.equal(result.assigned, result.expected); assert(result.covered);
+    assert(result.after.includes('topics recorded.'), 'the combined count never presents self-assignment as an automatic match');
     assert(result.after.includes('Self-assigned by you. This is a wording check.'));
   }
   console.log(`${results.length} problems: matched phrases, self-assigned topics and wording warning verified in the browser.`);

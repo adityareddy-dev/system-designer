@@ -69,7 +69,13 @@ export function renderInterviewPrep(host, problem, state, ready, onStage = () =>
         const analysis = questionAnalysis(state.questions, problem.clarify); state.coverage = analysis.coverage; state.closest = analysis.closest; state.stage = 'answers'; draw();
       }));
   } else if (state.stage === 'answers') {
-    host.append(h('p', { text: `${state.coverage.filter(Boolean).length} of ${problem.clarify.length} topics matched. Read every answer, including topics the keyword check may have missed.` }), ...problem.clarify.map((q,i) => h('section', { class: 'pl-sec' }, h('b', { text: `${state.coverage[i] ? 'Topic matched' : 'Not matched automatically'} · ${q.q}` }), h('p', { text: q.a }), h('small', { text: `Design implication: ${implication(q)}` }))), button('Write requirements', () => { state.stage = 'requirements'; draw(); }));
+    const topicLabel = i => {
+      if (!state.coverage[i]) return 'Not matched automatically';
+      const selfAssigned = state.closest?.some(row => row.selfAssigned === i);
+      const automatic = state.closest?.some(row => row.matches?.some(match => match.question === i));
+      return selfAssigned && !automatic ? 'Self-assigned topic' : 'Topic matched';
+    };
+    host.append(h('p', { text: `${state.coverage.filter(Boolean).length} of ${problem.clarify.length} topics recorded. Read every answer, including topics the wording check may have missed. Self-assigned topics are marked below.` }), ...problem.clarify.map((q,i) => h('section', { class: 'pl-sec' }, h('b', { text: `${topicLabel(i)} · ${q.q}` }), h('p', { text: q.a }), h('small', { text: `Design implication: ${implication(q)}` }))), button('Write requirements', () => { state.stage = 'requirements'; draw(); }));
     host.append(h('p', { class: 'pl-muted', text: 'This is a wording check. Automatic matches and self-assigned topics do not grade your questions.' }));
     host.append(...(state.closest || []).map(q => {
       if (q.matched) return h('section', { class: 'pl-sec' }, h('p', { text: `Your question: ${q.text}` }), (q.matches || [{ question: q.question, phrase: q.phrase }]).map(m => h('p', { class: 'pl-muted', text: `Matched phrase: “${m.phrase}”. Topic: ${problem.clarify[m.question]?.q}` })));
