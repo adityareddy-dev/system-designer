@@ -1060,3 +1060,10 @@
 }
 
 .pl-toolbar--open .pl-tb-head .pl-input {min-height:44px}
+
+/* Phone coaching uses the full lane below the status and trace controls. */
+@media(max-width:719px) {
+ .pl-root[data-mode] .pl-caption {left:8px;right:8px;width:auto;max-width:none;top:var(--pl-coach-top,calc(var(--pl-hud-end,150px) + 8px));bottom:auto;transform:none;--pl-anchor-x:0px}
+ .pl-root[data-mode] .pl-caption-t {display:block;overflow:visible;-webkit-line-clamp:unset;line-clamp:unset}
+}
+@media(max-width:719px) { .pl-root.pl-has-selection:has(.pl-caption:not([hidden])) .pl-trace {display:none} }

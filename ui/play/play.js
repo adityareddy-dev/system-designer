@@ -647,7 +647,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     root.classList.toggle('pl-has-selection', !!id);
     if (id && canStructure() && !store.get('seenConnectHandle', false)) {
       store.set('seenConnectHandle', true);
-      showCaption('Drag the output port to another part to connect it. Drag the body to move it.', 6500);
+      showCaption('Drag the port to connect. Drag the body to move.', 6500);
     }
     // in a lesson the diagram steps out from under the settings panel, and settles back once it closes
     if (isPhone()) showFocusMap(id);
@@ -1928,6 +1928,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     root.style.setProperty('--pl-hud-end', Math.round(r.bottom - rr.top) + 'px');
     const tb = top.getBoundingClientRect();
     root.style.setProperty('--pl-top-end', Math.round(tb.bottom - rr.top) + 'px');
+    const coachBlocks = [root.querySelector('.pl-trace'), goalChip].filter(el => el && !el.hidden && el.offsetParent);
+    const coachTop = Math.max(r.bottom, ...coachBlocks.map(el => el.getBoundingClientRect().bottom));
+    root.style.setProperty('--pl-coach-top', Math.ceil(coachTop - rr.top + 8) + 'px');
     syncFocusMap();
   };
   // When a panel changes size (the status bar grows with live meters, the traffic panel folds), a diagram that now runs
