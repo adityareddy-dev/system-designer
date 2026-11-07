@@ -485,6 +485,7 @@ export function createNodeLayer(PIXI, parent, env) {
       else if (live && v.telemetry?.retryRps > .5) v.evidenceT.text += `\n↶ ${count(v.telemetry.retryRps)}/s retry`;
       v.evidenceT.style.fill = (v.kind === 'queue' && queuePressure(v.telemetry).late) || failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
       if (!live) {
+        v.queue = v.over = 0; v.pileType = -1; v.down = false; v.status = 0; v.recoverUntil = 0;
         if (v.live) {
           v.live = false; v.busy.clear(); v.drawnU = -1; v.drawnColor = -1; v.statusG.visible = false;
           v.pile.visible = false; v.qbar.visible = false; v.icon.alpha = 1; v.body.alpha = 1; v.tu = v.du = 0;
