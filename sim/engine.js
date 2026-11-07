@@ -1525,6 +1525,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     st.nodes = m.nodes.map((n) => ({
       id: n.id, type: n.el.id,
       incomingRps: Math.round(S.realIn[n.i]),
+      retryRps: phase === 'build' ? 0 : S.RIN.subarray(n.i * S.LN, (n.i + 1) * S.LN).reduce((sum, rate) => sum + rate, 0),
       availableUnits: phase === 'build' || S.clock === 0 ? Math.round(S.unitsCur[n.i]) : Math.max(0, Math.round(S.unitsCur[n.i] * (S.down[n.i] ? 0 : S.aliveFactor[n.i]))),
       util: Math.round(Math.min(S.rho[n.i], UTIL_SHOW_MAX) * 1000) / 1000,
       status: ['ok', 'warn', 'hot', 'overload', 'down'][S.status[n.i]],
