@@ -1051,10 +1051,12 @@
 /* An open lesson palette keeps its search and close target in their own header. */
 .pl-root[data-mode] .pl-toolbar--open {position:relative}
 .pl-root[data-mode] .pl-toolbar--open .pl-tb-head {padding-right:64px}
-.pl-root[data-mode] .pl-toolbar--open .pl-tb-grab {position:absolute;top:10px;right:10px;left:auto;bottom:auto;width:44px;height:40px;min-height:40px;padding:0;justify-content:center;border-radius:8px;box-shadow:none}
-.pl-toolbar--open .pl-tb-grab span {display:none}
+.pl-root[data-mode] .pl-toolbar--open .pl-tb-grab {display:flex;position:absolute;top:10px;right:10px;left:auto;bottom:auto;width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:8px;box-shadow:none}
+.pl-toolbar--open .pl-tb-grab>span:not(.pl-ic) {display:none}
 .pl-toolbar--open .pl-tb-grab svg {transform:rotate(45deg)}
 @media(min-width:720px) {
  .pl-root[data-mode=lesson] .pl-toolbar--open {width:280px;max-width:100%}
  .pl-root[data-mode=lesson]:has(.pl-toolbar--open) .pl-goal {left:304px}
 }
+
+.pl-toolbar--open .pl-tb-head .pl-input {min-height:44px}
