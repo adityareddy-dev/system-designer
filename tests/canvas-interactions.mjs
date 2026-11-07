@@ -41,7 +41,13 @@ try{
   await sleep(350);let state=await p.evaluate(()=>__game.getState());assert(state.edges.some(e=>e.from===app.id&&e.to===target.id),'dragging the visible output port connects');assert.equal(state.nodes.find(n=>n.id===app.id).x,app.x,'connecting never moves the source');
   if(touch){const c=await p.createCDPSession();await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[a]});await c.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:a.x-50,y:a.y+45}]});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
   else {await p.mouse.move(a.x,a.y);await p.mouse.down();await p.mouse.move(a.x-50,a.y+45,{steps:12});await p.mouse.up();}
-  await sleep(350);state=await p.evaluate(()=>__game.getState());assert.notEqual(state.nodes.find(n=>n.id===app.id).x,app.x,'dragging the body moves the part');await p.close();
+  await sleep(350);state=await p.evaluate(()=>__game.getState());assert.notEqual(state.nodes.find(n=>n.id===app.id).x,app.x,'dragging the body moves the part');
+  await p.evaluate(()=>__game.loadLesson('back-of-envelope',2));await p.waitForSelector('.pl-root[data-mode=lesson]');
+  await p.$eval('.pl-tb-grab',b=>b.click());
+  assert(await p.$eval('.pl-toolbar',e=>e.classList.contains('pl-toolbar--open')),'embedded palette opens');
+  await p.$eval('.pl-tb-grab',b=>b.click());
+  assert(await p.$eval('.pl-toolbar',e=>!e.classList.contains('pl-toolbar--open')&&e.classList.contains('pl-toolbar--folded')),'embedded palette closes again');
+  await p.close();
  }
  const recovery=await browser.newPage();
  await recovery.setViewport({width:390,height:844,isMobile:true,hasTouch:true});
