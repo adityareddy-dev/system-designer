@@ -13,12 +13,15 @@ try{
   await page.waitForSelector('.sh-estimate-form');
   const before=await page.evaluate(()=>({stage:document.querySelector('.sh-demo-stage').getClientRects().length,hints:[...document.querySelectorAll('.sh-lp-nav button')].filter(b=>b.innerText==='Hint'&&b.getClientRects().length).length,advice:/About \d+ servers for the peak/.test(document.body.innerText)}));
   assert.deepEqual(before,{stage:0,hints:0,advice:false},lesson.id+' hides sizing and hints before commitment');
+  assert(await page.$eval('[data-demo-instructions]',e=>!e.getClientRects().length),'worked instructions wait for a prediction');
+  assert(await page.$eval('[data-prediction-brief]',e=>e.innerText.trim().length>25),'the prediction has workload facts');
   const input=await page.$('.sh-estimate-form input,.sh-estimate-form textarea');
   await input.type(s.estimate?'9':'I expect the downstream limit to dominate. I would measure queue age and useful completions before adding capacity.');
   await page.click('.sh-estimate-form button[type=submit]');
   assert(await page.$eval('.sh-demo-stage',e=>e.getClientRects().length>0));
   await page.waitForFunction(()=>window.__game.getState().mode==='lesson'&&window.__game.getState().view?.zoom>0.2);
   assert(await page.$eval('.sh-estimate-form',e=>e.getClientRects().length===0));
+  assert(await page.$eval('[data-demo-instructions]',e=>e.getClientRects().length>0));
   assert.match(await page.$eval('.sh-estimate-receipt',e=>e.innerText),s.estimate?/9 servers/:/downstream limit/);
   assert(await page.$eval('.sh-lp-hint',e=>e.getClientRects().length===0),'hint still needs its own request');
  }

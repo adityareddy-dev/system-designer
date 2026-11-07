@@ -7,7 +7,7 @@ import { sceneMarkup } from '../../assets/scenes/index.js';
 import { lessonScene } from '../../assets/scenes/workloads.js';
 import { mountAllocation } from './allocation.js';
 import { drawDefend } from './defend.js';
-import { lessonVisualStyles, readingDiagram } from './lesson-visuals.js';
+import { lessonVisualStyles, readingDiagram, predictionBrief } from './lesson-visuals.js';
 
 function notFoundLesson() {
   return h('div', { class: 'sh-page sh-page--narrow sh-empty' },
@@ -265,9 +265,12 @@ export function renderLesson(host, ctx, route) {
     const cont = h('button', { type: 'button', class: 'sh-btn ' + (hasGoal ? 'sh-btn--ghost' : 'sh-btn--primary'), onclick: () => go(idx + 1), title: hasGoal ? 'Move on without finishing this step' : null }, hasGoal ? 'Skip this step' : 'Continue', ico('ui.chevron-right', 18));
     const hintBox = h('p', { class: 'sh-lp-hint', hidden: true, text: step.hint || '' });
     const hintBtn = step.hint ? h('button', { type: 'button', class: 'sh-btn sh-btn--ghost', onclick: () => { hintBox.hidden = !hintBox.hidden; } }, ico('ui.hint', 18), 'Hint') : null;
+    const committed = estimates.has(idx);
+    const brief = h('div', { class: 'sh-demo-prompt', hidden: committed, 'data-prediction-brief': '' }, ico('ui.sandbox', 20), h('p', { class: 'sh-lp-text', text: predictionBrief(lesson.id) }));
+    const instructions = h('div', { class: 'sh-demo-prompt', hidden: !committed, 'data-demo-instructions': '' }, ico('ui.sandbox', 20), h('p', { class: 'sh-lp-text', text: step.prompt }));
     card.classList.add('sh-lp-card--demo');
     card.append(
-      h('div', { class: 'sh-demo-prompt' }, ico('ui.sandbox', 20), h('p', { class: 'sh-lp-text', text: step.prompt })),
+      brief, instructions,
       hintBox);
     const stage = h('div', { class: 'sh-demo-stage' });
     const openWorkbench = () => {
@@ -286,6 +289,7 @@ export function renderLesson(host, ctx, route) {
         event.preventDefault();if(!input.checkValidity()||!input.value.trim())return;
         estimates.set(idx,input.value);receipt.textContent=recorded(input.value);
         receipt.hidden=false;stage.hidden=false;guidance.hidden=false;form.hidden=true;hintBtn&&(hintBtn.hidden=false);
+        brief.hidden=true;instructions.hidden=false;
         // Measure the visible stage for its opening camera, after the prediction form leaves the layout.
         openWorkbench();
         play.ready.then(() => { if (stage.isConnected && !stage.hidden) stage.scrollIntoView({ block: 'nearest' }); });
