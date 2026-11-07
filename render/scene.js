@@ -752,7 +752,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
           flow = null; map = null;
           failureLead = null;
           for (const v of nodes.list) nodes.setLive(v, false);
-          for (const v of edges.list) { edges.setLoad(v, 0); if (v.rates) v.rates.fill(0); }
+          for (const v of edges.list) { v.quiet = false; edges.setLoad(v, 0); if (v.rates) v.rates.fill(0); }
           edges.setGlows([], 0);
         }
         return;
