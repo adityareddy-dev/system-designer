@@ -6,6 +6,11 @@ import { lessons } from '../content/lessons/index.js';
 import { transferFor } from '../content/transfers.js';
 
 const base = process.argv[2] || 'http://localhost:8765/';
+const waitForLesson = (page, lesson) => page.waitForFunction(title => {
+  const main = document.querySelector('#sh-main');
+  return main && !main.hasAttribute('aria-busy') && document.querySelector('.sh-lp-card')
+    && document.querySelector('.sh-lp-title h1')?.textContent === title;
+}, {}, lesson.title);
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
@@ -17,11 +22,33 @@ try {
     // Existing progress must survive completion of the new tracks.
     localStorage.setItem('staff-progress-sentinel','old progress survives');
   });
+  // Hash navigation retains the previous card while the next lesson is loading.
+  await page.goto(base+'#/learn/lead-interview');
+  await waitForLesson(page, lessons.find(l => l.id === 'lead-interview'));
+  await page.setRequestInterception(true);
+  let release;
+  const matches = request => new URL(request.url()).pathname.endsWith('/content/data/l/simplest-design.json');
+  const pending = page.waitForRequest(matches);
+  const intercept = request => {
+    if (matches(request)) {
+      release = () => request.continue();
+    } else request.continue();
+  };
+  page.on('request', intercept);
+  await page.goto(base+'#/learn/simplest-design');
+  await pending;
+  assert(await page.$('.sh-lp-card'), 'the retained card alone cannot signal that navigation finished');
+  assert.equal(await page.$eval('#sh-main', el => el.getAttribute('aria-busy')), 'true');
+  assert.equal(await page.$eval('.sh-lp-title h1', el => el.textContent), lessons.find(l => l.id === 'lead-interview').title);
+  await release();
+  await waitForLesson(page, lessons.find(l => l.id === 'simplest-design'));
+  await page.setRequestInterception(false);
+  page.off('request', intercept);
   for (const [width,theme] of [[1280,'light'],[1280,'dark'],[390,'light'],[390,'dark']]) {
     await page.setViewport({width,height:900,isMobile:width<500,hasTouch:width<500});
     for (const lesson of lessons.slice(-17)) {
       await page.goto(base+'#/learn/'+lesson.id, {waitUntil:'domcontentloaded'});
-      await page.waitForSelector('.sh-lp-card');
+      await waitForLesson(page, lesson);
       assert.equal(await page.$eval('html',el=>el.dataset.motion),'reduce');
       await page.evaluate(theme => { document.documentElement.dataset.theme=theme; },theme);
       if (process.env.QA_SHOTS && ['consistent-hashing','leader-consensus','metrics-systems','device-sync','lead-interview','running-migrations'].includes(lesson.id)) {
