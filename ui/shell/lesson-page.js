@@ -8,6 +8,7 @@ import { lessonScene } from '../../assets/scenes/workloads.js';
 import { mountAllocation } from './allocation.js';
 import { drawDefend } from './defend.js';
 import { lessonVisualStyles, readingDiagram, predictionBrief } from './lesson-visuals.js';
+import { predictionGate } from './prediction.js';
 
 function notFoundLesson() {
   return h('div', { class: 'sh-page sh-page--narrow sh-empty' },
@@ -81,6 +82,7 @@ export function renderLesson(host, ctx, route) {
   let play = null;
   let prepareDemo = null;
   let goalOff = null;
+  let prediction = null;
 
   const wrap = h('div', { class: 'sh-lesson-page' });
   const head = h('header', { class: 'sh-lp-head' });
@@ -89,6 +91,7 @@ export function renderLesson(host, ctx, route) {
   host.append(wrap);
 
   function stopPlay() {
+    prediction?.destroy(); prediction = null;
     prepareDemo = null;
     figureVersion++;
     figure?.destroy(); figure = null;
@@ -238,27 +241,30 @@ export function renderLesson(host, ctx, route) {
     const next = navRow({ nextLabel: 'Continue' });
     next.querySelector('.sh-btn--primary').disabled = true;
     const choices = h('div', { class: 'sh-choices', role: 'group', 'aria-label': 'Answers' });
+    prediction = predictionGate(choices);
     // Choices appear in a stable shuffled order, so the right answer is not always in the same place.
     const hash = (str) => { let x = 2166136261; for (let k = 0; k < str.length; k++) { x ^= str.charCodeAt(k); x = Math.imul(x, 16777619); } return x >>> 0; };
     const order = (step.choices || []).map((c, i) => i).sort((a, b) => hash(step.q + '|' + step.choices[a]) - hash(step.q + '|' + step.choices[b]));
     order.forEach((i, pos) => {
       const c = step.choices[i];
-      const b = h('button', { type: 'button', class: 'sh-choice' }, h('span', { class: 'sh-choice-key', text: String.fromCharCode(65 + pos) }), h('span', { text: c }));
+      const b = h('button', { type: 'button', class: 'sh-choice' }, h('span', { class: 'sh-choice-key', text: String(pos + 1) }), h('span', { text: c }));
       b.addEventListener('click', () => {
+        if (!prediction?.value) return;
         const right = i === step.answer;
         b.dataset.state = right ? 'right' : 'wrong';
         b.prepend(ico(right ? 'ui.check' : 'ui.close', 18));
         // a wrong pick gets the idea behind the answer, not just a no
-        result.textContent = right ? `Right. ${step.why || ''}` : `Not quite. ${step.why ? 'Think about it this way: ' + step.why.charAt(0).toLowerCase() + step.why.slice(1) + ' ' : ''}Try another.`;
+        result.textContent = `Your prediction (not graded): ${prediction.value}. ` + (right ? `Your choice is correct. ${step.why || ''}` : `Revisit your choice. ${step.why || ''} Try another.`);
         result.dataset.ok = right ? '1' : '0';
         if (right) {
           choices.querySelectorAll('button').forEach((x) => { x.disabled = true; });
           next.querySelector('.sh-btn--primary').disabled = false;
+          next.querySelector('.sh-btn--primary').focus();
         } else b.disabled = true;
       });
       choices.append(b);
     });
-    card.append(h('h2', { class: 'sh-h2', text: 'Quick check' }), h('p', { class: 'sh-lp-text', text: step.q }), choices, result, next);
+    card.append(h('h2', { class: 'sh-h2', text: 'Quick check' }), h('p', { class: 'sh-lp-text', text: step.q }), prediction.form, choices, result, next);
   }
 
   function drawDemo(card, step) {
@@ -324,12 +330,14 @@ export function renderLesson(host, ctx, route) {
     const result = h('p', { role: 'status', class: 'sh-quiz-result' });
     const input = h('input', { class: 'sh-input', type: 'number', step: 'any', required: true, 'aria-label': step.calculation });
     const options = h('div', { class: 'sh-choices' });
+    prediction = predictionGate(options);
     step.choices.forEach((text, i) => {
-      const b = h('button', { type: 'button', class: 'sh-choice', 'aria-pressed': 'false', onclick: () => { choice = i; [...options.children].forEach((x,j) => x.setAttribute('aria-pressed', String(i === j))); } }, text);
+      const b = h('button', { type: 'button', class: 'sh-choice', 'aria-pressed': 'false', onclick: () => { if (!prediction?.value) return; choice = i; [...options.children].forEach((x,j) => x.setAttribute('aria-pressed', String(i === j))); } }, h('span', { class: 'sh-choice-key', text: String(i + 1) }), h('span', { text }));
       options.append(b);
     });
     const form = h('form', { onsubmit: event => {
       event.preventDefault();
+      if (!prediction?.value) return;
       if (transferCorrect(step, choice, input.value === '' ? NaN : Number(input.value))) {
         transferDone = true;
         result.textContent = `Prediction checked. ${step.why} The calculation gives ${step.value.toLocaleString('en-US')} ${step.unit}.`;
@@ -344,7 +352,8 @@ export function renderLesson(host, ctx, route) {
       h('label', {}, h('p', { text: step.calculation }), input, h('span', { class: 'sh-muted', text: step.unit })),
       h('button', { class: 'sh-btn', type: 'submit', text: 'Check my prediction' }), result);
     const next = h('button', { class: 'sh-btn sh-btn--primary', type: 'button', disabled: true, onclick: () => go(steps.length) }, 'Finish lesson');
-    card.append(form, h('div', { class: 'sh-lp-nav' }, h('button', { class: 'sh-btn sh-btn--ghost', type: 'button', onclick: () => go(idx - 1) }, 'Back'), next));
+    const question = form.querySelector('.sh-lp-text');
+    card.append(form.querySelector('h2'), question, prediction.form, form, h('div', { class: 'sh-lp-nav' }, h('button', { class: 'sh-btn sh-btn--ghost', type: 'button', onclick: () => go(idx - 1) }, 'Back'), next));
   }
 
   function drawTakeaway() {

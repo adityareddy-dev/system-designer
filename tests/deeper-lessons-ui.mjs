@@ -1,4 +1,5 @@
 // Complete the advanced lessons through their visible controls in both layouts and themes.
+import { commitChoicePrediction } from './lesson-prediction.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
@@ -63,6 +64,7 @@ try {
         if (step.kind === 'figure') await page.waitForSelector('.sh-figure-host:not([aria-busy]) .fg-bench');
         await page.evaluate(() => document.fonts.ready);
         if (step.kind === 'quiz') {
+          await commitChoicePrediction(page);
           await page.evaluate(text => [...document.querySelectorAll('.sh-choice')].find(b => b.textContent.endsWith(text)).click(),step.choices[step.answer]);
           assert.equal(await page.$eval('.sh-quiz-result',el=>el.dataset.ok),'1');
         } else if (step.kind === 'defend') {
@@ -87,6 +89,7 @@ try {
         await page.click('.sh-lp-nav .sh-btn--primary');
       }
       const transfer=transferFor(lesson.id);
+      await commitChoicePrediction(page);
       await page.waitForSelector('.sh-choices');
       await page.evaluate(index=>document.querySelectorAll('.sh-choice')[index].click(),transfer.answer);
       await page.type('input[type=number]',String(transfer.value));

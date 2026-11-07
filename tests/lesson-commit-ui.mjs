@@ -1,4 +1,5 @@
 // Prediction first, sizing and hints second, including direct links and return navigation.
+import { commitChoicePrediction } from './lesson-prediction.js';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
 import { lessons } from '../content/lessons/index.js';
@@ -56,10 +57,11 @@ try{
  await page.goto(base+`#/learn/${n.id}?step=${n.steps.length}`,{waitUntil:'networkidle0'});
  await page.waitForSelector('.sh-quiz-result');
  assert(!await page.$eval('.sh-quiz-result',e=>e.innerText));
+ await commitChoicePrediction(page);
  const choices=await page.$$('.sh-choice');await choices[2].click();
- await page.type('input[type=number]','5.7');await page.click('button[type=submit]');
+ await page.type('input[type=number]','5.7');await page.click('form:not(.sh-prediction-form) button[type=submit]');
  assert(await page.$eval('.sh-lp-nav .sh-btn--primary',e=>e.disabled),'fractional relays do not finish a whole-relay transfer');
- await page.$eval('input[type=number]',e=>e.value='6');await page.click('button[type=submit]');
+ await page.$eval('input[type=number]',e=>e.value='6');await page.click('form:not(.sh-prediction-form) button[type=submit]');
  assert.match(await page.$eval('.sh-quiz-result',e=>e.innerText),/Prediction checked/);
  assert.equal(await page.evaluate(()=>localStorage.getItem('lesson-estimate-sentinel')),'keep');
  console.log('Every lesson demo collects a prediction before sizing or hints; bandwidth transfer passed.');

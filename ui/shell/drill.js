@@ -3,6 +3,7 @@ import { h, ico, clear } from './dom.js';
 import { hashSeed, mulberry32 } from '../../sim/rng.js';
 import { toast } from './overlay.js';
 import { drillCase } from '../../content/drills.js';
+import { predictionGate } from './prediction.js';
 
 const ROUND = 10;
 const KEY = 'drill';
@@ -74,6 +75,7 @@ export function renderDrill(host, ctx) {
   host.append(page);
   let alive = true;
   let keyOff = null;
+  let prediction = null;
 
   function start(daily = false) {
     daily = daily === true;
@@ -94,6 +96,7 @@ export function renderDrill(host, ctx) {
   }
 
   function drawQ(S) {
+    prediction?.destroy();
     clear(page);
     S.answered = false;
     const q = S.qs[S.i];
@@ -115,26 +118,20 @@ export function renderDrill(host, ctx) {
       choices.append(b);
       return b;
     });
-    const prediction = h('textarea', { class: 'sh-input', rows: 2, 'aria-label': 'Your calculation or prediction', placeholder: q.calculation || 'Predict what will happen and why.' });
-    const reveal = h('button', { type: 'button', class: 'sh-btn', disabled: true, text: 'Commit prediction and see choices', onclick: () => {
-      S.qs[S.i].prediction = prediction.value.trim(); prediction.readOnly = true;
-      choices.hidden = false; reveal.hidden = true; buttons[0]?.focus();
-    } });
-    prediction.addEventListener('input', () => reveal.disabled = !prediction.value.trim());
+    prediction = predictionGate(choices, { prompt: q.calculation || 'What do you expect, and why?', onCommit: value => S.qs[S.i].prediction = value });
     page.append(head(S), bar,
       S.qs.length < ROUND ? h('p', { class: 'sh-muted', text: `This short set covers ${S.qs.length} distinct lesson mechanisms. Finish more lessons for a longer drill.` }) : null,
       h('section', { class: 'sh-card sh-lp-card', 'aria-live': 'polite' },
         h('p', { class: 'sh-eyebrow', text: q.lesson ? `From the lesson: ${q.lesson}` : 'Drill' }),
         h('p', { class: 'sh-lp-text sh-drill-q', text: q.q }),
         q.measures ? h('p', { class: 'sh-muted', text: `What it measures: ${q.measures}` }) : null,
-        h('label', {}, h('p', { text: q.calculation || 'Predict the outcome before seeing alternatives.' }), prediction), reveal, choices, result,
+        prediction.form, choices, result,
         h('div', { class: 'sh-lp-nav' }, skipBtn, nextBtn)));
     keyOff?.();
     const onKey = (e) => {
       if (!alive || e.ctrlKey || e.metaKey || e.altKey) return;
       if (['TEXTAREA','INPUT'].includes(document.activeElement?.tagName)) return;
-      if (!choices.hidden && e.key >= '1' && e.key <= String(buttons.length) && !S.answered) buttons[+e.key - 1].click();
-      else if ((e.key === 'Enter' || e.key === 'ArrowRight') && S.answered && document.activeElement?.tagName !== 'BUTTON') nextBtn.click();
+      if ((e.key === 'Enter' || e.key === 'ArrowRight') && S.answered && document.activeElement?.tagName !== 'BUTTON') nextBtn.click();
     };
     document.addEventListener('keydown', onKey);
     keyOff = () => document.removeEventListener('keydown', onKey);
@@ -167,6 +164,7 @@ export function renderDrill(host, ctx) {
   }
 
   function finish(S) {
+    prediction?.destroy();
     keyOff?.(); keyOff = null;
     const prev = saved();
     const days = { ...(prev.days || {}) };
@@ -197,5 +195,5 @@ export function renderDrill(host, ctx) {
   }
 
   start(!(saved().days || {})[today]);
-  return { title: 'Drill', destroy() { alive = false; keyOff?.(); } };
+  return { title: 'Drill', destroy() { alive = false; keyOff?.(); prediction?.destroy(); } };
 }

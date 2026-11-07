@@ -894,3 +894,12 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 @media(max-width:719px) {
  .sh-intro-skip {bottom:76px}
 }
+
+/* Prediction commitments use the same reading width in lessons and drills. */
+.sh-prediction-form {display:grid;gap:12px;margin-block:20px}
+.sh-prediction-form label {display:grid;gap:8px}
+.sh-prediction-form label p {margin:0}
+.sh-prediction-form textarea {width:100%;min-height:88px;height:auto;padding:12px;font:16px/1.5 var(--font-ui);resize:vertical}
+.sh-prediction-form button {justify-self:start;min-height:44px;white-space:normal;text-align:left}
+.sh-prediction-receipt {margin:0;overflow-wrap:anywhere}
+.sh-choices[hidden],.sh-prediction-form [hidden] {display:none}
