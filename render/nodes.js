@@ -459,7 +459,7 @@ export function createNodeLayer(PIXI, parent, env) {
       v.failRps = failRps;
       const recovered = performance.now() < (v.recoverUntil || 0);
       v.evidenceT.visible = live && (failRps > .5 || queue > 1 || recovered || v.kind === 'queue' || v.telemetry?.retryRps > .5);
-      v.evidenceT.text = failRps > .5 ? `× ${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(failRps)}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Requests recovered' : '';
+      v.evidenceT.text = failRps > .5 ? `× ${count(failRps)}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Requests recovered' : '';
       if (live && v.kind === 'queue' && v.telemetry) v.evidenceT.text = queuePressure(v.telemetry).text;
       else if (live && v.telemetry?.retryRps > .5) v.evidenceT.text += `\n↶ ${count(v.telemetry.retryRps)}/s retry`;
       v.evidenceT.style.fill = (v.kind === 'queue' && queuePressure(v.telemetry).late) || failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;

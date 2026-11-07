@@ -1051,7 +1051,7 @@
 /* An open lesson palette keeps its search and close target in their own header. */
 .pl-root[data-mode] .pl-toolbar--open {position:relative}
 .pl-root[data-mode] .pl-toolbar--open .pl-tb-head {padding-right:64px}
-.pl-root[data-mode] .pl-toolbar--open .pl-tb-grab {display:flex;position:absolute;top:10px;right:10px;left:auto;bottom:auto;width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:8px;box-shadow:none}
+.pl-root[data-mode] .pl-toolbar--open .pl-tb-grab {display:flex;position:absolute;top:10px;right:10px;left:auto;bottom:auto;width:44px;height:44px;min-height:44px;padding:0;justify-content:center;border-radius:8px;box-shadow:none;background:var(--surface-solid);color:var(--text);border:1px solid var(--border-strong)}
 .pl-toolbar--open .pl-tb-grab>span:not(.pl-ic) {display:none}
 .pl-toolbar--open .pl-tb-grab svg {transform:rotate(45deg)}
 @media(min-width:720px) {
