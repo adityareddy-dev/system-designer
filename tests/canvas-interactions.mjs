@@ -6,18 +6,19 @@ const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const types=['web-browser','mobile-app','regional-lb','vm-fleet','cache','sql-primary','object-storage','queue','worker-pool','third-party-api','metrics','logs','alerting','backups','cdn'];
 const graph={nodes:types.map((type,i)=>({id:'n'+i,type,x:i%5*260,y:Math.floor(i/5)*240,units:3})),edges:[[0,14],[14,2],[1,2],[2,3],[3,4],[4,5],[3,6],[3,7],[7,8],[8,9],[10,3],[11,3],[12,10],[5,13]].map(([a,b])=>({id:`n${a}>n${b}`,from:'n'+a,to:'n'+b,kind:'flow'}))};
+const crowded={nodes:['web-browser','mobile-app','vm-fleet','sql-primary','regional-lb','cache','queue','worker-pool','object-storage','search-index','metrics','logs','alerting','backups','cdn'].map((type,i)=>({id:'n'+i,type,x:i%5*260,y:Math.floor(i/5)*240,units:3})),edges:[[0,2],[1,2],[0,7],[5,2],[14,4],[4,2],[2,3],[2,8],[2,9],[2,6],[6,7],[7,3],[7,14],[3,13],[10,2,'observe'],[11,2,'observe'],[12,10,'observe']].map(([a,b,kind='flow'])=>({id:`n${a}>n${b}`,from:'n'+a,to:'n'+b,kind}))};
 const errors=[];
 try{
- for(const width of [1366,390])for(const theme of ['light','dark'])for(const motion of ['full','reduce']){
+ for(const fixture of [graph,crowded])for(const width of [1366,390])for(const theme of ['light','dark'])for(const motion of ['full','reduce']){
   const p=await browser.newPage();p.on('pageerror',e=>errors.push(e.stack));
   await p.setViewport({width,height:width===390?844:800,isMobile:width===390,hasTouch:width===390});
-  await p.evaluateOnNewDocument((graph,theme,motion)=>{localStorage.setItem('hotpath.v1.seenIntro','true');localStorage.setItem('hotpath.v1.settings',JSON.stringify({theme,soundMuted:true,reducedMotion:motion}));localStorage.setItem('hotpath.v1.draft.sandbox.sandbox',JSON.stringify({graph,traffic:{rps:{read:7900000,write:100},curve:'flat',regions:{us:1}}}));},graph,theme,motion);
+  await p.evaluateOnNewDocument((graph,theme,motion)=>{localStorage.setItem('hotpath.v1.seenIntro','true');localStorage.setItem('hotpath.v1.settings',JSON.stringify({theme,soundMuted:true,reducedMotion:motion}));localStorage.setItem('hotpath.v1.draft.sandbox.sandbox',JSON.stringify({graph,traffic:{rps:{read:7900000,write:100},curve:'flat',regions:{us:1}}}));},fixture,theme,motion);
   await p.goto(base+'#/sandbox');await p.waitForFunction(()=>window.__game?.getState().nodes.length===15);await sleep(700);
   const saved=await p.evaluate(()=>__game.getState().nodes.map(({id,x,y})=>({id,x,y})));
-  assert.deepEqual(saved,graph.nodes.map(({id,x,y})=>({id,x,y})),'entry preserves saved positions');
+  assert.deepEqual(saved,fixture.nodes.map(({id,x,y})=>({id,x,y})),'entry preserves saved positions');
   await p.evaluate(()=>[...document.querySelectorAll('summary')].find(e=>e.textContent==='Diagram tools').click());
   await p.evaluate(()=>[...document.querySelectorAll('button')].find(e=>e.textContent==='Tidy request paths').click());await sleep(800);
-  const check=async()=>{const v=await p.evaluate(()=>__game.getState().view);assert(v.labelPx>=12.99);for(const key of ['labelOverlaps','labelPartOverlaps','wirePartCrossings','wireLabelCrossings'])assert.equal(v.diagram[key],0,`${width} ${theme} ${key}`);};
+  const check=async()=>{const v=await p.evaluate(()=>__game.getState().view);assert(v.labelPx>=12.99);for(const key of ['labelOverlaps','labelPartOverlaps','wirePartCrossings','wireLabelCrossings','labelPanelOverlaps'])assert.equal(v.diagram[key],0,`${width} ${theme} ${key}`);};
   await check();
   await p.evaluate(()=>{__game.startTraffic();__game.pause();__game.step(120000);});await sleep(700);await check();
   assert(await p.evaluate(()=>__game.getState().view.diagram.labels.some(l=>l.text.startsWith('First limit'))),'paused overload identifies its first bottleneck');

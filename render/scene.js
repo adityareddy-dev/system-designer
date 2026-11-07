@@ -890,17 +890,20 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       }));
       const parts = nodes.list.map(v => { const p = camera.worldToScreen(v.x, v.y); return { id: v.id, x: p.x - (v.renderHalf||36)*z, y: p.y - (v.renderHalf||36)*z, width: 2*(v.renderHalf||36)*z, height: 2*(v.renderHalf||36)*z }; });
       const wires = edges.list.map(v => ({ id: v.id, from: v.from, to: v.to, points: Array.from({ length: (v.lut.segs || 24) + 1 }, (_, i) => camera.worldToScreen(v.lut.xs[i], v.lut.ys[i])) }));
-      let labelOverlaps = 0, wirePartCrossings = 0, wireLabelCrossings = 0, labelPartOverlaps = 0;
+      let labelOverlaps = 0, wirePartCrossings = 0, wireLabelCrossings = 0, labelPartOverlaps = 0, labelPanelOverlaps = 0;
+      const area=captionArea||{l:0,t:0,r:0,b:0}, right=camera.size.w-area.r, bottom=camera.size.h-area.b;
       for (let i=0; i<labels.length; i++) {
         for (let j=i+1; j<labels.length; j++) if (intersects(labels[i],labels[j])) labelOverlaps++;
         for (const p of parts) if (intersects(labels[i],p)) labelPartOverlaps++;
+        const l=labels[i], owner=parts.find(p=>p.id===l.id), x=owner.x+owner.width/2, y=owner.y+owner.height/2;
+        if(x>=area.l&&x<=right&&y>=area.t&&y<=bottom&&(l.x<area.l||l.y<area.t||l.x+l.width>right||l.y+l.height>bottom))labelPanelOverlaps++;
       }
       for (const w of wires) {
         const hits = r => w.points.slice(1).some((p,i) => crossesRect(w.points[i].x,w.points[i].y,p.x,p.y,r));
         for (const p of parts) if (p.id !== w.from && p.id !== w.to && hits(p)) wirePartCrossings++;
         for (const l of labels) if (hits(l)) wireLabelCrossings++;
       }
-      return { labels, parts, wires, labelOverlaps, wirePartCrossings, wireLabelCrossings, labelPartOverlaps };
+      return { labels, parts, wires, labelOverlaps, wirePartCrossings, wireLabelCrossings, labelPartOverlaps, labelPanelOverlaps };
     },
     stats() {
       let sum = 0;

@@ -421,28 +421,42 @@ export function createNodeLayer(PIXI, parent, env) {
       const parts = list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.live&&v.kind==='queue'?Math.max(42*z,26):42*z;v.portHalf=half/z-6;v.renderHalf=half/z;return {x:p.x-half-8,y:p.y-half,width:half*2+16,height:half*2};});
       const occupied = [...parts];
       const ordered = [...list].sort((a,b)=>a.y-b.y||a.x-b.x);
-      for (const v of ordered) {
-        const p = camera.worldToScreen(v.x,v.y), width = Math.max(40,v.labelT.width*z+8), height = v.labelT.height*z+6;
-        const visible=p.x>=free.x && p.x<=free.x+free.width && p.y>=free.y && p.y<=free.y+free.height;
-        const preferred={x:p.x-width/2,y:p.y+v.renderHalf*z+5,width,height};
-        const clear=r=>!occupied.some(o=>intersects(r,o));
-        const inside=r=>r.x>=free.x&&r.y>=free.y&&r.x+r.width<=free.x+free.width&&r.y+r.height<=free.y+free.height;
-        const choose=(base)=>{
-          if(!visible)return base;
+      const visible=p=>p.x>=free.x && p.x<=free.x+free.width && p.y>=free.y && p.y<=free.y+free.height;
+      const clear=r=>!occupied.some(o=>intersects(r,o));
+      const inside=r=>r.x>=free.x&&r.y>=free.y&&r.x+r.width<=free.x+free.width&&r.y+r.height<=free.y+free.height;
+      const choose=(base,p)=>{
+          if(!visible(p))return base;
           const candidates=[];
           for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160])candidates.push({...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy});
-          return candidates.find(r=>inside(r)&&clear(r))||candidates.find(clear)||base;
-        };
-        const name=choose(preferred); if(visible)occupied.push(name);
+          const nearby=candidates.find(r=>inside(r)&&clear(r));
+          if(nearby)return nearby;
+          // A crowded overview can leave a gap between the regular search lanes.
+          // Test the exact edges of the occupied boxes before leaving the free canvas.
+          const xs=[free.x,free.x+free.width-base.width,...occupied.flatMap(r=>[r.x-base.width-2,r.x+r.width+2])];
+          const ys=[free.y,free.y+free.height-base.height,...occupied.flatMap(r=>[r.y-base.height-2,r.y+r.height+2])];
+          let best=null,distance=Infinity;
+          for(const x of xs)for(const y of ys){const r={...base,x,y},d=Math.abs(x-base.x)+Math.abs(y-base.y);if(d<distance&&inside(r)&&clear(r)){best=r;distance=d;}}
+          return best||candidates.find(clear)||base;
+      };
+      // Reserve the larger telemetry lanes first. Small names can fit around them.
+      const factsById=new Map();
+      for(const v of ordered.filter(v=>v.evidenceT.visible).sort((a,b)=>Number(b.evidenceT.text.startsWith('First limit'))-Number(a.evidenceT.text.startsWith('First limit')))){
+        const p=camera.worldToScreen(v.x,v.y);
+        const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-(v.kind==='queue'?58:76)-8,width:114,height:v.kind==='queue'?58:76},p);
+        factsById.set(v.id,facts);if(visible(p))occupied.push(facts);
+      }
+      for (const v of ordered) {
+        const p = camera.worldToScreen(v.x,v.y), width = Math.max(40,v.labelT.width*z+8), height = v.labelT.height*z+6;
+        const preferred={x:p.x-width/2,y:p.y+v.renderHalf*z+5,width,height};
+        const name=choose(preferred,p); if(visible(p))occupied.push(name);
         const labelX=(name.x+width/2-p.x)/z,labelY=(name.y-p.y)/z;
         v.labelT.position.set(labelX,labelY);
         v.labelBg.clear().roundRect((name.x-p.x)/z,labelY,width/z,height/z,3/z).fill({color:P.canvas,alpha:.97});
         v.leader.clear();
-        if(visible&&(Math.abs(labelX*z)>8||Math.abs(name.y-preferred.y)>8))v.leader.moveTo(0,0).lineTo(labelX,labelY).stroke({width:1/z,color:P.edgeIdle,alpha:.6});
+        if(visible(p)&&(Math.abs(labelX*z)>8||Math.abs(name.y-preferred.y)>8))v.leader.moveTo(0,0).lineTo(labelX,labelY).stroke({width:1/z,color:P.edgeIdle,alpha:.6});
         const boxes=[name];
         if(v.evidenceT.visible){
-          const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-(v.kind==='queue'?58:76)-8,width:114,height:v.kind==='queue'?58:76});
-          if(visible)occupied.push(facts);
+          const facts=factsById.get(v.id);
           v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x)/z,(facts.y-p.y)/z);
           v.labelBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.canvas,alpha:.97});
           boxes.push(facts);
