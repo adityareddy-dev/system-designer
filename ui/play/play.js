@@ -1,10 +1,10 @@
 // In-problem screen: mountPlay() builds the canvas, toolbar, inspector, HUD, steps, hints, debrief and editorial.
 import { twistProblem } from '../../content/problems/twist.js';
 import { createInterview, renderInterviewPrep, renderInterviewResult } from './interview.js';
-import { phoneLayout } from '../../render/diagram.js';
+import { pathLayout } from '../../render/layout.js';
 import { renderDesignCheck } from './design-check.js';
 import { createSim } from '../../sim/engine.js';
-import { createScene, regionLayout } from '../../render/scene.js';
+import { createScene } from '../../render/scene.js';
 import { h, iconEl, clamp, clockLabel, snd as sndRaw, debounce, STATUS_NAMES, fmtMs, fmtPct } from './util.js';
 import { createSteps } from './steps.js';
 import { createReqCard } from './req-card.js';
@@ -231,16 +231,17 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     paintIssues();
     let overview = root.querySelector('.pl-overview');
     if (!overview) { overview = h('div', { class: 'pl-overview' }); root.append(overview); }
-    if (isPhone() && graph().nodes.length > 8) {
+    if (isPhone() && graph().nodes.length) {
       const choose = h('select', { class: 'pl-input', 'aria-label': 'Inspect a branch', onChange: e => {
         const id = e.target.value; if (!id) return;
         select(id); inspector.fold(true);
         const g = graph(), nodeIds = [id, ...g.edges.filter(e => e.kind === 'flow' && (e.from === id || e.to === id)).flatMap(e => [e.from,e.to])];
         const a = freeArea(); scene.fit({ l: 36, r: 36, t: a.t + 28, b: a.b + 32 }, true, { nodeIds, minZ: .55, maxZ: .9 });
       } }, h('option', { value: '', text: 'Inspect a branch…' }), graph().nodes.map(n => h('option', { value: n.id, text: `${n.id} · ${catalog.elementById.get(n.type)?.name || n.type}` })));
-      overview.replaceChildren(h('span', { text: 'System overview' }), choose, h('button', { class: 'pl-btn', type: 'button', onClick: () => { select(null); fitAll(); }, text: 'Fit all' }));
+      overview.replaceChildren(cameraMap(), choose, h('button', { class: 'pl-btn', type: 'button', onClick: () => { select(null); fitAll(); }, text: 'Fit all' }));
     }
-    overview.hidden = !(isPhone() && graph().nodes.length > 8);
+    overview.hidden = !isPhone();
+    updateCameraMap();
     refreshTrace();
   }
   // Parts the peak estimate says will run past 100 percent, as list items that select the part.
@@ -359,29 +360,46 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     } else {
       if (tb) t = Math.max(t, tb.bottom - r.top);
       if (hb) b = Math.max(b, r.bottom - hb.top);
+      const goalBox = box(goalChip);
+      if (goalBox) t = Math.max(t, goalBox.bottom - r.top + 8);
       const lb = box(toolbar.el);
       // a folded parts list that is only a button (small tablets) takes a corner of the top, not the whole left side
       if (lb && lb.width && lb.height < r.height * 0.3) t = Math.max(t, lb.bottom - r.top + 4);
       else if (lb && lb.width) l = Math.max(l, lb.right - r.left);
-      if (isLesson) { rr = Math.max(rr, 292); const cb = box(caption); if (cb) b = Math.max(b, r.bottom - cb.top + 12); }
+      if (isLesson) { const cb = box(caption); if (cb) b = Math.max(b, r.bottom - cb.top + 12); }
       const rightKids = [...right.children].map(box).filter(Boolean);
       // a short stack of panels (a folded traffic panel) only takes the top corner; a tall one takes the whole right side
       const rightLow = rightKids.length ? Math.max(...rightKids.map((x) => x.bottom)) - r.top : 0;
       if (rightKids.length && rightLow < r.height * 0.3) t = Math.max(t, rightLow + 8);
       else if (rightKids.length) rr = Math.max(rr, r.right - Math.min(...rightKids.map((x) => x.left)));
     }
-    return { l, t, r: rr, b, w: r.width, h: r.height };
+    const area = { l, t, r: rr, b, w: r.width, h: r.height };
+    scene.setCaptionArea?.({ l: l + 8, t: t + 8, r: rr + 8, b: b + 8 });
+    return area;
   }
   function fitView(animate = true, minZoom = null, automatic = false) {
     if (S.connectFrom || (automatic && (S.booted || performance.now() < Math.max(S.editUntil || 0, S.manualViewUntil || 0)))) return;
     const a = freeArea();
     const pad = isPhone() ? 20 : 36;
     // a big build zooms out far enough to sit between the panels instead of running underneath them
-    const zoom = isPhone() ? { minZ: minZoom ?? 0, maxZ: 0.9, reserveY: isLesson ? (mode === 'intro' ? 288 : 144) : 0 } : { minZ: minZoom ?? 0, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
+    const zoom = isPhone() ? { minZ: minZoom ?? 0, maxZ: 0.9, reserveY: 0 } : { minZ: minZoom ?? 0, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
     // names sit under the parts and are about 80 px wide, so the sides keep room for half a name (never under 12 px) and the bottom for a name line
     const side = Math.max(pad, 46);
 
     try { scene.fit({ l: a.l + side, t: a.t + pad, r: a.r + side, b: a.b + pad + 22 }, animate, zoom); } catch { try { scene.fit(); } catch { /* optional */ } }
+  }
+  function fitEntry() {
+    fitView(false);
+    if (!isPhone() || graph().nodes.length <= 8) return;
+    const g = graph(), ids = [], seen = new Set();
+    let current = g.nodes.find(n => catalog.elementById.get(n.type)?.kind === 'source');
+    while (current && ids.length < 5 && !seen.has(current.id)) {
+      ids.push(current.id); seen.add(current.id);
+      const next = g.edges.filter(e => e.from === current.id && e.kind === 'flow').map(e => g.nodes.find(n => n.id === e.to)).filter(n => n && !seen.has(n.id));
+      current = next.find(n => !['queue','worker-pool'].includes(n.type)) || next[0];
+    }
+    const a = freeArea();
+    if(ids.length > 1) scene.fit({ l:42,r:42,t:a.t+24,b:a.b+42 }, false, { nodeIds:ids,maxZ:.9 });
   }
   function fitAll() {
     S.manualViewUntil = performance.now() + 4000;
@@ -632,12 +650,26 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     root.classList.toggle('pl-has-selection', !!id);
     if (id && canStructure() && !store.get('seenConnectHandle', false)) {
       store.set('seenConnectHandle', true);
-      showCaption('Drag the arrow handle outward to another part to connect it. Drag the part itself to move it.', 6500);
+      showCaption('Drag the port to connect. Drag the body to move.', 6500);
     }
     // in a lesson the diagram steps out from under the settings panel, and settles back once it closes
     if (isPhone()) showFocusMap(id);
     bus.emit('play:select', { nodeId: id });
   }
+  function cameraMap() {
+    const button = h('button', { class: 'pl-camera-map', type: 'button', 'aria-label': 'System overview. Fit the whole diagram', onClick: () => { select(null); fitAll(); } });
+    const g = graph(), minX = Math.min(...g.nodes.map(n => n.x))-70, minY = Math.min(...g.nodes.map(n => n.y))-70;
+    const width = Math.max(...g.nodes.map(n => n.x))-minX+70, height = Math.max(...g.nodes.map(n => n.y))-minY+100;
+    const byId = new Map(g.nodes.map(n => [n.id,n]));
+    button.innerHTML = `<svg viewBox="${minX} ${minY} ${width} ${height}" aria-hidden="true"><g fill="none" stroke="var(--edge-idle)" stroke-width="8">${g.edges.map(e => { const a=byId.get(e.from),b=byId.get(e.to); return a&&b?`<path d="M${a.x} ${a.y}L${b.x} ${b.y}"/>`:''; }).join('')}</g>${g.nodes.map(n=>`<rect x="${n.x-22}" y="${n.y-22}" width="44" height="44" rx="6" fill="var(--accent)"/>`).join('')}<rect class="pl-camera-window" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+    return button;
+  }
+  function updateCameraMap() {
+    const rect = root.querySelector('.pl-camera-window'); if (!rect) return;
+    const a = freeArea(), p = scene.screenToWorld(a.l, a.t), q = scene.screenToWorld(a.w-a.r, a.h-a.b);
+    for (const [key,value] of Object.entries({ x:p.x,y:p.y,width:q.x-p.x,height:q.y-p.y })) rect.setAttribute(key,value);
+  }
+  offs.push(scene.on('view', updateCameraMap));
   function showFocusMap(id, refresh = false) {
     const zoomed = refresh && root.querySelector('.pl-focus-map .pl-btn')?.dataset.zoomed;
     root.querySelector('.pl-focus-map')?.remove();
@@ -912,6 +944,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         if (S.lastDay.cost != null) text += ' Running it costs about $' + Math.round(S.lastDay.cost).toLocaleString('en-US') + ' a month (approx.), against a $' + Number(S.problem.requirements?.budgetPerMonth || 0).toLocaleString('en-US') + ' budget.';
       }
       if (b.highlight) toolbar.pulse(b.highlight);
+      if (isPhone() && b.waitFor?.action === 'knob') {
+        const part = graph().nodes.find(n => n.type === (b.waitFor.type || 'vm-fleet'));
+        if(part) { const a=freeArea(); scene.fit({l:42,r:42,t:a.t+24,b:a.b+36},true,{focusId:part.id,maxZ:.9}); }
+      }
       if (b.waitFor) {
         // the day waits while the player does what the caption asks
         const paused = (held || S.sim.phase === 'running') && b.pause !== false;
@@ -1156,15 +1192,15 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     toggle('Larger diagram', on => { root.classList.toggle('pl-diagram-large', on); later(() => fitView(), 60); });
     toggle('Hide parts panel', on => { root.classList.toggle('pl-parts-hidden', on); later(() => fitView(), 60); });
     toggle('Hide details panel', on => { root.classList.toggle('pl-details-hidden', on); later(() => fitView(), 60); });
-    toggle('Region boundaries', on => { scene.setRegionGroups(on); if (on) showCaption('Cross-region labels show approximate round-trip latency. Arrange by region separates overlapping groups.', 6000); });
-    options.append(h('button', { class: 'pl-btn pl-btn--small', type: 'button', title: 'Arrange parts in region groups. Undo restores their positions.', onClick: () => {
+    toggle('Region boundaries', on => { scene.setRegionGroups(on); if (on) showCaption('Cross-region labels show approximate round-trip latency. Tidy request paths makes room between parts.', 6000); });
+    options.append(h('button', { class: 'pl-btn pl-btn--small', type: 'button', title: 'Tidy the request paths from clients to stores. Undo restores your positions.', onClick: () => {
       if (structureBlocked()) return;
       inspection.open = false;
       top.classList.remove('pl-top--tools-open');
-      const a = freeArea();
-      for (const n of regionLayout(graph(), { width: Math.max(40, a.w - a.l - a.r - 92), height: Math.max(40, a.h - a.t - a.b - 94) })) S.sim.moveNode(n.id, n.x, n.y);
-      commit(); fitView(true, 0.2);
-    } }, 'Arrange by region'));
+      for (const n of pathLayout(graph(), catalog)) S.sim.moveNode(n.id, n.x, n.y);
+      toolbar.el.classList.add('pl-toolbar--folded'); trafficPanel?.fold(true);
+      commit(); fitView(true, 0);
+    } }, 'Tidy request paths'));
   }
   if (stepped && !interview) tools.append(hintBtn, edBtn);
   const interviewClock = interview ? h('output', { class: 'pl-interview-clock', title: '45-minute guide. Play continues after time runs out.', text: 'Interview · 45:00' }) : null;
@@ -1311,7 +1347,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     updateEditable();
     closeHints();
     // A deliberate traffic run can fit the meters; a lesson's first edit preserves its camera.
-    if (!isLesson && !isSandbox) later(() => { if (!S.destroyed) fitView(true); }, 140);
+    if (!isLesson) later(() => { if (!S.destroyed) fitView(true); }, 140);
     snd('start');
     bus.emit('play:start', { mode, problemId: S.problem.id, seed: S.seed });
     return getState();
@@ -1650,7 +1686,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (d?.graph && (mode !== 'challenge' || d.seed === S.seed)) g = d.graph;
     }
     if (g) { try { S.sim.loadGraph(g); } catch (e) { toast('Could not restore that design: ' + (e.message || e), 'warn'); } }
-    if (!g && isPhone() && graph().nodes.length <= 8) for (const n of phoneLayout(graph())) S.sim.moveNode(n.id, n.x, n.y);
+    if (!g) for (const n of pathLayout(graph(), catalog)) S.sim.moveNode(n.id, n.x, n.y);
     S.entryGraph = graph();
     S.cur = JSON.stringify(graph());
     toolbar.setPalette(S.problem.palette || null);
@@ -1661,6 +1697,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     right.prepend(...(reqCard ? [reqCard.el] : []));
     hud.setPhase('build'); hud.setSpeed(S.speed);
     S.hintsUsed = hints.used();
+    if (isPhone()) trafficPanel?.fold(true);
     scene.sync(graph(), flowVersion());
     refreshChecks();
     const goal = S.problem.goal;
@@ -1725,7 +1762,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (interviewClock.textContent !== shown) interviewClock.textContent = shown;
     }
     if (hudClock >= 250) { hudClock = 0; const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
-    try { scene.setFlows(sim.flows(), { speed: sim.phase === 'running' ? effectiveSpeed() : 0, dtWallMs: dt, nodeStates: S.nodeStates }); } catch (e) { if (!S.flowErr) { S.flowErr = 1; S.errors.push({ code: 'render', message: String(e?.message || e) }); } }
+    try { scene.setFlows(sim.phase === 'build' ? null : sim.flows(), { speed: sim.phase === 'running' ? effectiveSpeed() : 0, dtWallMs: dt, nodeStates: S.nodeStates }); } catch (e) { if (!S.flowErr) { S.flowErr = 1; S.errors.push({ code: 'render', message: String(e?.message || e) }); } }
     if (ctx.recordFrame) {
       try {
         const rs = scene.stats();
@@ -1833,7 +1870,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- state for tests
   // Camera zoom and the free canvas area, for tests: the on-screen label size is 12 px times the label scale times the zoom.
   function viewInfo() {
-    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, labelPx: stats.labelPx, free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
+    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
   }
   function getState() {
     const sim = S.sim;
@@ -1850,7 +1887,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       phase: sim.phase, clock: { simMs: st.clockMs, label: st.clockLabel || clockLabel(st.clockMs || 0) }, speed: S.sim.phase === 'paused' ? 0 : S.speed,
       nodes: g.nodes.map((n) => {
         const l = live.get(n.id) || {};
-        return { id: n.id, type: n.type, x: n.x, y: n.y, units: n.units, zones: n.zones, region: n.region, tier: n.tier, util: l.util ?? 0, status: typeof l.status === 'number' ? STATUS_NAMES[l.status] : (l.status || 'ok'), p99Ms: l.p99Ms ?? 0, failRps: l.failRps ?? 0, queueDepth: l.queueDepth ?? 0 };
+        return { id: n.id, type: n.type, x: n.x, y: n.y, units: n.units, zones: n.zones, region: n.region, tier: n.tier, util: l.util ?? 0, status: typeof l.status === 'number' ? STATUS_NAMES[l.status] : (l.status || 'ok'), p99Ms: l.p99Ms ?? 0, failRps: l.failRps ?? 0, queueDepth: l.queueDepth ?? 0, retryRps: l.retryRps ?? 0, ...(l.oldestJobAgeSec != null ? { oldestJobAgeSec:l.oldestJobAgeSec, queueLimitSec:l.queueLimitSec, queueAcceptedRps:l.queueAcceptedRps, queueDrainRps:l.queueDrainRps } : {}) };
       }),
       edges: g.edges.map((e) => ({ id: e.id, from: e.from, to: e.to, kind: e.kind, rps: rps.get(e.id) ?? 0 })),
       traffic: cp(st.traffic), slo: cp(st.slo), cost: cp(st.cost),
@@ -1898,8 +1935,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     top.classList.add('pl-top--plain');
   }
   if (isPhone()) trafficPanel?.fold(true);
-  later(() => fitView(false), 60);
-  later(() => { if (!S.destroyed) fitView(false); }, 450);
+  later(() => { if (!S.destroyed) fitEntry(); }, 60);
   // Panels keep the canvas clear: their edges follow the HUD's real height.
   let hudObs = null, toolbarObs = null;
   const syncHud = () => {
@@ -1909,6 +1945,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     root.style.setProperty('--pl-hud-end', Math.round(r.bottom - rr.top) + 'px');
     const tb = top.getBoundingClientRect();
     root.style.setProperty('--pl-top-end', Math.round(tb.bottom - rr.top) + 'px');
+    const coachBlocks = [root.querySelector('.pl-trace'), goalChip].filter(el => el && !el.hidden && el.offsetParent);
+    const coachTop = Math.max(r.bottom, ...coachBlocks.map(el => el.getBoundingClientRect().bottom));
+    root.style.setProperty('--pl-coach-top', Math.ceil(coachTop - rr.top + 8) + 'px');
     syncFocusMap();
   };
   // When a panel changes size (the status bar grows with live meters, the traffic panel folds), a diagram that now runs
@@ -1995,6 +2034,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     else if (S.problem.hints?.length && !(mode === 'lesson' && S.problem.goal)) showCaption(S.problem.hints[0], 0);
   }
   syncUndoButtons();
+  if (mode === 'lesson') toolbar.el.classList.add('pl-toolbar--folded');
   S.booted = true;
 
   // ---- controller
