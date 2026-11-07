@@ -1067,3 +1067,18 @@
  .pl-root[data-mode] .pl-caption-t {display:block;overflow:visible;-webkit-line-clamp:unset;line-clamp:unset}
 }
 @media(max-width:719px) { .pl-root.pl-has-selection:has(.pl-caption:not([hidden])) .pl-trace {display:none} }
+
+/* A committed claim unfolds in the same evidence rhythm as the traffic report. */
+.hp-defense-claims {min-width:0;border:0;padding:0;margin:16px 0}
+.hp-defense-claims legend {font-weight:700;line-height:1.5}
+.hp-defense-claims .pl-defense-check {align-items:flex-start;margin-block:12px;line-height:1.5}
+.hp-defense-claims input {margin-top:4px}
+.pl-claim-trace {margin:12px 0 24px;padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface-solid);overflow-wrap:anywhere}
+.pl-claim-trace:empty {display:none}
+.pl-claim-trace ol {margin:12px 0 0;padding-left:24px}
+.pl-claim-trace li {padding:8px 0 8px 4px;font:15px/1.6 var(--font-ui);animation:pl-evidence-in 180ms var(--ease-out) both}
+.pl-claim-trace li:nth-child(2) {animation-delay:80ms}
+.pl-claim-trace li:nth-child(3) {animation-delay:160ms}
+.pl-claim-trace li:nth-child(n+4) {animation-delay:240ms}
+:root[data-motion=reduce] .pl-claim-trace li {animation:none}
+@media(max-width:719px) {.pl-claim-trace {padding:12px}.pl-claim-trace li {font-size:15px}}
