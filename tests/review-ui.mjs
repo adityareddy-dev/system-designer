@@ -61,7 +61,9 @@ try {
     }, reduced);
     await page.waitForSelector('.sh-demo-stage .pl-tb-grab');
     const starter = await page.evaluate(() => window.__game.getState().nodes);
-    assert.equal(new Set(starter.map(n => n.x)).size, 1, 'fresh phone starters flow top to bottom');
+    assert.equal(new Set(starter.map(n => n.y)).size, 1, 'fresh phone starters share a request band');
+    const xOf = type => starter.find(n => n.type === type).x;
+    assert(xOf('mobile-app') < xOf('vm-fleet') && xOf('vm-fleet') < xOf('sql-primary'), 'fresh phone starters flow from clients to stores, left to right');
     await page.waitForFunction(() => !document.querySelector('.sh-lp-card').getAnimations().some(a => a.playState === 'running'));
     const bounds = await page.evaluate(() => {
       const add = document.querySelector('.pl-tb-grab').getBoundingClientRect();
