@@ -49,7 +49,11 @@ export function mount(host, ctx, step, model) {
       // A retained packet is already delivered. Only a new event may send it again.
       if(el.dataset.packet&&p&&!moved) continue;
       const dx=moved?p[0]-x:Number(el.dataset.fromX??x)-x,dy=moved?p[1]-y:Number(el.dataset.fromY??y)-y;
-      if(dx||dy) animations.push(el.animate([{transform:`translate(${dx}px, ${dy}px)`},{transform:'translate(0px, 0px)'}],{duration:1000,easing:'cubic-bezier(.25,.6,.35,1)',fill:'both'}));
+      const via=Number(el.dataset.viaX);
+      const frames=el.dataset.viaX&&!moved?
+        [{transform:`translate(${dx}px, ${dy}px)`},{transform:`translate(${via-x}px, ${dy}px)`,offset:.2},{transform:`translate(${via-x}px, 0px)`,offset:.8},{transform:'translate(0px, 0px)'}]:
+        [{transform:`translate(${dx}px, ${dy}px)`},{transform:'translate(0px, 0px)'}];
+      if(dx||dy) animations.push(el.animate(frames,{duration:1000,easing:'cubic-bezier(.25,.6,.35,1)',fill:'both'}));
     }
     syncMotion();
   }
