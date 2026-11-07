@@ -23,8 +23,14 @@ try {
   await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); });
   await page.waitForSelector('.pl-debrief');
   await click('New twist');
-  await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); });
+  await page.evaluate(() => window.__game.startTraffic());
+  await page.keyboard.press('h');
+  await page.waitForSelector('.pl-hints:not([hidden])');
+  await page.$eval('.pl-hints-foot button', b => b.click());
+  assert.equal(await page.$eval('.pl-hints', el => el.checkVisibility()), true, 'guidance is open during the twist');
+  await page.evaluate(() => window.__game.step(86400000));
   await page.waitForSelector('.pl-transfer-reflection textarea');
+  assert.equal(await page.$eval('.pl-hints', el => el.checkVisibility()), false, 'failure closes previously open repair guidance before reflection');
   const failed = await page.evaluate(() => window.__game.getState().score);
   assert.equal(failed.passed, false);
   await page.$eval('.pl-step[data-step="draw"]', el => el.click());

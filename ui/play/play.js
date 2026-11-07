@@ -1402,7 +1402,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const credit = learningCredit(S.problem, S.correctnessAnswer, { passed: result.passed, hintsUsed: hints.used(), workedRepair: S.workedRepair, reference: isRef }, ctx.progress?.get(S.problem.id)?.learning);
     S.result = isRef ? { ...result, reference: true } : warm ? { ...result, warmUp: true, ...(S.problem?.twistDay ? { twistDay: true } : {}) } : result;
     S.result = { ...S.result, learning: credit };
-    if (S.problem.twistDay && !result.passed) S.pendingTransfer = S.result;
+    if (S.problem.twistDay && !result.passed) {
+      S.pendingTransfer = S.result;
+      closeHints(); closeEditorial();
+    }
     refreshSuggestions();
     reqCard?.setAdvice(!interview && adviceReady());
     if (mode === 'practice' && !interview && !isRef && !S.problem.warmUp) ctx.progress?.recordLearning?.(S.problem.id, credit);
