@@ -57,7 +57,9 @@ try{
  await page.waitForSelector('.sh-quiz-result');
  assert(!await page.$eval('.sh-quiz-result',e=>e.innerText));
  const choices=await page.$$('.sh-choice');await choices[2].click();
- await page.type('input[type=number]','6');await page.click('button[type=submit]');
+ await page.type('input[type=number]','5.7');await page.click('button[type=submit]');
+ assert(await page.$eval('.sh-lp-nav .sh-btn--primary',e=>e.disabled),'fractional relays do not finish a whole-relay transfer');
+ await page.$eval('input[type=number]',e=>e.value='6');await page.click('button[type=submit]');
  assert.match(await page.$eval('.sh-quiz-result',e=>e.innerText),/Prediction checked/);
  assert.equal(await page.evaluate(()=>localStorage.getItem('lesson-estimate-sentinel')),'keep');
  console.log('Every lesson demo collects a prediction before sizing or hints; bandwidth transfer passed.');
