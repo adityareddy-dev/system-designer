@@ -629,6 +629,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     closeEditorial();
     if (S.sim.phase !== 'build' && resetToDraw() === false) return;
     S.sim.loadGraph(designToGraph(design));
+    for (const n of pathLayout(graph(), catalog)) S.sim.moveNode(n.id, n.x, n.y);
     commit();
     S.refSig = graphSig();
     fitView();
@@ -1197,6 +1198,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (structureBlocked()) return;
       inspection.open = false;
       top.classList.remove('pl-top--tools-open');
+      select(null); inspector.fold(true); caption.hidden = true;
       for (const n of pathLayout(graph(), catalog)) S.sim.moveNode(n.id, n.x, n.y);
       toolbar.el.classList.add('pl-toolbar--folded'); trafficPanel?.fold(true);
       commit(); fitView(true, 0);
@@ -1379,7 +1381,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.sim.reset();
     S.result = null; S.acc = 0; S.activeEvents.clear(); S.lastStatus.clear();
     hud.hideBanner(); hud.setPhase('build'); hud.resetHistory();
-    try { scene.setFlows(S.sim.flows(), { speed: 0, dtWallMs: 16, nodeStates: S.sim.state().nodes }); } catch { /* optional */ }
+    try { scene.setFlows(null, { speed: 0, dtWallMs: 16, nodeStates: S.sim.state().nodes }); } catch { /* optional */ }
     debriefWrap.hidden = true;
     S.goalMet = false; S.goalMs = 0;
     if (stepped) { S.step = 'draw'; root.dataset.step = 'draw'; stepsBar.set('draw', { clarify: true, numbers: true, draw: true, debrief: !!S.result }); }

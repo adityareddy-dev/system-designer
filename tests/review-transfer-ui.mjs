@@ -61,6 +61,14 @@ try {
   await page.$eval('.pl-tool--editorial', el => el.click());
   await click('Show me the spoilers');
   assert.equal(await page.$eval('.pl-editorial h2', el => el.textContent), 'Patient health records');
+  await click('Load and run it');
+  const layout = await page.evaluate(async () => {
+    const { pathLayout } = await import('./render/layout.js');
+    const { loadCatalog } = await import('./sim/catalog.js');
+    const state = __game.getState();
+    return { actual: state.nodes.map(({id,x,y}) => ({id,x,y})), expected: pathLayout(state, await loadCatalog()) };
+  });
+  for (const node of layout.actual) assert.deepEqual(node, layout.expected.find(n => n.id === node.id), 'twist reference uses request-path layout');
 
   const sizing = await page.evaluate(async () => {
     const { problemById } = await import('./content/problems/index.js');
