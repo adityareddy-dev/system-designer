@@ -43,12 +43,13 @@ export function questionAnalysis(text, questions) {
     const a = tokens(line), b = tokens(question.q);
     const lexical = [...b].filter(w => a.has(w) || [...a].some(v => v.length > 4 && w.startsWith(v.slice(0,-1)))).length;
     const shared = topics.filter(([,pattern]) => pattern.test(line) && pattern.test(question.q)).length;
-    return { score: lexical + shared * 2, matched: shared > 0 || lexical >= Math.min(2, b.size || 2) };
+    const phrases = topics.filter(([,pattern]) => pattern.test(line) && pattern.test(question.q)).map(([,pattern]) => line.match(pattern)?.[0]);
+    return { score: lexical + shared * 2, matched: shared > 0 || lexical >= Math.min(2, b.size || 2), phrase: phrases.filter(Boolean).join(', ') || [...b].filter(w => a.has(w)).join(', ') };
   };
   const coverage = questions.map(q => own.some(line => score(line, q).matched));
   const closest = own.map(line => {
     const ranked = questions.map((q,i) => ({ i, ...score(line,q) })).sort((a,b) => b.score-a.score);
-    return { text: line, question: ranked[0]?.i ?? 0, matched: ranked[0]?.matched || false };
+    return { text: line, question: ranked[0]?.i ?? 0, matched: ranked[0]?.matched || false, phrase: ranked[0]?.phrase || '', matches: ranked.filter(r => r.matched).map(r => ({ question: r.i, phrase: r.phrase })) };
   });
   return { coverage, closest };
 }

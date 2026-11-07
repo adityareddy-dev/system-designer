@@ -62,7 +62,7 @@ try {
       answer.value = 'Use the measured peak and surviving units. Test durable recovery and bound retries before increasing traffic.';
       answer.dispatchEvent(new Event('input'));
       card.querySelector('form').requestSubmit();
-      card.querySelector('input[type=checkbox]').click();
+      card.querySelector('.hp-defense-claims input[type=checkbox]').click();
     }));
     await click('Save interview report');
     const saved = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], id);

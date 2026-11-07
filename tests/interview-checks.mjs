@@ -123,9 +123,10 @@ try {
     await page.$eval('.pl-defense-card', card => {
       const input = card.querySelector('textarea'); input.value = 'Measure surviving capacity and use health checks to detect unavailable replicas.'; input.dispatchEvent(new Event('input'));
       card.querySelector('button').click();
-      const boxes = [...card.querySelectorAll('input[type=checkbox]')];
-      boxes.slice(0, -1).forEach(box => box.click());
-      boxes.at(-1).focus();
+      card.querySelectorAll('.hp-defense-checklist input').forEach(box => box.click());
+      const claims = [...card.querySelectorAll('.hp-defense-claims input')];
+      claims.slice(0, -1).forEach(box => box.click());
+      claims.at(-1).focus();
     });
     await page.keyboard.press('Space');
     assert(await page.$eval('.pl-defense-card', card => !card.open && document.activeElement === card.querySelector('summary') && document.activeElement.checkVisibility()),
@@ -137,7 +138,7 @@ try {
     assert.equal(await page.$$eval('.pl-defense-card', els => els.length >= 3 && els.length <= 5), true);
     await click('Save interview report');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('hotpath.v1.progress'))['observability-platform'].interview);
-    assert(saved.latest.covered > 0); assert(saved.bestDay); assert(saved.bestCoverage);
+    assert(saved.latest.total > 0); assert.equal(saved.latest.coverageKind, 'computed-claims'); assert(saved.latest.defense.every(d => Object.values(d.claims).every(c => c.steps.length >= 4))); assert(saved.bestDay); assert(saved.bestClaims);
     assert(await page.$$eval('.pl-defense-card input[type=checkbox]', boxes => boxes.every(box => box.disabled)), 'saved checklist locks');
     assert(await page.$eval('.pl-interview-report button', button => button.disabled), 'save locks');
     await page.$$eval('.pl-defense-card input[type=checkbox]', boxes => boxes.forEach(box => box.click()));

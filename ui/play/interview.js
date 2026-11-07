@@ -2,6 +2,7 @@
 import { h, fmtNum, fmtUsd } from './util.js';
 import { estimateUnit, estimateFeedback } from './estimate-units.js';
 import { mountDefense } from '../defense.js';
+import { claimsFor, checkClaim } from '../../content/problems/defense-claims.js';
 
 import { questionAnalysis } from './question-topics.js';
 export function questionCoverage(text, questions) { return questionAnalysis(text, questions).coverage; }
@@ -45,7 +46,7 @@ export function defenseQuestions(problem, graph, result, catalog) {
     const costQuestion = question.kind === 'cost';
     const measuredPoint = costQuestion ? 'Quote the largest monthly cost line, calculate the 30% saving, and compare the result with the ' + fmtUsd(result.slo.cost.budget) + ' budget.' : metrics ? 'Quote ' + name(related) + ' at ' + Math.round(metrics.peakUtil * 100) + '% peak busy and ' + (metrics.minutesOverloaded || 0) + ' overloaded minutes; relate it to the ' + (result.slo.availability.actual * 100).toFixed(2) + '% served result.' : 'Quote the event time and served share above; distinguish an unmeasured part from a part with available capacity.';
     const stopPoint = costQuestion ? 'Set a numeric stop threshold for served share or p99 after the cut, using the stated targets; name the previous capacity or retention setting to restore.' : 'Set a numeric failure or p99 stop threshold against the ' + (result.slo.availability.target * 100).toFixed(2) + '% served target; name the previous routing, retry or ownership configuration to restore.';
-    return { ...question, evidence, checklist: [question.checklist[0], measuredPoint, alternative, stopPoint] };
+    return { ...question, claims: claimsFor(question, problem, graph, catalog), evidence, checklist: [question.checklist[0], measuredPoint, alternative, stopPoint] };
   });
 }
 
@@ -69,7 +70,17 @@ export function renderInterviewPrep(host, problem, state, ready, onStage = () =>
       }));
   } else if (state.stage === 'answers') {
     host.append(h('p', { text: `${state.coverage.filter(Boolean).length} of ${problem.clarify.length} topics matched. Read every answer, including topics the keyword check may have missed.` }), ...problem.clarify.map((q,i) => h('section', { class: 'pl-sec' }, h('b', { text: `${state.coverage[i] ? 'Topic matched' : 'Not matched automatically'} · ${q.q}` }), h('p', { text: q.a }), h('small', { text: `Design implication: ${implication(q)}` }))), button('Write requirements', () => { state.stage = 'requirements'; draw(); }));
-    host.append(...(state.closest || []).filter(q => !q.matched).map(q => h('p', { class: 'pl-muted', text: `Your question: ${q.text}. Closest topic to compare: ${problem.clarify[q.question]?.q} This is a wording suggestion, not a wrong answer.` })));
+    host.append(h('p', { class: 'pl-muted', text: 'This is a wording check. Automatic matches and self-assigned topics do not grade your questions.' }));
+    host.append(...(state.closest || []).map(q => {
+      if (q.matched) return h('section', { class: 'pl-sec' }, h('p', { text: `Your question: ${q.text}` }), (q.matches || [{ question: q.question, phrase: q.phrase }]).map(m => h('p', { class: 'pl-muted', text: `Matched phrase: “${m.phrase}”. Topic: ${problem.clarify[m.question]?.q}` })));
+      const select = h('select', { class: 'pl-input', 'aria-label': 'Assign your question to a topic', onChange: e => {
+        q.selfAssigned = e.target.value === '' ? null : Number(e.target.value);
+        state.coverage = problem.clarify.map((_, i) => state.closest.some(row => row.matches?.some(m => m.question === i) || row.selfAssigned === i));
+        draw();
+      } }, h('option', { value: '', text: 'Choose a topic yourself' }), problem.clarify.map((topic, i) => h('option', { value: i, selected: q.selfAssigned === i, text: topic.q })));
+      return h('section', { class: 'pl-sec' }, h('p', { text: `Your question: ${q.text}. No phrase matched. Closest topic to compare: ${problem.clarify[q.question]?.q}` }), select,
+        q.selfAssigned != null ? h('small', { text: 'Self-assigned by you. This is a wording check.' }) : null);
+    }));
   } else if (state.stage === 'requirements') {
     host.append(writing('What will you build, exclude, and measure? State your target numbers.', state.requirements, v => state.requirements = v), notice,
       button('Commit requirements', () => { if (state.requirements.trim().length < 20) { notice.textContent = 'State your scope and targets first.'; return; } state.stage = 'compare'; draw(); }));
@@ -99,23 +110,26 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     h('div', { class: 'pl-kicker', text: 'Interview mode · Defend your design' }),
     h('h2', { class: 'pl-h2', text: result.passed ? 'The system held. Explain the tradeoffs.' : 'The day found a limit. Explain the evidence.' }),
     h('p', { text: result.score.total + '/1,000 · ' + fmtUsd(result.slo.cost.perMonth) + '/month' }),
-    h('p', { text: 'Write before each reveal. Checklist coverage is your assessment, separate from the simulated score.' }));
+    h('p', { text: 'Write before each reveal, then commit the claims your explanation relies on. Counterexamples replay your design. Writing review and computed claims are separate from the day score.' }));
   host.replaceChildren(root);
   const priorities = h('section', { class: 'pl-interview-priorities', 'aria-live': 'polite' });
   root.append(priorities);
   const report = h('section', { class: 'pl-sec pl-interview-report', hidden: '' });
   const controls = [];
   const update = () => {
-    const gaps = questions.flatMap((q,i) => q.checklist.filter((_,j) => !state.defense[i]?.checked[j]).map(text => 'Follow-up ' + (i + 1) + ': ' + text));
-    priorities.replaceChildren(h('h3', { text: 'What to work on next' }), h('p', { text: gaps[0] || 'All checklist points reviewed. Test your explanation on changed conditions next.' }), h('small', { text: 'Self-assessed coverage guides practice; it does not certify the written answer.' }));
-    if (!questions.every((_, i) => state.defense[i]?.revealed)) return;
-    const covered = state.defense.reduce((a, d) => a + d.checked.filter(Boolean).length, 0);
-    const total = questions.reduce((a, q) => a + q.checklist.length, 0);
+    report.hidden = true;
+    report.replaceChildren();
+    const gaps = questions.flatMap((q,i) => Object.values(state.defense[i]?.claims || {}).filter(c => !c.held).map(c => 'Follow-up ' + (i + 1) + ': ' + q.claims.find(claim => claim.id === c.claimId)?.text));
+    priorities.replaceChildren(h('h3', { text: 'What to work on next' }), h('p', { text: gaps[0] || 'Commit a claim for each follow-up and inspect its trace. A held claim supports only the tested scenario.' }), h('small', { text: 'Computed counterexamples check the committed claims. The written answer still needs human review.' }));
+    if (!questions.every((_, i) => state.defense[i]?.revealed && Object.keys(state.defense[i]?.claims || {}).length)) return;
+    const outcomes = state.defense.flatMap(d => Object.values(d.claims || {}));
+    const covered = outcomes.filter(c => c.held).length;
+    const total = outcomes.length;
     const saveButton = button(state.complete ? 'Interview report saved' : 'Save interview report', () => {
       if (state.complete) return;
       save({ questionCount: state.coverage.filter(Boolean).length, questionsTotal: problem.clarify.length,
-        estimates: state.estimates, scope: state.requirements, questions: state.questions,
-        defense: state.defense.map((d,i) => ({ ...d, question: questions[i].q, evidence: questions[i].evidence, checklist: questions[i].checklist })), covered, total, score: result.score.total, passed: result.passed });
+        estimates: state.estimates, scope: state.requirements, questions: state.questions, topicMatches: state.closest,
+        defense: state.defense.map((d,i) => ({ ...d, question: questions[i].q, evidence: questions[i].evidence, checklist: questions[i].checklist, claimDefinitions: questions[i].claims })), coverageKind: 'computed-claims', covered, total, score: result.score.total, passed: result.passed });
       state.complete = true;
       controls.forEach(control => control.lock());
       root.querySelectorAll('.pl-defense-card').forEach(card => card.open = false);
@@ -124,10 +138,10 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     saveButton.disabled = state.complete;
     report.hidden = false;
     report.replaceChildren(h('h3', { text: 'Your interview report' }),
-      h('p', { text: 'Questions found: ' + state.coverage.filter(Boolean).length + '/' + problem.clarify.length + '. Defense coverage, self-assessed: ' + covered + '/' + total + '. Day score: ' + result.score.total + '/1,000.' }),
+      h('p', { text: 'Question topics recorded: ' + state.coverage.filter(Boolean).length + '/' + problem.clarify.length + '. Computed claims held: ' + covered + '/' + total + '. Day score: ' + result.score.total + '/1,000.' }),
       h('p', { text: state.requirements }),
       ...problem.numbers.map((n, i) => h('p', { text: n.label + ': estimated ' + fmtNum(state.estimates[i] * estimateUnit(n).factor) + ' ' + estimateUnit(n).unit + ', worked ≈ ' + fmtNum(estimateUnit(n).value) + ' ' + estimateUnit(n).unit + '.' })), saveButton,
-      ...(state.complete ? [h('p', { role: 'status', text: 'Saved on this device. Best coverage and best day score are kept separately.' })] : []),
+      ...(state.complete ? [h('p', { role: 'status', text: 'Saved on this device with your claims and counterexample traces. Best claim results and best day score are kept separately.' })] : []),
       h('a', { class: 'pl-btn', href: '#/practice/' + problem.id + '?interview=1', onClick: () => location.reload(), text: 'New interview' }));
   };
   questions.forEach((q, i) => {
@@ -139,8 +153,8 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     const response = h('div', { class: 'pl-defense-response' });
     const evidence = h('aside', { class: 'pl-defense-evidence' }, h('h4', { text: 'Evidence from your run' }), q.evidence.map(text => h('p', { text })));
     columns.append(response, evidence);
-    controls.push(mountDefense(response, q, d, { id: 'pl-defense-' + i, locked: state.complete, onReveal: update, onChange: () => {
-      if (d.revealed && q.checklist.every((_,j) => d.checked[j])) {
+    controls.push(mountDefense(response, q, d, { id: 'pl-defense-' + i, locked: state.complete, checkClaim: claim => checkClaim(claim, { problem, graph: result.graph, result, catalog }), onReveal: update, onChange: () => {
+      if (d.revealed && q.checklist.every((_,j) => d.checked[j]) && Object.keys(d.claims || {}).length === q.claims.length) {
         if (section.contains(document.activeElement)) section.querySelector('summary').focus();
         section.open = false;
       }
