@@ -46,7 +46,7 @@ export function defenseQuestions(problem, graph, result, catalog) {
     const costQuestion = question.kind === 'cost';
     const measuredPoint = costQuestion ? 'Quote the largest monthly cost line, calculate the 30% saving, and compare the result with the ' + fmtUsd(result.slo.cost.budget) + ' budget.' : metrics ? 'Quote ' + name(related) + ' at ' + Math.round(metrics.peakUtil * 100) + '% peak busy and ' + (metrics.minutesOverloaded || 0) + ' overloaded minutes; relate it to the ' + (result.slo.availability.actual * 100).toFixed(2) + '% served result.' : 'Quote the event time and served share above; distinguish an unmeasured part from a part with available capacity.';
     const stopPoint = costQuestion ? 'Set a numeric stop threshold for served share or p99 after the cut, using the stated targets; name the previous capacity or retention setting to restore.' : 'Set a numeric failure or p99 stop threshold against the ' + (result.slo.availability.target * 100).toFixed(2) + '% served target; name the previous routing, retry or ownership configuration to restore.';
-    return { ...question, claims: claimsFor(question, problem, graph, catalog), evidence, checklist: [question.checklist[0], measuredPoint, alternative, stopPoint] };
+    return { ...question, claims: claimsFor(question, problem, graph, catalog, result), evidence, checklist: [question.checklist[0], measuredPoint, alternative, stopPoint] };
   });
 }
 

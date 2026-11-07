@@ -1,7 +1,15 @@
 // Prompt-specific, deterministic counterexamples replay the candidate's graph and workload.
 import { createSim } from '../../sim/engine.js';
-export function claimsFor(question, problem, graph, catalog) {
-  const paid = graph.nodes.filter(n => catalog.elementById.get(n.type)?.units.max > 1 && catalog.elementById.get(n.type)?.cost?.perUnit).sort((a,b) => (b.units || 1) * catalog.elementById.get(b.type).cost.perUnit - (a.units || 1) * catalog.elementById.get(a.type).cost.perUnit)[0];
+export function claimsFor(question, problem, graph, catalog, result) {
+  const fleetCost = n => {
+    const measured = result?.nodes?.find(row => row.id === n.id)?.usd;
+    if (Number.isFinite(measured)) return measured;
+    const el = catalog.elementById.get(n.type);
+    const tier = el.knobs.includes('tier') ? (catalog.world.tiers[n.tier] || catalog.world.tiers.M).cost : 1;
+    return (el.cost.base || 0) + (n.units || 1) * el.cost.perUnit * tier;
+  };
+  const paid = graph.nodes.filter(n => catalog.elementById.get(n.type)?.units.max > 1 && catalog.elementById.get(n.type)?.cost?.perUnit).sort((a,b) => fleetCost(b) - fleetCost(a))[0];
+  const paidName = paid ? `${paid.label || catalog.elementById.get(paid.type).name} (${paid.id})` : 'the largest paid fleet';
   const target = graph.nodes.find(n => n.id === question.nodeId) || paid || graph.nodes.find(n => !n.locked);
   const nodeId = target?.id;
   const cases = {
@@ -15,8 +23,8 @@ export function claimsFor(question, problem, graph, catalog) {
     retry: 'A lost-reply retry burst preserves the served and latency targets',
     hot: 'Concentrating 60% of keyed traffic on one item preserves the served and latency targets',
     growth: 'Doubling arrivals preserves the served and latency targets',
-    cut: 'Removing 30% of the largest paid fleet preserves the required service and data guarantees',
-    saving: 'That fleet cut saves 30% of the whole bill while preserving service and data guarantees',
+    cut: `Removing 30% of ${paidName} preserves the required service and data guarantees`,
+    saving: `Cutting 30% of ${paidName} saves 30% of the whole bill while preserving service and data guarantees`,
     route: 'Losing the first delivery connection still leaves a usable service path',
     distance: 'Moving this dependency to a distant region preserves the latency and served targets'
   };
