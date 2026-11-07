@@ -1,7 +1,7 @@
 // Hint drawer: three tiers revealed one at a time. Hints are free; use is counted.
 import { h, iconEl } from './util.js';
 
-const TIERS = ['A nudge', 'The concept and element to consider', 'A near-solution'];
+const TIERS = ['A nudge', 'The concept and element to consider', 'The mechanism to measure'];
 
 export function createHints(host, { getHints, onUse, snd }) {
   const revealed = { n: 0 };
@@ -36,6 +36,7 @@ export function createHints(host, { getHints, onUse, snd }) {
     open() { render(); root.hidden = false; next.focus(); },
     close() { root.hidden = true; },
     toggle() { if (root.hidden) api.open(); else api.close(); },
+    reset() { revealed.n = 0; root.hidden = true; },
     used: () => revealed.n,
     isOpen: () => !root.hidden,
   };

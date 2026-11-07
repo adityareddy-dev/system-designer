@@ -1,0 +1,6 @@
+// Real records remain visible while hashing user ids or a deliberately skewed country field.
+import {mount,hash,range,select,text,dot} from './bench.js';
+export const records=Array.from({length:40},(_,i)=>({id:'user:'+i,country:i<24?'large':'country'+i%4}));
+export function counts(s){return records.reduce((ns,r)=>{ns[hash(r[s.key])%s.n]++;return ns;},Array(s.n).fill(0));}
+export const model={note:'Model: 40 equal-sized users, 24 from one country. Each dot is one actual record, hashed by the selected field. A cross-shard query contacts all shards; no query latency is estimated.',controls:[range('n','Shard count',2,6,4),select('key','Partition field',[['id','User id'],['country','Country']])],initial:()=>({n:4,key:'id',event:0}),update:(s,a,v)=>({...s,[a]:v,event:s.event+1}),view(s){const ns=counts(s),seen=Array(s.n).fill(0);return {svg:ns.map((n,i)=>text(12,29+i*37,'Shard '+i,'fg-small')+text(320,29+i*37,n,'fg-small')).join('')+records.map(r=>{const owner=hash(r[s.key])%s.n,j=seen[owner]++;return dot(r.id,140+(j%12)*12,8+owner*37+Math.floor(j/12)*11);}).join(''),caption:`${ns.join(', ')} records per shard. The largest holds ${Math.max(...ns)} of 40. Searching across all users needs ${s.n} shard queries.`,stats:{'largest shard':Math.max(...ns),'cross-shard queries':s.n}};}};
+export const mountFigure=(h,c,s)=>mount(h,c,s,model);

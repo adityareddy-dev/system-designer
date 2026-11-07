@@ -1,4 +1,5 @@
 // Editorial: reference designs with reasoning, worked numbers, cost, trade-offs. Spoiler gate until solved.
+import { estimateUnit } from './estimate-units.js';
 import { h, iconEl, fmtNum, fmtUsd, approx } from './util.js';
 import { iconInner } from '../../assets/icons/index.js';
 import { referenceSettings } from './reference-settings.js';
@@ -153,7 +154,7 @@ export function renderEditorial(host, { problem, catalog, passed, onLoad, onClos
       designs.length > 1 ? tabs : null, view].filter(Boolean));
     if (problem.numbers?.length) {
       root.append(h('section', { class: 'pl-sec' }, h('h3', { text: 'The numbers' }),
-        h('table', { class: 'pl-table' }, h('tbody', {}, problem.numbers.map((n) => h('tr', {}, h('th', { scope: 'row', text: n.label }), h('td', {}, approx(`${fmtNum(n.value)} ${n.unit || ''}`)), h('td', { class: 'pl-muted', text: n.how || '' })))))));
+        h('table', { class: 'pl-table' }, h('tbody', {}, problem.numbers.map((n) => h('tr', {}, h('th', { scope: 'row', text: n.label }), h('td', {}, approx(`${fmtNum(estimateUnit(n).value)} ${estimateUnit(n).unit}`)), h('td', { class: 'pl-muted', text: n.how || '' })))))));
     }
     if (ed.tradeoffs?.length) root.append(h('section', { class: 'pl-sec' }, h('h3', { text: 'Trade-offs' }), h('ul', { class: 'pl-list' }, ed.tradeoffs.map((t) => h('li', { text: t })))));
     if (ed.realWorld) root.append(h('section', { class: 'pl-sec' }, h('h3', { text: 'In the real world' }), h('p', {}, ed.realWorld, ' ', approx('figures are approximate'))));

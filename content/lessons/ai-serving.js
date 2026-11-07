@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "ai-serving",
   "title": "GPUs, tokens and fallbacks",
@@ -94,9 +94,11 @@ export default {
       "hint": "Place a Semantic cache in front of the model and a Hosted model API as a backup, with an LLM gateway to choose between them."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "ai-serving",
+      "view": "main",
       "title": "Smaller and cached",
-      "text": "Many questions are the same or similar, so a semantic cache can answer from memory. A smaller model handles easy questions and a bigger one the hard ones. Limits on answer length keep cost predictable."
+      "text": "Repeated answers can skip generation. Count the uncached tokens and capacity needed to drain the batch before choosing longer answers."
     },
     {
       "kind": "numbers",

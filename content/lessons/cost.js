@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "cost",
   "title": "Where the money goes",
@@ -7,10 +7,12 @@ export default {
   "summary": "Every box has a monthly price. Good design meets the goal without waste.",
   "steps": [
     {
-      "kind": "read",
+      "icon": "ui.cost",
+      "kind": "figure",
+      "figure": "cost",
+      "view": "main",
       "title": "Idle is expensive",
-      "text": "Servers cost money whether they are busy or not. The usual waste is running peak capacity all day, keeping data on expensive storage, and sending data across regions and the internet. A good design is not the biggest; it is the cheapest one that still meets the goals.",
-      "icon": "ui.cost"
+      "text": "Paid capacity costs money while quiet. Compare peak provisioning with a quiet-hours schedule, then keep enough headroom for demand."
     },
     {
       "kind": "demo",

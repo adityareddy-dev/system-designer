@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "multi-tenancy",
   "title": "Many customers on one system",
@@ -13,9 +13,11 @@ export default {
       "icon": "ev.noisy-neighbor"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "multi-tenancy",
+      "view": "isolation",
       "title": "Budget work at every scarce resource",
-      "text": "Set per-tenant rate, concurrency, queue-depth and work limits. Requests/s alone misses the difference between one key lookup and a terabyte scan. Weighted fair queueing or deficit round robin can reserve progress for active tenants while lending unused capacity. Bound queue age and propagate cancellation so abandoned queries stop consuming resources. Reject overload with clear reasons and retry guidance. Distinguish admitted traffic from rejected demand in the SLI and contract so quotas cannot hide a broken service. A tenant with many API keys must not escape an account-level limit."
+      "text": "Let tenant A arrive first and fill the workers. Compare admission quotas, fair dispatch and overlapping shuffle shards. Count quiet tenants that miss their four slots."
     },
     {
       "kind": "read",

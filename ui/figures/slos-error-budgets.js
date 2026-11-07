@@ -1,0 +1,11 @@
+// Constant-traffic error budget integration and two paired rolling-window alerts.
+import {mount,range,button,box,text,packet,line} from './bench.js';
+export function rates(errorPercent,duration,minute){const overlap=window=>Math.max(0,Math.min(minute,duration)-Math.max(0,minute-window));const burn=window=>errorPercent/0.1*overlap(window)/window;return {fast:burn(60)>=14.4&&burn(5)>=14.4,slow:burn(360)>=6&&burn(30)>=6,oneHour:burn(60),sixHours:burn(360),used:errorPercent/100*Math.min(duration,minute)/(43200*.001)*100};}
+export function firstAlert(error,duration,key){for(let m=1;m<=duration+360;m++)if(rates(error,duration,m)[key])return m;return null;}
+export const model={note:'Model: a 99.9% request SLO over 30 days at a constant request rate and a rectangular incident beginning at minute 0. Fast alert requires 14.4× burn in both 1h and 5m; slow requires 6× in both 6h and 30m. Windows include healthy traffic before the incident.',
+ controls:[range('error','Failed requests (%)',0,100,3,.1),range('duration','Incident length (minutes)',1,360,60),range('minute','Inspect minute',0,720,0),button('step','Advance five minutes')],
+ initial:()=>({error:3,duration:60,minute:0,event:0}),
+ update(s,a,v){s={...s,event:s.event+1};if(a==='step')s.minute=Math.min(720,s.minute+5);else s[a]=v;return s;},
+ view(s){const r=rates(s.error,s.duration,s.minute),fast=firstAlert(s.error,s.duration,'fast'),slow=firstAlert(s.error,s.duration,'slow');return {svg:line(20,210,340,210)+line(20,30,20,210)+`<path class="fg-wire" d="M20 210V${210-s.error*1.6}H${20+s.duration/720*320}V210H340"/>`+packet('clock',20+s.minute/720*320,210,20,210)+text(30,25,`${s.error}% errors for ${s.duration} minutes`,'fg-small')+text(30,115,`Fast: ${r.fast?'firing':'quiet'}`,r.fast?'':'fg-small')+text(30,145,`Slow: ${r.slow?'firing':'quiet'}`,r.slow?'':'fg-small')+text(20,237,'0                       720 minutes','fg-small'),caption:`At minute ${s.minute}, ${r.used.toFixed(2)}% of the monthly budget is spent. Fast first fires at ${fast===null?'no minute':fast+' min'}; slow at ${slow===null?'no minute':slow+' min'}.`,stats:{'budget spent (%)':r.used.toFixed(2),'1h burn (×)':r.oneHour.toFixed(2),'6h burn (×)':r.sixHours.toFixed(2)}};}
+};
+export const mountFigure=(h,c,s)=>mount(h,c,s,model);

@@ -27,11 +27,29 @@ function isDate(s) {
 // Own keys only, never prototype names.
 const entries = (o) => (isObj(o) ? Object.keys(o).filter((k) => k !== '__proto__' && k !== 'constructor' && k !== 'prototype').map((k) => [k, o[k]]) : []);
 
+function cleanCorrectness(c) {
+  if (!isObj(c) || !Number.isInteger(c.version) || c.version < 1 || c.version > 1e6 || !ts(c.checkedAt)
+    || !Array.isArray(c.choices) || !c.choices.length || c.choices.length > 20
+    || !c.choices.every(v => Number.isInteger(v) && v >= 0 && v <= 100)
+    || typeof c.explanation !== 'string') return null;
+  return { version: c.version, checkedAt: ts(c.checkedAt), choices: [...c.choices], explanation: c.explanation.slice(0, 4096) };
+}
+
+function cleanLearning(value) {
+  if (!isObj(value)) return null;
+  const out = {};
+  for (const key of ['eligibleAt', 'assistedAt', 'masteredAt']) if (ts(value[key])) out[key] = ts(value[key]);
+  return Object.keys(out).length ? out : null;
+}
+
 function cleanProblem(p) {
   if (!isObj(p)) return null;
+  const correctness = cleanCorrectness(p.correctness);
   return {
+    ...(correctness ? { correctness } : {}),
+    ...(cleanLearning(p.learning) ? { learning: cleanLearning(p.learning) } : {}),
     ...(Array.isArray(p.estimates) && ts(p.estimatesAt) ? {
-      estimates: p.estimates.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 1e30 ? v : null),
+      estimates: p.estimates.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1e30 ? v : null),
       estimatesAt: ts(p.estimatesAt),
     } : {}),
     attempts: int(p.attempts, 0, 1e6),
@@ -134,10 +152,15 @@ const maxTs = (x, y) => (x == null ? y : y == null ? x : Math.max(x, y));
 const smaller = (x, y) => (JSON.stringify(x) <= JSON.stringify(y) ? x : y);
 
 function mergeProblem(a, b) {
+  const x = a.correctness, y = b.correctness;
+  const correctness = !x || !y ? x || y : x.version !== y.version ? (x.version > y.version ? x : y)
+    : x.checkedAt !== y.checkedAt ? (x.checkedAt > y.checkedAt ? x : y) : smaller(x, y);
   const estimates = (a.estimatesAt || 0) === (b.estimatesAt || 0) ? smaller(a.estimates || [], b.estimates || [])
     : (a.estimatesAt || 0) > (b.estimatesAt || 0) ? a.estimates : b.estimates;
   const lead = a.bestScore !== b.bestScore ? (a.bestScore > b.bestScore ? a : b) : (a.hintsUsed <= b.hintsUsed ? a : b);
   return {
+    ...(correctness ? { correctness } : {}),
+    ...((a.learning || b.learning) ? { learning: Object.fromEntries(['eligibleAt', 'assistedAt', 'masteredAt'].map(k => [k, minTs(a.learning?.[k], b.learning?.[k])]).filter(([,v]) => v)) } : {}),
     ...(estimates && (a.estimatesAt || b.estimatesAt) ? { estimates, estimatesAt: maxTs(a.estimatesAt, b.estimatesAt) } : {}),
     attempts: Math.max(a.attempts, b.attempts),
     bestScore: Math.max(a.bestScore, b.bestScore),

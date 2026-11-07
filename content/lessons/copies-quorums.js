@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "copies-quorums",
   "title": "Copies and quorums",
@@ -13,9 +13,11 @@ export default {
       "icon": "el.wide-column"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "copies-quorums",
+      "view": "quorum",
       "title": "What overlap proves",
-      "text": "Let N be the number of replicas in a fixed set, W the durable write acknowledgements and R the read replies. If R + W > N, every read set overlaps every completed write set. For N = 3 and R = W = 2, a read started after a completed write contacts at least one replica that accepted it. That replica may now hold a superseding version. The coordinator or client must compare versions and reconcile replies. Intersection alone does not make concurrent writes linearizable. Failed partial writes, sloppy quorums that use substitute nodes, clock-based conflict resolution and membership changes need extra rules. A quorum is a building block, not a transaction."
+      "text": "Choose a fixed replica set and read/write reply counts. Stop a replica, write, then ask the oldest reachable copies. Overlap guarantees a shared responder only under the assumptions below."
     },
     {
       "kind": "read",

@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "security-compliance",
   "title": "Proof built in",
@@ -109,9 +109,11 @@ export default {
       "hint": "Place Audit log, Key management, Identity provider and Backups, then connect them to the servers and the database."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "security-compliance",
+      "view": "main",
       "title": "Least privilege",
-      "text": "Give each person and each service only the access it needs, and record every use of it. Keep secrets out of code, and rotate keys. Most breaches come from a leaked key or an over-powered account, not from clever hacking."
+      "text": "A reporting service needs one capability. Try a leaked credential before and after restricting its permissions, and keep an audit trail of allowed actions."
     },
     {
       "kind": "numbers",

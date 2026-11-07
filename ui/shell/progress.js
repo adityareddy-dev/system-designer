@@ -17,7 +17,7 @@ export function createProgress(store, bus) {
       probs[problemId] = {
         attempts: 0, bestScore: 0, stars: 0, hintsUsed: 0, solvedAt: null, lastResultAt: null,
         ...prev,
-        estimates: values.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null),
+        estimates: values.slice(0, 20).map((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null),
         estimatesAt: Math.max(Date.now(), (prev?.estimatesAt || 0) + 1),
       };
       save();
@@ -32,6 +32,24 @@ export function createProgress(store, bus) {
       probs[problemId] = { ...prev, interview: { attempts: (old.attempts || 0) + 1, latest: entry,
         bestCoverage: ratio(entry) > ratio(old.bestCoverage) ? entry : old.bestCoverage,
         bestDay: !old.bestDay || entry.score > old.bestDay.score ? entry : old.bestDay } };
+      save(); bus.emit('progress:updated', { problemId });
+    },
+
+    recordCorrectness(problemId, checkpoint, answer, passed) {
+      if (!checkpoint?.fields?.length || !answer || !passed || !checkpoint.fields.every((field, i) => field.correct === answer.choices?.[i])) return false;
+      const prev = probs[problemId] || { attempts: 0, bestScore: 0, stars: 0 };
+      probs[problemId] = { ...prev, correctness: { version: checkpoint.version || 1, checkedAt: Date.now(), choices: [...answer.choices], explanation: answer.text } };
+      save(); bus.emit('progress:updated', { problemId }); return true;
+    },
+
+    recordLearning(problemId, credit) {
+      const prev = probs[problemId] || { attempts: 0, bestScore: 0, stars: 0 };
+      const old = prev.learning || {}, now = Date.now();
+      const learning = { ...old,
+        ...(credit.eligible ? { eligibleAt: old.eligibleAt || now } : {}),
+        ...(credit.assistedPass ? { assistedAt: old.assistedAt || now } : {}),
+        ...(credit.independentTwist ? { masteredAt: old.masteredAt || now } : {}) };
+      probs[problemId] = { ...prev, learning };
       save(); bus.emit('progress:updated', { problemId });
     },
 

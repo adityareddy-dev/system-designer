@@ -2,8 +2,9 @@
 import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, approx, statusGlyph } from './util.js';
 import { stepCount } from './draw-controls.js';
 import { capacityText, inspectorStatus } from './inspector-facts.js';
+import { serviceElement } from '../../sim/service-profile.js';
 
-export function createInspector(host, { catalog, getNode, getHome, onKnob, onDelete, onDuplicate, onConnect, onClose, lesson = false }) {
+export function createInspector(host, { catalog, getNode, getHome, getProblem, onKnob, onDelete, onDuplicate, onConnect, onClose, lesson = false }) {
   const root = h('aside', { class: 'pl-inspector', 'aria-label': 'Inspector', hidden: '' });
   host.append(root);
   let curId = null;
@@ -137,7 +138,7 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
     root.replaceChildren();
     const node = curId && getNode(curId);
     if (!node) { root.hidden = true; return; }
-    const el = catalog.elementById.get(node.type);
+    const el = serviceElement(catalog, getProblem?.(), node.type);
     if (!el) { root.hidden = true; return; }
     root.hidden = false;
     root.classList.toggle('pl-inspector--folded', folded);
@@ -167,7 +168,9 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
     // numbers
     const facts = h('dl', { class: 'pl-facts' });
     if (el.capacity) {
-      facts.append(h('dt', { text: 'Handles' }), h('dd', {}, approx(capacityText(el, node, tiers))));
+      const [total, ...details] = capacityText(el, node, tiers).split(', ');
+      const perUnit = details.join(', ');
+      facts.append(h('dt', { text: 'Handles' }), h('dd', {}, approx(total), perUnit ? h('div', { class: 'pl-capacity-unit' }, approx(perUnit)) : null));
     }
     if (el.latencyMs) facts.append(h('dt', { text: 'Adds' }), h('dd', {}, approx(`${fmtMs(el.latencyMs.p50)} typical, ${fmtMs(el.latencyMs.p99)} slow`), el.latencyMs.note ? h('span', { class: 'pl-muted pl-small', text: ' ' + el.latencyMs.note }) : null));
     facts.append(h('dt', { text: 'Uptime alone' }), h('dd', {}, approx(fmtPct(el.availability) + ' of the time, one copy in one zone')));
@@ -203,7 +206,7 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
         section('What it can do', facts),
         section('Cost a month', costLines(el, node)),
         el.failureModes?.length ? section('How it breaks', h('ul', { class: 'pl-list' }, el.failureModes.map((f) => h('li', { text: f.text })))) : null);
-      root.append(head, h('div', { class: 'pl-insp-scroll' }, el.kind === 'compute' ? liveBox : null, actions, replicaCount, section('Settings', knobs), h('p', { class: 'pl-desc', text: el.description }), el.kind !== 'compute' ? liveBox : null, more));
+      root.append(head, h('div', { class: 'pl-insp-scroll' }, actions, replicaCount, section('Settings', knobs), liveBox, h('p', { class: 'pl-desc', text: el.description }), more));
       const sc = root.querySelector('.pl-insp-scroll'); if (sc) sc.scrollTop = 0;
       paintLive();
       return;
@@ -229,7 +232,7 @@ export function createInspector(host, { catalog, getNode, getHome, onKnob, onDel
     if (!refs.meter?.isConnected) return;
     const s = live;
     const util = s.util ?? 0;
-    if (refs.pool && (s.units || getNode(curId)?.units || 1) > 1) {
+    if (refs.pool) {
       const count = s.units || getNode(curId)?.units || 1;
       const alive = s.availableUnits ?? count;
       const buckets = Math.min(count, 6);

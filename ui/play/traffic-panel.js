@@ -12,6 +12,9 @@ const CURVE_NAMES = {
 };
 
 export const DEFAULT_TRAFFIC = { rps: { read: 600, write: 100 }, curve: 'consumer-evening', regions: { us: 0.7, eu: 0.3 } };
+export function trafficInput(saved) {
+  return saved?.mix ? { rps: Object.fromEntries(Object.entries(saved.mix).map(([id, share]) => [id, Math.round(saved.peakRps * share)])), curve: saved.curve, regions: saved.userRegions } : saved || DEFAULT_TRAFFIC;
+}
 
 export function createTrafficPanel(host, { catalog, initial = DEFAULT_TRAFFIC, onChange, onFire }) {
   const state = { rps: { ...initial.rps }, curve: initial.curve, regions: { ...initial.regions } };
@@ -25,8 +28,8 @@ export function createTrafficPanel(host, { catalog, initial = DEFAULT_TRAFFIC, o
   for (const rt of types) {
     const val = h('b', { class: 'pl-mono' });
     const inp = h('input', { class: 'pl-range', type: 'range', min: '0', max: String(POS_MAX), value: String(rpsToPos(state.rps[rt.id] || 0)), 'aria-label': `${rt.name} requests per second` });
-    const show = () => { const r = posToRps(+inp.value); val.textContent = r ? fmtNum(r) + '/s' : 'off'; };
-    inp.addEventListener('input', () => { show(); state.rps[rt.id] = posToRps(+inp.value); emit(); });
+    const show = () => { const r = state.rps[rt.id] || 0; val.textContent = r ? fmtNum(r) + '/s' : 'off'; };
+    inp.addEventListener('input', () => { state.rps[rt.id] = posToRps(+inp.value); show(); emit(); });
     show();
     const shape = h('span', { class: 'pl-tp-shape', style: { color: `var(--req-${rt.family})` }, 'aria-hidden': 'true' });
     try { shape.innerHTML = shapeSvg(rt.shape, { size: 14, fill: 'currentColor' }); } catch { /* optional */ }

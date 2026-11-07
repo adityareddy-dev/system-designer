@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "team-boundaries",
   "title": "Designs that other teams must live with",
@@ -13,9 +13,11 @@ export default {
       "icon": "ui.users"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "team-boundaries",
+      "view": "api",
       "title": "Put authority with an owner",
-      "text": "Choose boundaries around coherent data and invariants, access patterns and the teams able to operate them. Name the authoritative writer and the on-call owner for each dataset and API. Shared ownership without a decision rule can mean nobody owns recovery. Too many tiny services spread a single invariant across network calls; a huge shared service can make every change a negotiation. Use an internal module when it preserves cohesion without requiring independent deployment. A service boundary earns its cost when it creates useful autonomy, security or scaling isolation. Include dashboards, runbooks and dependency failure behavior in the contract."
+      "text": "Change a required API field and watch consumer contracts break. Keep v1, let measured usage fall as consumers migrate, then choose when to retire it."
     },
     {
       "kind": "read",

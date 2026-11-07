@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "requests-and-latency",
   "title": "What a request is, and p50 versus p99",
@@ -14,13 +14,15 @@ export default {
       "tap": true
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "requests-and-latency",
+      "view": "main",
       "title": "p50 and p99",
-      "text": "p50 is the wait that half of requests beat, the typical one. p99 is the wait that 99 of every 100 requests beat, so the slowest 1 in 100 is slower than that. If a page makes 10 requests, about 1 page in 10 meets a p99 request, so p99 is what people feel."
+      "text": "Move the two slow waits and compare p50 with p99. The number of requests on a page changes how often someone meets a slow answer."
     },
     {
       "kind": "demo",
-      "prompt": "People in Europe wait too long. Move the servers closer to them.",
+      "prompt": "People in Europe wait too long. Follow the whole request path: move both the app servers and their database to Europe so no request crosses the ocean.",
       "setup": {
         "palette": [
           "vm-fleet"

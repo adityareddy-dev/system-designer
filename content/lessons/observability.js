@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "observability",
   "title": "Seeing problems early",
@@ -97,9 +97,11 @@ export default {
       "hint": "Place Metrics, Alerting, Pager and CI/CD, and connect each one to the servers."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "observability",
+      "view": "main",
       "title": "Alerts that matter",
-      "text": "Alert on what people feel (errors, slow pages), not on every graph. Too many alerts and nobody reads them. A page to a human should mean something needs a human now."
+      "text": "Detection and repair both consume the incident budget. Page on user impact and count the time saved by a useful alert."
     },
     {
       "kind": "numbers",

@@ -10,6 +10,8 @@ import { scoreAll, passOf, starsOf, PASS_LATENCY_SHARE, PASS_LATENCY_SHARE_EASY 
 import { validateModel, blockedTypes } from './validate.js';
 import { buildResult } from './debrief.js';
 import { queueFactor, geomRetries, fmtClock, parseClock } from './util.js';
+import { efficiencyOf, efficiencyLoss } from './efficiency.js';
+import { obligationFailures } from './obligations.js';
 
 export { SimError };
 
@@ -53,6 +55,8 @@ export function normalizeProblem(problem, catalog, mode = 'practice') {
     starter: p.starter || null,
     palette: p.palette || null,
     concepts: Array.isArray(p.concepts) ? p.concepts.slice() : [],
+    services: p.services || {},
+    editorial: p.editorial || null,
   };
 }
 
@@ -73,7 +77,8 @@ export function latencyTarget(lat, r) {
 export const QUEUE_LATE_SEC = 900;
 const QUEUE_BACKOFFICE_SEC = 3600;
 const PERSON_WAITS = new Set(['message', 'notify', 'sync', 'location', 'login', 'read', 'search', 'inference', 'live', 'stream']);
-function queueLimitFor(req, r) {
+export function queueLimitFor(req, r) {
+  if (req.queueDeadlineSec?.[r.id] > 0) return req.queueDeadlineSec[r.id];
   if (req.queueLimitMin > 0) return req.queueLimitMin * 60;
   const base = PERSON_WAITS.has(r.id) ? QUEUE_LATE_SEC : QUEUE_BACKOFFICE_SEC;
   return Math.max(base, (r.defaultLatencyBudgetMs || 0) / 1000);
@@ -193,8 +198,8 @@ function initNodeRuntime(S) {
   const { nodes } = S.model;
   for (const n of nodes) {
     S.unitsCur[n.i] = n.units;
-    S.unitsLo[n.i] = n.units;
-    S.unitsHi[n.i] = n.units;
+    S.unitsLo[n.i] = Infinity;
+    S.unitsHi[n.i] = 0;
     S.sPrev[n.i] = 1;
     S.health[n.i] = 1;
     S.unhealthySince[n.i] = -1;
@@ -708,23 +713,26 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   // messages), charged against that type's successes as they happen.
   function newQHist() {
     return { A: new Float64Array(DAY_TICKS + 1), Acum: 0, typeArr: new Float64Array(T), late: 0, maxAge: 0, endBack: 0,
-      peakIn: 0, procAvg: 0, Dprev: 0, limitSec: QUEUE_LATE_SEC, side: false, lastK: -1, peakDemand: 0, capAtPeak: 0, effAtPeak: 0, dom: -1 };
+      peakIn: 0, procAvg: 0, Dprev: 0, limitSec: QUEUE_LATE_SEC, side: false, lastK: -1, peakDemand: 0, capAtPeak: 0, effAtPeak: 0, dom: -1, streams: new Map() };
   }
-  function queueComposition(X, n, u, out) {
-    const b = u * LN;
-    const la = n.laneNear ? X.active : X.activeT, ln = n.laneNear ? X.nActive : X.nActiveT;
-    out.fill(0);
-    let B = 0;
-    if (n.fanoutQ) {
-      // the slowest subscriber decides how late the work is
-      let best = -1, bs = 0;
-      for (const ei of n.consumers) { let s = 0; for (let i = 0; i < ln; i++) s += X.BACKE[ei * LN + la[i]]; if (s > bs) { bs = s; best = ei; } }
-      if (best >= 0) for (let i = 0; i < ln; i++) { const L = la[i]; const v = X.BACKE[best * LN + L]; if (v > 0) out[X.laneT[L]] += v; }
-      B = bs;
-    } else {
-      for (let i = 0; i < ln; i++) { const L = la[i]; const v = X.BACK[b + L]; if (v > 0) { out[X.laneT[L]] += v; B += v; } }
+  function queueStream(q, key, edge = null) {
+    let stream = q.streams.get(key);
+    if (!stream) {
+      stream = { edge, typeArr: new Float64Array(T), back: new Float64Array(T), types: new Map() };
+      q.streams.set(key, stream);
     }
-    return B;
+    stream.edge = edge;
+    return stream;
+  }
+  function queueComposition(X, n, u, stream) {
+    const b = (n.fanoutQ ? stream.edge : u) * LN;
+    const la = n.laneNear ? X.active : X.activeT, ln = n.laneNear ? X.nActive : X.nActiveT;
+    const back = n.fanoutQ ? X.BACKE : X.BACK;
+    stream.back.fill(0);
+    for (let i = 0; i < ln; i++) {
+      const L = la[i], v = back[b + L];
+      if (v > 0 && X.laneT[L] !== X.attackT) stream.back[X.laneT[L]] += v;
+    }
   }
   const compBuf = new Float64Array(T);
   function queueLateness(X, tn, dt) {
@@ -743,6 +751,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         X.qHist.set(n.id, q);
       }
       const b = u * LN;
+      const streams = n.fanoutQ ? Array.from(n.consumers, ei => queueStream(q, m.edges[ei].id, ei)) : [queueStream(q, null)];
+      for (const [key, stream] of q.streams) if (!streams.includes(stream)) q.streams.delete(key);
       const la = n.laneNear ? X.active : X.activeT, ln = n.laneNear ? X.nActive : X.nActiveT;
       let arr = 0;
       for (let i = 0; i < ln; i++) {
@@ -757,8 +767,14 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         const a = x * X.OKS[j] * dt;
         arr += a;
         q.typeArr[t] += a;
+        for (const stream of streams) if (!n.fanoutQ || r.P.includes(stream.edge)) stream.typeArr[t] += a;
       }
-      const B = queueComposition(X, n, u, compBuf);
+      compBuf.fill(0);
+      for (const stream of streams) {
+        queueComposition(X, n, u, stream);
+        for (let t = 0; t < T; t++) compBuf[t] = Math.max(compBuf[t], stream.back[t]);
+      }
+      const B = compBuf.reduce((sum, v) => sum + v, 0);
       q.Acum += arr;
       for (let i = q.lastK + 2; i <= k; i++) q.A[i] = q.A[i - 1];
       q.A[k + 1] = q.Acum;
@@ -769,15 +785,32 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       const proc = Math.max(0, D - q.Dprev) / dt;
       q.Dprev = D;
       q.procAvg = 0.9 * q.procAvg + 0.1 * proc;
-      // the limit follows the main type in the line: a nightly batch job may wait longer than a notification
+      // Each type keeps its own deadline even when slower work shares the queue.
+      let lateMsgs = 0, shortest = Infinity;
+      const lateByType = new Float64Array(T);
+      for (const stream of streams) for (let t = 0; t < T; t++) {
+        if (!(stream.typeArr[t] > 0)) continue;
+        let hist = stream.types.get(t);
+        if (!hist) { hist = { A: new Float64Array(DAY_TICKS + 1), lastK: -1, Dprev: 0, procAvg: 0 }; stream.types.set(t, hist); }
+        for (let j = hist.lastK + 2; j <= k; j++) hist.A[j] = hist.A[j - 1];
+        hist.A[k + 1] = stream.typeArr[t]; hist.lastK = k;
+        const limit = queueLimitFor(X.problem.requirements, catalog.requests[t]);
+        shortest = Math.min(shortest, limit);
+        const k0 = k - Math.max(1, Math.ceil(limit / X.dt)) + 1;
+        const processed = Math.max(0, stream.typeArr[t] - stream.back[t]);
+        hist.procAvg = 0.9 * hist.procAvg + 0.1 * Math.max(0, processed - hist.Dprev) / dt;
+        hist.Dprev = processed;
+        // Copies share the same FIFO arrival bucket, so its overdue union is the largest suffix.
+        if (k0 >= 0) lateByType[t] = Math.max(lateByType[t], hist.A[k0 + 1] - Math.max(hist.A[k0], processed));
+      }
+      for (const late of lateByType) lateMsgs += late;
+      if (Number.isFinite(shortest)) q.limitSec = shortest;
       if (q.dom < 0 || k % 30 === 0) {
         let dom = -1, dv = 0;
         for (let t = 0; t < T; t++) if (q.typeArr[t] > dv) { dv = q.typeArr[t]; dom = t; }
         q.dom = dom;
-        q.limitSec = dom >= 0 ? queueLimitFor(X.problem.requirements, catalog.requests[dom]) : QUEUE_LATE_SEC;
       }
       const dom = q.dom;
-      const Lt = Math.max(1, Math.round(q.limitSec / X.dt));
       // age of the message at the head of the line
       let age = 0;
       if (B > 1e-6) {
@@ -788,13 +821,6 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       X.qAge[u] = age;
       if (age > q.maxAge) q.maxAge = age;
       q.endBack = B;
-      // work that reaches its limit now while still waiting
-      const k0 = k - Lt + 1;
-      let lateMsgs = 0;
-      if (k0 >= 0) {
-        const lo = k0 === 0 ? 0 : q.A[k0], hi = q.A[k0 + 1];
-        lateMsgs = Math.max(0, hi - Math.max(lo, D));
-      }
       if (age >= q.limitSec * 0.5) {
         // the consumers are asked for more than they can do: show it on them (busy share = demand over capacity).
         // When they had room, the limit sits behind them (a full database), which shows its own overload.
@@ -819,10 +845,9 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       X.lateNow[u] += lateMsgs / dt;
       if (q.side) continue;
       for (let t = 0; t < T; t++) {
-        const share = compBuf[t] / B;
-        if (!(share > 0)) continue;
+        if (!(lateByType[t] > 0)) continue;
         const perReq = q.typeArr[t] > 0 ? Math.min(1, X.typeOff[t] / q.typeArr[t]) : 1;
-        const v = lateMsgs * share * perReq;
+        const v = lateByType[t] * perReq;
         if (v > X.lateType[t]) X.lateType[t] = v;
       }
     }
@@ -859,20 +884,23 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       const n = m.nodes[u];
       const q = X.qHist.get(n.id);
       if (!q || n.isDLQ) continue;
-      const B = queueComposition(X, n, u, compBuf);
-      if (!(B > 1)) continue;
-      const Lt = Math.max(1, Math.round(q.limitSec / X.dt));
       const k = Math.min(DAY_TICKS - 1, q.lastK);
-      const young = q.Acum - q.A[Math.max(0, k + 1 - Lt)];
-      const lateEnd = Math.max(0, Math.min(young, B - q.procAvg * q.limitSec));
-      if (!(lateEnd > 0)) continue;
-      q.late += lateEnd;
-      if (q.side) continue;
+      const lateByType = new Float64Array(T);
+      for (const stream of q.streams.values()) for (const [t, hist] of stream.types) {
+        const limit = queueLimitFor(X.problem.requirements, catalog.requests[t]);
+        const Lt = Math.max(1, Math.ceil(limit / X.dt));
+        // The deadline-crossing bucket was already charged by queueLateness().
+        const young = stream.typeArr[t] - hist.A[Math.max(0, k + 2 - Lt)];
+        const lateEnd = Math.max(0, Math.min(young, stream.back[t] - hist.procAvg * limit));
+        lateByType[t] = Math.max(lateByType[t], lateEnd);
+      }
       for (let t = 0; t < T; t++) {
-        const share = compBuf[t] / B;
-        if (!(share > 0)) continue;
+        const lateEnd = lateByType[t];
+        if (!(lateEnd > 0)) continue;
+        q.late += lateEnd;
+        if (q.side) continue;
         const perReq = q.typeArr[t] > 0 ? Math.min(1, X.typeOff[t] / q.typeArr[t]) : 1;
-        X.lateCarry[t] += lateEnd * share * perReq;
+        X.lateCarry[t] += lateEnd * perReq;
       }
     }
     for (let t = 0; t < T; t++) {
@@ -1042,10 +1070,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         if (qs > st) st = qs;
         if (a >= lim) X.overTicks[u] += 1;
       }
-      if (n.kind === 'compute' && !n.elastic) {
-        if (X.unitsCur[u] < X.unitsLo[u]) X.unitsLo[u] = X.unitsCur[u];
-        if (X.unitsCur[u] > X.unitsHi[u]) X.unitsHi[u] = X.unitsCur[u];
-      }
+      if (X.unitsCur[u] < X.unitsLo[u]) X.unitsLo[u] = X.unitsCur[u];
+      if (X.unitsCur[u] > X.unitsHi[u]) X.unitsHi[u] = X.unitsCur[u];
       if (st !== X.status[u]) { X.status[u] = st; changed.push(u); }
       X.wrRatePrev[u] = X.wrRate[u];
       X.writesSoFar[u] += X.wrRate[u] * dt;
@@ -1254,7 +1280,15 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     for (const inst of S.instances) if (inst.ended) inst.stats = null;
     S.instances = S.instances.filter((i) => !i.ended);
     // a sandbox day wraps: what is still in line counts as having arrived at midnight
-    for (const q of S.qHist.values()) { q.A.fill(0); q.Acum = q.endBack; q.A[0] = q.endBack; q.lastK = -1; q.Dprev = 0; }
+    for (const q of S.qHist.values()) {
+      q.A.fill(0); q.Acum = q.endBack; q.A[0] = q.endBack; q.lastK = -1; q.Dprev = 0;
+      q.typeArr.fill(0);
+      for (const stream of q.streams.values()) for (const [t, hist] of stream.types) {
+        stream.typeArr[t] = stream.back[t];
+        hist.A.fill(0); hist.A[0] = stream.back[t]; hist.lastK = -1; hist.Dprev = 0;
+        q.typeArr[t] = Math.max(q.typeArr[t], stream.back[t]);
+      }
+    }
     S.lateCarry.fill(0);
   }
 
@@ -1298,7 +1332,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     if (S.typeLatW) for (let t = 0; t < T; t++) if (S.typeLatW[t] > 0) typeShares[catalog.requests[t].id] = S.typeLatOk[t] / S.typeLatW[t];
     return {
       availability, latencyShare, perMonth: cost.perMonth, typeShares,
-      ledger: { lostWrites: S.lostWrites, duplicates: S.duplicates, staleReads: S.staleReads, readsServed: S.readsServed, complianceFailed: [...new Set(failed)], writesPerSec },
+      efficiencyLoss: efficiencyLoss(efficiencyOf(S), cost.perMonth, world.scoring.weights.cost),
+      ledger: { lostWrites: S.lostWrites, duplicates: S.duplicates, staleReads: S.staleReads, readsServed: S.readsServed, complianceFailed: [...new Set(failed)], writesPerSec, promiseFailures: obligationFailures(S) },
       lateWork: S.lateDay || 0,
     };
   }
@@ -1522,7 +1557,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       latency: S.latWorstT >= 0 && phase !== 'build'
         ? { targetMs: S.latTarget[S.latWorstT], p99Ms: Math.round(S.typeP99Now[S.latWorstT]), shareOk: mt.latencyShare, typeId: catalog.requests[S.latWorstT].id }
         : { targetMs: interactiveTarget(), p99Ms: Math.round(tn.p99), shareOk: mt.latencyShare, typeId: null },
-      safety: { lostWrites: Math.round(S.lostWrites || 0), duplicates: Math.round(S.duplicates || 0), staleReads: Math.round(S.staleReads || 0), complianceFailed: mt.ledger.complianceFailed },
+      safety: { lostWrites: Math.round(S.lostWrites || 0), duplicates: Math.round(S.duplicates || 0), staleReads: Math.round(S.staleReads || 0), complianceFailed: mt.ledger.complianceFailed, promiseFailures: mt.ledger.promiseFailures },
     };
     st.cost = { perMonth: cost.perMonth, budget: cost.budget, lines: cost.lines };
     st.scoreLive = scoreAll(world, req, mt);

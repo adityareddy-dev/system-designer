@@ -132,21 +132,25 @@ console.log('\nKeyboard');
   const stops = await ev(() => [...document.querySelectorAll('.pl-item')].filter((b) => b.tabIndex === 0).length);
   check('the component list is one tab stop', stops === 1, String(stops));
   // place a load balancer from the search box, then connect the web browser to it with the keyboard
-  await ev(() => document.querySelector('.pl-tb-head input')?.focus());
+  const beforeSearch = await ev(() => window.__game.getState().nodes.map(n => n.id));
+  await page.keyboard.press('/');
+  await page.waitForFunction(() => document.querySelector('.pl-tb-head input') === document.activeElement);
   await page.keyboard.type('load balancer');
   await page.keyboard.press('Enter');
   await sleep(200);
+  const balancer = await ev(ids => window.__game.getState().nodes.find(n => n.type === 'regional-lb' && !ids.includes(n.id)), beforeSearch);
+  check('search places the named load balancer from the folded palette', !!balancer);
   const e0 = await ev(() => window.__game.getState().edges.length);
   await ev(() => document.querySelector('.pl-kb')?.focus());
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < n1 + 1; k++) {
     const sel = await ev(() => document.querySelector('.pl-insp-title')?.innerText || '');
     if (/Web browser/.test(sel)) break;
     await page.keyboard.press('ArrowRight');
   }
   await page.keyboard.press('c');
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < n1 + 1; k++) {
     const live = await ev(() => document.querySelector('.pl-sr')?.textContent || '');
-    if (/Load balancer/i.test(live)) break;
+    if (/^Connect to Load balancer\?/.test(live)) break;
     await page.keyboard.press('ArrowRight');
     // the live region is cleared, then filled a moment later, so wait for the new line before reading it
     await page.waitForFunction(() => (document.querySelector('.pl-sr')?.textContent || '') !== '', { timeout: 2000 }).catch(() => {});
@@ -154,7 +158,11 @@ console.log('\nKeyboard');
   await page.keyboard.press('Enter');
   await sleep(200);
   const e1 = await ev(() => window.__game.getState().edges.length);
-  check('C, an arrow and Enter connect two parts', e1 === e0 + 1, `${e0} → ${e1}`);
+  const wired = await ev(id => {
+    const state = window.__game.getState();
+    return state.edges.some(e => e.to === id && state.nodes.find(n => n.id === e.from)?.type === 'web-browser');
+  }, balancer?.id);
+  check('C, an arrow and Enter connect the browser to the named load balancer', e1 === e0 + 1 && wired, `${e0} → ${e1}`);
   const skip = await ev(() => !!document.querySelector('.pl-skip'));
   check('a skip-to-diagram control exists', skip);
 }

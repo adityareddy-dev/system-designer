@@ -61,7 +61,7 @@ export function renderSandbox(host, ctx, route0) {
       });
       return;
     }
-    play = mountPlayHost(wrap, ctx, { mode: 'sandbox', seed: 'sandbox', graph: slot ? slot.graph : undefined });
+    play = mountPlayHost(wrap, ctx, { mode: 'sandbox', seed: 'sandbox', graph: slot ? slot.graph : undefined, traffic: slot?.traffic });
   }
 
   async function shareLink() {
@@ -100,7 +100,7 @@ export function renderSandbox(host, ctx, route0) {
     const save = (i, name) => {
       if (!latest || !(latest.nodes || []).length) { toast({ text: 'Nothing to save yet. Add a component first.', level: 'info' }); return; }
       const slots = readSlots(ctx.store);
-      slots[i] = { name: (name || `Sandbox ${i + 1}`).trim().slice(0, 28), savedAt: Date.now(), nodes: latest.nodes.length, graph: latest };
+      slots[i] = { name: (name || `Sandbox ${i + 1}`).trim().slice(0, 28), savedAt: Date.now(), nodes: latest.nodes.length, graph: latest, traffic: play?.controller?.getTraffic?.() || ctx.store.get('draft.sandbox.sandbox', null)?.traffic };
       ctx.store.set('sandbox.slots', slots);
       toast({ text: `Saved to slot ${i + 1}.`, level: 'ok' });
       if (slotNo === i + 1 && titleEl) titleEl.textContent = slots[i].name;

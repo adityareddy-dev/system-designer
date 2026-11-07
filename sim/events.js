@@ -205,8 +205,8 @@ function startEffect(S, inst, ef) {
       ef.endMs = sec(numDur(p.durationSec, 3600));
       st.cap = new Map();
       for (const u of ef.targets) {
-        const load = Math.max(1, S.realInPrev[u]);
-        st.cap.set(u, Math.max(1, numDur(p.rpsCapFactor, 0.5) * load));
+        const quota = nodes[u].cap1 * S.unitsCur[u] * nodes[u].tierCap;
+        st.cap.set(u, Math.max(1, numDur(p.rpsCapFactor, 0.5) * quota));
       }
       break;
     }

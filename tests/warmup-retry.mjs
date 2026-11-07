@@ -2,6 +2,7 @@
 // fresh profile's first full day for the same plain design, and a Beat link made after Retry replays to the same score.
 // Run from the harness folder: node warmup-retry.mjs [baseUrl]
 import puppeteer from 'puppeteer-core';
+import assert from 'node:assert/strict';
 
 const BASE = process.argv[2] || 'http://localhost:8765/';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -49,8 +50,11 @@ const run = async (page) => {
 
 const A = await session(null);
 await build(A);
+assert.equal(await A.$('.pl-cat--suggest'), null, 'first attempts do not reveal curated parts');
 const warm = await run(A);
+assert.ok(await A.$('.pl-cat--suggest'), 'finishing a first attempt refreshes curated parts');
 await A.evaluate(() => window.__game.reset());
+assert.ok(await A.$('.pl-cat--suggest'), 'curated parts remain available for the retry');
 await sleep(500);
 const retry = await run(A);
 // the Beat link made after Retry: encode the design and its score, decode it and replay it as the friend's browser does
@@ -66,7 +70,10 @@ const link = await A.evaluate(async (score) => {
 }, retry);
 const B = await session({ other: { attempts: 1, best: 500 } });
 await build(B);
+assert.equal(await B.$('.pl-cat--suggest'), null, 'attempts on another problem do not reveal this solution');
 const full = await run(B);
+await B.evaluate(() => window.__game.loadProblem('url-shortener'));
+assert.ok(await B.$('.pl-cat--suggest'), 'saved attempts unlock suggestions when reopening a problem');
 await browser.close();
 
 console.log(`warm-up ${warm}, retry ${retry}, fresh full day ${full}, link replay ${link.replayScore} (verified ${link.verified})`);

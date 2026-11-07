@@ -1,14 +1,14 @@
 // A pre-run decision check makes the player predict a tradeoff before receiving repair advice.
 import { h } from './util.js';
-import { transferFor, transferCorrect } from '../../content/transfers.js';
+import { transferFor, transferCorrect, workloadTransfer } from '../../content/transfers.js';
 export function checkFor(problem) {
   if (problem.id === 'url-shortener') return {
     q: 'A popular link is read 8,000 times/s. It never changes. The database can read 2,000 times/s. Choose a plan for this new workload.',
     choices: ['Double app capacity and leave every read hitting the database', 'Reuse answers, keep the database ready for cache misses', 'Retry every rejected read immediately'], answer: 1,
     why: 'More app capacity cannot increase database throughput. A cold cache still needs a safe miss path.',
-    calculation: 'With 90% cache hits, how many reads/s reach the database?', value: 800, unit: 'reads/s',
+    calculation: 'With 90% of answers reused, how many reads/s reach the database?', value: 800, unit: 'reads/s',
   };
-  return transferFor(problem.id === 'rate-limiter-service' ? 'rate-limiting' : (problem.concepts || []).find(id => transferFor(id))) || transferFor('back-of-envelope');
+  return workloadTransfer(`problem:${problem.id}`, (problem.concepts || []).find(id => transferFor(id)) || 'back-of-envelope', problem.title);
 }
 export function renderDesignCheck(problem, onReady, onCancel) {
   const test = checkFor(problem);

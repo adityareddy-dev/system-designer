@@ -231,10 +231,12 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
         meterSet('lat', { text: `≈ ${fmtMs(ack)}`, sub: 'Queue hop only, before the job completes', status: 'ok' });
       }
       const s = slo.safety || {};
-      const bad = (s.lostWrites || 0) > 0 || (s.duplicates || 0) > 0 || (s.complianceFailed?.length || 0) > 0;
+      const promises = s.promiseFailures || [];
+      const bad = (s.lostWrites || 0) > 0 || (s.duplicates || 0) > 0 || (s.complianceFailed?.length || 0) > 0 || promises.length > 0;
       const gaps = s.complianceFailed?.length || 0;
-      meterSet('safe', { text: bad ? 'At risk' : 'Safe', sub: `${gaps ? `${gaps} audit gap${gaps > 1 ? 's' : ''} · ` : ''}${fmtNum(s.lostWrites || 0)} lost · ${fmtNum(s.duplicates || 0)} duplicate · ${fmtNum(s.staleReads || 0)} stale`, frac: bad ? 1 : 0, status: bad ? 'bad' : 'ok' });
-      if (queued.length) {
+      const promiseText = promises.map(f => f.message).join(' ');
+      meterSet('safe', { text: bad ? 'At risk' : 'Safe', sub: `${promiseText ? promiseText + ' ' : ''}${gaps ? `${gaps} audit gap${gaps > 1 ? 's' : ''} · ` : ''}${fmtNum(s.lostWrites || 0)} lost · ${fmtNum(s.duplicates || 0)} duplicate · ${fmtNum(s.staleReads || 0)} stale`, frac: bad ? 1 : 0, status: bad ? 'bad' : 'ok' });
+      if (queued.length && !promises.length) {
         const risk = Math.max(0, ...queued.map((n) => (n.oldestJobAgeSec || 0) / (n.queueLimitSec || 1)));
         const limit = Math.min(...queued.map((n) => n.queueLimitSec || 1));
         meterSet('safe', { text: risk >= 1 ? 'Over deadline' : risk >= 0.5 ? 'Approaching' : 'Within deadline', sub: `Job deadline ≈ ${fmtNum(limit)} s. Acceptance does not guarantee completion.`, frac: risk, status: risk >= 1 ? 'bad' : risk >= 0.5 ? 'warn' : 'ok' });
@@ -302,7 +304,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     return risky.length === 1 ? `${el?.name || 'One part'} may not hold at the normal peak` : `${risky.length} parts may not hold at the normal peak`;
   }
   // Build-step status: a green "holds" only for a design that serves every request type at peak with no open warnings.
-  function setBuild(est, issues, sizes, { advice = true } = {}) {
+  function setBuild(est, issues, sizes, { advice = true, limits = 'Rough capacity check. Deadlines, retries and event recovery are unchecked.' } = {}) {
     buildNote.replaceChildren();
     const list = issues || [];
     lastIssues = list;
@@ -328,12 +330,12 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
         // the check runs at the busiest minute of a normal day, and again at the problem's biggest traffic event
         const sp = est.spike;
         const ev = sp ? `the ${sp.name.toLowerCase()} (${Math.round(sp.factor * 10) / 10}×)` : '';
-        const tip = 'Checked at the busiest minute of a normal day' + (sp ? ` and at ${ev}` : '') + '. Other events play out when the day runs (approx.).';
-        if (sp && !sp.holds) chip = h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: tip }, iconEl('ui.warn', 14), `Holds at the normal peak, not in ${ev}`);
-        else if (warns.length) chip = h('span', { class: 'pl-chip', title: tip }, iconEl('ui.info', 14), 'Holds at the normal peak; check the warnings');
-        else chip = h('span', { class: 'pl-chip pl-chip--ok', title: tip }, iconEl('ui.check', 14), sp ? `Holds at the normal peak and in ${ev}` : 'Holds at the normal peak');
+        const tip = limits;
+        if (sp && !sp.holds) chip = h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: tip }, iconEl('ui.warn', 14), `Capacity snapshot: peak below limit; ${ev} above it`);
+        else if (warns.length) chip = h('span', { class: 'pl-chip', title: tip }, iconEl('ui.info', 14), 'Capacity snapshot below limit; check warnings');
+        else chip = h('span', { class: 'pl-chip', title: tip }, iconEl('ui.info', 14), sp ? `Capacity snapshot below limit, including ${ev}` : 'Capacity snapshot below limit');
       }
-      buildNote.append(chip);
+      buildNote.append(chip, h('details', { class: 'pl-preview-limits pl-small' }, h('summary', { text: /already above|above the .*deadline/.test(limits) ? 'Rough capacity check: a speed or deadline risk is already visible' : 'Rough capacity check: deadlines, retries and event recovery are unchecked' }), h('p', { text: limits }))); 
     }
     const errs = list.filter((i) => i.level !== 'info');
     if (errs.length && hasParts) buildNote.append(h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: 'Show the list' }, iconEl('ui.warn', 14), `${errs.length} thing${errs.length > 1 ? 's' : ''} to check`));

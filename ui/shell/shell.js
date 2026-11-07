@@ -1,6 +1,7 @@
 // App shell: top bar, section navigation, route to view switching, toasts, progress wiring.
 import { h, ico, clear, lessonOf } from './dom.js';
 import { setOverlayHost, toast, closeAllModals } from './overlay.js';
+import { transitionScreen } from './motion.js';
 
 const TABS = [
   { id: 'learn', label: 'Learn', icon: 'ui.learn', href: '#/learn' },
@@ -79,6 +80,7 @@ export function mountShell(rootEl, ctx) {
   let view = null;
   let lastKey = null;
   let viewId = null;
+  let routeTrail = [];
 
   // Each page's code loads when its route opens. `prep` fetches the one problem or lesson file the page needs.
   const { content } = ctx;
@@ -119,57 +121,43 @@ export function mountShell(rootEl, ctx) {
     if (!opts.force && full === lastKey) return;
     lastKey = full;
     const key = viewKey(r);
+    const mine = ++seq;
     if (!opts.force && view && viewId === key && typeof view.update === 'function') {
+      main.removeAttribute('aria-busy');
+      pending = Promise.resolve();
       view.update(r);
       setImmersive(view.immersive);
       return;
     }
-    closeAllModals();
-    if (view && view.destroy) { try { view.destroy(); } catch { /* ignore */ } }
-    view = null;
-    const mine = ++seq;
-    viewId = key;
-    clear(main);
-    const tab = r.parts[0] === 'beat' ? 'challenge' : (r.parts[0] === 'intro' || r.parts[0] === 'drill') ? 'learn' : r.parts[0];
-    nav.querySelectorAll('.sh-tab').forEach((a) => {
-      if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
-    });
     const route = routes[r.parts[0] || ''];
-    const page = h('div', { class: 'sh-view' });
-    main.append(page);
-    main.scrollTop = 0;
-    if (!route) {
-      page.append(notFound());
-      view = {};
-      finish(opts);
-      pending = Promise.resolve();
-      return;
-    }
-    const spec = route(r);
-    setImmersive(false);
-    const wait = h('div', { class: 'sh-page sh-page--narrow sh-empty', role: 'status' }, h('p', { class: 'sh-muted', text: 'Loading' }));
-    const slow = setTimeout(() => { if (mine === seq) page.append(wait); }, 120);
+    const spec = route?.(r);
+    const previous = viewId;
+    const trailIndex = routeTrail.lastIndexOf(key);
+    const returning = trailIndex >= 0 && trailIndex < routeTrail.length - 1;
     pending = (async () => {
-      let mod;
-      try { [mod] = await Promise.all([spec.load(), spec.prep ? spec.prep() : null]); } catch (err) {
-        clearTimeout(slow);
-        if (mine !== seq) return;
-        console.error(err);
-        wait.remove();
-        page.append(notFound('This page could not load. Check your connection and try again.'));
-        view = {};
-        finish(opts);
-        return;
-      }
-      clearTimeout(slow);
+      let mod, error;
+      main.setAttribute('aria-busy', 'true');
+      try { if (spec) [mod] = await Promise.all([spec.load(), spec.prep ? spec.prep() : null]); }
+      catch (err) { console.error(err); error = err; }
       if (mine !== seq) return;
-      wait.remove();
-      try { view = spec.make(mod, page, r) || {}; } catch (err) {
-        console.error(err);
-        page.append(notFound('Something went wrong drawing this page.'));
-        view = {};
-      }
-      finish(opts);
+      const depth = path => (path || '').split('/').filter(Boolean).length;
+      await transitionScreen(() => {
+        if (mine !== seq) return;
+        closeAllModals();
+        if (view?.destroy) { try { view.destroy(); } catch { /* optional */ } }
+        view = null; viewId = key;
+        if (returning) routeTrail.length = trailIndex + 1;
+        else if (routeTrail.at(-1) !== key) routeTrail.push(key);
+        clear(main); main.scrollTop = 0; main.removeAttribute('aria-busy');
+        const tab = r.parts[0] === 'beat' ? 'challenge' : ['intro', 'drill'].includes(r.parts[0]) ? 'learn' : r.parts[0];
+        nav.querySelectorAll('.sh-tab').forEach(a => {
+          if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+        });
+        const page = h('div', { class: 'sh-view' + (document.documentElement.dataset.transitioning ? ' sh-view--native' : '') }); main.append(page);
+        try { view = error || !spec ? (page.append(notFound(error ? 'This page could not load. Check your connection and try again.' : undefined)), {}) : spec.make(mod, page, r) || {}; }
+        catch (err) { console.error(err); page.append(notFound('Something went wrong drawing this page.')); view = {}; }
+        finish(opts);
+      }, { reduced: !previous || ctx.reducedMotion(), direction: returning || depth(previous) > depth(key) ? 'back' : 'forward' });
     })();
   }
 
@@ -196,7 +184,9 @@ export function mountShell(rootEl, ctx) {
     if (!result) return;
     if (mode === 'practice' && problemId) {
       const r = ctx.progress.record(problemId, result, hintsUsed || 0);
-      if (r.first && (result.stars || 0) > 0) toast({ text: `Solved with ${result.stars || 0} star${result.stars === 1 ? '' : 's'}. Nicely done.`, level: 'ok', ms: 4200 });
+      if (result.passed && result.learning && !result.learning.traceChecked) toast({ text: 'Traffic passed. Trace still open.', level: 'info' });
+      else if (result.passed && result.learning?.assisted) toast({ text: 'Traffic passed with assistance.', level: 'info' });
+      else if (r.first && (result.stars || 0) > 0) toast({ text: `Solved with ${result.stars || 0} star${result.stars === 1 ? '' : 's'}. Nicely done.`, level: 'ok', ms: 4200 });
       else if (r.improved && r.previousBest != null && (result.stars || 0) > 0) toast({ text: 'New personal best on this problem.', level: 'ok' });
     }
     if (mode !== 'sandbox' && mode !== 'lesson' && mode !== 'intro' && problemId) {

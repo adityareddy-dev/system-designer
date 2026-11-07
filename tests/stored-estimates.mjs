@@ -28,9 +28,9 @@ const problem = { id: 'url-shortener', numbers: [
   { ask: true, label: 'Storage', value: 2, unit: 'TB' },
 ] };
 const inputs = (el) => [el, ...el.children.flatMap((c) => c instanceof Element ? inputs(c) : [])].filter((e) => e.type === 'number');
-function open() {
+function open(problemToRender = problem) {
   const host = new Element();
-  renderNumbers(host, { problem, guesses: {}, progress });
+  renderNumbers(host, { problem: problemToRender, guesses: {}, progress });
   return inputs(host);
 }
 function type(input, value) {
@@ -68,4 +68,25 @@ assert.equal(progress.get(problem.id).bestScore, 400);
 assert.equal(progress.get('other-problem'), null);
 const malformed = sanitizeProgress({ problems: { bad: { estimatesAt: Date.now(), estimates: [Infinity, -1, '2', null, 1e99, 4] } } });
 assert.deepEqual(malformed.problems.bad.estimates, [null, null, null, null, null, 4]);
+const percentProblem = { id: 'search-autocomplete', numbers: [
+  { ask: true, label: 'Reads', value: 57600, unit: 'req/s' },
+  { ask: true, label: 'Servers', value: 10, unit: 'servers' },
+  { ask: true, label: 'Cache hits', value: .9, unit: 'of reads' },
+] };
+fields = open(percentProblem);
+type(fields[2], '0');
+assert.deepEqual(progress.get(percentProblem.id).estimates, [null, null, 0]);
+assert.deepEqual(open(percentProblem).map(e => e.value), ['', '', '0'], 'zero percent reopens while unanswered rows stay blank');
+progress.record(percentProblem.id, { score: { total: 400 }, stars: 1 });
+const zeroSnapshot = structuredClone(progress.exportAll());
+const synced = mergeProgress(zeroSnapshot, {});
+assert.deepEqual(synced.problems[percentProblem.id].estimates, [null, null, 0], 'sync preserves canonical zero');
+progress = createProgress(createStore('percent-phone-test.'), createBus());
+progress.importAll({ app: 'system-designer', ...synced });
+assert.deepEqual(open(percentProblem).map(e => e.value), ['', '', '0']);
+fields = open(percentProblem);
+type(fields[2], '100');
+assert.deepEqual(progress.get(percentProblem.id).estimates, [null, null, 1]);
+type(fields[2], '');
+assert.deepEqual(mergeProgress(zeroSnapshot, progress.exportAll()).problems[percentProblem.id].estimates, [null, null, null], 'clearing zero remains unanswered after sync');
 console.log('Stored estimates: local reopen, clearing, results, sync, phone refill, and validation passed.');

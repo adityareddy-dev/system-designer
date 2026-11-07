@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "rate-limiting",
   "title": "Saying \"slow down\" politely",
@@ -89,14 +89,24 @@ export default {
         "metric": "availability",
         "op": ">=",
         "value": 0.99,
-        "between": {"types": ["rate-limiter", "waf"], "from": "users", "to": "app", "note": "The limiter goes in front of the servers, between the browser and them, so junk is stopped early. Drop it onto that line."}
+        "between": {
+          "types": [
+            "rate-limiter",
+            "waf"
+          ],
+          "from": "users",
+          "to": "app",
+          "note": "The limiter goes in front of the servers, between the browser and them, so junk is stopped early. Drop it onto that line."
+        }
       },
       "hint": "Place a Rate limiter between the browser and the servers. Try a limit of 100 requests per second per client."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "rate-limiting",
+      "view": "main",
       "title": "How it counts",
-      "text": "A token bucket gives each client tokens that refill at a steady rate; each request spends one. A short burst is fine, a long flood runs dry. If the limiter itself is down you choose: fail open (let everyone in) or fail closed (let nobody in)."
+      "text": "Each request spends one token. Refill allows a short burst while putting a bound on a sustained flood."
     },
     {
       "kind": "numbers",

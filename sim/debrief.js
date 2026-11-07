@@ -2,6 +2,8 @@
 import { scoreAll, passOf, passChecks, starsOf, safetyPoints, latencyBar, PASS_TYPE_SHARE, STALE_MAX } from './score.js';
 import { fmtNum, fmtClock, withCommas, joinNames } from './util.js';
 import { nodeLabel } from './cost.js';
+import { costAdvice } from './cost-advice.js';
+import { efficiencyOf } from './efficiency.js';
 import { responseSec } from './events.js';
 import { validateModel } from './validate.js';
 import { sourceFlow, upstreamDns } from './paths.js';
@@ -204,11 +206,11 @@ function worstQueue(S) {
   const cons = Array.from(best.n.consumers || [], (ei) => S.model.nodes[S.model.edges[ei].ti]);
   return { ...best, cons };
 }
-const lim2 = (q) => Math.round(q.limitSec / 60);
+const waitLimit = q => `${q.limitSec} seconds`;
 function queueAdvice(S, wq) {
   const { n, q, cons } = wq;
   const c = cons.find((x) => x.kind === 'compute') || cons[0];
-  const lim = Math.round(q.limitSec / 60);
+  const lim = waitLimit(q);
   const arrived = fmtNum(q.peakIn);
   if (!c) return { text: `${nodeLabel(n)} fell behind: nothing reads from it fast enough. Connect workers to it.`, nodeId: n.id, elementId: 'worker-pool' };
   const units = Math.max(1, Math.round(S.unitsCur[c.i]));
@@ -230,10 +232,10 @@ function queueAdvice(S, wq) {
       // nothing was full: the consumers stopped for a while (an outage or a failing dependency) and the line grew
       const oneZone = c.hasZonesKnob && !c.elastic && c.zones < 2 && S.instances.some((i) => i.id === 'zone-outage' && i.started);
       const fix = oneZone ? `Spread ${nodeLabel(c)} over 2 or 3 zones so a zone failure does not stop it.` : `Give ${nodeLabel(c)} spare ${unitsWord(c)} and a dead-letter queue, so work keeps moving when part of it fails.`;
-      return { text: `${nodeLabel(n)} fell behind while ${nodeLabel(c)} could not finish its work for a while, so work waited more than ${lim2(q)} minutes in line. ${fix}`, nodeId: c.id, knob: oneZone ? 'zones' : (c.el.knobs || []).includes('units') ? 'units' : undefined };
+      return { text: `${nodeLabel(n)} fell behind while ${nodeLabel(c)} could not finish its work for a while, so work waited more than ${waitLimit(q)} in line. ${fix}`, nodeId: c.id, knob: oneZone ? 'zones' : (c.el.knobs || []).includes('units') ? 'units' : undefined };
     }
     if (lim && lu >= 0.9) {
-      const lead = `${nodeLabel(n)} fell behind: ${nodeLabel(c)} had room, but ${nodeLabel(lim)} behind it was full (≈ ${busyPct(lu)} percent busy at its peak), so work waited more than ${lim2(q)} minutes in line.`;
+      const lead = `${nodeLabel(n)} fell behind: ${nodeLabel(c)} had room, but ${nodeLabel(lim)} behind it was full (≈ ${busyPct(lu)} percent busy at its peak), so work waited more than ${waitLimit(q)} in line.`;
       const lk = lim.el.knobs || [];
       if (lk.includes('units')) return { text: `${lead} Add ${unitsWord(lim)} to ${nodeLabel(lim)}.`, nodeId: lim.id, knob: 'units' };
       if (lk.includes('tier')) return { text: `${lead} Give ${nodeLabel(lim)} a bigger size.`, nodeId: lim.id, knob: 'tier' };
@@ -244,7 +246,7 @@ function queueAdvice(S, wq) {
   const need = q.capAtPeak > 0 && !c.elastic ? Math.ceil((units * q.peakIn) / (q.capAtPeak * 0.95 * 0.7)) : 0;
   const more = need > units ? ` About ${withCommas(need)} ${unitsWord(c)} would keep up with about 30 percent spare.` : '';
   const pace = finished ? `about ${arrived} messages a second arrived at peak and ${nodeLabel(c)} could finish about ${finished}` : `about ${arrived} messages a second arrived at peak, faster than ${nodeLabel(c)} could finish them`;
-  return { text: `${nodeLabel(n)} fell behind: ${pace}, so the line kept growing and work waited more than ${lim} minutes. Add ${unitsWord(c)} to ${nodeLabel(c)}.${more}`, nodeId: c.id, knob: (c.el.knobs || []).includes('units') ? 'units' : undefined };
+  return { text: `${nodeLabel(n)} fell behind: ${pace}, so the line kept growing and work waited more than ${lim}. Add ${unitsWord(c)} to ${nodeLabel(c)}.${more}`, nodeId: c.id, knob: (c.el.knobs || []).includes('units') ? 'units' : undefined };
 }
 
 export const busyPct = (u) => (u > 5 ? 'more than 500' : String(Math.round(u * 100)));
@@ -344,8 +346,8 @@ function varsFor(S, inst, hurtIdx, helpers) {
     zone: zoneEf ? ['a', 'b', 'c'][zoneEf.st.zone] : 'a',
     region: S.world.regions[regionIdx]?.name || 'your region',
     downMinutes: String(Math.round((st.lowTicks || 0) * S.dt / 60)),
-    addLatencyMs: fmtNum(p.addLatencyMs || 0),
-    timeoutMs: fmtNum(timeoutMs),
+    addLatencyMs: withCommas(p.addLatencyMs || 0),
+    timeoutMs: withCommas(timeoutMs),
     capacityLostPct: String(Math.round((st.capLost || 0) * 100)),
     types: typeNames.length ? joinNames(typeNames) : 'requests',
     passed: String(audit.passed.length),
@@ -355,8 +357,8 @@ function varsFor(S, inst, hurtIdx, helpers) {
     wastePct: String(wastePct),
     errorPct: String(Math.round(((inst.effects.find((e) => e.st && e.st.rate != null)?.st.rate) ?? p.errorRate ?? 0) * 100)),
     pct: String(Math.round((p.perHour || 0) * 100)),
-    p99: fmtNum(Math.round(st.maxP99 || 0)),
-    addMs: fmtNum(p.addMs || 0),
+    p99: withCommas(st.maxP99 || 0),
+    addMs: withCommas(p.addMs || 0),
     backlog: fmtNum(st.maxBacklog || 0),
     duplicates: fmtCount(st.dup || 0),
     conflicts: fmtNum(S.conflicts || 0),
@@ -617,7 +619,7 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
   if (overlapOk) helped = helpers.length ? hows : null;
 
   // a problem about hot keys gets the hot-key idea, not only the general counter
-  if (fix && inst.id === 'hot-key' && (S.problem.concepts || []).includes('hot-keys')) fix = `${fix} For a ranked table, keep a sorted set in memory so the top board is one cheap read, and keep a very popular item's counter in several copies that are added up when read.`;
+  if (fix && inst.id === 'hot-key' && (S.problem.concepts || []).includes('hot-keys')) fix = `${fix} Reuse repeated reads of the hot item within its freshness limit. Split a counter only when its updates can be combined safely; exclusive inventory or booking writes still need one atomic authority.`;
   // "What would help" only lists counters the design lacks, and stays quiet when what is there kept the damage small.
   if (fix && !missingCounters(inst, helpers).length) fix = null;
   const st = inst.stats || {};
@@ -633,10 +635,13 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
     fix = fix.replace(/,? and turn on autoscaling\./i, '. Autoscaling is already on, but new servers take minutes to start, so keep spare units for the first minutes.').replace(/turn on autoscaling/gi, 'raise the autoscaling ceiling');
   }
   // a bill that rose by $0 is no damage: leave the cost line out
-  const zeroCost = (x) => typeof x === 'string' && /\$0(?![\d,.])/.test(x);
+  const zeroCost = (x) => typeof x === 'string' && /\$0(?!\d|,\d|\.\d)/.test(x);
   if (zeroCost(hurt)) hurt = 'No visible damage: the bill barely moved.';
   if (zeroCost(helped)) helped = null;
   if (zeroCost(fix)) fix = null;
+  if (inst.id === 'cost-blowout' && zeroCost(fillT(t.hurt, vars))) fix = null;
+  if (inst.id === 'replication-lag' && !(inst.stats?.stale >= 1)) { hurt = `${vars.failed} requests failed in this observation window, but no stale reads were observed. Those failures are not evidence of replication lag.`; fix = null; }
+  if (inst.id === 'celebrity-fanout' && !(inst.stats?.maxWait > 0)) hurt = `${vars.failed} requests failed during this fanout window. No queued feed delay was measured; a failed request is not a delivered feed that arrived late.`;
   // no part of the design is a listed counter, yet nothing was hurt: credit what really absorbed it, the room to spare
   if (!helped && !dmg.any && (def.counters || []).length) {
     const mr = inst.stats && inst.stats.N === model.N ? inst.stats.maxRho : null;
@@ -661,6 +666,7 @@ function storyFor(S, inst, varsIn, hurtIdx, helpers) {
     }
   }
   if (unaffectedPath) { fix = null; helped = null; }
+  if (fix && /queue/i.test(fix) && !/consumer|worker/i.test(fix)) fix += ' A complete deferred path needs a producer, a queue, a consumer and a destination. For an outside service, connect Queue → Background workers → the service, with required checks called by the workers. Check that the backlog drains within the waiting deadline.';
   return { headline: tidy(headline), hurt: tidy(hurt), helped: tidy(helped), fix: tidy(fix) };
 }
 
@@ -696,7 +702,7 @@ const CONCEPT_EVENTS = {
 // A part with no size or count to turn up (a payment processor account, say): name what can be done instead.
 function fixedFix(n) {
   const nm = n.el.name ? n.el.name.toLowerCase() : 'it';
-  return `It has a fixed size, so add a second ${nm} beside it to share the work, put a bigger queue in front of it, or add rate limiting ahead of it.`;
+  return `It has a fixed quota. Compare an independent ${nm} account and route work across both, or reduce the demand. A queue with consumers buys time only if the backlog can drain before the waiting deadline; rate limiting rejects excess work and can miss the availability target.`;
 }
 
 function nextKind(S, score, metrics) {
@@ -729,6 +735,8 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
   const [kind, loss] = nextKind(S, score, metrics);
   const nodes = model.nodes;
   const name = (n) => nodeLabel(n);
+  const loop = model.edges.find(e => e.back && e.kind === 'flow');
+  if (loop) return { text: `${name(nodes[loop.fi])} → ${name(nodes[loop.ti])} closes a delivery loop and is ignored by the run. Remove this closing link, then trace one request from its source to its destination. Keep queue producers, consumers and required side calls on explicit paths before interpreting a sizing experiment.`, nodeId: nodes[loop.fi].id };
   if (loss <= 0 && passOf(S.world, req, metrics, score)) return { text: 'Everything held. Try the daily challenge, or see how low you can take the monthly cost.' };
   if (metrics.availability <= 0.001) {
     const required = Object.entries(problem.requires || {}).filter(([tid]) => req.mix[tid] > 0).map(([tid, groups]) => `${catalog.requestById.get(tid)?.plural || tid} must reach ${groups.map((g) => g.map((id) => catalog.elementById.get(id)?.name || id).join(' or ')).join(' and ')}`);
@@ -796,7 +804,9 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
     }
     const n = nodes[worst];
     const overMin = Math.round((S.overTicks[worst] * S.dt) / 60);
-    if (overMin >= 1 && (n.kind === 'compute' || n.kind === 'store' || n.kind === 'cache' || n.kind === 'router')) {
+    const regionLoss = S.instances.find(inst => inst.id === 'region-outage' && inst.started && inst.effects.some(e => e.op === 'regionDown' && e.targets?.includes(worst)));
+    if (regionLoss && n.drFrom < 0 && S.peakUtil[worst] <= 1) return { text: `The region outage stopped ${name(n)} despite spare processing capacity. Give this path a second region, or connect every required part to the disaster-recovery plan; protecting only the database cannot restore the app.`, nodeId: n.id, elementId: 'disaster-recovery', eventId: 'region-outage' };
+    if (S.peakUtil[worst] > 1 && overMin >= 1 && (n.kind === 'compute' || n.kind === 'store' || n.kind === 'cache' || n.kind === 'router')) {
       const peak = S.peakUtil[worst];
       const busy = peak > 1 ? ` (peak ≈ ${busyPct(peak)} percent busy, overloaded for ≈ ${withCommas(overMin)} minutes of the day)` : '';
       if (n.kind === 'compute') {
@@ -815,10 +825,10 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
       const busy = peak > 1 ? ` (peak ≈ ${busyPct(peak)} percent busy, overloaded for ≈ ${withCommas(Math.max(1, overMin))} minutes of the day)` : '';
       return { text: `${name(n)} ran out of room${busy}. Raise its ${unitsWord(n)} so it peaks under about 70 percent busy.${need > units ? ` About ${withCommas(need)} ${unitsWord(n)} would do it.` : ''}`, nodeId: n.id, knob: 'units' };
     }
-    if (n.kind === 'external') return { text: `Calls to ${name(n)} failed. Put a queue in front so work waits instead of failing, and add a circuit breaker.`, nodeId: n.id, elementId: 'queue' };
+    if (n.kind === 'external') return { text: `Calls to ${name(n)} failed. For work allowed to finish later, use servers → Queue → Background workers → ${name(n)}, with a circuit breaker called by the workers beside that delivery path. Size the consumers and provider throughput to meet the stated waiting deadline.`, nodeId: n.id, elementId: 'queue' };
     if (n.isCB) {
       const dep = model.outFlow[n.i].map((e) => nodes[e.ti]).find((x) => x.kind === 'external' || x.kind === 'store');
-      return { text: `${name(n)} failed calls fast while ${dep ? name(dep) : 'what it guards'} was slow or down. Put a queue in front so that work waits and finishes later instead of failing.`, nodeId: n.id, elementId: 'queue' };
+      return { text: `${name(n)} failed calls fast while ${dep ? name(dep) : 'what it guards'} was slow or down. For work allowed to finish later, use servers → Queue → Background workers → ${dep ? name(dep) : 'the delivery destination'}. Keep the circuit breaker beside the workers' delivery path and check the waiting deadline.`, nodeId: n.id, elementId: 'queue' };
     }
     if (n.kind === 'store') {
       const reads = (req.mix.read || 0) + (req.mix.search || 0);
@@ -867,28 +877,28 @@ function nextStepCore(S, score, metrics, nodesOut, eventsOut) {
   }
   if (kind === 'safety') {
     const L = metrics.ledger;
+    if (L.promiseFailures?.length) { const f = L.promiseFailures[0]; return { text: f.message, nodeId: f.nodeId, knob: f.knob }; }
     if (L.lostWrites >= 1 && req.dataSafety !== 'best-effort') {
       const st = nodes.find((n) => n.kind === 'store' && n.role !== 'replica' && n.customerData) || nodes.find((n) => n.kind === 'store');
-      return st ? { text: `Acknowledged writes were lost. Run ${name(st)} across 2 zones with sync replication, and back it up.`, nodeId: st.id, knob: 'replication' } : { text: 'Acknowledged writes were lost. Use sync replication across 2 zones.' };
+      return st ? { text: `Acknowledged writes were lost. ${st.el.knobs?.includes('replication') ? `Run ${name(st)} across 2 zones with sync replication, and back it up.` : `Check the durability boundary at ${name(st)} and keep a durable copy before acknowledging the write.`}`, nodeId: st.id, ...(st.el.knobs?.includes('replication') ? { knob: 'replication' } : {}) } : { text: 'Acknowledged writes were lost. Use a durable replicated store before acknowledging them.' };
     }
     if (L.duplicates >= 1) {
       const c = nodes.find((n) => n.kind === 'compute');
-      return { text: 'Some payments or messages went through twice. Check an idempotency key before every side effect.', elementId: 'idempotency-store', nodeId: c?.id };
+      return { text: 'Some operations produced duplicate effects. Keep a stable operation key with a durable result, enforce the change atomically, and reuse the key when an outside provider must reconcile an unknown outcome.', elementId: 'idempotency-store', nodeId: c?.id };
     }
     if (L.complianceFailed.length) {
       const names = L.complianceFailed.map((id) => S.world.complianceChecks.find((c) => c.id === id)).filter(Boolean);
       const els = [...new Set(names.flatMap((c) => c.satisfiedBy.slice(0, 1)))];
       return { text: `The audit found gaps: ${joinNames(names.map((c) => c.name.toLowerCase()))}. Add ${joinNames(els.map((id) => catalog.elementById.get(id)?.name || id))}.`, elementId: els[0] };
     }
-    if (L.staleReads > 0) return { text: 'People saw old data, even their own changes. Read recent changes from the primary.', knob: 'readFrom' };
+    if (L.staleReads > 0) { const n = nodes.find(n => n.el.knobs?.includes('readFrom')); return { text: 'People saw old data, even their own changes. Read recent changes from the authoritative primary until a copy has caught up.', ...(n ? { nodeId: n.id, knob: 'readFrom' } : {}) }; }
   }
   if (kind === 'cost') {
     let top = -1, usd = 0;
     for (const n of nodesOut) if (n.usd > usd) { usd = n.usd; top = n.id; }
     const n = top != null ? nodes[model.idx.get(top)] : null;
     if (n) {
-      const knob = (n.el.knobs || []).includes('units') && S.unitsCur[n.i] > n.el.units.min ? 'units' : ((n.el.knobs || []).includes('tier') ? 'tier' : undefined);
-      return { text: `${name(n)} is the biggest line on the bill (≈ $${withCommas(usd)} a month). Trim units or size where the peak allows it.`, nodeId: n.id, knob };
+      return { ...costAdvice(n.el), text: `${name(n)} is the biggest line on the bill (≈ $${withCommas(usd)} a month). ${costAdvice(n.el).text}`, nodeId: n.id };
     }
   }
   return { text: 'Retry with one change at a time and compare the debriefs.' };
@@ -918,6 +928,8 @@ function nextStepOf(S, score, metrics, nodesOut, eventsOut) {
       peakRps: S.peakRequests[i], activeUnits: S.peakUnits[i] };
   }
   step.kind = kind;
+  const routingIssue = blockedOf(S).top;
+  if (routingIssue) step.routingIssue = { code: routingIssue.code, type: routingIssue.type, nodeId: routingIssue.nodeId };
   const lesson = lessonOfStep(S, step);
   if (lesson) step.lesson = lesson;
   // name the other parts that ran over too, so the biggest bottleneck is not read as the only one
@@ -1036,7 +1048,7 @@ function verdictOf(S, metrics, score, passed, eventsOut, checks) {
     const wq = worstQueue(S);
     if (wq && failAll > 0 && (S.lateDay || 0) >= 0.5 * failAll) {
       const left = wq.q.endBack >= 1 ? `; ${fmtNum(wq.q.endBack)} messages were still waiting at 24:00` : '';
-      return `Broke${at ? ' ' + at : ''}: ${nodeLabel(wq.n)} fell behind. Work waited more than ${Math.round(wq.q.limitSec / 60)} minutes in line, so ${fmtNum(S.lateDay)} requests count as failed${left}. ${pct(a)} percent of requests succeeded against a ${pct(req.availability)} percent target.`;
+      return `Broke${at ? ' ' + at : ''}: ${nodeLabel(wq.n)} fell behind. Work waited more than ${waitLimit(wq.q)} in line, so ${fmtNum(S.lateDay)} requests count as failed${left}. ${pct(a)} percent of requests succeeded against a ${pct(req.availability)} percent target.`;
     }
     let worst = null, wf = 0;
     for (const e of eventsOut) { const inst = S.instances.find((i) => i.id === e.id && i.atMs === e.atMs); const f = inst?.stats?.failed || 0; if (f > wf) { wf = f; worst = e; } }
@@ -1048,9 +1060,9 @@ function verdictOf(S, metrics, score, passed, eventsOut, checks) {
     return `Broke${at ? ' ' + at : ''}: ${pct(a)} percent of requests succeeded against a ${pct(req.availability)} percent target.`;
   }
   if (!checks.latency) {
-    if (metrics.latencyShare < latencyBar(req)) return `Too slow. The p99 met its target in ${Math.round(metrics.latencyShare * 100)} percent of the day; the bar is ${Math.round(latencyBar(req) * 100)} percent.${slowCause(S)}`;
+    if (metrics.latencyShare < latencyBar(req)) return `Too slow. The p99 met its target in ${Math.round(metrics.latencyShare * 100)} percent of served interactive requests; the bar is ${Math.round(latencyBar(req) * 100)} percent.${slowCause(S)}`;
     const slow = Object.entries(metrics.typeShares || {}).filter(([, v]) => v < PASS_TYPE_SHARE).map(([k]) => S.catalog.requestById.get(k)?.plural || k);
-    return `Too slow for ${joinNames(slow)}: they met their speed target in under ${Math.round(PASS_TYPE_SHARE * 100)} percent of the day.`;
+    return `Too slow for ${joinNames(slow)}: they met their speed target in under ${Math.round(PASS_TYPE_SHARE * 100)} percent of served requests.`;
   }
   if (!checks.safety) {
     const L = metrics.ledger;
@@ -1058,6 +1070,7 @@ function verdictOf(S, metrics, score, passed, eventsOut, checks) {
     if (Math.round(L.lostWrites) >= 1 && req.dataSafety !== 'best-effort') why.push(`${withCommas(L.lostWrites)} acknowledged writes were lost`);
     if (Math.round(L.duplicates) >= 1) why.push(`${withCommas(L.duplicates)} duplicates went through`);
     if ((L.complianceFailed || []).length) why.push(`the audit found ${L.complianceFailed.length} missing ${L.complianceFailed.length === 1 ? 'control' : 'controls'}`);
+    if (L.promiseFailures?.length) why.push(L.promiseFailures[0].message);
     if (req.readYourWrites && L.readsServed > 0 && L.staleReads / L.readsServed > STALE_MAX) why.push('people saw stale copies of their own changes');
     return `Data was not safe: ${why.length ? joinNames(why) : 'the day put data at risk'}.`;
   }
@@ -1133,7 +1146,7 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
   const nodesOut = model.nodes.map((n) => ({
     id: n.id, type: n.el.id,
     peakUtil: Math.round(Math.min(S.peakUtil[n.i], 10) * 1000) / 1000,
-    peakRequests: Math.round(S.peakRequests[n.i]), peakUnits: S.peakUnits[n.i],
+    peakRequests: S.peakRequests[n.i], peakUnits: S.peakUnits[n.i],
     peakInstalledUnits: S.peakInstalledUnits[n.i],
     effectiveRpsPerUnit: S.peakUtil[n.i] > 0 && S.peakUnits[n.i] > 0 ? S.peakRequests[n.i] / (S.peakUtil[n.i] * S.peakUnits[n.i]) : 0,
     minutesOverloaded: Math.round((S.overTicks[n.i] * S.dt) / 60),
@@ -1156,6 +1169,7 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
         duplicates: Math.round(metrics.ledger.duplicates),
         staleReads: Math.round(metrics.ledger.staleReads),
         staleShare: Math.round(safety.staleShare * 10000) / 10000,
+        promiseFailures: metrics.ledger.promiseFailures || [],
         compliance: { passed: passedChecks, failed: failedChecks },
       },
       cost: { perMonth: cost.perMonth, budget: cost.budget, lines: cost.lines },
@@ -1167,7 +1181,11 @@ export function buildResult(S, { cost, metrics, seed, mode, graph }) {
     nodes: nodesOut,
     tradeoffs: tradeoffsOf(S, cost.perNode),
     nextStep: nextStepOf(S, score, metrics, nodesOut, eventsOut),
-    warnings: privateCacheWarnings(S).concat(sideWarnings(S, passed)).slice(0, 4),
+    efficiency: efficiencyOf(S),
+    warnings: model.edges.filter(e => e.back && e.kind === 'flow').map(e => ({
+      code: 'flow-cycle', nodeId: model.nodes[e.fi].id, edgeId: e.id,
+      text: `${nodeLabel(model.nodes[e.fi])} → ${nodeLabel(model.nodes[e.ti])} closes a delivery loop and is ignored by the run. Remove this closing link, then trace one request from source to destination before interpreting a repair or sizing experiment.`,
+    })).concat(privateCacheWarnings(S).concat(sideWarnings(S, passed)).slice(0, 4)),
     queues: (S.queueNodes || []).map((u) => {
       const n = model.nodes[u];
       const q = S.qHist && S.qHist.get(n.id);

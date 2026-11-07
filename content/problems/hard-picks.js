@@ -11,16 +11,16 @@ export default {
   id: 'job-scheduler', title: 'Scheduled job service', difficulty: 'Hard',
   concepts: ['queues-backpressure', 'idempotency-retries'],
   like: 'a cron-as-a-service product',
-  brief: 'Customers register jobs: "call my web address every night at 02:00" or "every hour on the hour". Your service must fire each job on time, exactly once, even when a machine dies halfway. Half the world picks the top of the hour, so a huge crowd of jobs comes due in the same second.',
+    brief: 'Customers register jobs: "call my web address every night at 02:00" or "every hour on the hour". Aim to fire within 5 seconds; work still waiting after 60 seconds counts as failed. Retry safely after a crash. One external effect requires the customer endpoint to honor a stable job occurrence key. Half the world picks the top of the hour, so a huge crowd of jobs comes due in the same second.',
   clarify: [
-    { q: 'How late may a job fire?', a: 'Within about 5 seconds of its time is fine. A minute late is a failure.' },
+      { q: 'How late may a job fire?', a: 'The webhook p99 target is 5,000 ms. Work still waiting after 60 seconds counts as failed, even if it eventually runs.' },
     { q: 'What if a job is delivered twice?', a: 'That is the worst outcome: a bill sent twice, a backup run twice. Twice must never happen, even if a worker crashes and the job is tried again.' },
     { q: 'Do jobs we cannot run get lost?', a: 'No. A job that keeps failing is parked where the customer can see it, and everything else carries on.' }
   ],
   requirements: {
     users: '300,000 customers and 40 million jobs (approx.)', monthlyUsers: 300000, peakRps: 1200,
     mix: { webhook: 0.7, write: 0.15, read: 0.15 }, latencyP99Ms: { default: 1500, webhook: 5000 }, availability: 0.999,
-    dataSafety: 'no-loss', readYourWrites: true, compliance: [], budgetPerMonth: 12000, storageTb: 0.3,
+      dataSafety: 'no-loss', readYourWrites: true, compliance: [], budgetPerMonth: 12000, storageTb: 0.3, queueLimitMin: 1,
     userRegions: { us: 0.6, eu: 0.4 }, homeRegion: 'us',
     notes: ['A job record is about 1 KB (approx.).', 'At the top of the hour about 1,200 requests a second come due for a few minutes (approx.).', 'One app server handles about 1,000 requests a second (approx.).', 'All numbers are rough approximations.']
   },
@@ -51,7 +51,7 @@ export default {
       expect: { score: 1000, costPerMonth: 6991 } } ],
     tradeoffs: [
       'Firing a few seconds early and spreading the wall over a short window flattens the peak, at the price of jobs that are not to the second.',
-      'Checking for a repeat before running costs one lookup per job, and it is the only thing that makes "exactly once" true after a crash.',
+        'A local lookup alone cannot guarantee one external effect after a crash. Use the same job occurrence key at a cooperating endpoint, or expose the unknown outcome for reconciliation.',
       'A dead-letter queue keeps a poison job from blocking the line, but someone must look at what lands there.',
       'One database is simple and enough for the schedule; sharding it by customer is the next step if jobs reach billions.'
     ],

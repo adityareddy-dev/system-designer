@@ -43,6 +43,7 @@ export function safetyPoints(world, req, ledger) {
   const staleShare = ledger.readsServed > 0 ? ledger.staleReads / ledger.readsServed : 0;
   if (req.readYourWrites && staleShare > STALE_MAX) { pts -= 30; parts.push('stale'); }
   pts -= 40 * (ledger.complianceFailed || []).length;
+  pts -= 40 * (ledger.promiseFailures || []).length;
   if ((ledger.complianceFailed || []).length) parts.push('compliance');
   return { points: Math.max(0, pts), parts, staleShare };
 }
@@ -50,11 +51,12 @@ export function safetyPoints(world, req, ledger) {
 // Speed, safety and cost points count only for the share of requests the design actually served:
 // a design that answers nothing has no speed, keeps no data and saves no money worth scoring.
 export function scoreAll(world, req, m) {
-  const served = clamp(m.availability, 0, 1);
+  const served = m.availability >= req.availability ? 1 : clamp(m.availability, 0, 1);
   const reliability = reliabilityPoints(world, m.availability, req.availability);
-  const latency = latencyPoints(world, m.latencyShare) * served;
+  const meetsSpeed = m.latencyShare >= latencyBar(req) && Object.values(m.typeShares || {}).every(share => share >= PASS_TYPE_SHARE);
+  const latency = latencyPoints(world, meetsSpeed ? 1 : m.latencyShare) * served;
   const safety = safetyPoints(world, req, m.ledger).points * served;
-  const cost = costPoints(world, m.perMonth, req.budgetPerMonth) * served;
+  const cost = Math.max(0, costPoints(world, m.perMonth, req.budgetPerMonth) - (m.efficiencyLoss || 0)) * served;
   const r = (x) => Math.round(x);
   return { total: r(reliability) + r(latency) + r(safety) + r(cost), reliability: r(reliability), latency: r(latency), safety: r(safety), cost: r(cost) };
 }
@@ -70,7 +72,7 @@ export function passChecks(world, req, m, score) {
     latency: m.latencyShare >= latencyBar(req) && shares.every((s) => s >= PASS_TYPE_SHARE),
     // judged on the ledger itself: the served-share scaling already counts against reliability
     safety: safetyPoints(world, req, L).points >= 150 && lossAllowed(req, L) && Math.round(L.duplicates) < 1
-      && !(L.complianceFailed || []).length && !(req.readYourWrites && staleShare > STALE_MAX),
+      && !(L.complianceFailed || []).length && !(L.promiseFailures || []).length && !(req.readYourWrites && staleShare > STALE_MAX),
     cost: !(budget > 0) || m.perMonth <= budget,
   };
 }

@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "running-migrations",
   "title": "Changing a running system",
@@ -13,9 +13,11 @@ export default {
       "icon": "el.ci-cd"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "running-migrations",
+      "view": "migration",
       "title": "Expand, move, contract",
-      "text": "Expand by adding compatible fields and readers before removing anything. Establish one authoritative write path. If you must dual write, record a durable intent or use a transactional outbox or change-data capture so a committed source change can eventually reach the target after partial failure. This does not make both stores update atomically. Make replay idempotent and versioned so an old backfill cannot overwrite a fresh write. Backfill in bounded batches with checkpoints, throttling and reconciliation. Shadow reads compare results without changing user responses; redact sensitive differences. Cut over a small cohort, then increase gradually while watching correctness and SLOs. Contract by deleting the old path only after clients, replay, backups and the rollback window no longer require it."
+      "text": "Advance a live table through compatible schema expansion, dual writes, backfill, comparison, cutover and contraction. Inject a stage failure, keep writing, then inspect the rollback boundary."
     },
     {
       "kind": "read",

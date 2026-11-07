@@ -5,21 +5,34 @@ export function checkpointComplete(checkpoint, answer) {
   return !!answer?.text?.trim() && (checkpoint.fields || []).every((field, i) => Number.isInteger(answer.choices?.[i]) && !!field.options[answer.choices[i]]);
 }
 
+export function checkpointCorrect(checkpoint, answer) {
+  return checkpointComplete(checkpoint, answer) && checkpoint.fields?.length >= 2 && checkpoint.fields.every((field, i) => answer.choices[i] === field.correct);
+}
+
 export function renderCheckpointForm(checkpoint, answer = {}, onSubmit, onCancel) {
+  answer ||= {};
   const selects = (checkpoint.fields || []).map((field, i) => h('select', { class: 'pl-input', required: true },
     h('option', { value: '', text: 'Choose an answer' }), field.options.map((text, j) => h('option', { value: j, selected: answer.choices?.[i] === j, text }))));
   const line = h('input', { class: 'pl-input', type: 'text', required: true, maxlength: 500, value: answer.text || '' });
-  const form = h('form', { class: 'pl-modal-card', style: { maxHeight: '100%', overflowY: 'auto' }, onSubmit: (event) => {
+  const feedback = h('p', { class: 'pl-muted', role: 'status' });
+  const form = h('form', { class: 'pl-modal-card pl-checkpoint', style: { maxHeight: '100%', overflowY: 'auto' }, onSubmit: (event) => {
     event.preventDefault();
     const value = { choices: selects.map((select) => select.value === '' ? null : Number(select.value)), text: line.value.trim() };
-    if (checkpointComplete(checkpoint, value)) onSubmit(value);
+    if (checkpointCorrect(checkpoint, value)) onSubmit(value);
+    else if (checkpointComplete(checkpoint, value)) feedback.textContent = checkpoint.fields.filter((field, i) => value.choices[i] !== field.correct).map(field => field.explanation).join(' ') + ' Walk through the failure again before starting.';
     else { line.setCustomValidity('Write one line explaining your choice.'); line.reportValidity(); }
   } }, h('h3', { text: 'Correctness checkpoint' }),
-  h('p', { text: 'Before the day, state the rules your design protects. This checkpoint is unscored.' }),
-  selects.map((select, i) => h('label', {}, h('p', { text: checkpoint.fields[i].label }), select)),
+  checkpoint.responsibility ? h('p', {}, h('b', { text: 'Central responsibility: ' }), checkpoint.responsibility) : null,
+  h('p', { text: 'Trace the failure before the day. Each step is checked. Traffic success and a completed trace are separate requirements. Your explanation is saved for comparison.' }),
+  selects.map((select, i) => {
+    const reason = h('p', { class: 'pl-trace-reason pl-muted', role: 'status' });
+    select.addEventListener('change', () => { reason.textContent = select.value === '' ? '' : 'Your choice: ' + checkpoint.fields[i].options[Number(select.value)] + '. ' + (Number(select.value) === checkpoint.fields[i].correct ? 'Checked. ' : 'Revisit this step. ') + checkpoint.fields[i].explanation; });
+    return h('label', {}, h('p', { text: checkpoint.fields[i].label }), select, reason);
+  }),
   h('label', {}, h('p', { text: checkpoint.prompt }), line),
+  feedback,
   h('div', { class: 'pl-actions' }, h('button', { class: 'pl-btn', type: 'button', onClick: onCancel, text: 'Keep drawing' }),
-    h('button', { class: 'pl-btn pl-btn--primary', type: 'submit', text: 'Save choices and start day' })));
+    h('button', { class: 'pl-btn pl-btn--primary', type: 'submit', text: 'Check choices and start day' })));
   line.addEventListener('input', () => line.setCustomValidity(''));
   return form;
 }
@@ -28,6 +41,7 @@ export function renderCorrectness(checkpoint, savedAnswer) {
   if (!checkpoint) return null;
   if (savedAnswer) return h('section', { class: 'pl-sec', 'aria-label': 'Correctness checkpoint' },
     h('h3', { text: 'Correctness checkpoint' }),
+    h('p', { class: 'pl-muted', text: checkpointCorrect(checkpoint, savedAnswer) ? 'Responsibility trace checked. Full mastery needs a later New twist pass without hints.' : 'Failure trace needs revision before correctness mastery can be recorded.' }),
     h('p', { class: 'pl-muted', text: checkpoint.limits || 'The traffic score does not verify schema constraints, atomic transactions or business state transitions.' }),
     (checkpoint.fields || []).map((field, i) => h('div', {},
       h('h4', { text: field.label }),

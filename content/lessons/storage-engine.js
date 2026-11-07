@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "storage-engine",
   "title": "Inside a storage engine",
@@ -13,9 +13,11 @@ export default {
       "icon": "el.sql-primary"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "storage-engine",
+      "view": "write",
       "title": "Two ways to keep keys sorted",
-      "text": "For a durable WAL-backed commit, persist the log through the promised failure boundary before acknowledging. Appending to a process buffer alone is insufficient. Recovery replays committed log records and ignores or undoes incomplete work as the engine requires. A B-tree stores sorted keys in pages, updating affected pages and sometimes splitting them. A buffer pool turns many random I/Os into memory access, but dirty pages still reach disk. An LSM tree first appends to a log and updates a sorted in-memory memtable. It later flushes the memtable into immutable sorted files called SSTables. Compaction merges files, drops obsolete versions when safe and rewrites surviving keys. B-trees also use logs and background work. Neither name alone predicts the winner; measure the access pattern and working set."
+      "text": "Write several keys, flush twice, then compact. Both structures receive the same writes. Compare counted record work with B+ tree page changes."
     },
     {
       "kind": "read",
@@ -64,9 +66,11 @@ export default {
       "model": "That figure may be sequential bandwidth under a different workload. If total amplification is ten, 1 GB/s of device writes supports at most 100 MB/s logical writes before headroom. Three full replicas triple fleet device work, not necessarily each device's incoming share. I would benchmark durable acknowledgements with compaction, reads and repair active. I would also check endurance, temporary disk space and tail latency before quoting a safe ingest rate."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "storage-engine",
+      "view": "read",
       "title": "Reads pay too",
-      "text": "An LSM lookup may check memory and several candidate files. A Bloom filter can say definitely absent or maybe present for a key in a file. A positive result still requires a lookup; a false positive wastes I/O. Filters do not return the value, and a range scan still needs data. At roughly 10 bits per key, a well-tuned Bloom filter has about a 1% false-positive rate. For 100 million keys that is about 125 MB before overhead. More filter and cache memory can reduce reads. Compaction style trades write amplification, read amplification and temporary disk space. Choose hardware from measured p99, IOPS, sequential bandwidth, memory and endurance, with repair and compaction running together."
+      "text": "Read keys that exist and one that does not. A Bloom negative skips a file; a positive still requires a lookup. Filters reduce read work, not the number of versions stored."
     },
     {
       "kind": "quiz",

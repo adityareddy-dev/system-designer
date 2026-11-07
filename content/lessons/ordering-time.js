@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "ordering-time",
   "title": "Ordering and time",
@@ -13,14 +13,18 @@ export default {
       "icon": "el.event-stream"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "ordering-time",
+      "view": "clocks",
       "title": "Order only what you know",
-      "text": "A Lamport clock is a counter. Increment it for local events; on receipt, set it above both the local and received counter. If A caused B, A has a smaller timestamp. The reverse is not true: smaller numbers do not prove causality. Adding a node id breaks ties into a total order, but invents an order for concurrent work. A vector clock keeps one counter per participant. Comparing vectors can show that one history includes another, or that neither includes the other and the edits are concurrent. Participant identity, pruning and metadata growth are real design costs."
+      "text": "Make edits with two drifting clocks. Receive the laptop history before a phone edit to create a causal dependency. Compare timestamp selection with vector-clock conflict detection."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "ordering-time",
+      "view": "counter",
       "title": "Worked example: concurrent edits",
-      "text": "Two devices start with vector [0,0]. Offline, laptop writes title A at [1,0]; phone writes title B at [0,1]. Neither vector dominates, so there is a conflict. After seeing both, a resolving edit on the laptop can carry [2,1]. It includes both histories. Last-write-wins would silently discard one title unless a conflict copy is kept. A CRDT instead defines merge rules whose operations or states converge under stated delivery and causality assumptions. A grow-only counter can merge each device's component by maximum. Values [4,0] and [0,3] merge to [4,3], total 7. Do not sum repeated snapshots. The sim does not model these histories, so this is a worked example."
+      "text": "Increment both devices, merge by component maximum, then merge again. Counter state can converge without treating repeated snapshots as new increments. Arbitrary text still needs a conflict policy."
     },
     {
       "kind": "numbers",

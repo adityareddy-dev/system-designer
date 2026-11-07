@@ -1,6 +1,8 @@
 // End-of-day evidence and actions.
-export const duration = sec => sec < 60 ? `${Math.round(sec)} seconds` : `${Math.round(sec / 6) / 10} minutes`;
+export const duration = sec => sec < 60 ? `${Math.round(sec)} ${Math.round(sec) === 1 ? 'second' : 'seconds'}` : `${Math.round(sec / 6) / 10} ${sec === 60 ? 'minute' : 'minutes'}`;
 // The debrief: verdict, score dial, four SLO cards, timeline, event stories, trade-offs, one thing to try next.
+import { renderRepair } from './repair.js';
+import { checkpointCorrect } from './correctness.js';
 import { loadSummary } from './load-labels.js';
 import { renderReflection } from './reflection.js';
 import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, clockLabel, minuteLabel, fill, approx } from './util.js';
@@ -15,7 +17,7 @@ const svg = (tag, attrs = {}, ...kids) => {
   return e;
 };
 
-// share of the day the p99 must meet its target to pass (sim/score.js): 90 percent on Easy problems, else 95
+// share of served interactive requests whose interval p99 must meet its target to pass (sim/score.js): 90 percent on Easy problems, else 95
 const latBarOf = (problem) => problem?.requirements?.latencyBar ?? (problem?.difficulty === 'Easy' ? 0.9 : 0.95);
 const STALE_MAX = 0.001; // read-your-writes problems: most stale own reads allowed (sim/score.js)
 
@@ -116,7 +118,7 @@ function twistTip(problem, catalog) {
   const shift = Math.abs(t.shiftMin || 0);
   const when = shift ? `Events move ${shift >= 60 ? (shift / 60) + (shift === 60 ? ' hour' : ' hours') : shift + ' minutes'} ${t.shiftMin < 0 ? 'earlier' : 'later'}` : 'Events keep their times';
   const extra = t.extra ? ` and ${(catalog.eventById.get(t.extra.id)?.name || t.extra.id).toLowerCase()} is added at ${t.extra.at}` : '';
-  return `${when}${extra}. Your design stays. Practice only, not saved.`;
+  return `${when}${extra}. Your design stays. Pass without hints after a checked original day to earn full mastery.`;
 }
 
 export function verdictLine(result, catalog, problem) {
@@ -143,7 +145,7 @@ export function verdictLine(result, catalog, problem) {
     return `Missed the uptime target: ${fmtPct(a.actual)} of requests succeeded against ${fmtPct(a.target)}.`;
   }
   if (result.verdict) return result.verdict;
-  if (result.slo.latency.shareOk < LAT_BAR) return `Too slow: the speed target held for only ${fmtPct(result.slo.latency.shareOk, 0)} of the day (${Math.round(LAT_BAR * 100)}% needed).`;
+  if (result.slo.latency.shareOk < LAT_BAR) return `Too slow: the speed target held for only ${fmtPct(result.slo.latency.shareOk, 0)} of served interactive requests (${Math.round(LAT_BAR * 100)}% needed).`;
   if (result.score.safety < 150) return 'Fast and up, but data was put at risk. Safety needs at least 150 of 200 points.';
   return `Over budget: about ${fmtUsd(result.slo.cost.perMonth)} a month against ${fmtUsd(result.slo.cost.budget)}.`;
 }
@@ -214,7 +216,7 @@ function timeline(result, catalog, onMarker) {
   return root;
 }
 
-function eventStory(ev, i, result, catalog) {
+function eventStory(ev, i, result, catalog, demanding = false) {
   const def = catalog.eventById.get(ev.id);
   const inGraph = new Set((result.graph?.nodes || []).map((n) => n.type));
   // autoscaling set on a server counts as the autoscaler being there
@@ -224,10 +226,11 @@ function eventStory(ev, i, result, catalog) {
   if (vars.helper == null || vars.helper === '') vars.helper = 'Nothing in your design';
   const st = ev.story;
   const lines = st ? [st.headline, ev.durations ? st.hurt?.replace(/in the first (\S+) (minutes?)/, 'during $1 $2 of the observation window') : st.hurt, st.helped, st.fix] : [fill(t.headline, vars), fill(t.hurt, vars), fill(t.helped, vars), fill(t.fix, vars)];
+  if (demanding) lines[3] = 'Choose a repair and predict its effect in the next experiment. Measure this event again after changing one boundary.';
   // An event the design never met still teaches: say what it would have done to a design that was exposed to it.
   const unreached = !!(st && (st.none || !lines[1] || (Array.isArray(ev.hurt) && ev.hurt.length === 0)));
   const would = unreached && def ? [eventDescription(def, vars, ev.description), def.lesson].filter(Boolean).join(' ') : '';
-  const missing = st && !st.fix && !unreached ? [] : (ev.counters || def?.counters || []).filter((c) => c.element && !inGraph.has(c.element));
+  const missing = demanding ? [] : st && !st.fix && !unreached ? [] : (ev.counters || def?.counters || []).filter((c) => c.element && !inGraph.has(c.element));
   const card = h('article', { class: 'pl-story', id: 'pl-ev-' + i, tabindex: '-1' },
     h('header', { class: 'pl-story-head' }, iconEl('ev.' + ev.id, 28, 'pl-ic pl-story-ic'),
       h('div', {}, h('b', { text: ev.name || def?.name || ev.id }), h('div', { class: 'pl-muted pl-small', text: `${clockLabel(ev.atMs)} to ${clockLabel(ev.endMs || ev.atMs)}` }))),
@@ -284,7 +287,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     [1, 2, 3].map((n) => iconEl(n <= result.stars ? 'ui.star' : 'ui.star-empty', 28, 'pl-ic pl-star' + (n <= result.stars ? ' pl-star--on' : ''))));
   const isBest = prevBest == null || sc.total > prevBest;
   const bestBadge = result.warmUp
-    ? h('span', { class: 'pl-badge' }, iconEl('ui.info', 14), result.twistDay ? 'New twist day: practice only, not saved' : 'Warm-up: not saved')
+    ? h('span', { class: 'pl-badge' }, iconEl('ui.info', 14), result.twistDay ? 'New twist: mastery check, traffic best unchanged' : 'Warm-up: not saved')
     : result.reference
     ? h('span', { class: 'pl-badge' }, iconEl('ui.info', 14), 'Reference design: not saved to your results')
     : prevBest == null
@@ -295,8 +298,19 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const ckm = result.checks || {};
   const missedKeys = Object.keys(CHECK_NAME).filter((k) => ckm[k] === false);
   const near = !result.passed && !result.reference && missedKeys.length === 1 && slo.availability.actual > 0.5;
+  const demanding = !!problem?.difficulty && problem.difficulty !== 'Easy';
+  const traceChecked = !problem?.correctness || checkpointCorrect(problem.correctness, correctnessAnswer);
+  const assisted = result.learning?.assisted || hintsUsed >= 3;
+  root.dataset.credit = !traceChecked ? 'trace-open' : assisted ? 'assisted' : 'checked';
+  let learningMessage = 'Traffic passed, but the central responsibility trace is still open. Complete it on your next run before a clean sweep or mastery counts.';
+  if (result.mode && result.mode !== 'practice') learningMessage = 'Traffic passed. Open this problem in Practice to check its central responsibility and earn mastery on a later New twist.';
+  else if (traceChecked) learningMessage = result.learning?.independentTwist ? 'Full mastery earned: changed conditions passed without hints, and the responsibility trace is checked.'
+    : result.learning?.needsOriginal ? 'Traffic and trace passed on the twist. Pass the original day with its trace first, then return for an unhinted twist to earn full mastery.'
+    : problem?.twistDay ? 'Traffic and trace passed, but this twist used help. Retry the twist without hints or worked repairs for full mastery.'
+    : assisted ? 'Traffic passed with assistance. Your trace is checked. Next: pass New twist with no hints for full mastery.'
+    : 'Traffic and responsibility trace passed. Next: pass New twist without hints for full mastery.';
   const passBadge = result.passed
-    ? h('span', { class: 'pl-badge pl-badge--ok' }, iconEl('ui.check', 14), 'Passed')
+    ? h('span', { class: 'pl-badge pl-badge--ok' }, iconEl('ui.check', 14), assisted ? 'Passed with assistance' : 'Traffic passed')
     : near
     ? h('span', { class: 'pl-badge pl-badge--near', 'data-near': missedKeys[0] }, iconEl('ui.info', 14), `Almost there: one bar missed (${CHECK_NAME[missedKeys[0]]})`)
     : h('span', { class: 'pl-badge pl-badge--bad' }, iconEl('ui.warn', 14), 'Not passed yet');
@@ -307,7 +321,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     cost: 'Look at the biggest line in the Cost card and trim it, or cache more so you need less.',
   };
   const tryText = result.nextStep?.text || (missedKeys.length ? TRY[missedKeys[0]] : null);
-  const tryNext = !result.passed && !result.reference && tryText
+  const tryNext = demanding && !result.passed && !result.reference ? renderRepair(result, problem, catalog, handlers) : !result.passed && !result.reference && tryText
     ? h('div', { class: 'pl-try' + (near ? ' pl-try--near' : ''), 'data-act': 'try-next' }, iconEl('ui.hint', 20),
       h('div', { class: 'pl-try-body' }, h('b', { text: 'Next experiment' }), h('p', { text: tryText.split(/(?<=\.)\s+/).slice(0, 2).join(' ') }), h('details', { class: 'pl-sizing-detail' }, h('summary', { text: 'Evidence and sizing assumptions' }), h('p', { text: tryText }))),
       (result.nextStep?.elementId || result.nextStep?.nodeId) ? h('div', { class: 'pl-try-btns' },
@@ -323,14 +337,38 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
         bestBadge,
         result.reference || result.warmUp ? null : h('button', { class: 'pl-btn pl-btn--primary pl-challenge-friend', type: 'button', 'data-act': 'challenge-friend', onClick: () => handlers.onShare?.() }, iconEl('ui.share', 16), 'Challenge a friend'),
         h('span', { class: 'pl-muted pl-small', text: `Hints used: ${hintsUsed}. Hints are free and never lower the score.` }))),
+    result.passed && problem?.correctness && !problem?.warmUp ? h('p', { class: 'pl-learning-status', role: 'status', text: learningMessage }) : null,
+    result.passed && handlers.onTwist && !problem?.twistDay && !problem?.warmUp ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', 'data-act': 'mastery-twist', onClick: handlers.onTwist, text: 'Next: New twist without hints' }) : null,
+    result.passed && problem?.twistDay && !result.learning?.independentTwist ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: result.learning?.needsOriginal ? handlers.onTwist : handlers.onIndependentRetry, text: result.learning?.needsOriginal ? 'Next: Pass the original day with its trace' : 'Next: Retry twist without hints' }) : null,
+    result.passed && problem?.correctness && result.mode && result.mode !== 'practice' ? h('a', { class: 'pl-btn pl-btn--primary', href: '#/practice/' + problem.id, text: 'Next: Check the trace in Practice' }) : null,
     tryNext,
     problem?.warmUp ? h('p', { class: 'pl-warmup', 'data-act': 'warm-up' }, iconEl('ui.info', 16), 'Warm-up done, now play the real day. This first day had no traffic spike, so its score is practice only: it is not saved, not posted and not shared. Retry plays the full day, spike included.') : null));
   const reflection = renderReflection(result, catalog);
   if (reflection) root.append(reflection);
+  if (result.efficiency?.length) {
+    const choice = h('select', { class: 'pl-input', 'aria-label': 'Capacity decision' }, h('option', { value: '', text: 'Choose your next experiment' }), h('option', { value: 'cut', text: 'Test the smaller pool on the full day' }), h('option', { value: 'keep', text: 'Keep the spare capacity for a stated requirement' }));
+    const reason = h('textarea', { class: 'pl-input', rows: 2, 'aria-label': 'Reason to keep spare capacity', placeholder: 'Name a burst, failure or recovery requirement, and how you would test it.' });
+    const feedback = h('p', { role: 'status', class: 'pl-muted' });
+    root.append(h('section', { class: 'pl-sec', 'aria-label': 'Capacity tradeoff' }, h('h3', { text: 'Choose what the spare capacity buys' }),
+      result.efficiency.map(item => h('p', { text: demanding ? `${item.label}: ${item.units} units at about ${Math.round(item.peakUtil * 100)}% peak busy. Work out a trial size at 70% utilization, round up and check the failure floor. Then compare the full day and cost.` : `${item.label} used about ${Math.round(item.peakUtil * 100)}% of its capacity at peak. Testing ${item.suggestedUnits} instead of ${item.units} units could save about $${item.savingPerMonth.toLocaleString('en-US')}/month. This estimate keeps 30% headroom for the measured peak; rerun to verify recovery and dependencies.` })),
+      h('p', { text: 'Idle capacity reduces Cost points even below budget. A stated reason records your tradeoff; only testing the workload can establish whether it is worth paying for.' }), choice, reason,
+      h('button', { class: 'pl-btn', type: 'button', text: 'Record decision', onclick: () => {
+        if (!choice.value || (choice.value === 'keep' && reason.value.trim().length < 20)) { feedback.textContent = 'Choose an experiment, or give a concrete requirement and test for keeping the spare capacity.'; return; }
+        ctx?.store?.set(`capacityDecision.${problem.id}`, { choice: choice.value, reason: reason.value.trim() });
+        feedback.textContent = choice.value === 'cut' ? 'Decision recorded. Return to Draw, reduce one pool, then compare the full day.' : 'Reason recorded. Test that requirement in Sandbox before relying on the extra capacity.';
+      } }), feedback));
+  }
   if (opponent && typeof opponent.score === 'number') root.prepend(versusCard(result, opponent, handlers));
-  if (result.warnings?.length) {
+  const loops = (result.warnings || []).filter(w => w.code === 'flow-cycle');
+  if (loops.length) {
+    const warning = h('section', { class: 'pl-watch pl-loop-warning', role: 'status' }, iconEl('ui.warn', 20), h('div', {}, h('b', { text: 'Remove ignored delivery loops first' }),
+      h('ul', { class: 'pl-slo-why' }, loops.map(w => h('li', { text: w.text })))));
+    root.querySelector('.pl-verdict-sec').after(warning);
+  }
+  const otherWarnings = (result.warnings || []).filter(w => w.code !== 'flow-cycle');
+  if (otherWarnings.length) {
     root.append(h('section', { class: 'pl-watch' }, iconEl('ui.warn', 20), h('div', {}, h('b', { text: 'Held, but watch out' }),
-      h('ul', { class: 'pl-slo-why' }, result.warnings.map((w) => h('li', { text: w.text }))))));
+      h('ul', { class: 'pl-slo-why' }, otherWarnings.map((w) => h('li', { text: w.text }))))));
   }
 
   // Learn this: each missed check points to the lesson behind the idea
@@ -364,23 +402,24 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   // almost nothing served: speed, safety and cost describe too little traffic to judge
   const thin = !none && a.actual < 0.5;
   const thinNote = thin ? `Not measured: only ${fmtPct(a.actual)} of requests were served, so this says little about a real day.` : null;
-  const servedNote = a.actual < 0.999 ? `Points count only for the share of requests that were served (${fmtPct(a.actual)}).` : null;
+  const servedNote = a.actual < a.target ? `Points count only for the share of requests that were served (${fmtPct(a.actual)}).` : null;
   const safeWhy = [];
+  for (const f of s.promiseFailures || []) safeWhy.push(f.message);
   if (!okSafe && !none && s.staleShare > STALE_MAX && problem?.requirements?.readYourWrites) {
     safeWhy.push(`${fmtPct(s.staleShare, 1)} of reads showed people an old copy of their own change; this problem allows at most ${fmtPct(STALE_MAX, 1)}.`);
   }
   const cards = h('section', { class: 'pl-slo-grid', 'aria-label': 'Score cards' },
     sloCard({ key: 'reliability', title: 'Reliability', iconId: 'ui.availability', pts: sc.reliability, max: 400, ok: a.actual >= a.target, target: fmtPct(a.target), actual: fmtPct(a.actual),
       lines: [a.actual >= a.target ? 'You met the uptime target.' : `${nines.toFixed(1)} "nines" short of the target. Each nine is ten times fewer failures.`, lateNote, 'Real user requests only; attacks and retries are not counted.'].filter(Boolean) }),
-    sloCard({ key: 'latency', title: 'Speed', iconId: 'ui.latency', pts: sc.latency, max: 200, ok: okLat, flag: none || thin ? 'none' : null, target: latTarget, actual: none ? 'nothing served' : `${fmtPct(l.shareOk, 1)} (≈ ${Math.round(l.shareOk * 1440).toLocaleString()} of 1,440 equivalent minutes)`,
-      lines: none ? ['Not measured: nothing was served, so there is no speed to score.'] : [thinNote, `Compliance uses served-request weighting; equivalent minutes scale that share to a 1,440-minute day. To pass: aggregate compliance must reach ${Math.round(LAT_BAR * 100)}%, and every request type at least 80%.`,
-        `Slowest moment: ${fmtMs(l.worstP99Ms)} (p99, approx.).${okLat && overTarget ? ' That slow stretch is inside the allowance: the target only has to hold in most minutes.' : ''}`, ...worst.map(([t, v]) => v.measured === false ? `${catalog.requestById.get(t)?.name || t}: Not measured: no requests of this type were served. Target ${fmtMs(v.targetMs)}.` : `${catalog.requestById.get(t)?.name || t}: ${fmtPct(v.shareOk, 1)} within target (≈ ${Math.round(v.shareOk * 1440).toLocaleString()} of 1,440 equivalent minutes, weighted by served requests). ${fmtMs(v.worstP99Ms ?? v.p99Ms)} at the slowest, target ${fmtMs(v.targetMs)}${okLat && (v.worstP99Ms ?? v.p99Ms) > v.targetMs ? ` (over it in ${Math.max(1, Math.round((1 - (v.shareOk ?? 1)) * 1440))} of 1,440 equivalent minutes, within the allowance)` : ''}`),
+    sloCard({ key: 'latency', title: 'Speed', iconId: 'ui.latency', pts: sc.latency, max: 200, ok: okLat, flag: none || thin ? 'none' : null, target: latTarget, actual: none ? 'nothing served' : `${fmtPct(l.shareOk, 1)} of served interactive requests`,
+      lines: none ? ['Not measured: nothing was served, so there is no speed to score.'] : [thinNote, `Compliance weights each interval by its served requests. To pass: aggregate compliance must reach ${Math.round(LAT_BAR * 100)}%, and every request type at least 80%.`,
+        `Slowest moment: ${fmtMs(l.worstP99Ms)} (p99, approx.).${okLat && overTarget ? ' That slow stretch is inside the allowance: the required share of served requests still met the target.' : ''}`, ...worst.map(([t, v]) => v.measured === false ? `${catalog.requestById.get(t)?.name || t}: Not measured: no requests of this type were served. Target ${fmtMs(v.targetMs)}.` : `${catalog.requestById.get(t)?.name || t}: ${fmtPct(v.shareOk, 1)} of served requests within target. ${fmtMs(v.worstP99Ms ?? v.p99Ms)} at the slowest, target ${fmtMs(v.targetMs)}${okLat && (v.worstP99Ms ?? v.p99Ms) > v.targetMs ? ` (over it in ${fmtPct(1 - (v.shareOk ?? 1), 1)} of served requests, within the allowance)` : ''}`),
         slowTypes.length ? `Too often slow: ${slowTypes.join(', ')}.` : null, servedNote].filter(Boolean) }),
     sloCard({ key: 'safety', title: 'Data safety', iconId: 'ui.safety', pts: sc.safety, max: 200, ok: okSafe, flag: none || thin ? 'none' : null, target: problem?.requirements?.dataSafety === 'no-loss' ? 'no lost writes' : problem?.requirements?.dataSafety === 'rpo-1m' ? 'lose at most a minute of writes' : problem?.requirements?.dataSafety || '–', actual: `${fmtNum(s.lostWrites)} lost · ${fmtNum(s.duplicates)} duplicate`,
       lines: none ? ['Not measured: nothing was served, so no data was kept to score. Safety points are only awarded for served requests.'] : [thinNote, s.lostWrites ? `${fmtNum(s.lostWrites)} acknowledged writes were lost.` : 'No acknowledged write was lost.', s.duplicates ? `${fmtNum(s.duplicates)} duplicate effects (such as a double charge).` : 'No duplicate effects.',
         s.staleReads ? `${fmtNum(s.staleReads)} stale reads.` : null, compNames.length ? `Missing proof: ${compNames.join(', ')}.` : null, ...safeWhy, servedNote].filter(Boolean) }),
     sloCard({ key: 'cost', title: 'Cost', iconId: 'ui.cost', pts: sc.cost, max: 200, ok: okCost, flag: none || thin ? 'none' : null, target: `≤ ${fmtUsd(c.budget)} a month`, actual: `≈ ${fmtUsd(c.perMonth)} a month`,
-      lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (a.actual < 0.999 ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
+      lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (result.efficiency?.length ? 'Under budget, with avoidable idle capacity. See the capacity decision above.' : a.actual < a.target ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
   root.append(cards, h('p', { class: 'pl-footnote' }, approx('Every dollar and millisecond here is a sensible real-world approximation, not a quote.')));
   const checkpoint = renderCorrectness(problem?.correctness, correctnessAnswer);
   if (checkpoint) root.append(checkpoint);
@@ -395,12 +434,14 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   // 5: what happened
   stories.append(h('h3', { text: 'What happened' }));
   if (!(result.events || []).length) stories.append(h('p', { class: 'pl-muted', text: 'No events hit this day. Smooth traffic is the easy part.' }));
-  (result.events || []).forEach((ev, i) => stories.append(eventStory(ev, i, result, catalog)));
+  (result.events || []).forEach((ev, i) => stories.append(eventStory(ev, i, result, catalog, demanding)));
   root.append(stories);
   const evidence = root.querySelector('.pl-sec:has(.pl-tl)');
   const summary = root.querySelector('.pl-verdict-sec');
   if (evidence) summary.after(evidence, stories);
   if (tryNext) summary.after(tryNext);
+  const loopWarning = root.querySelector('.pl-loop-warning');
+  if (loopWarning) summary.after(loopWarning);
   const details = h('details', { class: 'pl-score-details' }, h('summary', { text: 'Score details and calculations' }), cards);
   root.querySelector('.pl-learn')?.after(details);
   if (!details.isConnected) root.append(details);
@@ -419,7 +460,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   root.append(tr);
 
   // 7: next
-  if (result.nextStep?.text && !tryNext) {
+  if (result.nextStep?.text && !tryNext && !demanding) {
     const ns = result.nextStep;
     root.append(h('section', { class: 'pl-next' }, iconEl('ui.hint', 22), h('div', {}, h('b', { text: 'One thing to try next' }), h('p', { text: ns.text })),
       (ns.elementId || ns.nodeId) ? h('button', { class: 'pl-btn', type: 'button', onClick: () => handlers.onShowNext?.(ns) }, 'Show me') : null));

@@ -1,4 +1,4 @@
-// Lesson data. Plain object; see CONTRACT.md section 11.2. All figures are rough real-world approximations.
+// Lesson text and interactive figure stages.
 export default {
   "id": "storage-tiers",
   "title": "Hot, warm, cold and archive",
@@ -7,10 +7,12 @@ export default {
   "summary": "Old data is rarely read, so keep it somewhere cheaper and slower.",
   "steps": [
     {
-      "kind": "read",
+      "icon": "el.cold-archive",
+      "kind": "figure",
+      "figure": "storage-tiers",
+      "view": "main",
       "title": "Not all data is equal",
-      "text": "Yesterday's photos are viewed all the time; photos from five years ago almost never. Fast storage costs more per gigabyte. Move data down tiers as it ages: hot for now, warm for this month, cold for rarely, archive for the law.",
-      "icon": "el.cold-archive"
+      "text": "Data can move to cheaper storage as it ages. Compare the saving with the delay when an old object is needed again."
     },
     {
       "kind": "demo",

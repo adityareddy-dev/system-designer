@@ -1,4 +1,4 @@
-// Lesson data. Worked figures are approximations, not engine measurements.
+// Lesson text and interactive figure stages.
 export default {
   "id": "privacy-design",
   "title": "Privacy by design",
@@ -13,9 +13,11 @@ export default {
       "icon": "el.kms"
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "privacy-design",
+      "view": "boundary",
       "title": "Move the boundary deliberately",
-      "text": "Data minimisation means collecting the fields, precision and retention needed for a stated purpose. On-device processing can keep raw health or location data local and upload only chosen summaries. It uses device CPU and needs a reliable local store. End-to-end encryption means only authorized endpoints hold decryption keys; TLS and encryption at rest do not provide that boundary if the service holds the keys. A server without plaintext cannot offer ordinary full-text search, content moderation or account recovery from a password reset alone. Local search and explicit encrypted backup or recovery keys change the product. Timing, account ids and sizes can still leak metadata."
+      "text": "Choose where each field is readable. Device-only data cannot power a server feature; end-to-end encrypted payloads still reveal upload metadata. Inspect the breach boundary."
     },
     {
       "kind": "read",

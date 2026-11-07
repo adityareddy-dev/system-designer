@@ -1,3 +1,4 @@
+// Complete the advanced lessons through their visible controls in both layouts and themes.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
@@ -31,6 +32,9 @@ try {
       }
       for (const [i,step] of lesson.steps.entries()) {
         await page.waitForFunction(i => (new URLSearchParams(location.hash.split('?')[1]).get('step') || '0') === String(i),{},i);
+        // Lazy figures change the card height when their modules finish loading.
+        if (step.kind === 'figure') await page.waitForSelector('.sh-figure-host:not([aria-busy]) .fg-bench');
+        await page.evaluate(() => document.fonts.ready);
         if (step.kind === 'quiz') {
           await page.evaluate(text => [...document.querySelectorAll('.sh-choice')].find(b => b.textContent.endsWith(text)).click(),step.choices[step.answer]);
           assert.equal(await page.$eval('.sh-quiz-result',el=>el.dataset.ok),'1');

@@ -17,7 +17,7 @@ for (const p of problems.filter(p => p.difficulty === 'Hard')) {
         const headroomUnits = n.effectiveRpsPerUnit > 0 ? Math.ceil(n.peakRequests / (n.effectiveRpsPerUnit * .7)) : null;
         return { id: n.id, type: n.type, installed: g.units, zones: g.zones, tier: g.tier,
           readsPerUnit: Math.round(el.capacity.rps * factor), writesPerUnit: Math.round((el.capacity.writeRps || el.capacity.rps) * factor),
-          peakRequests: n.peakRequests, activeAtPeak: n.peakUnits, installedAtPeak: n.peakInstalledUnits, peakUtil: n.peakUtil,
+          peakRequests: Math.round(n.peakRequests), activeAtPeak: n.peakUnits, installedAtPeak: n.peakInstalledUnits, peakUtil: n.peakUtil,
           effectivePerUnit: Math.round(n.effectiveRpsPerUnit), headroomUnits,
           installedForHeadroom: headroomUnits == null ? null : Math.ceil(headroomUnits * n.peakInstalledUnits / n.peakUnits) };
       }) };

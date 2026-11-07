@@ -39,7 +39,13 @@ assert.equal(progress.get('local-only'), null, 'backup replaces progress rather 
 assert.deepEqual(data.progress.legacy.interview, interviewReport, 'restored reports are saved through the store');
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
-const page = await browser.newPage(); page.on('pageerror', e => errors.push(e.message));
+const page = await browser.newPage(), recentConsole = [];
+page.on('console', message => {
+  if (!['error', 'warn'].includes(message.type())) return;
+  recentConsole.push(message.text());
+  if (recentConsole.length > 8) recentConsole.shift();
+});
+page.on('pageerror', error => errors.push({ stack: error.stack || error.message, url: page.url(), console: [...recentConsole] }));
 const base = process.argv[2] || 'http://localhost:8765/';
 const click = text => page.evaluate(text => { const el = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === text && b.checkVisibility()); assertButton(el); function assertButton(el) { if (!el) throw new Error('Missing visible button: ' + text); el.click(); } }, text);
 try {
@@ -114,9 +120,19 @@ try {
     await page.waitForSelector('.pl-defense-card');
     await page.evaluate(() => window.__game.reset());
     assert.equal(await page.evaluate(() => window.__game.getState().phase), 'done');
+    await page.$eval('.pl-defense-card', card => {
+      const input = card.querySelector('textarea'); input.value = 'Measure surviving capacity and use health checks to detect unavailable replicas.'; input.dispatchEvent(new Event('input'));
+      card.querySelector('button').click();
+      const boxes = [...card.querySelectorAll('input[type=checkbox]')];
+      boxes.slice(0, -1).forEach(box => box.click());
+      boxes.at(-1).focus();
+    });
+    await page.keyboard.press('Space');
+    assert(await page.$eval('.pl-defense-card', card => !card.open && document.activeElement === card.querySelector('summary') && document.activeElement.checkVisibility()),
+      'completing a follow-up with the keyboard moves focus to its visible summary');
     await page.$$eval('.pl-defense-card', cards => cards.forEach(card => {
       const input = card.querySelector('textarea'); input.value = 'The failed path must be measured before choosing capacity or routing changes.'; input.dispatchEvent(new Event('input'));
-      card.querySelector('button').click(); card.querySelectorAll('input[type=checkbox]').forEach(box => box.click());
+      card.querySelector('button').click(); card.querySelectorAll('input[type=checkbox]').forEach(box => { if (!box.checked) box.click(); });
     }));
     assert.equal(await page.$$eval('.pl-defense-card', els => els.length >= 3 && els.length <= 5), true);
     await click('Save interview report');
@@ -199,7 +215,8 @@ try {
   });
   await click('Start day');
   const proofPreflight = await page.$eval('.pl-modal-card', el => el.textContent);
-  assert.match(proofPreflight, /required compliance check has no proof/);
+  assert.match(proofPreflight, /Audit trail: required proof is missing/);
+  assert.match(proofPreflight, /Tested backups: required proof is missing/);
   assert.doesNotMatch(proofPreflight, /wiring guidance|Add |Connect |Put |Set /);
   assert.deepEqual(errors, []);
   console.log('Interview preparation, visible clock, typed estimates, one locked run, defense, sync and backup restoration passed at all sizes.');
