@@ -101,7 +101,8 @@ export default {
             "Contract only after proof",
             "Dropping old data ends a code-only rollback. Reserve a stable rollback period first."
           ]
-        ]
+        ],
+        "flow": true
       }
     },
     {

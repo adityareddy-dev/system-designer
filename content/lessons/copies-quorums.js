@@ -101,7 +101,8 @@ export default {
             "Verify convergence",
             "Track oldest gap, bytes remaining and failed repairs."
           ]
-        ]
+        ],
+        "flow": true
       }
     },
     {

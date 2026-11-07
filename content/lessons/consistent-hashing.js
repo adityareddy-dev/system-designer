@@ -38,7 +38,8 @@ export default {
             "Still catching up",
             "Live writes, checksums and retries add work after the snapshot."
           ]
-        ]
+        ],
+        "flow": true
       }
     },
     {

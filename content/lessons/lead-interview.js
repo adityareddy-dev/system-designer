@@ -101,7 +101,8 @@ export default {
             "Name the experiment",
             "Measure the uncertain limit and say which result changes the design."
           ]
-        ]
+        ],
+        "flow": true
       }
     },
     {

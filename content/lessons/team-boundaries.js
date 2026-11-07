@@ -101,7 +101,8 @@ export default {
             "Retire with agreement",
             "Offer migration paths, contact owners and test old clients before removal."
           ]
-        ]
+        ],
+        "flow": true
       }
     },
     {

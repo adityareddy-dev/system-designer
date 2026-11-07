@@ -101,7 +101,8 @@ export default {
             "Test a restore",
             "Check that a restored backup reapplies deletion receipts before serving data."
           ]
-        ]
+        ],
+        "flow": true
       }
     },
     {

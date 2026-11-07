@@ -86,7 +86,8 @@ export default {
             "20-minute catch-up",
             "360,000 / 300 = 1,200 seconds. Set a deadline and a support path for unresolved work."
           ]
-        ]
+        ],
+        "flow": true
       }
     },
     {
