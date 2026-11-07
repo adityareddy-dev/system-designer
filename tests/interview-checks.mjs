@@ -129,6 +129,10 @@ try {
       claims.at(-1).focus();
     });
     await page.keyboard.press('Space');
+    await page.waitForFunction(() => {
+      const card = document.querySelector('.pl-defense-card');
+      return !card.open && document.activeElement === card.querySelector('summary') && document.activeElement.checkVisibility();
+    });
     assert(await page.$eval('.pl-defense-card', card => !card.open && document.activeElement === card.querySelector('summary') && document.activeElement.checkVisibility()),
       'completing a follow-up with the keyboard moves focus to its visible summary');
     await page.$$eval('.pl-defense-card', cards => cards.forEach(card => {

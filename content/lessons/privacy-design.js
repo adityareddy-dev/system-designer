@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: sparse uploads",
-      "text": "Assume one 16-byte reading each second. That is about 1.38 MB/day per device before local indexes. Thirty days require about 41.5 MB. A 2 KB daily summary is about 690 times less payload than raw readings. The summary can still reveal health information and needs consent, authorization and retention rules. These are decimal payload calculations, not a radio-energy measurement. The sim cannot prove device isolation, encryption or legal compliance; a passing traffic day does not establish those properties."
+      "text": "Less payload reduces the sensitive archive, but a daily summary can still reveal health information. Consent, authorization and retention remain necessary. These decimal byte calculations do not measure radio energy. A passing traffic day cannot prove device isolation, encryption or legal compliance.",
+      "diagram": {
+        "label": "Collect only the feature payload",
+        "parts": [
+          [
+            "Raw: 1.38 MB/day",
+            "16 bytes × 86,400 samples. About 41.5 MB for 30 days."
+          ],
+          [
+            "Summary: 2 KB/day",
+            "About 690 times less payload, still sensitive information."
+          ],
+          [
+            "Set a retention rule",
+            "Consent, authorization and deletion apply to summaries too."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -68,7 +85,25 @@ export default {
     {
       "kind": "read",
       "title": "Keys and deletion are workflows",
-      "text": "Use authenticated encryption, unique nonces under a key and well-reviewed libraries. Wrap per-user or per-collection data keys with keys kept in the device's protected key store. Authenticate new devices, provide revocation and explain recovery before a device is lost. Routine wrapping-key rotation can rewrap data keys. If a wrapping key was compromised, an attacker may already have unwrapped data keys, so rewrapping alone cannot restore confidentiality. Rotate affected data keys and re-encrypt future content as needed; already copied plaintext cannot be recalled. Revocation cannot erase plaintext already copied by an old device. Deletion covers active rows, object versions, indexes, caches, exports and backups. Track a deletion job through each store and prove completion with a receipt and a restore test. Backup expiry may bound final deletion. Cryptographic erasure works only if every usable copy of the relevant key is gone. Be precise about evidence and residual limits instead of promising an impossible universal proof."
+      "text": "Use authenticated encryption, unique nonces and well-reviewed libraries. Protect data keys with wrapping keys in a device key store. Routine rotation can rewrap keys; a compromised wrapping key may already have exposed them, requiring new data keys for future content. Revocation cannot recall copied plaintext. Deletion must cover object versions, exports and backups as well as live rows. Cryptographic erasure requires every usable copy of the relevant key to be gone.",
+      "diagram": {
+        "label": "Deletion needs a receipt",
+        "parts": [
+          [
+            "Revoke future access",
+            "Retire device access and rotate affected keys. Already copied plaintext cannot be recalled."
+          ],
+          [
+            "Visit every store",
+            "Delete rows, versions, indexes, caches and exports; track backup expiry."
+          ],
+          [
+            "Test a restore",
+            "Check that a restored backup reapplies deletion receipts before serving data."
+          ]
+        ],
+        "flow": true
+      }
     },
     {
       "kind": "quiz",

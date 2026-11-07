@@ -114,9 +114,9 @@ async function boot() {
     const off = bus.once('route', () => { clearTimeout(t); resolve(); });
     router.go(h);
   });
-  async function playFor(hash) {
+  async function playFor(hash, opts) {
     await nextRoute(hash);
-    const c = await shell.whenPlay();
+    const c = await shell.whenPlay(opts);
     if (!c) throw new Error('No workbench on ' + hash);
     await loadPerf();
     return c;
@@ -149,7 +149,7 @@ async function boot() {
       if (id === 'intro') return withErrors((await playFor('#/intro')).getState());
       const steps = lesson.steps || [];
       const n = stepIndex ?? Math.max(0, steps.findIndex((s) => s.kind === 'demo'));
-      const c = await playFor(`#/learn/${id}${n ? '?step=' + n : ''}`);
+      const c = await playFor(`#/learn/${id}${n ? '?step=' + n : ''}`, { prepareLesson: true });
       return withErrors(c.getState());
     },
     // an optional fourth argument drops the part onto that connection, as dragging onto a line does

@@ -161,8 +161,9 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     columns.append(response, evidence);
     controls.push(mountDefense(response, q, d, { id: 'pl-defense-' + i, locked: state.complete, checkClaim: claim => checkClaim(claim, { problem, graph: result.graph, result, catalog }), onReveal: update, onChange: () => {
       if (d.revealed && q.checklist.every((_,j) => d.checked[j]) && Object.keys(d.claims || {}).length === q.claims.length) {
-        if (section.contains(document.activeElement)) section.querySelector('summary').focus();
+        const restoreFocus = section.contains(document.activeElement);
         section.open = false;
+        if (restoreFocus) section.querySelector('summary').focus();
       }
       update();
     } }));

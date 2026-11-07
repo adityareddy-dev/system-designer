@@ -8,6 +8,9 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 try {
   const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('requestfailed', request => errors.push(request.url() + ': ' + request.failure()?.errorText));
   await page.setViewport({ width: 1366, height: 800 });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem('hotpath.v1.seenIntro', 'true');
@@ -51,7 +54,11 @@ try {
 
   for (const [route, selector] of [['learn', '.sh-chapter-art'], ['practice', '.sh-industry-art']]) {
     await page.goto(base + '#/' + route);
-    await page.waitForSelector(selector + ' svg');
+    try { await page.waitForSelector(selector + ' svg'); }
+    catch (error) {
+      console.error({ errors, page: await page.$eval('#sh-main', el => el.textContent) });
+      throw error;
+    }
     for (let i = 0; i < 3; i++) {
       if (await page.$eval('#sh-theme-btn', b => b.getAttribute('aria-label').startsWith('Theme: light.'))) break;
       await page.click('#sh-theme-btn');

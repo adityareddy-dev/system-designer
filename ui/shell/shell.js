@@ -207,7 +207,19 @@ export function mountShell(rootEl, ctx) {
     attachAccount,
     // Test and integration hooks: the live play controller of the current view.
     getPlay: () => (view && view.play ? view.play.controller : null),
-    whenPlay: async () => { await pending; return view && view.play ? view.play.ready : null; },
+    whenPlay: async ({ prepareLesson = false } = {}) => {
+      for (;;) {
+        const loading = pending;
+        await loading;
+        if (loading !== pending) continue;
+        if (prepareLesson) view?.preparePlay?.();
+        const play = view?.play;
+        const controller = play ? await play.ready : null;
+        // Navigation may replace a host while its modules or canvas are loading.
+        if (loading !== pending || play !== view?.play) continue;
+        return controller;
+      }
+    },
     hasPlay: () => !!(view && view.play),
     settled: () => pending,
     destroy() {

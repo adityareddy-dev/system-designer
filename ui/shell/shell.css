@@ -272,6 +272,8 @@
 .sh-group-head .sh-h2 { color: var(--text); }
 .sh-group-head p { font-size: 13px; }
 .sh-prob { gap: 8px; padding: 18px; }
+.sh-workload-art {display:block;overflow:hidden;border-radius:8px;background:var(--canvas);margin-bottom:6px}
+.sh-workload-art svg {display:block;width:100%;height:150px;object-fit:contain}
 .sh-prob-top { display: flex; justify-content: space-between; align-items: center; }
 .sh-prob-state { font-size: 12px; font-weight: 600; color: var(--text-3); display: inline-flex; align-items: center; gap: 3px; }
 .sh-prob-state.is-ok { color: var(--ok); }
@@ -673,8 +675,11 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-lesson-page:has(.sh-allocation) {max-width:1200px}
  .sh-lp-card--demo:has(.sh-allocation) {grid-template-columns:minmax(0,1fr) 260px;align-items:start}
  .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-prompt {grid-column:1/-1}
- .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-stage {grid-column:1;grid-row:2}
- .sh-lp-card--demo:has(.sh-allocation)>.sh-allocation {grid-column:2;grid-row:2}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-estimate-form,
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-estimate-receipt {grid-column:1/-1;grid-row:2}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-stage {grid-column:1;grid-row:3}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-guidance {grid-column:2;grid-row:3}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-lp-hint {grid-column:1/-1;grid-row:4}
  .sh-lp-card--demo:has(.sh-allocation)>.sh-lp-nav {grid-column:1/-1}
  .sh-allocation .sh-pool {flex-direction:column;align-items:stretch}
  .sh-allocation .sh-btn-row {flex-direction:column}

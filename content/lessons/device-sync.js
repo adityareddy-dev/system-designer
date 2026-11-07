@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: a day of edits",
-      "text": "A notebook has 10,000 notes averaging 2 KB. A full refresh downloads about 20 MB. If 50 notes changed today, a delta costs about 100 KB before metadata, about 200 times less. A timer scheduled every minute makes up to 1,440 polling attempts a day while allowed to run. The operating system may coalesce or suspend them; timer firings are not a measurement of radio wakeups. A push can say changes are ready so the client pulls authenticated deltas. Push is a wake-up hint, not the durable delivery channel. Sleeping phones and mobile operating systems may delay it. Under-a-second propagation is a foreground connected-device target; background delivery is eventual. The sim can show network traffic, but cannot measure radio wakeups or offline convergence."
+      "text": "These are payload sizes before metadata. Polling every minute permits up to 1,440 timer attempts a day, but the operating system may suspend or coalesce them. Timer firings do not measure radio wakeups. Push can prompt an authenticated delta fetch; it is not the durable delivery channel. Under-a-second freshness is a connected foreground target. Background delivery remains eventual.",
+      "diagram": {
+        "label": "One day on a phone",
+        "parts": [
+          [
+            "Full refresh: 20 MB",
+            "10,000 notes × 2 KB before metadata."
+          ],
+          [
+            "Delta: 100 KB",
+            "50 changed notes × 2 KB. About 200 times less payload."
+          ],
+          [
+            "Push, then pull",
+            "A push is a wake-up hint. Durable authenticated sync still fetches the changes."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -68,7 +85,24 @@ export default {
     {
       "kind": "read",
       "title": "Keep deletions and expose conflicts",
-      "text": "A tombstone says a particular identity was deleted at a version. Keep it until the supported offline horizon and replica recovery rules make forgetting safe. If clients may be offline for 30 days, a shorter tombstone lifetime risks resurrection. Devices returning beyond the horizon must rebase from a fresh snapshot. Validate the upload epoch or reject unknown base versions even after tombstones expire, so a missing old identity is not mistaken for a new note. Concurrent whole-note edits can become conflict copies. A text CRDT may preserve more intent but adds metadata, testing and encryption constraints. Show saved locally, syncing, synced and conflict states distinctly. Bound batches, compress deltas, back off retries and use Wi-Fi or charging policies for large attachments. Measure freshness without spending the battery on empty polls."
+      "text": "Validate upload epochs or reject unknown base versions even after tombstones expire. Otherwise a missing old identity can look new. Concurrent whole-note edits may become conflict copies; a text CRDT preserves more intent with extra metadata and testing cost. Show saved locally, syncing, synced and conflict separately. Bound batches, compress deltas, back off retries and consider Wi-Fi or charging policies for large attachments.",
+      "diagram": {
+        "label": "A deletion must outlive an offline copy",
+        "parts": [
+          [
+            "30-day offline horizon",
+            "Retain the tombstone and version history for supported returning devices."
+          ],
+          [
+            "Device returns too late",
+            "Reject the old epoch and rebase from a fresh snapshot."
+          ],
+          [
+            "Concurrent edits survive",
+            "Show conflict copies or merge deliberately. Do not silently replace either history."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",

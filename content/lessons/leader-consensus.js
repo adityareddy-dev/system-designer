@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: a five-node split",
-      "text": "Five voters need three. In a 3 versus 2 partition, the three can elect and commit; the two cannot. With a 2 versus 2 versus 1 split, nobody can commit. Two majorities always share a voter, but persistent voting and log rules are what make that intersection useful. An isolated old leader can still believe it is leader in an older term. It must not serve unsafe reads or issue unfenced effects. The game does not model Raft terms or logs, so this example is arithmetic, not a live election."
+      "text": "An election needs a majority of the configured voters, even after failures. A new leader must also satisfy log-freshness and commit rules. Old processes can remain alive after losing authority. A fencing token works only when the target of the side effect checks it; merely attaching a larger number to a request changes nothing.",
+      "diagram": {
+        "label": "Five voters split into two groups",
+        "parts": [
+          [
+            "A + B: 2 votes",
+            "Cannot elect or commit without a majority."
+          ],
+          [
+            "C + D + E: 3 votes",
+            "Can elect a leader with a sufficiently current log."
+          ],
+          [
+            "Fence side effects",
+            "The storage target rejects an older ownership token."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",

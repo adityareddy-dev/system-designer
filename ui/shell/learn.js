@@ -2,7 +2,7 @@
 import { h, ico } from './dom.js';
 import { sceneMarkup } from '../../assets/scenes/index.js';
 import { nextTracks } from './next-tracks.js';
-const TRACK_SCENE = ['intro', 'load-balancing', 'sharding', 'queues-backpressure', 'idempotency-retries', 'multi-region', 'cost', 'storage-engine', 'lead-interview'];
+const TRACK_SCENE = ['people-notification', 'people-rider', 'people-checkout', 'people-clocks', 'people-checkout', 'people-oncall', 'people-oncall', 'people-clocks', 'people-oncall'];
 
 export function renderLearn(host, ctx) {
   const lessons = ctx.content.lessons || [];

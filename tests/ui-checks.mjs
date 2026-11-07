@@ -13,7 +13,7 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH
 async function openPage(view) {
   const page = await browser.newPage();
   await page.setViewport(view);
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text() + (m.location().url ? ' at ' + m.location().url : '')); });
   page.on('pageerror', (e) => errors.push(String(e.message || e)));
   await page.goto(BASE, { waitUntil: 'load' });
   await page.waitForFunction(() => document.documentElement.dataset.ready === '1', { timeout: 30000 });

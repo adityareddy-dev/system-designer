@@ -1,6 +1,7 @@
 // Browser regressions for drill rounds, phone lesson controls, telemetry and restored graph positions.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { commitLessonPrediction } from './lesson-prediction.js';
 
 const BASE = process.argv[2] || 'http://localhost:8765/';
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
@@ -63,6 +64,7 @@ try {
       document.documentElement.dataset.motion = reduce ? 'reduce' : 'full';
       location.hash = '#/learn/caching?step=1';
     }, reduced);
+    await commitLessonPrediction(page);
     await page.waitForSelector('.sh-demo-stage .pl-tb-grab');
     const starter = await page.evaluate(() => window.__game.getState().nodes);
     assert.equal(new Set(starter.map(n => n.y)).size, 1, 'fresh phone starters share a request band');
@@ -89,6 +91,9 @@ try {
       await page.evaluate(async motion => {
         document.documentElement.dataset.motion = motion;
         await window.__game.loadLesson('queues-backpressure');
+      }, motion);
+      await commitLessonPrediction(page);
+      await page.evaluate(() => {
         const game = window.__game;
         const state = game.getState();
         const app = state.nodes.find(n => n.type === 'vm-fleet');
@@ -101,7 +106,7 @@ try {
         game.startTraffic();
         game.step(600000);
         game.pause();
-      }, motion);
+      });
       await page.waitForFunction(() => document.querySelector('.pl-hud--queues'));
       await page.waitForFunction(() => !document.querySelector('.sh-lp-card').getAnimations().some(a => a.playState === 'running'));
       await page.$eval('.pl-measurements-toggle', el => el.scrollIntoView({ block: 'center' }));
