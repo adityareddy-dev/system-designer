@@ -36,7 +36,7 @@ try {
   await page.waitForSelector('.pl-learning-status');
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /trace is still open/);
   assert.equal(await page.$('.pl-victory'), null);
-  assert.match(await page.$eval('.sh-toast', e => e.textContent), /Traffic passed.*Trace still open/);
+  assert.match(await page.$eval('.sh-toast', e => e.textContent), /Traffic passed.*trace is still open/);
   await click('Retry'); await click('Start day'); await gates();
   await page.evaluate(() => window.__game.step(86400000));
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /responsibility trace passed/);
@@ -47,6 +47,15 @@ try {
   await page.$eval('.pl-hints [aria-label="Close hints"]',e => e.click());
   await page.$eval('.pl-tool--editorial', e => e.click());
   await page.$eval('.pl-overlay--editorial [aria-label="Close editorial"]', e => e.click());
+  await page.evaluate(graph => {
+    const game = window.__game;
+    for (const n of graph.nodes) {
+      const actual = game.getState().nodes.find(node => node.type === n.type && (node.label === n.label || !n.label));
+      if (!actual) throw Error('Missing twist part ' + n.type);
+      for (const k of ['units','zones','tier','region']) if (n[k] != null) game.setKnob(actual.id,k,n[k]);
+      for (const [k,v] of Object.entries(n.knobs || {})) game.setKnob(actual.id,k,v);
+    }
+  }, p.twist.design.graph);
   await click('Start day'); await gates();
   await page.evaluate(() => window.__game.step(86400000));
   assert.match(await page.$eval('.pl-learning-status', e => e.textContent), /twist used help/);
@@ -72,7 +81,7 @@ try {
   assert.equal(await page.evaluate(() => window.__game.getState().score.total), 1000);
   const referenceProgress = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);
   const unchangedReference = async () => {
-    assert.match(await page.$eval('.pl-verdict-sec', e => e.textContent), /Reference design: not saved to your results/);
+    assert.match(await page.$eval('.pl-debrief', e => e.textContent), /Reference design: not saved to your results/);
     const saved = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], p.id);
     assert.deepEqual(saved, referenceProgress, 'reference replays never save scores, solved dates or learning credit');
   };
@@ -80,6 +89,10 @@ try {
   for (const day of ['New twist', 'Original day', 'New twist']) {
     await click(day); await click('Start day'); await gates();
     await page.evaluate(() => window.__game.step(86400000));
+    if (await page.$('.pl-transfer-reflection textarea')) await page.$$eval('.pl-transfer-reflection textarea', inputs => {
+      inputs.forEach(input => input.value = 'The paid reserve exceeds the new cost ceiling. Compare a smaller floor with unchanged units and measure the bill and failure headroom.');
+      inputs[0].closest('form').requestSubmit();
+    });
     await unchangedReference();
   }
   await click('Retry'); await click('Start day'); await gates();

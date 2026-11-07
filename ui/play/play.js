@@ -1,4 +1,5 @@
 // In-problem screen: mountPlay() builds the canvas, toolbar, inspector, HUD, steps, hints, debrief and editorial.
+import { twistProblem } from '../../content/problems/twist.js';
 import { createInterview, renderInterviewPrep, renderInterviewResult } from './interview.js';
 import { phoneLayout } from '../../render/diagram.js';
 import { renderDesignCheck } from './design-check.js';
@@ -314,6 +315,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     });
   }
   function adviceReady() {
+    if (S.problem?.twistDay && S.result && !S.result.passed && !S.result.transferReflection) return false;
     return mode !== 'practice' || S.triedId === S.problem?.id || ctx.progress?.get?.(S.problem?.id)?.attempts > 0;
   }
   function paintIssues() {
@@ -1430,7 +1432,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
           const g = graph(), on = !S.twist;
           resetHostForProblem({ preserveReference: true }); S.twist = on;
           configure(p, g); go('draw'); fitView(false);
-          toast(on ? 'New twist: the same brief, with the events moved and one more added. Pass with no hints to earn full mastery after a checked original day.' : 'Back to the original day.', 'info', 5000);
+          toast(on ? 'New twist: a quieter workload and a tighter cost ceiling. Reconsider the paid reserve and test failure headroom.' : 'Back to the original day.', 'info', 5000);
         }, { direction: 'back', reduced: ctx.reducedMotion() }) : null,
         onShowNext: (ns) => transitionScreen(() => { reset(); if (ns.nodeId) select(ns.nodeId); if (ns.elementId) toolbar.pulse(ns.elementId); }, { direction: 'back', reduced: ctx.reducedMotion() }),
         nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; const fix = rn && ['units', 'autoscale'].includes(ns?.knob) && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; if (fix && ns.sizing) { fix.units = ns.sizing.units; fix.label = `Set ${fix.word.toLowerCase()} to ${fix.units}`; } return fix; },
@@ -1446,6 +1448,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
 
   // ---- editorial
   function openEditorial() {
+    if (S.problem?.twistDay && S.result && !S.result.passed && !S.result.transferReflection) { toast('Commit the changed tradeoff and experiment in the report first.', 'info'); return; }
     if (!stepped || interview) return;
     if (!S.result && !(ctx.progress?.get?.(S.problem.id)?.attempts > 0)) { toast('The editorial unlocks after one finished traffic day.', 'info'); return; }
     renderEditorial(editorialWrap, {
@@ -1509,7 +1512,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
 
   // ---- hints
-  const hints = createHints(root, { getHints: () => adviceReady() ? S.problem?.hints || [] : ['Before choosing another part, trace one request through your design. Where does it wait, what happens if that step crashes, and what evidence would disprove your prediction? Run a day first; repair hints open after your attempt.'], snd, onUse: (n) => { S.hintsUsed = n; } });
+  const hints = createHints(root, { getHints: () => S.problem?.twistDay && S.result && !S.result.passed && !S.result.transferReflection ? ['Commit the changed tradeoff, two explanations and a discriminating experiment in the report before opening repair guidance.'] : adviceReady() ? S.problem?.hints || [] : ['Before choosing another part, trace one request through your design. Where does it wait, what happens if that step crashes, and what evidence would disprove your prediction? Run a day first; repair hints open after your attempt.'], snd, onUse: (n) => { S.hintsUsed = n; } });
   function closeHints() { hints.close(); }
 
   // ---- toolbar, inspector, HUD, requirements, traffic panel
@@ -1609,6 +1612,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function warmUpOf(problem) {
     S.warm = false; S.fullEvents = null; S.fullRequirements = null;
+    if (problem.twistDay) return problem;
     try {
       if (interview || mode !== 'practice' || problem.difficulty !== 'Easy' || !(problem.events || []).some((e) => e.id === 'viral-spike')) return problem;
       if (Object.keys(store.get('progress', {}) || {}).length) return problem;
@@ -1620,7 +1624,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function configure(problem, initialGraph) {
     graphVersion++;
     // a twist day plays the same problem on its other event list (content/problems/twists.js); it is practice only
-    const base = S.twist && problem.twist ? { ...problem, events: problem.twist.events, twistDay: true } : problem;
+    const base = S.twist && problem.twist ? twistProblem(problem) : problem;
     S.problem = withSource(spreadClients(warmUpOf(base)));
     S.result = null;
     S.undo.length = 0; S.redo.length = 0;
