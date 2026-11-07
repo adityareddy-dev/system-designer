@@ -454,14 +454,14 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     // nodes: busy level, status, queue, waiting pile; failures at nodes nothing flows into
     const util = F.nodeUtil, status = F.nodeStatus, queue = F.nodeQueue;
     const running = speed > 0 && !reduced;
-    if (!failureLead && speed > 0) {
+    if (failureLead && now > failureLead.until) {
+      const i = F.nodeIds.indexOf(failureLead.id);
+      if (i < 0 || !(util[i] > 1 || status?.[i] === 4)) failureLead = null;
+    }
+    if (!failureLead) {
       let first = -1;
       for (let i = 0; i < N; i++) if ((util[i] > 1 || status?.[i] === 4) && nodeView[i]?.kind !== 'source') { first = i; break; }
       if (first >= 0) failureLead = { id: F.nodeIds[first], until: now + 1600 };
-    }
-    if (failureLead && now > failureLead.until) {
-      let overloaded = false; for (let i = 0; i < N; i++) if (util[i] > 1) { overloaded = true; break; }
-      if (!overloaded) failureLead = null;
     }
     for (let i = 0; i < N; i++) {
       const v = nodeView[i];
@@ -477,7 +477,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       nodes.setLive(v, true, util[i] || 0, status ? status[i] : 0, queue ? queue[i] || 0 : 0, over, pile >= 0 ? map.tex[pile] : -1, fail);
       if (failureLead) {
         if (v.id !== failureLead.id && v.kind !== 'queue') v.evidenceT.visible = false;
-        else if (v.id === failureLead.id && v.evidenceT.visible) v.evidenceT.text = 'First limit · ' + v.evidenceT.text;
+        else if (v.id === failureLead.id && v.evidenceT.visible) v.evidenceT.text = 'First limit\n' + v.evidenceT.text;
       }
       if (running && fail > 0 && inn <= 0) {
         map.srcAcc[i] += (fail * inv * dt) / 1000;

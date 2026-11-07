@@ -441,7 +441,7 @@ export function createNodeLayer(PIXI, parent, env) {
         if(visible&&(Math.abs(labelX*z)>8||Math.abs(name.y-preferred.y)>8))v.leader.moveTo(0,0).lineTo(labelX,labelY).stroke({width:1/z,color:P.edgeIdle,alpha:.6});
         const boxes=[name];
         if(v.evidenceT.visible){
-          const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-(v.kind==='queue'?58:44)-8,width:114,height:v.kind==='queue'?58:44});
+          const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-(v.kind==='queue'?58:76)-8,width:114,height:v.kind==='queue'?58:76});
           if(visible)occupied.push(facts);
           v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x)/z,(facts.y-p.y)/z);
           v.labelBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.canvas,alpha:.97});
