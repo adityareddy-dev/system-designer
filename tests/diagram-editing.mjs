@@ -1,6 +1,7 @@
 // Browser checks for anchored insertion, transient labels, and the complete phone diagram.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { commitLessonPrediction } from './lesson-prediction.js';
 const base = process.argv[2] || 'http://localhost:8765/';
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -9,6 +10,7 @@ try {
   await page.setViewport({ width: 1366, height: 800 });
   await page.evaluateOnNewDocument(() => { localStorage.setItem('hotpath.v1.seenIntro', 'true'); localStorage.setItem('hotpath.v1.settings', JSON.stringify({ soundMuted: true })); });
   await page.goto(base + '#/learn/load-balancing?step=1');
+  await commitLessonPrediction(page);
   await page.waitForFunction(() => window.__game?.getState().nodes.length > 0);
   await sleep(900);
   const before = await page.evaluate(() => window.__game.getState());
@@ -31,6 +33,7 @@ try {
 
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
   await page.reload();
+  await commitLessonPrediction(page);
   await page.waitForFunction(() => window.__game?.getState().nodes.length === 3);
   await sleep(900);
   const phoneBefore = await page.evaluate(() => window.__game.getState().view);
@@ -69,6 +72,7 @@ try {
     await page.setViewport({ width, height, isMobile: true, hasTouch: true });
     await page.goto(base + '#/learn/load-balancing?step=1');
     await page.reload();
+    await commitLessonPrediction(page);
     await page.waitForFunction(() => window.__game.getState().nodes.some(n => n.id === 'app'));
     await sleep(900);
     await page.$eval('.pl-stage', e => e.scrollIntoView({ block: 'end' }));
