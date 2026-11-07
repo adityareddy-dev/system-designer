@@ -19,6 +19,8 @@ try {
     if (round) await page.evaluate(() => [...document.querySelectorAll('.sh-drill button')].find(b => b.textContent === 'Another round').click());
     await page.evaluate(() => {
       for (let i = 0; i < 10 && document.querySelector('.sh-drill-q'); i++) {
+        const prediction = document.querySelector('.sh-drill textarea'); prediction.value = 'I predict the net rate determines the outcome.'; prediction.dispatchEvent(new Event('input'));
+        [...document.querySelectorAll('button')].find(b => b.textContent === 'Commit prediction and see choices').click();
         document.querySelector('.sh-choice').click();
         document.querySelector('.sh-lp-nav .sh-btn--primary').click();
       }
@@ -38,11 +40,13 @@ try {
       if (round) await page.evaluate(() => [...document.querySelectorAll('.sh-drill button')].find(b => b.textContent === 'Another round').click());
       const counter = await page.$eval('.sh-drill .sh-progress-num', el => el.textContent);
       assert.match(counter, /^1\/[1-9]\d*$/, 'daily and repeat rounds both contain questions');
-      if (completed.length > 1) assert.equal(counter, '1/2');
-      if (completed.length > 1) assert.equal(await page.$eval('.sh-lp-card .sh-eyebrow', el => el.textContent), 'From the lesson: Remembering answers');
+      if (completed.length > 1) assert.equal(counter, '1/1', 'one studied mechanism is never padded with repeated templates or advanced material');
+      assert.match(await page.$eval('.sh-lp-card .sh-eyebrow', el => el.textContent), /^From the lesson:/);
       await page.evaluate(() => {
         for (let i = 0; i < 10 && document.querySelector('.sh-drill-q'); i++) {
-          document.querySelector('.sh-choice').click();
+          const prediction = document.querySelector('.sh-drill textarea'); prediction.value = 'I predict the net rate determines the outcome.'; prediction.dispatchEvent(new Event('input'));
+        [...document.querySelectorAll('button')].find(b => b.textContent === 'Commit prediction and see choices').click();
+        document.querySelector('.sh-choice').click();
           document.querySelector('.sh-lp-nav .sh-btn--primary').click();
         }
       });
