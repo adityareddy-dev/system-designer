@@ -117,7 +117,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.labelT = makeText('', 12, P.text2, false, '500', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 11, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
-    v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108;
+    v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
     v.leader = new PIXI.Graphics();
     v.regionC = new PIXI.Container(); v.regionC.y = -HALF - 12; v.regionC.visible = false;
     v.regionBg = new PIXI.Graphics(); v.regionC.addChild(v.regionBg);
@@ -443,7 +443,7 @@ export function createNodeLayer(PIXI, parent, env) {
         if(v.evidenceT.visible){
           const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-(v.kind==='queue'?58:44)-8,width:114,height:v.kind==='queue'?58:44});
           if(visible)occupied.push(facts);
-          v.evidenceT.anchor.set(.5,0);v.evidenceT.position.set((facts.x+57-p.x)/z,(facts.y-p.y)/z);
+          v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x)/z,(facts.y-p.y)/z);
           v.labelBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.canvas,alpha:.97});
           boxes.push(facts);
         }
