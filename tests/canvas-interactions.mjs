@@ -55,7 +55,7 @@ try{
   const a=point(app.id),b=point(target.id),port={x:a.x+36*data.s.view.zoom,y:a.y};
   if(touch){const c=await p.createCDPSession();await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[port]});await c.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[b]});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
   else {await p.mouse.move(port.x,port.y);await p.mouse.down();await p.mouse.move(b.x,b.y,{steps:12});await p.mouse.up();}
-  await sleep(350);let state=await p.evaluate(()=>__game.getState());assert(state.edges.some(e=>e.from===app.id&&e.to===target.id),'dragging the visible output port connects');assert.equal(state.nodes.find(n=>n.id===app.id).x,app.x,'connecting never moves the source');
+  await sleep(350);let state=await p.evaluate(()=>__game.getState());assert(state.edges.some(e=>e.from===app.id&&e.to===target.id),`dragging the visible ${touch?'touch':'mouse'} output port connects`);assert.equal(state.nodes.find(n=>n.id===app.id).x,app.x,'connecting never moves the source');
   if(touch){const c=await p.createCDPSession();await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[a]});await c.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:a.x-50,y:a.y+45}]});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
   else {await p.mouse.move(a.x,a.y);await p.mouse.down();await p.mouse.move(a.x-50,a.y+45,{steps:12});await p.mouse.up();}
   await sleep(350);state=await p.evaluate(()=>__game.getState());assert.notEqual(state.nodes.find(n=>n.id===app.id).x,app.x,'dragging the body moves the part');
