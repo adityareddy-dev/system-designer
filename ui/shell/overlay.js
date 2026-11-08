@@ -28,7 +28,7 @@ function placeToasts() {
   if (root.dataset.step === 'debrief') return;
   const base = parseFloat(getComputedStyle(toastBox).bottom) || 24;
   let top = Infinity;
-  for (const sel of ['.pl-hud', '.pl-caption', '.pl-tb-grab', '.pl-inspector', '.pl-toolbar--open', '.pl-slow']) {
+  for (const sel of ['.pl-hud', '.pl-caption', '.pl-tb-grab', '.pl-inspector', '.pl-toolbar--open', '.pl-traffic', '.pl-overview', '.pl-slow']) {
     const el = root.querySelector(sel);
     if (!el || el.hidden || !el.checkVisibility()) continue;
     const r = el.getBoundingClientRect();

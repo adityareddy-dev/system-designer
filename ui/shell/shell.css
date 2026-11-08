@@ -907,3 +907,7 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 /* Scroll targets leave a reading gap inside the area below the header and above phone navigation. */
 .sh-main {scroll-padding-block:16px}
 .sh-lesson-page :is(h1,h2,h3,.sh-lp-card,.sh-defense-field) {scroll-margin-block:16px}
+@media(max-width:719px) {
+  [data-immersive="1"] > .sh-toasts:has(.sh-toast:is([data-level=warn],[data-level=bad])) {width:calc(100vw - 32px);justify-items:stretch}
+  [data-immersive="1"] .sh-toast:is([data-level=warn],[data-level=bad]) {border-radius:12px;padding:12px 16px}
+}
