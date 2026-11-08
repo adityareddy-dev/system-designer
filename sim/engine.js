@@ -159,7 +159,7 @@ function blankState() {
     minOff: null, minSucc: null, hourOff: null, hourSucc: null, hourP99: null, hourW: null,
     complianceChecked: null, interventions: null, result: null, counters: null, firstBreak: null, tickNow: null,
     laneOff: null, laneSucc: null, laneP99: null, lastStorageGb: null, stateObj: null, frameDirty: false, rttE: null,
-    loc: null, effCap: null,
+    loc: null, effCap: null, effCapInputs: null, effCapModel: null,
     qHist: null, lateCarry: null, lateType: null, lateDay: -0, readBack: -0, readBackEdge: -0, privateReads: -0, typeP99Now: null, typeWNow: null, latWorstT: -1,
     // per node (N)
     cap: null, capNom: null, rho: null, sv: null, sPrev: null, rhoPrev: null, rhoQacc: null, rhoQPrev: null, health: null, unhealthySince: null,
@@ -739,6 +739,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     }
   }
   const compBuf = new Float64Array(T);
+  const lateByType = new Float64Array(T);
   function queueLateness(X, tn, dt) {
     const m = X.model;
     if (!X.queueNodes.length) return 0;
@@ -791,7 +792,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       q.procAvg = 0.9 * q.procAvg + 0.1 * proc;
       // Each type keeps its own deadline even when slower work shares the queue.
       let lateMsgs = 0, shortest = Infinity;
-      const lateByType = new Float64Array(T);
+      lateByType.fill(0);
       for (const stream of streams) for (let t = 0; t < T; t++) {
         if (!(stream.typeArr[t] > 0)) continue;
         let hist = stream.types.get(t);
@@ -889,7 +890,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       const q = X.qHist.get(n.id);
       if (!q || n.isDLQ) continue;
       const k = Math.min(DAY_TICKS - 1, q.lastK);
-      const lateByType = new Float64Array(T);
+      lateByType.fill(0);
       for (const stream of q.streams.values()) for (const [t, hist] of stream.types) {
         const limit = queueLimitFor(X.problem.requirements, catalog.requests[t]);
         const Lt = Math.max(1, Math.ceil(limit / X.dt));
