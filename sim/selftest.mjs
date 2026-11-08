@@ -456,6 +456,12 @@ function perfRun() {
   const sim = createSim({ catalog, problem: p, seed: 'perf' });
   build(sim, nodes, edges);
   const n = sim.getGraph().nodes.length;
+  // Warm this graph in the fresh process before measuring steady simulation work.
+  for (let i = 0; i < 3; i++) {
+    sim.reset();
+    sim.start();
+    sim.advance(DAY);
+  }
   const times = [];
   let r;
   for (let i = 0; i < 3; i++) {
