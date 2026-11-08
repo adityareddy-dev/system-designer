@@ -17,6 +17,7 @@ try {
     await page.waitForFunction(() => window.__game?.getState().mode === 'sandbox');
     await page.evaluate(() => {
       const g = window.__game, object = g.placeComponent('object-storage', 100, 0), key = g.placeComponent('kms', 100, 180);
+      document.querySelector('[aria-label="Close inspector"]')?.click();
       g.connect(object, key);
     });
     await page.waitForSelector('.sh-toast[data-level=warn]');
@@ -32,7 +33,7 @@ try {
     assert(observed.inside);
     if (width === 390) {
       assert(observed.width >= 340 && observed.radius <= 14, 'long advice uses the available width and a readable text box');
-      assert(observed.bottom <= observed.traffic - 8, 'the warning clears the pinned traffic panel');
+      assert(observed.bottom <= observed.traffic - 8, 'the warning clears the pinned traffic panel: ' + JSON.stringify(observed));
     }
     await page.close();
   }
