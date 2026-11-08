@@ -7,6 +7,7 @@ import { TokenError } from './google.js';
 import { makeState, checkState, STATE_COOKIE, STATE_TTL_SEC } from './github.js';
 import { ReplayError, NOT_LISTED, prepare } from './replay-core.js';
 import { sanitizeProgress, mergeProgress, emptyProgress } from '../account/merge.js';
+import { createObservation } from './observation.js';
 
 export const SESSION_COOKIE = 'sd_session';
 export const SESSION_TTL_MS = 30 * 24 * 3600 * 1000;
@@ -63,6 +64,9 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
   const nonceMac = (body) => createHmac('sha256', config.sessionSecret).update('g-nonce\n' + body).digest('base64url');
   const usedNonces = new Map();   // nonce -> expiry: each one signs in once
   const known = { problemIds: game.problemIds, lessonIds: game.lessonIds };
+  const observation = createObservation({ db, game, now });
+  const anonymousPath = req => /^\/(?:e|feedback)(?:\?|$)/.test(req.url);
+  const allowedSites = req => config.dev && anonymousPath(req) ? [...config.sites, 'http://localhost:8777', 'http://127.0.0.1:8777'] : config.sites;
 
   const publicConfig = () => ({
     google: config.google.clientId ? { clientId: config.google.clientId } : null,
@@ -78,7 +82,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
 
   function cors(req, res) {
     const origin = req.headers.origin;
-    if (origin && config.sites.includes(origin)) {
+    if (origin && allowedSites(req).includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
     }
@@ -159,6 +163,16 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
   }
 
   const routes = {
+    'POST /e': async ({ req, ip }) => {
+      limit('events', ip);
+      await observation.events(req, ip);
+      return [202, { ok: true }];
+    },
+    'POST /feedback': async ({ req, ip }) => {
+      limit('feedback', ip);
+      await observation.feedback(req);
+      return [202, { ok: true }];
+    },
     'GET /health': async () => [200, { ok: true }],
 
     'GET /auth/config': async () => [200, publicConfig()],
@@ -367,7 +381,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       limit('all', ip);
       const origin = req.headers.origin;
       if (req.method === 'OPTIONS') {
-        if (!origin || !config.sites.includes(origin)) throw new HttpError(403, 'origin', 'Origin not allowed.');
+        if (!origin || !allowedSites(req).includes(origin)) throw new HttpError(403, 'origin', 'Origin not allowed.');
         res.writeHead(204, {
           'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE',
           'Access-Control-Allow-Headers': 'Content-Type',
@@ -376,13 +390,14 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
         return res.end();
       }
       // Browsers always send Origin on these; a foreign page never gets to change anything.
-      if (MUTATING.has(req.method) && origin && !config.sites.includes(origin)) throw new HttpError(403, 'origin', 'Origin not allowed.');
+      if (MUTATING.has(req.method) && origin && !allowedSites(req).includes(origin)) throw new HttpError(403, 'origin', 'Origin not allowed.');
       const route = routes[`${req.method} ${url.pathname}`];
       if (!route) {
         const any = Object.keys(routes).some((k) => k.endsWith(' ' + url.pathname));
         throw new HttpError(any ? 405 : 404, any ? 'method' : 'not-found', any ? 'Method not allowed.' : 'Not found.');
       }
-      const sess = sessionOf(req);
+      const anonymous = url.pathname === '/e' || url.pathname === '/feedback';
+      const sess = anonymous ? null : sessionOf(req);
       const out = await route({ req, res, url, ip, sess });
       if (Array.isArray(out) && !res.headersSent) sendJson(res, out[0], out[1], out[2] || {});
     } catch (e) {

@@ -1,5 +1,5 @@
 // Nightly SQLite backup: a consistent copy with VACUUM INTO, keeping the newest 7. Run by systemdesigner-api-backup.timer.
-import { DatabaseSync } from 'node:sqlite';
+import { openDb } from './db.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -14,9 +14,10 @@ fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 
 const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, 'Z');
 const out = path.join(dir, `systemdesigner-${stamp}.db`);
-const db = new DatabaseSync(dbPath, { readOnly: true });
+const db = openDb(dbPath);
 try {
-  db.prepare('VACUUM INTO ?').run(out);
+  db.cleanupObservation(Date.now());
+  db.raw.prepare('VACUUM INTO ?').run(out);
 } finally {
   db.close();
 }
@@ -24,4 +25,9 @@ fs.chmodSync(out, 0o600);
 
 const old = fs.readdirSync(dir).filter((f) => /^systemdesigner-\d{8}T\d{6}Z\.db$/.test(f)).sort().reverse().slice(KEEP);
 for (const f of old) fs.rmSync(path.join(dir, f), { force: true });
+// Scrub retained copies too, so expired feedback cannot return through a backup.
+for (const f of fs.readdirSync(dir).filter(f => /^systemdesigner-\d{8}T\d{6}Z\.db$/.test(f))) {
+  const copy = openDb(path.join(dir, f));
+  try { copy.raw.exec('PRAGMA secure_delete=ON'); copy.cleanupObservation(Date.now()); copy.raw.exec('VACUUM'); } finally { copy.close(); }
+}
 process.stdout.write(`backup: wrote ${path.basename(out)}, removed ${old.length} old\n`);

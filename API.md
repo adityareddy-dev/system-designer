@@ -9,6 +9,55 @@ Signing in with Google or GitHub:
 
 The service is a small Node 24 program in `api/`: `node:http`, `node:sqlite` and `node:crypto`, with no third-party packages.
 
+## Anonymous counts and feedback
+
+These work independently of account sign-in. The live game sends to this service after its first paint, using `navigator.sendBeacon` in batches of at most 20 events, after one second or when the page is hidden. Failed batches are dropped. Nothing runs in the simulation loop. Localhost and previews send nothing unless opened with `?measure=8794` (a local API port). Only local origins on 8765 or 8777 are accepted with `NODE_ENV=test DEV=1`. The live site needs no account/config.js change for measurement.
+
+Automatic events and errors are suppressed by Do Not Track, Global Privacy Control, or Settings → Anonymous usage counts being off. Turning the setting off discards the pending batch. The only local measurement state is that preference and markers that a feedback prompt was shown. There is no local visitor id, measurement cookie or fingerprint. Explicit feedback still works with automatic counting off. Account cookies, if the browser attaches one to a beacon, are ignored by both anonymous routes; feedback uses `credentials: omit`.
+
+| Route | Body and limits |
+|---|---|
+| `POST /e` | `{ events: [{ name, id?, screen, referrer? }] }`, at most 20 events and 8 KB. 30 requests per minute per address, plus the existing global route limit. Known fields only. `screen` is `phone` or `desktop`; `referrer` is a host or empty string, only on `app_opened`. Replies `202 { ok: true }`. |
+| `POST /feedback` | `{ rating, comment, page, version }`, at most 4 KB, 5 requests per 10 minutes per address. Rating is an integer from 1 to 5; comment is at most 500 characters. Page is `general`, `problem:<known id>` or `lesson:<known id>`. Version is the game's numeric catalog version, such as `1.1.1.1`. Replies `202 { ok: true }`. |
+
+Event names: `app_opened`, `intro_finished`, `lesson_finished`, `first_problem_started`, `first_problem_passed`, `problem_passed`, `daily_challenge_played`, `interview_finished`, `result_shared`, `beat_link_opened`, `error`. Problem events require a known problem id; lesson completion requires a known lesson id. Intro completion has no id. App opens, intro and lesson completions, shares and beat opens are counted once per page view and applicable id; first start and first pass occur once per page view. Every passed traffic day counts, including retries. Daily played means starting its traffic day. An interview finishes when its completed report is saved. A result is shared when its link is copied or its image shared or saved. A beat open means its payload decoded successfully. These are totals, not a history of individual players; the funnel cannot say that the same person reached each step.
+
+An `error` event adds only `errorName`, `message` and `file`. The client sends at most one per page view. Messages come from a fixed short list, not the exception text; filenames must be in `api/error-files.js`. Unknown or bundled filenames become `unknown`. Startup module failures, uncaught errors, unhandled rejections and failed page/workbench imports are included. No stacks, URLs, route queries, written answers or designs are sent.
+
+SQLite holds only daily totals by event, content id, size class and referring host (plus error category), a daily visitor total, and the five feedback fields plus date. Distinct visitors are estimated using an HMAC of IP and user agent with a fresh random in-memory salt each UTC day. Both the salt and the set of hashes are discarded on rotation and restart; neither is written to the database or backups. A restart may overcount that day; shared browser/address combinations can undercount. Rate-limit addresses are held only in the existing expiring memory counters. No raw collection requests or account links are stored.
+
+Hourly cleanup and startup remove counts older than 13 calendar months and feedback older than 2 years. The existing nightly backup job also runs cleanup before copying and scrubs every retained backup. It still keeps seven nightly copies. UTC dates are used throughout.
+
+Owner reports run locally on the server and expose no public statistics route:
+
+```sh
+cd /srv/systemdesigner-api
+sudo -u sdapi env DB_PATH=/var/lib/systemdesigner-api/systemdesigner.db node api/stats.js 7
+sudo -u sdapi env DB_PATH=/var/lib/systemdesigner-api/systemdesigner.db node api/stats.js feedback 30
+sudo env WEB_LOG_PATH=/var/log/caddy/systemdesigner-web.log node api/stats.js web 14
+```
+
+`days` defaults to 7 and includes today, in UTC (1 to 731 accepted). The first report prints estimated visitors and events per day, the open/start/pass funnel, top passed problems, finished lessons, referrers and error categories. Feedback prints recent ratings and comments. Web mode streams the current Caddy JSON log and rotated `.log`/`.gz` files, counts page GETs including failed loads, skips assets, and prints dates, paths and referring hosts. Web counts include bots and reloads and must not be added to visitor counts. Broken or partial JSON lines are skipped and counted.
+
+### Switch on collection and the page log
+
+Nothing in this change applies server configuration. From the updated checkout on the server, the owner must:
+
+1. Run `sh api/deploy/install.sh` as root to copy the updated API, migrate its database on startup and restart the service. Keep the existing backup timer enabled. No provider credentials are needed for collection. Make the existing `api.systemdesigner.io` proxy live if it is still staged, following the DNS and Caddy steps below; sign-in providers can stay off.
+2. Copy the two new snippets:
+
+   ```sh
+   install -m 644 api/deploy/systemdesigner-web-observation.caddy /etc/caddy/systemdesigner-web-observation.caddy
+   install -m 644 api/deploy/systemdesigner-api-anonymous.caddy /etc/caddy/systemdesigner-api-anonymous.caddy
+   ```
+
+3. Inside the existing `systemdesigner.io` site block, add `import /etc/caddy/systemdesigner-web-observation.caddy`. Keep its current root and serving directives. Inside the existing `api.systemdesigner.io` site block add `import /etc/caddy/systemdesigner-api-anonymous.caddy`. This second import is required: it excludes `/e` and `/feedback` from the existing API access log, so collection IPs, user agents and requests are not written there. Do not add a second site block for either hostname or turn on a second unfiltered logger.
+4. Ensure `/var/log/caddy` is writable by the Caddy user. Use a Caddy version supporting `log_skip`, `log_append`, and daily `roll_at` rotation (current Caddy 2.11). The new web log deletes client and remote IPs, port, headers, TLS details and user id; strips query strings; and reduces referrers to hosts. It rolls daily at midnight or at 20 MiB, with a maximum age of 14 days and 100 files. See the [Caddy log documentation](https://caddyserver.com/docs/caddyfile/directives/log).
+5. Run `caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy`. For later changes to the same log output options, Caddy requires a restart. Check the new web log with a page request containing a test query and referrer: there should be no query, address, cookie, browser string or full referrer. Check that a test POST to `/e` does not appear in any API access log. Logs must not be copied to longer-lived backups.
+6. Publish the static site from this branch (or use the optional release script). Check `node api/stats.js 1` with `DB_PATH` set after a real play and feedback submission. Check `systemctl status systemdesigner-api-backup.timer` and run `systemctl start systemdesigner-api-backup.service` once to verify backup cleanup.
+
+For local end-to-end checks, serve this worktree on 8777, run `NODE_ENV=test DEV=1 PORT=8794 DB_PATH=<temporary file> node api/server.js`, and open `http://localhost:8777/?measure=8794`. No scratch database belongs in the checkout. `tests/observation-qa.mjs` starts its own temporary API, drives both screen sizes and themes, and stops it on completion.
+
 ## Score honesty
 
 The simulation (`sim/`) is pure and deterministic: seeded random numbers, no clock, no DOM. So the service does not trust any score a browser sends. A result is the same "beat my design" payload the game already makes for share links; the service decodes it, rebuilds the exact scenario (the base problem for `seed=practice`, or that date's daily variant for `seed=daily-YYYY-MM-DD`), replays the full day with the game's own engine in a worker thread, and stores **its own** score, marked `replayed`. The score inside the payload is only reported back as `clientScore`. Changes made during a practice day are not replayed: the leaderboard scores the design as submitted.
