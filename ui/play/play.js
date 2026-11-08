@@ -639,7 +639,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       later(() => { const n = graph().nodes.find((q) => q.id === id); if (n && !S.destroyed && S.selected === id) revealIfHidden(n.x, n.y); }, 120);
     }
     root.classList.toggle('pl-has-selection', !!id);
-    if (id && canStructure() && !store.get('seenConnectHandle', false)) {
+    if (id && canStructure() && !S.captionNext && !store.get('seenConnectHandle', false)) {
       store.set('seenConnectHandle', true);
       showCaption('Drag the port to connect. Drag the body to move.', 6500);
     }
@@ -900,7 +900,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   const waitFor = (spec) => (alreadyHolds(spec) ? Promise.resolve() : new Promise((resolve) => waiters.push({ spec, resolve })));
   const sleep = (ms) => new Promise((r) => later(r, ms));
-  // A beat that only explains can be skipped with Next; a beat that asks for an action pauses the day until it is done;
+  // A beat that only explains waits for Next; a beat that asks for an action pauses the day until it is done;
   // waiting for a moment in the day (the spike, the end) offers a fast-forward.
   const nextClick = () => new Promise((resolve) => { S.captionNext = resolve; });
   async function waitTrigger(spec, text) {
@@ -963,7 +963,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         await sleep(2500);
       } else {
         showCaption(text, 0, [{ label: 'Next', primary: true, onClick: () => S.captionNext?.() }]);
-        await Promise.race([sleep(clamp(text.split(/\s+/).length * 330, 3000, 9000)), nextClick()]);
+        await nextClick();
         S.captionNext = null;
       }
       toolbar.pulse(null);
