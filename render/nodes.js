@@ -426,19 +426,20 @@ export function createNodeLayer(PIXI, parent, env) {
       const visible=p=>p.x>=free.x && p.x<=free.x+free.width && p.y>=free.y && p.y<=free.y+free.height;
       const clear=r=>!occupied.some(o=>intersects(r,o));
       const inside=r=>r.x>=free.x&&r.y>=free.y&&r.x+r.width<=free.x+free.width&&r.y+r.height<=free.y+free.height;
-      const choose=(base,p)=>{
-          if(!visible(p))return base;
+      const choose=(base,p,maxMove=Infinity)=>{
+          if(!visible(p))return null;
+          const close=r=>Math.abs(r.x-base.x)+Math.abs(r.y-base.y)<=maxMove;
           const candidates=[];
           for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160])candidates.push({...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy});
-          const nearby=candidates.find(r=>inside(r)&&clear(r));
+          const nearby=candidates.find(r=>inside(r)&&clear(r)&&close(r));
           if(nearby)return nearby;
           // A crowded overview can leave a gap between the regular search lanes.
           // Test the exact edges of the occupied boxes before leaving the free canvas.
           const xs=[free.x,free.x+free.width-base.width,...occupied.flatMap(r=>[r.x-base.width-2,r.x+r.width+2])];
           const ys=[free.y,free.y+free.height-base.height,...occupied.flatMap(r=>[r.y-base.height-2,r.y+r.height+2])];
           let best=null,distance=Infinity;
-          for(const x of xs)for(const y of ys){const r={...base,x,y},d=Math.abs(x-base.x)+Math.abs(y-base.y);if(d<distance&&inside(r)&&clear(r)){best=r;distance=d;}}
-          return best||candidates.find(clear)||base;
+          for(const x of xs)for(const y of ys){const r={...base,x,y},d=Math.abs(x-base.x)+Math.abs(y-base.y);if(d<distance&&inside(r)&&clear(r)&&close(r)){best=r;distance=d;}}
+          return best;
       };
       // Reserve the larger telemetry lanes first. Small names can fit around them.
       const factsById=new Map();
@@ -446,20 +447,27 @@ export function createNodeLayer(PIXI, parent, env) {
         const p=camera.worldToScreen(v.x,v.y);
         const height = v.kind === 'queue' ? 112 : 76;
         const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-height-8,width:114,height},p);
-        factsById.set(v.id,facts);if(visible(p))occupied.push(facts);
+        factsById.set(v.id,facts);if(facts)occupied.push(facts);
       }
       for (const v of ordered) {
         const p = camera.worldToScreen(v.x,v.y), width = Math.max(40,v.labelT.width*z+8), height = v.labelT.height*z+6;
         const preferred={x:p.x-width/2,y:p.y+v.renderHalf*z+5,width,height};
-        const name=choose(preferred,p); if(visible(p))occupied.push(name);
-        const labelX=(name.x+width/2-p.x)/z,labelY=(name.y-p.y)/z;
-        v.labelT.position.set(labelX,labelY);
-        v.labelBg.clear().roundRect((name.x-p.x)/z,labelY,width/z,height/z,3/z).fill({color:P.canvas,alpha:.97});
+        // A dense overview keeps captions near their parts. Branch focus restores any omitted names.
+        const name=choose(preferred,p,z<.35?72:Infinity); if(name)occupied.push(name);
+        v.labelT.renderable=!!name;
+        v.labelBg.clear();
         v.leader.clear();
-        if(visible(p)&&(Math.abs(labelX*z)>8||Math.abs(name.y-preferred.y)>8))v.leader.moveTo(0,0).lineTo(labelX,labelY).stroke({width:1/z,color:P.edgeIdle,alpha:.6});
-        const boxes=[name];
-        if(v.evidenceT.visible){
-          const facts=factsById.get(v.id);
+        const boxes=[];
+        if(name){
+          const labelX=(name.x+width/2-p.x)/z,labelY=(name.y-p.y)/z;
+          v.labelT.position.set(labelX,labelY);
+          v.labelBg.roundRect((name.x-p.x)/z,labelY,width/z,height/z,3/z).fill({color:P.canvas,alpha:.97});
+          if(Math.abs(labelX*z)>8||Math.abs(name.y-preferred.y)>8)v.leader.moveTo(0,0).lineTo(labelX,labelY).stroke({width:1/z,color:P.edgeIdle,alpha:.6});
+          boxes.push(name);
+        }
+        const facts=factsById.get(v.id);
+        v.evidenceT.renderable=!!facts;
+        if(facts){
           v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x)/z,(facts.y-p.y)/z);
           v.labelBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.canvas,alpha:.97});
           boxes.push(facts);

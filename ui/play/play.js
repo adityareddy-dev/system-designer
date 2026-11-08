@@ -390,16 +390,6 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function fitEntry() {
     fitView(false);
-    if (!isPhone() || graph().nodes.length <= 8) return;
-    const g = graph(), ids = [], seen = new Set();
-    let current = g.nodes.find(n => catalog.elementById.get(n.type)?.kind === 'source');
-    while (current && ids.length < 5 && !seen.has(current.id)) {
-      ids.push(current.id); seen.add(current.id);
-      const next = g.edges.filter(e => e.from === current.id && e.kind === 'flow').map(e => g.nodes.find(n => n.id === e.to)).filter(n => n && !seen.has(n.id));
-      current = next.find(n => !['queue','worker-pool'].includes(n.type)) || next[0];
-    }
-    const a = freeArea();
-    if(ids.length > 1) scene.fit({ l:42,r:42,t:a.t+24,b:a.b+42 }, false, { nodeIds:ids,maxZ:.9 });
   }
   function fitAll() {
     S.manualViewUntil = performance.now() + 4000;
@@ -1955,6 +1945,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const coachTop = Math.max(r.bottom, ...coachBlocks.map(el => el.getBoundingClientRect().bottom));
     root.style.setProperty('--pl-coach-top', Math.ceil(coachTop - rr.top + 8) + 'px');
     syncFocusMap();
+    freeArea();
   };
   // When a panel changes size (the status bar grows with live meters, the traffic panel folds), a diagram that now runs
   // underneath a panel is fitted back into the free part of the canvas.
@@ -1969,11 +1960,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   };
   right.addEventListener('click', () => refitSoon());
   let refitT = 0;
-  const refitSoon = () => {
-    if (S.booted) return;
+  const refitSoon = (viewportChanged = false) => {
+    if (S.booted && !viewportChanged) return;
     clearTimeout(refitT);
     refitT = setTimeout(() => {
-      if (S.destroyed || S.connectFrom || !(S.sim.phase !== 'build' || isLesson || isSandbox) || !nodesHidden()) return;
+      if (S.destroyed || S.connectFrom || (!viewportChanged && !(S.sim.phase !== 'build' || isLesson || isSandbox)) || !nodesHidden()) return;
+      if (viewportChanged) { fitView(true); return; }
       const remaining = (S.editUntil || 0) - performance.now();
       if (remaining > 0) { refitT = setTimeout(refitSoon, remaining + 20); return; }
       fitView(true, null, true);
@@ -1988,8 +1980,17 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }, 300);
   };
   try {
-    hudObs = new ResizeObserver(() => { syncHud(); refitSoon(); });
+    let lastSize = { width: root.clientWidth, height: root.clientHeight };
+    hudObs = new ResizeObserver(() => {
+      const nextSize = { width: root.clientWidth, height: root.clientHeight };
+      const resized = nextSize.width !== lastSize.width || nextSize.height !== lastSize.height;
+      lastSize = nextSize;
+      syncHud();
+      if (resized) refreshChecks();
+      refitSoon(resized);
+    });
     hudObs.observe(hud.el); hudObs.observe(root); hudObs.observe(top);
+    hudObs.observe(right);
     hudObs.observe(caption); hudObs.observe(goalChip);
     const traceEl = root.querySelector('.pl-trace');
     if (traceEl) hudObs.observe(traceEl);

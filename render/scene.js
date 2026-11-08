@@ -886,7 +886,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     },
     measureDiagram() {
       const z = camera.zoom;
-      const labels = nodes.list.flatMap(v => [v.labelT, v.evidenceT].filter(t => t.visible && t.text && v.c.visible).map(t => {
+      const labels = nodes.list.flatMap(v => [v.labelT, v.evidenceT].filter(t => t.visible && t.renderable && t.text && v.c.visible).map(t => {
         const b = t.getBounds(); return { id: v.id, kind: t === v.labelT ? 'name' : 'failure', text: t.text, x: b.x, y: b.y, width: b.width, height: b.height };
       }));
       const parts = nodes.list.map(v => { const p = camera.worldToScreen(v.x, v.y); return { id: v.id, x: p.x - (v.renderHalf||36)*z, y: p.y - (v.renderHalf||36)*z, width: 2*(v.renderHalf||36)*z, height: 2*(v.renderHalf||36)*z }; });
