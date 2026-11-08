@@ -799,7 +799,7 @@ Compare an even rotation with choosing the least busy server when requests take 
 
 Experiment: avoid repeated work
 
-Open Remembering answers. Its database is nearly full and repeated answers may be at most 60 seconds old. Put a cache on the request path and predict how many reads still reach the database. The lesson’s check questions ask about a 90 percent hit rate; remember that writes still need their own path.
+Open Remembering answers. Its database is nearly full and repeated answers may be at most 60 seconds old. Put a cache on the request path and predict how many reads still reach the database. The lesson’s check questions ask how hit rate changes that work; remember that writes still need their own path.
 
 A time to live, or TTL, bounds how long an answer may remain in that cache without refresh. More memory does not make an old answer fresh. Long-lived copies help stable public data, while balances or private responses need a different policy.
 

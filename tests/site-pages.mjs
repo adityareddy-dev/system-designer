@@ -6,10 +6,16 @@ import vm from 'node:vm';
 import { execFileSync } from 'node:child_process';
 import { problems } from '../content/problems/index.js';
 import { lessons } from '../content/lessons/index.js';
+import { createCatalog } from '../sim/catalog.js';
+import { makeGuides } from '../tools/site-guides.mjs';
 
 const root = path.resolve(process.argv[2] || '.');
 const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 const exists = f => fs.existsSync(path.join(root, f));
+const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(k=>[k,JSON.parse(read(`catalog/${k}.json`))])));
+const changedLessons = lessons.map(l=>l.id!=='caching' ? l : {...l,steps:l.steps.map(s=>s.kind!=='demo'?s:{...s,goal:{...s.goal,maxTtlSec:123}})});
+const changedGuide = makeGuides({problems,lessons:changedLessons,catalog,accountLive:true}).find(g=>g.id==='caching-load-balancing-queues');
+assert.ok(changedGuide.body.includes('at most 123 seconds old'), 'guide freshness follows lesson content');
 for (const p of problems) assert.ok(exists(`p/${p.id}/index.html`), p.id);
 for (const l of lessons) assert.ok(exists(`learn/${l.id}/index.html`), l.id);
 if (root === process.cwd()) execFileSync(process.execPath, ['tools/gen-site-pages.mjs', '--check'], { stdio: 'inherit' });

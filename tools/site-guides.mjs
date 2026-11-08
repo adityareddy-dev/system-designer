@@ -5,6 +5,7 @@ import { requirements, estimates, trafficDay } from './site-content.mjs';
 export function makeGuides({ problems, lessons, catalog, accountLive }) {
   const byId = new Map(problems.map(p=>[p.id,p]));
   const lessonById = new Map(lessons.map(l=>[l.id,l]));
+  const cacheFreshness = lessonById.get('caching').steps.find(s=>s.kind==='demo').goal.maxTtlSec;
   const make = (id,title,description,build) => {
     const file = `guides/${id}/index.html`;
     const p = (id,text) => { const item = byId.get(id); if (!item) throw Error('Unknown guide problem: '+id); return link(relative(file,`p/${id}/index.html`),text || item.title); };
@@ -169,7 +170,7 @@ ${para('These parts solve different problems. A load balancer shares work, a cac
 ${para('A load balancer selects a healthy server for each request. Remove one server and ask whether the remaining pool has enough room. Spreading work does not create capacity, and health routing does not make a slow database faster. Watch the whole path rather than stopping at the front-end pool.')}
 ${para('Compare an even rotation with choosing the least busy server when requests take different lengths of time. Then consider held-open connections: moving new requests is easier than moving an existing conversation. State which load the balancing policy actually sees.')}
 <h2>Experiment: avoid repeated work</h2>
-<p>Open ${l('caching')}. Its database is nearly full and repeated answers may be at most 60 seconds old. Put a cache on the request path and predict how many reads still reach the database. The lesson’s check questions ask about a 90 percent hit rate; remember that writes still need their own path.</p>
+<p>Open ${l('caching')}. Its database is nearly full and repeated answers may be at most ${num(cacheFreshness)} seconds old. Put a cache on the request path and predict how many reads still reach the database. The lesson’s check questions ask how hit rate changes that work; remember that writes still need their own path.</p>
 ${para('A time to live, or TTL, bounds how long an answer may remain in that cache without refresh. More memory does not make an old answer fresh. Long-lived copies help stable public data, while balances or private responses need a different policy.')}
 <p>Now use the ${p('url-shortener')} to test a cache stampede. When a copy empties, simultaneous misses can repeat the original work. Combining identical fetches limits that rush; spare storage capacity still matters for unrelated misses.</p>
 <h2>Experiment: spend time instead of dropping work</h2>
