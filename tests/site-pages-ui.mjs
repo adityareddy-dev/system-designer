@@ -19,6 +19,27 @@ const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH || 
 try {
   const pg=await browser.newPage();
   const errors=[];pg.on('pageerror',e=>errors.push(e.message));
+  await pg.evaluateOnNewDocument(() => localStorage.setItem('hotpath.v1.seenIntro', 'true'));
+  const heldRequests = [];
+  await pg.setRequestInterception(true);
+  const holdCatalog = request => {
+    if (new URL(request.url()).pathname.includes('/catalog/')) heldRequests.push(request);
+    else request.continue();
+  };
+  pg.on('request', holdCatalog);
+  await pg.goto(BASE);
+  await pg.waitForFunction(() => !window.__game && document.querySelector('.site-skip'));
+  await pg.focus('.site-skip');
+  await pg.click('.site-skip');
+  assert.equal(await pg.evaluate(() => location.hash), '#content');
+  assert.equal(await pg.evaluate(() => document.activeElement.id), 'content', 'skip link focuses the readable main content');
+  assert(heldRequests.length > 0, 'catalog loading is delayed');
+  await Promise.all(heldRequests.map(request => request.continue()));
+  pg.off('request', holdCatalog);
+  await pg.setRequestInterception(false);
+  await pg.waitForFunction(() => document.documentElement.dataset.ready === '1');
+  assert.equal(await pg.evaluate(() => window.__game.getState().route), '/', 'content anchor opens the game home after delayed boot');
+  assert.doesNotMatch(await pg.evaluate(() => document.body.innerText), /Nothing here/);
   for (const width of [1366,390]) for (const theme of ['light','dark']) {
     await pg.setViewport({width,height:844,deviceScaleFactor:1});
     await pg.emulateMediaFeatures([{name:'prefers-color-scheme',value:theme}]);

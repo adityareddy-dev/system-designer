@@ -104,7 +104,7 @@ console.log('\nBuild status and empty designs');
   check('an empty design is not told it holds', !/Everything holds/.test(chip) && /Nothing to test yet/.test(chip), chip);
   const r = await ev(() => { window.__game.startTraffic(); const s = window.__game.step(86400000); return s.score; });
   check('an empty design scores almost nothing', r && r.total <= 60 && !r.passed, JSON.stringify(r));
-  await sleep(500);
+  await page.waitForFunction(() => document.querySelector('.pl-overlay--debrief')?.innerText.includes('Nothing was served'));
   await ev(() => { const details = document.querySelector('.pl-score-details'); if (details) details.open = true; });
   const txt = await ev(() => document.querySelector('.pl-overlay--debrief')?.innerText || '');
   const bad = (txt.match(/[^.\n]*\b0 minutes[^.\n]*/) || [''])[0];

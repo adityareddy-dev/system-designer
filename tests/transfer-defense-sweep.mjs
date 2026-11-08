@@ -12,7 +12,7 @@ import { defenseQuestions } from '../ui/play/interview.js';
 import { checkClaim } from '../content/problems/defense-claims.js';
 import sizing, { twistSizing } from '../content/sizing.js';
 if (process.argv.length === 2) {
-  const lanes = Array.from({ length: Math.min(4, availableParallelism(), problems.length) }, () => []);
+  const lanes = Array.from({ length: Math.min(8, availableParallelism(), problems.length) }, () => []);
   problems.forEach((problem, i) => lanes[i % lanes.length].push(problem.id));
   const children = [];
   const outputs = await Promise.all(lanes.map(ids => new Promise((resolve, reject) => {

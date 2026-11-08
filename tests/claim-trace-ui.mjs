@@ -7,6 +7,7 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH
 try {
   const page = await browser.newPage();
   await page.goto(site.base);
+  await page.waitForFunction(() => document.documentElement.dataset.ready === '1');
   for (const width of [1366,390]) for (const theme of ['light','dark']) for (const motion of ['full','reduce']) {
     await page.setViewport({width,height:844});
     const measured = await page.evaluate(async ({theme,motion}) => {

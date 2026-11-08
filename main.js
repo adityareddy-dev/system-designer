@@ -101,6 +101,8 @@ async function boot() {
   darkQuery?.addEventListener?.('change', applyLook);
   motionQuery?.addEventListener?.('change', () => { applyLook(); bus.emit('settings', { key: 'reducedMotion', value: settings.get('reducedMotion') }); });
 
+  // The readable home page uses a content anchor before the game takes over.
+  if (location.hash === '#content') router.replace('#/');
   const appEl = document.getElementById('app');
   appEl.innerHTML = '';
   const shell = mountShell(appEl, ctx);

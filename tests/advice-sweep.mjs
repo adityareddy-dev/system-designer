@@ -9,7 +9,7 @@ import { createSim } from '../sim/engine.js';
 import { problems } from '../content/problems/index.js';
 // Independent problem days use separate processes so the complete sweep fits the check runner's time limit.
 if (process.argv.length === 2) {
-  const lanes = Array.from({ length: Math.min(4, availableParallelism()) }, () => []);
+  const lanes = Array.from({ length: Math.min(8, availableParallelism()) }, () => []);
   problems.forEach((p,i) => lanes[i % lanes.length].push(p.id));
   const children = [];
   const outputs = await Promise.all(lanes.map(ids => new Promise((resolve,reject) => {

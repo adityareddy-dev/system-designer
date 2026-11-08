@@ -38,6 +38,12 @@ const effectFact = ({op,params:p}) => {
   const out = [];
   if (op==='traffic') out.push(`Traffic reaches ${num(p.factor)} times the scheduled load; rises over ${num(p.rampSec)} seconds, holds for ${num(p.holdSec)} seconds and eases over ${num(p.decaySec)} seconds.`);
   if (op==='attack') out.push(`Extra attack traffic is ${num(p.factorOfPeak)} times the configured peak.`);
+  if (op==='fail' && p.errorRate != null) out.push(`Failed calls: ${pct(p.errorRate)}.`);
+  if (op==='fail' && p.addLatencyMs != null) out.push(`Added response time: ≈ ${num(p.addLatencyMs)} ms.`);
+  if (['fanout','costMultiplier','capacity'].includes(op)) out.push(`${op==='fanout' ? 'Work' : op==='costMultiplier' ? 'Billed usage' : 'Available capacity'} multiplier: ${num(p.factor)}.`);
+  if (p.perHour != null) out.push(`Capacity lost per hour: ${pct(p.perHour)}.`);
+  if (p.addMs != null) out.push(`Added startup time: ≈ ${num(p.addMs)} ms.`);
+  if (p.restartSec != null) out.push(`Restart window: ≈ ${num(p.restartSec)} seconds.`);
   if (p.share != null) out.push(`Affected share: ${pct(p.share)}.`);
   if (p.rpsCapFactor != null) out.push(`Provider capacity falls to ${pct(p.rpsCapFactor)} of its configured quota.`);
   if (p.lagSec != null) out.push(`Copy lag: ≈ ${num(p.lagSec)} seconds.`);
@@ -45,11 +51,35 @@ const effectFact = ({op,params:p}) => {
   if (p.durationSec != null) out.push(p.durationSec === 'untilFixed' ? 'Lasts until detected and repaired.' : `Duration: ≈ ${num(p.durationSec)} seconds.`);
   return out.join(' ');
 };
+// Quantities belong to the merged effect facts, not the catalog's default story.
+const EVENT_STORY = {
+  'flash-crowd': 'A scheduled launch brings a sudden rush of requests.',
+  'celebrity-fanout': 'A popular account posts, multiplying the work needed to update follower feeds.',
+  'db-failover': 'The primary database dies. Recovery depends on the standby and failover settings.',
+  'zone-outage': 'An availability zone loses power or network access.',
+  'region-outage': 'A whole cloud region goes down.',
+  'slow-dependency': 'An outside service slows down. Your servers fill with requests waiting on it.',
+  'dependency-outage': 'An outside service fails calls during an outage.',
+  'retry-storm': 'A brief failure causes clients to retry, adding load while the service recovers.',
+  'ddos-attack': 'A botnet floods the system with junk requests.',
+  'bot-scraping': 'Bots try stolen passwords and scrape pages, adding unwanted traffic.',
+  'bad-deploy': 'A new version ships with a bug and some requests fail.',
+  'noisy-neighbor': 'A competing workload reduces the capacity available to the live service.',
+  'cold-start': 'A burst needs new serverless instances, adding startup delay.',
+  'duplicate-delivery': 'The queue redelivers messages. Without duplicate protection, side effects may be applied twice.',
+  'network-partition': 'Your regions cannot talk to each other during the partition.',
+  'dns-misconfig': 'A wrong DNS record sends users to an unavailable address until the cached mistake expires.',
+  'data-corruption': 'A buggy data change damages rows, and replicas copy the damage.',
+  'cardinality-explosion': 'A metric label creates many more distinct series, increasing the bill.',
+  'gpu-shortage': 'Demand rises while the cloud cannot supply more GPUs.',
+  'schema-migration-lock': 'A schema change locks a busy table, blocking writes.',
+  'overseas-launch': 'A launch brings users who are far from your servers.',
+};
 export function trafficDay(p,catalog) {
   const events = (p.events || []).map((entry,i)=>{
     const inst = makeInstance(catalog,entry,i,catalog.world.sim.dayMs);
     const time = entry.at || `${Math.floor(entry.atMs/3600000).toString().padStart(2,'0')}:${Math.floor(entry.atMs/60000)%60}`;
-    return `<li><h3>${esc(time)} · ${esc(inst.name)}</h3>${para(inst.def.description)}${para(inst.effects.map(effectFact).filter(Boolean).join(' '))}</li>`;
+    return `<li><h3>${esc(time)} · ${esc(inst.name)}</h3>${para(entry.text?.description ?? EVENT_STORY[inst.id] ?? inst.def.description)}${para(inst.effects.map(effectFact).filter(Boolean).join(' '))}</li>`;
   }).join('');
   return `${para((CURVE[p.traffic.curve] || p.traffic.curve) + '. The clock covers 00:00 to 24:00 in the home region. Events add pressure on top of that normal traffic.')}${events ? `<ol>${events}</ol>`:para('This scenario has no scheduled disruptions. Test whether the design meets the steady workload.')}`;
 }

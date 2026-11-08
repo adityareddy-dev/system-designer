@@ -8,11 +8,24 @@ import { problems } from '../content/problems/index.js';
 import { lessons } from '../content/lessons/index.js';
 import { createCatalog } from '../sim/catalog.js';
 import { makeGuides } from '../tools/site-guides.mjs';
+import { trafficDay } from '../tools/site-content.mjs';
 
 const root = path.resolve(process.argv[2] || '.');
 const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 const exists = f => fs.existsSync(path.join(root, f));
 const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(k=>[k,JSON.parse(read(`catalog/${k}.json`))])));
+for (const [id, stale, expected] of [
+  ['video-upload-pipeline', /20 minutes/, /2,400 seconds/],
+  ['calendar-invites', /1 percent/, /Affected share: 5%/],
+]) {
+  const problem = problems.find(p => p.id === id);
+  const day = trafficDay(problem, catalog);
+  assert.doesNotMatch(day, stale, id + ' omits catalog quantities');
+  assert.match(day, expected, id + ' follows scenario effects');
+  assert.equal(read(`p/${id}/index.html`).includes(day), true, id + ' generated page follows scenario effects');
+  const authored = { ...problem, events: problem.events.map(e => ({ ...e, text: { ...e.text, description: 'The upstream service is unavailable during maintenance.' } })) };
+  assert.match(trafficDay(authored, catalog), /The upstream service is unavailable during maintenance/);
+}
 const changedLessons = lessons.map(l=>l.id!=='caching' ? l : {...l,steps:l.steps.map(s=>s.kind!=='demo'?s:{...s,goal:{...s.goal,maxTtlSec:123}})});
 const changedGuide = makeGuides({problems,lessons:changedLessons,catalog,accountLive:true}).find(g=>g.id==='caching-load-balancing-queues');
 assert.ok(changedGuide.body.includes('at most 123 seconds old'), 'guide freshness follows lesson content');

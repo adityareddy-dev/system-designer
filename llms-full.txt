@@ -453,15 +453,15 @@ Traffic concentrated in working hours. The clock covers 00:00 to 24:00 in the ho
 
 10:00 · Bot scraping
 
-Bots try stolen passwords and scrape every page, at half your normal traffic, all day.
+Bots try stolen passwords and scrape pages, adding unwanted traffic.
 
 Extra attack traffic is 1 times the configured peak. Duration: ≈ 7,200 seconds.
 
 15:30 · Retry storm
 
-A half-minute blip fails most requests; every client retries at once, up to three times, and the load roughly quadruples.
+A brief failure causes clients to retry, adding load while the service recovers.
 
-Duration: ≈ 30 seconds. Duration: ≈ 1,200 seconds.
+Failed calls: 90%. Duration: ≈ 30 seconds. Duration: ≈ 1,200 seconds.
 
 Play this problem. Keep one baseline, predict a change and compare the next full day. The in-game editorial has calibrated reference designs after you finish a traffic day.
 
@@ -558,13 +558,13 @@ Traffic reaches 10 times the scheduled load; rises over 10 seconds, holds for 60
 
 14:00 · Zone outage
 
-One data-centre building (an availability zone) loses power or network for an hour.
+An availability zone loses power or network access.
 
 Duration: ≈ 3,600 seconds.
 
 19:00 · Duplicate delivery
 
-The queue redelivers 1 percent of messages. Without protection, some customers are charged twice.
+The queue redelivers messages. Without duplicate protection, side effects may be applied twice.
 
 Affected share: 1%. Duration: ≈ 3,600 seconds.
 
@@ -657,9 +657,9 @@ Consumer traffic, busiest in the evening. The clock covers 00:00 to 24:00 in the
 
 12:00 · Celebrity post
 
-Someone with 50 million followers posts. Copying it into every follower's feed means 50 million writes.
+A popular account posts, multiplying the work needed to update follower feeds.
 
-Duration: ≈ 900 seconds.
+Work multiplier: 25. Duration: ≈ 900 seconds.
 
 17:30 · Hot key
 
@@ -768,15 +768,15 @@ Provider capacity falls to 40% of its configured quota. Duration: ≈ 3,600 seco
 
 13:00 · Duplicate delivery
 
-The queue redelivers 1 percent of messages. Without protection, some customers are charged twice.
+The queue redelivers messages. Without duplicate protection, side effects may be applied twice.
 
 Affected share: 3%. Duration: ≈ 3,600 seconds.
 
 18:30 · Dependency outage
 
-An outside service (payments, email, maps, an AI model) fails every call for 20 minutes.
+An outside service fails calls during an outage.
 
-Duration: ≈ 1,200 seconds.
+Failed calls: 100%. Duration: ≈ 1,200 seconds.
 
 Play this problem. Keep one baseline, predict a change and compare the next full day. The in-game editorial has calibrated reference designs after you finish a traffic day.
 

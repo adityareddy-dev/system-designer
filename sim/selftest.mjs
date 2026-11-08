@@ -56,6 +56,11 @@ const nodeOut = (r, id) => r.nodes.find((n) => n.id === id);
 const evOut = (r, id) => r.events.find((e) => e.id === id);
 const avail = (r) => r.slo.availability.actual;
 
+if (process.argv.includes('--perf-contract-only')) {
+  console.log(JSON.stringify(contractPerfRun()));
+  process.exit(0);
+}
+
 if (process.argv.includes('--perf-only')) {
   console.log(JSON.stringify(perfRun()));
   process.exit(0);
@@ -480,17 +485,47 @@ function perfRun() {
   return { n, lanes: sim.debug().nActive, times, per, worst, score: r.score.total };
 }
 
+// Thirty active parts on fourteen independent service paths, with reads and writes.
+function contractPerfRun() {
+  const p = problem({ requirements: { peakRps: 40000 } });
+  const sim = createSim({ catalog, problem: p, seed: 'perf-contract' });
+  const lb = sim.addNode('regional-lb', 0, 0, { id: 'lb', zones: 3 });
+  sim.connect('users', lb);
+  for (let i = 0; i < 14; i++) {
+    const app = sim.addNode('container-cluster', 100, i * 100, { id: 'app' + i, units: 3, zones: 3 });
+    const store = sim.addNode('kv-store', 200, i * 100, { id: 'store' + i, units: 3, zones: 3 });
+    sim.connect(lb, app); sim.connect(app, store);
+  }
+  const times = [];
+  let result;
+  for (let i = 0; i < 6; i++) {
+    sim.reset(); sim.start();
+    const start = performance.now();
+    sim.advance(DAY);
+    if (i >= 3) times.push(performance.now() - start);
+    result = sim.result();
+  }
+  return { n: result.graph.nodes.length, active: result.nodes.filter(n => n.peakRequests > 0 || (catalog.elementById.get(n.type).kind === 'source' && result.slo.availability.actual > 0)).length, times };
+}
+
 section('Performance');
 {
   const { spawnSync } = await import('node:child_process');
   const { fileURLToPath } = await import('node:url');
+  const baselineOut = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--perf-contract-only'], { encoding: 'utf8' });
+  let baseline = null;
+  try { baseline = JSON.parse(baselineOut.stdout.trim().split('\n').pop()); } catch { /* reported below */ }
+  check('a full day with 30 active parts runs in under 400 ms', baseline?.n === 30 && baseline.active === 30 && Math.min(...baseline.times) < 400,
+    baseline ? `${baseline.active} active parts, ${baseline.times.map(t => t.toFixed(0)).join(' / ')} ms` : baselineOut.stderr);
   const out = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--perf-only'], { encoding: 'utf8' });
   let p = null;
   try { p = JSON.parse(out.stdout.trim().split('\n').pop()); } catch { /* reported below */ }
   if (!p) check('performance run', false, (out.stderr || out.stdout || '').slice(0, 300));
   else {
     const best = Math.min(...p.times);
-    check(`a full day of a ${p.n}-node graph (${p.lanes} region and type lanes) runs in under 400 ms`, p.n >= 30 && best < 400,
+    // DESIGN section 11 budgets 3 ms per eight ticks, including a full traffic day.
+    const frames = DAY / catalog.world.sim.tickMs / 8;
+    check(`a full day of a ${p.n}-node graph (${p.lanes} region and type lanes) fits the 3 ms per eight ticks budget`, p.n >= 30 && best / frames < 3,
       `${p.times.map((t) => t.toFixed(0)).join(' / ')} ms, ${(best / 8640 * 1000).toFixed(1)} µs per tick`);
     check('8 ticks per frame (8x) stays under 3 ms of sim time', p.per < 3, `${p.per.toFixed(2)} ms mean, ${p.worst.toFixed(2)} ms worst frame`);
   }
