@@ -1,8 +1,10 @@
 // Browser regressions for saved sandbox workloads, attempt-gated hints and paths beyond the basics.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox','--enable-unsafe-swiftshader'] });
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 try {
   const page = await browser.newPage(), errors = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -40,4 +42,4 @@ try {
   }
   assert.deepEqual(errors,[]);
   console.log('Learning flows: sandbox draft and slot workloads, delayed hints, and deeper-track navigation passed.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

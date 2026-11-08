@@ -1,8 +1,10 @@
 // HUD gates, configured history promises and target-based score explanations stay consistent.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 
-const BASE = process.argv[2] || 'http://localhost:8765/';
+const BASE = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage();
 const errors = [];
@@ -96,5 +98,5 @@ try {
   assert.deepEqual(errors, []);
   console.log('HUD prediction gate, retention safety and score explanation checks passed.');
 } finally {
-  await browser.close();
+  await browser.close(); await site.close();
 }

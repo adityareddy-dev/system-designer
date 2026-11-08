@@ -1,9 +1,11 @@
 // Lesson and drill choices share a prediction commitment and native keyboard focus order.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import { lessonById } from '../content/lessons/index.js';
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 try {
   const page = await browser.newPage();
   await page.evaluateOnNewDocument(() => { localStorage.setItem('hotpath.v1.seenIntro','true'); localStorage.setItem('hotpath.v1.settings',JSON.stringify({soundMuted:true})); });
@@ -32,4 +34,4 @@ try {
     }
   }
   console.log('Lesson quiz, transfer and drill predictions share wording, reveal, keyboard and focus on both sizes and themes.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

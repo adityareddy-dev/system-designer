@@ -1,9 +1,11 @@
 // New dispatches start at the caller while retained copies and queued jobs keep their identity.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import { lessons } from '../content/lessons/index.js';
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
@@ -126,5 +128,5 @@ try {
   assert.deepEqual(errors, []);
   console.log('Dispatch origins, still states, retained cache copies and FIFO movement passed.');
 } finally {
-  await browser.close();
+  await browser.close(); await site.close();
 }

@@ -64,8 +64,14 @@ for (const url of locations) {
     for (const hash of ['', '#requirements', '#/practice/url-shortener', '#/beat/jEncoded_design-123']) {
       let forwarded;
       const location = { hash, href: 'https://example.test/subpath/' + file.replace(/index.html$/, '') + hash, replace: to=>{forwarded=to;} };
-      vm.runInNewContext(js, { location, URL });
+      const listeners = {};
+      vm.runInNewContext(js, { location, URL, addEventListener: (name, fn) => listeners[name] = fn });
       assert.equal(forwarded, hash.startsWith('#/beat/') ? 'https://example.test/subpath/' + hash : undefined, `forwarding ${file} ${hash}`);
+      forwarded = undefined;
+      location.hash = '#/beat/jSame_tab-456';
+      location.href = 'https://example.test/subpath/' + file.replace(/index.html$/, '') + location.hash;
+      listeners.hashchange?.();
+      assert.equal(forwarded, 'https://example.test/subpath/#/beat/jSame_tab-456', `same-tab forwarding ${file}`);
     }
   }
 }

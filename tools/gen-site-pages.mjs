@@ -24,7 +24,7 @@ const faqs = [
   ['How is it different from reading a book?','You make a prediction and watch your own design face traffic and failures. A debrief gives measurements for a retry. Books can explain the ideas; playing makes you apply and test them.'],
 ];
 const faqData = { '@type':'FAQPage', mainEntity:faqs.map(([name,text])=>({'@type':'Question',name,acceptedAnswer:{'@type':'Answer',text}})) };
-const beatScript = `(function(){var h=location.hash||'';if(h.indexOf('#/beat/')===0)location.replace(new URL('../../',location.href).href+h);})();`;
+const beatScript = `(function(){function forward(){var h=location.hash||'';if(h.indexOf('#/beat/')===0)location.replace(new URL('../../',location.href).href+h);}addEventListener('hashchange',forward);forward();})();`;
 const rootCrumb = ['Home','index.html'];
 const collection = { '@type':'CollectionPage' };
 export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {

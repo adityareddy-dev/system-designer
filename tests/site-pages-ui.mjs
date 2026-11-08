@@ -2,12 +2,14 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import { createCatalog } from '../sim/catalog.js';
 import { createSim } from '../sim/engine.js';
 import { problemById } from '../content/problems/index.js';
 import { encodeShare, scoreOf } from '../compete/share.js';
 
-const BASE=process.argv[2] || 'http://127.0.0.1:8765/';
+const BASE=site.base;
 const catalog=createCatalog(Object.fromEntries(['elements','requests','events','world'].map(k=>[k,JSON.parse(fs.readFileSync(`catalog/${k}.json`,'utf8'))])));
 const problem=problemById.get('url-shortener');
 const sim=createSim({catalog,problem,seed:'practice',mode:'practice'});
@@ -57,6 +59,10 @@ try {
   assert.equal(state.score.total,sim.result().score.total,'page entry preserves deterministic play');
   const progress=await pg.evaluate(()=>JSON.parse(localStorage.getItem('hotpath.v1.progress')));
   assert.equal(progress['chat-app'].bestScore,800,'existing progress remains');
+  await pg.goto(BASE+'p/url-shortener/',{waitUntil:'load'});
+  await pg.evaluate(payload => location.hash = '#/beat/' + payload, payload);
+  await pg.waitForFunction(() => document.body.innerText.includes('Reading check challenges you'));
+  assert.equal(new URL(pg.url()).pathname, new URL(BASE).pathname, 'same-tab beat links enter the game');
   for(const route of ['p/url-shortener/','d/2026-11-07/']) {
     await pg.goto(BASE+route+'#/beat/'+payload,{waitUntil:'load'});
     await pg.waitForFunction(()=>document.body.innerText.includes('Reading check challenges you'),{timeout:30000});
@@ -68,4 +74,4 @@ try {
   await pg.waitForFunction(()=>location.hash==='#/challenge/2026-11-07',{timeout:30000});
   assert.deepEqual(errors,[]);
   console.log('PASS readable browser pages at both widths and themes; full scored day, saved progress, problem and daily beat links');
-} finally {await browser.close();}
+} finally {await browser.close(); await site.close();}

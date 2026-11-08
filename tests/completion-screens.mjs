@@ -1,6 +1,8 @@
 // Completion copy agrees across the report, checkpoint, bank card and notification for every state.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import { problems } from '../content/problems/index.js';
 import { completionState } from '../ui/play/completion.js';
 const cases = [
@@ -23,7 +25,7 @@ for (const p of problems) for (const test of cases) assert.equal(completionState
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox','--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage();
-  await page.goto(process.argv[2] || 'http://localhost:8765/');
+  await page.goto(site.base);
   const checked = await page.evaluate(async cases => {
     const { loadCatalog } = await import('./sim/catalog.js');
     const { createSim } = await import('./sim/engine.js');
@@ -53,9 +55,9 @@ try {
   // Bank cards consume saved learning history and preserve legacy solved records.
   for (const saved of [{ solvedAt: 1, attempts: 1 }, { solvedAt: 1, attempts: 1, learning: { assistedAt: 2 } }, { solvedAt: 1, attempts: 1, learning: { masteredAt: 3 } }]) {
     await page.evaluate(saved => { localStorage.setItem('hotpath.v1.progress', JSON.stringify({ 'url-shortener': saved })); }, saved);
-    await page.goto((process.argv[2] || 'http://localhost:8765/') + '?completion-check=' + Math.random() + '#/practice');
+    await page.goto((site.base) + '?completion-check=' + Math.random() + '#/practice');
     await page.waitForSelector('a[href="#/practice/url-shortener"]');
     assert.match(await page.$eval('a[href="#/practice/url-shortener"]', el => el.textContent), new RegExp(completionState(problems[0], {}, null, saved).label));
   }
   console.log(`${problems.length} problems × ${cases.length} completion states; report, checkpoint and saved bank labels agree.`);
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

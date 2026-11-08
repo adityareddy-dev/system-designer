@@ -1,10 +1,12 @@
 // A report never applies a supplied count: the player's checked arithmetic is the only applied value.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage();
-  await page.goto(process.argv[2] || 'http://localhost:8765/');
+  await page.goto(site.base);
   const outcome = await page.evaluate(async () => {
     const { loadCatalog } = await import('./sim/catalog.js');
     const { createSim } = await import('./sim/engine.js');
@@ -179,4 +181,4 @@ try {
   assert.match(outcome.latency.checkedText, /Plan, predicted effect and arithmetic checked/);
   assert.equal(outcome.latency.back, 1, 'a latency repair with checked arithmetic returns to Draw');
   console.log('Repair plan, effect and count are required; worked arithmetic marks assistance; Set applies the player’s checked number.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

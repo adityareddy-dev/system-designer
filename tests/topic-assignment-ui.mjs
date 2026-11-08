@@ -1,9 +1,11 @@
 // Every problem exposes matched wording and preserves explicit self-assignment of unmatched questions.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox'] });
 try {
-  const page = await browser.newPage(); await page.goto(process.argv[2] || 'http://localhost:8765/');
+  const page = await browser.newPage(); await page.goto(site.base);
   const results = await page.evaluate(async () => {
     const { problems } = await import('./content/problems/index.js');
     const { questionAnalysis } = await import('./ui/play/question-topics.js');
@@ -26,4 +28,4 @@ try {
     assert(result.after.includes('Self-assigned by you. This is a wording check.'));
   }
   console.log(`${results.length} problems: matched phrases, self-assigned topics and wording warning verified in the browser.`);
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

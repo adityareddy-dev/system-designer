@@ -2,8 +2,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import {lessons} from '../content/lessons/index.js';
-const base=process.argv[2]||'http://localhost:8765/';
+const base=site.base;
 const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:'new',args:['--no-sandbox']});
 const stages=lessons.flatMap(l=>l.steps.flatMap((s,i)=>s.kind==='figure'?[{id:l.id,step:i,view:s.view}]:[]));
 const errors=[];
@@ -68,4 +70,4 @@ try{
  }
  assert.equal(await page.evaluate(()=>localStorage.getItem('figure-progress-sentinel')),'keep');assert.deepEqual(errors,[]);
  console.log(`${stages.length} figure stages opened and operated in four layouts with a reduced-motion path.`);
-}finally{await browser.close();}
+}finally{await browser.close(); await site.close();}

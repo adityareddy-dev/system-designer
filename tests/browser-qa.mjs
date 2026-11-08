@@ -2,12 +2,14 @@
 // to the debrief, checks the challenge and share links, reads window.__perf and takes screenshots.
 // Run from the harness folder: node browser-qa.mjs [baseUrl] [outDir]
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { lessons } from '../content/lessons/index.js';
 
-const BASE = process.argv[2] || 'http://localhost:8765/';
+const BASE = site.base;
 const OUT = process.argv[3] || path.join(os.tmpdir(), 'system-designer-browser-qa');
 fs.mkdirSync(OUT, { recursive: true });
 const report = { consoleErrors: [], pageErrors: [], failedRequests: [], problems: [], lessons: [], played: [], checks: {}, perf: null, shots: [] };
@@ -219,7 +221,7 @@ await sleep(1500);
 report.checks.phoneOverflowPlay = await ev(() => document.documentElement.scrollWidth > window.innerWidth + 1);
 await shot('16-phone-problem');
 
-await browser.close();
+await browser.close(); await site.close();
 const bad = report.problems.filter((p) => !p.ok || p.runtimeErrors);
 const badL = report.lessons.filter((l) => !l.ok || l.runtimeErrors);
 report.summary = {

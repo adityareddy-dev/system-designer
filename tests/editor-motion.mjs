@@ -122,7 +122,7 @@ try {
     await page.waitForSelector('.pl-victory-numbers b');
     const readings = await page.evaluate(async () => {
       const samples = [], start = performance.now();
-      while (performance.now() - start < 1300) {
+      while ((performance.now() - start < 1300 || samples.length < 6) && performance.now() - start < 10000) {
         await new Promise(requestAnimationFrame);
         const target = document.querySelector('.pl-victory-numbers b'), score = document.querySelector('.pl-dial-n');
         if (target && score) samples.push([target.textContent, score.textContent]);

@@ -1,8 +1,10 @@
 // Reopening a route during its module load waits for the surviving workbench.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage();
@@ -34,5 +36,5 @@ try {
   assert.deepEqual(errors, []);
   console.log('Overlapping route loads resolve to the surviving sandbox workbench.');
 } finally {
-  await browser.close();
+  await browser.close(); await site.close();
 }

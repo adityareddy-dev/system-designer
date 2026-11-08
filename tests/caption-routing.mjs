@@ -2,8 +2,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage(), errors = [];
@@ -90,4 +92,4 @@ try {
   assert.equal(diagram.labelPartOverlaps, 0, 'wrapped queue facts and heading clear every face');
   assert.equal(diagram.wireLabelCrossings, 0, 'wires clear the full queue caption lane');
   assert.deepEqual(errors, []);
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

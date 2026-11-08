@@ -258,7 +258,7 @@ export function createNodeLayer(PIXI, parent, env) {
       v.x = v.drag.x; v.y = v.drag.y; v.vx = v.vy = 0;
       if (v.dragUntil && now > v.dragUntil) { v.drag = null; v.dragUntil = 0; }
     } else if (reduced) {
-      v.x = v.tx; v.y = v.ty;
+      v.x = v.tx; v.y = v.ty; v.vx = v.vy = 0;
     } else if (v.x !== v.tx || v.y !== v.ty || v.vx || v.vy) {
       let rem = Math.min(dt, 64) / 1000;
       while (rem > 0) {
@@ -274,7 +274,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.c.position.set(v.x, v.y);
     if (reduced) {
       if (v.c.alpha < 1) v.c.alpha = Math.min(1, v.c.alpha + dt / 120);
-      if (v.s !== 1) { v.s = 1; v.c.scale.set(1); }
+      v.s = 1; v.vs = 0; v.c.scale.set(1);
     } else if (v.s !== 1 || v.vs) {
       let rem = Math.min(dt, 64) / 1000;
       while (rem > 0) { const h = Math.min(rem, 0.004); v.vs += (-K * (v.s - 1) - C * v.vs) * h; v.s += v.vs * h; rem -= h; }

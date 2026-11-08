@@ -1,10 +1,12 @@
 // Short numeric predictions unlock drill choices and remain visible beside the outcome.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
-  await page.goto(process.argv[2] || 'http://localhost:8765/');
+  await page.goto(site.base);
   const result = await page.evaluate(async () => {
     const { renderDrill } = await import('./ui/shell/drill.js');
     const host = document.createElement('div'); document.body.append(host);
@@ -33,4 +35,4 @@ try {
   assert(result.visibleAfter);
   assert.match(result.outcome, /Your prediction \(not graded\): 80\./);
   console.log('Blank predictions stay gated; one- and two-digit answers unlock choices and are preserved with the outcome.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
@@ -42,4 +44,4 @@ try {
     assert(sizes.every(h => h >= 44), 'touch targets');
   }
   console.log('Defend: nonblank gate, keyboard reveal and review, retained draft, phone and both themes passed.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

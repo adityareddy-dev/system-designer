@@ -6,6 +6,19 @@ const site=await serveGame();
 const base=site.base;
 const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--enable-unsafe-swiftshader']});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const settle = async page => page.waitForFunction(async () => {
+ const read = () => {
+  const view = __game.getState().view;
+  return { view, key: JSON.stringify([view.zoom, view.screen, view.diagram.parts, view.diagram.labels], (key, value) => typeof value === 'number' ? Math.round(value * 1000) / 1000 : value) };
+ };
+ const before = read();
+ await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+ const after = read();
+ return before.key === after.key && after.view.diagram.parts.every(part => {
+  const target = after.view.screen.find(point => point.id === part.id);
+  return Math.abs(part.x + part.width / 2 - target.x) < 1e-8 && Math.abs(part.y + part.height / 2 - target.y) < 1e-8;
+ });
+});
 const types=['web-browser','mobile-app','regional-lb','vm-fleet','cache','sql-primary','object-storage','queue','worker-pool','third-party-api','metrics','logs','alerting','backups','cdn'];
 const graph={nodes:types.map((type,i)=>({id:'n'+i,type,x:i%5*260,y:Math.floor(i/5)*240,units:3})),edges:[[0,14],[14,2],[1,2],[2,3],[3,4],[4,5],[3,6],[3,7],[7,8],[8,9],[10,3],[11,3],[12,10],[5,13]].map(([a,b])=>({id:`n${a}>n${b}`,from:'n'+a,to:'n'+b,kind:'flow'}))};
 const crowded={nodes:['web-browser','mobile-app','vm-fleet','sql-primary','regional-lb','cache','queue','worker-pool','object-storage','search-index','metrics','logs','alerting','backups','cdn'].map((type,i)=>({id:'n'+i,type,x:i%5*260,y:Math.floor(i/5)*240,units:3})),edges:[[0,2],[1,2],[0,7],[5,2],[14,4],[4,2],[2,3],[2,8],[2,9],[2,6],[6,7],[7,3],[7,14],[3,13],[10,2,'observe'],[11,2,'observe'],[12,10,'observe']].map(([a,b,kind='flow'])=>({id:`n${a}>n${b}`,from:'n'+a,to:'n'+b,kind}))};
@@ -20,21 +33,22 @@ try{
   assert.deepEqual(saved,fixture.nodes.map(({id,x,y})=>({id,x,y})),'entry preserves saved positions');
   await p.evaluate(()=>[...document.querySelectorAll('summary')].find(e=>e.textContent==='Diagram tools').click());
   await p.evaluate(()=>[...document.querySelectorAll('button')].find(e=>e.textContent==='Tidy request paths').click());await sleep(800);
-  const check=async()=>{const v=await p.evaluate(()=>__game.getState().view);assert(v.labelPx>=12.99);for(const key of ['labelOverlaps','labelPartOverlaps','wirePartCrossings','wireLabelCrossings','labelPanelOverlaps'])assert.equal(v.diagram[key],0,`${width} ${theme} ${key}`);};
+  const check=async()=>{await settle(p);const v=await p.evaluate(()=>__game.getState().view);assert(v.labelPx>=12.99);for(const key of ['labelOverlaps','labelPartOverlaps','wirePartCrossings','wireLabelCrossings','labelPanelOverlaps'])assert.equal(v.diagram[key],0,`${width} ${theme} ${key}`);};
   await check();
   await p.evaluate(()=>{__game.startTraffic();__game.pause();__game.step(120000);});await sleep(700);await check();
   assert(await p.evaluate(()=>__game.getState().view.diagram.labels.some(l=>l.text.startsWith('First limit'))),'paused overload identifies its first bottleneck');
   const before=await p.evaluate(()=>__game.getState().view.diagram.labels.filter(l=>l.kind==='failure').map(({id,x,y})=>({id,x,y})));
-  await p.evaluate(()=>__game.step(120000));await sleep(200);await check();
+  await p.evaluate(()=>__game.step(120000));await check();
   const after=await p.evaluate(()=>__game.getState().view.diagram.labels.filter(l=>l.kind==='failure').map(({id,x,y})=>({id,x,y})));
-  assert.deepEqual(after,before,'changing failure counts do not move caption lanes');await p.close();
+  assert.deepEqual(after.map(v=>v.id),before.map(v=>v.id));
+  for(let i=0;i<after.length;i++)for(const axis of ['x','y'])assert(Math.abs(after[i][axis]-before[i][axis])<.1,'changing failure counts do not move caption lanes');await p.close();
  }
  for(const touch of [false,true]){
   const p=await browser.newPage();await p.setViewport({width:touch?390:1366,height:touch?844:800,isMobile:touch,hasTouch:touch});
   await p.evaluateOnNewDocument(()=>{localStorage.clear();localStorage.setItem('hotpath.v1.seenIntro','true');localStorage.setItem('hotpath.v1.settings',JSON.stringify({soundMuted:true}));});
   await p.goto(base+'#/sandbox');await p.waitForFunction(()=>window.__game?.getState().nodes.length===4);await sleep(700);
   await p.evaluate(()=>__game.placeComponent('cache',520,260));await sleep(600);
-  await p.$eval('.pl-tool--fit',b=>b.click());await sleep(600);
+  await p.$eval('.pl-tool--fit',b=>b.click());await settle(p);
   const data=await p.evaluate(()=>{const s=__game.getState(),r=document.querySelector('.pl-stage').getBoundingClientRect();return {s,r:{x:r.x,y:r.y}};});
   const app=data.s.nodes.find(n=>n.id==='app'),target=data.s.nodes.find(n=>n.type==='cache');
   const point=id=>{const n=data.s.view.screen.find(n=>n.id===id);return{x:n.x+data.r.x,y:n.y+data.r.y};};

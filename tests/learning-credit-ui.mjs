@@ -1,11 +1,13 @@
 // Earned credit survives the real controls: open trace, assisted pass, then independent changed conditions.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import { problemById } from '../content/problems/index.js';
 import { checkFor } from '../ui/play/design-check.js';
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage();
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const errors = []; page.on('pageerror', e => errors.push(e.message));
 const click = text => page.evaluate(text => { const el = [...document.querySelectorAll('button')].find(e => e.checkVisibility() && e.textContent.trim() === text); if (!el) throw Error('Missing ' + text); el.click(); }, text);
 const p = problemById.get('search-autocomplete');
@@ -127,4 +129,4 @@ try {
   await unchangedReference();
   assert.deepEqual(errors, []);
   console.log('Open trace cannot earn mastery; assisted twist history persists and an independent checked twist earns mastery without altering traffic bests.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

@@ -2,8 +2,10 @@
 // honest build status, synchronous step(), keyboard placement and connection, the phone layout, the debrief dial
 // and the sound levels. Run from the harness folder: node ui-checks.mjs [baseUrl]
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 
-const BASE = process.argv[2] || 'http://localhost:8765/';
+const BASE = site.base;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const check = (name, ok, detail = '') => { if (ok) pass++; else fail++; console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${name}${detail !== '' ? '  (' + detail + ')' : ''}`); };
@@ -275,7 +277,7 @@ await sleep(900);
   check('no inspector pops open when the day starts', !r.inspOpen);
 }
 await phone.close();
-await browser.close();
+await browser.close(); await site.close();
 
 console.log(`\nconsole errors: ${errors.length}${errors.length ? '\n  ' + errors.slice(0, 8).join('\n  ') : ''}`);
 check('zero console errors', errors.length === 0);
