@@ -913,7 +913,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         particles: particles.count, renderMs: rsn ? sum / rsn : 0, renderMsLast: lastRenderMs,
         idle: isIdle, idleFrames, quality: level, qualitySetting, dotScale, effects: fx.count, nodes: nodes.list.length, edges: edges.list.length,
         zoom: camera.zoom,
-        labelPx: Math.min(...nodes.list.map(v => v.labelT.style.fontSize * v.labelT.scale.x * v.c.scale.x * camera.zoom)),
+        labelPx: Math.min(...nodes.list.map(v => v.labelT.style.fontSize * v.labelT.scale.x * v.captionC.scale.x * v.c.scale.x * camera.zoom)),
       };
     },
     async snapshot({ width = 600, height = 315, graph: g2 } = {}) {

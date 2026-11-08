@@ -21,6 +21,15 @@ try {
     }, graph);
     await page.goto(base + '#/sandbox');
     await page.waitForFunction(() => window.__game?.getState().nodes.length === 15);
+    const entrySizes = await page.evaluate(async () => {
+      const sizes = [];
+      for (let i = 0; i < 5; i++) {
+        await new Promise(requestAnimationFrame);
+        sizes.push(window.__game.getState().view.labelPx);
+      }
+      return sizes;
+    });
+    assert(entrySizes.every(px => px >= 12.99), 'entry motion keeps names at least 13 CSS pixels');
     await sleep(800);
     if (width === 390) { await page.click('.pl-overview button'); await sleep(700); }
     assert((await page.evaluate(() => window.__game.getState().view.labelPx)) >= 12.99, 'fit measures at least 13 CSS pixels for names');
@@ -110,7 +119,8 @@ try {
     const readings = await page.evaluate(async () => {
       window.__game.step(86400000);
       const samples = [], start = performance.now();
-      while (performance.now() - start < 1300) {
+      while (performance.now() - start < 1300 || samples.length < 6) {
+        if (performance.now() - start > 10000) break;
         await new Promise(requestAnimationFrame);
         const target = document.querySelector('.pl-victory-numbers b'), score = document.querySelector('.pl-dial-n');
         if (target && score) samples.push([target.textContent, score.textContent]);

@@ -11,9 +11,11 @@ The service is a small Node 24 program in `api/`: `node:http`, `node:sqlite` and
 
 ## Anonymous counts and feedback
 
-These work independently of account sign-in. The live game sends to this service after its first paint, using `navigator.sendBeacon` in batches of at most 20 events, after one second or when the page is hidden. Failed batches are dropped. Nothing runs in the simulation loop. Localhost and previews send nothing unless opened with `?measure=8794` (a local API port). Only local origins on 8765 or 8777 are accepted with `NODE_ENV=test DEV=1`. The live site needs no account/config.js change for measurement.
+These work independently of account sign-in. Automatic usage counts and error reports are local-test-only. Public sites send neither, even with an older saved enabled setting. The live game supports optional feedback; production page counts come from the filtered web log described below. Neither needs an account/config.js change.
 
-Automatic events and errors are suppressed by Do Not Track, Global Privacy Control, or Settings → Anonymous usage counts being off. Turning the setting off discards the pending batch. The only local measurement state is that preference and markers that a feedback prompt was shown. There is no local visitor id, measurement cookie or fingerprint. Explicit feedback still works with automatic counting off. Account cookies, if the browser attaches one to a beacon, are ignored by both anonymous routes; feedback uses `credentials: omit`.
+For local testing, open localhost with `?measure=8794` (a local API port). Only local origins on 8765 or 8777 are accepted with `NODE_ENV=test DEV=1`. Preview sites send no automatic events. After its first paint, the local test game uses `navigator.sendBeacon` in batches of at most 20 events, after one second or when the page is hidden. Failed batches are dropped. Nothing runs in the simulation loop.
+
+Local automatic events and errors are also suppressed by Do Not Track, Global Privacy Control, or Settings → Anonymous usage counts being off. Turning the setting off discards the pending batch. The only local measurement state is that preference and markers that a feedback prompt was shown. There is no local visitor id, measurement cookie or fingerprint. Explicit feedback still works with automatic counting off. Account cookies, if the browser attaches one to a beacon, are ignored by both anonymous routes; feedback uses `credentials: omit`.
 
 | Route | Body and limits |
 |---|---|
@@ -39,11 +41,11 @@ sudo env WEB_LOG_PATH=/var/log/caddy/systemdesigner-web.log node api/stats.js we
 
 `days` defaults to 7 and includes today, in UTC (1 to 731 accepted). The first report prints estimated visitors and events per day, the open/start/pass funnel, top passed problems, finished lessons, referrers and error categories. Feedback prints recent ratings and comments. Web mode streams the current Caddy JSON log and rotated `.log`/`.gz` files, counts page GETs including failed loads, skips assets, and prints dates, paths and referring hosts. Web counts include bots and reloads and must not be added to visitor counts. Broken or partial JSON lines are skipped and counted.
 
-### Switch on collection and the page log
+### Enable production feedback and the page log
 
 Nothing in this change applies server configuration. From the updated checkout on the server, the owner must:
 
-1. Run `sh api/deploy/install.sh` as root to copy the updated API, migrate its database on startup and restart the service. Keep the existing backup timer enabled. No provider credentials are needed for collection. Make the existing `api.systemdesigner.io` proxy live if it is still staged, following the DNS and Caddy steps below; sign-in providers can stay off.
+1. Run `sh api/deploy/install.sh` as root to copy the updated API, migrate its database on startup and restart the service. Keep the existing backup timer enabled. No provider credentials are needed for feedback. Make the existing `api.systemdesigner.io` proxy live if it is still staged, following the DNS and Caddy steps below; sign-in providers can stay off.
 2. Copy the two new snippets:
 
    ```sh
@@ -54,9 +56,9 @@ Nothing in this change applies server configuration. From the updated checkout o
 3. Inside the existing `systemdesigner.io` site block, add `import /etc/caddy/systemdesigner-web-observation.caddy`. Keep its current root and serving directives. Inside the existing `api.systemdesigner.io` site block add `import /etc/caddy/systemdesigner-api-anonymous.caddy`. This second import is required: it excludes `/e` and `/feedback` from the existing API access log, so collection IPs, user agents and requests are not written there. Do not add a second site block for either hostname or turn on a second unfiltered logger.
 4. Ensure `/var/log/caddy` is writable by the Caddy user. Use a Caddy version supporting `log_skip`, `log_append`, and daily `roll_at` rotation (current Caddy 2.11). The new web log deletes client and remote IPs, port, headers, TLS details and user id; strips query strings; and reduces referrers to hosts. It rolls daily at midnight or at 20 MiB, with a maximum age of 14 days and 100 files. See the [Caddy log documentation](https://caddyserver.com/docs/caddyfile/directives/log).
 5. Run `caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy`. For later changes to the same log output options, Caddy requires a restart. Check the new web log with a page request containing a test query and referrer: there should be no query, address, cookie, browser string or full referrer. Check that a test POST to `/e` does not appear in any API access log. Logs must not be copied to longer-lived backups.
-6. Publish the static site from this branch (or use the optional release script). Check `node api/stats.js 1` with `DB_PATH` set after a real play and feedback submission. Check `systemctl status systemdesigner-api-backup.timer` and run `systemctl start systemdesigner-api-backup.service` once to verify backup cleanup.
+6. Publish the static site from this branch (or use the optional release script). Play on the live site and confirm that no automatic `/e` requests are sent, including with an older enabled usage-count setting. Submit feedback, then check `node api/stats.js feedback 1` with `DB_PATH` set. Check `node api/stats.js web 1` with `WEB_LOG_PATH` set for the page request. Live play produces no automatic event counts or error reports. Check `systemctl status systemdesigner-api-backup.timer` and run `systemctl start systemdesigner-api-backup.service` once to verify backup cleanup.
 
-For local end-to-end checks, serve this worktree on 8777, run `NODE_ENV=test DEV=1 PORT=8794 DB_PATH=<temporary file> node api/server.js`, and open `http://localhost:8777/?measure=8794`. No scratch database belongs in the checkout. `tests/observation-qa.mjs` starts its own temporary API, drives both screen sizes and themes, and stops it on completion.
+For local end-to-end checks, serve this worktree on 8777, run `NODE_ENV=test DEV=1 PORT=8794 DB_PATH=<temporary file> node api/server.js`, and open `http://localhost:8777/?measure=8794`. Check `node api/stats.js 1` with that temporary `DB_PATH` for local events and error reports. Those counts do not describe production players. No scratch database belongs in the checkout. `tests/observation-qa.mjs` starts its own temporary API, drives both screen sizes and themes, and stops it on completion.
 
 ## Score honesty
 

@@ -571,20 +571,21 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
 
   function zeroWork(X) {
     const { N, E, nodes, edges } = X.model;
+    const { IN, RIN, INJ, FAILR, DONE, HITS, PUa, ER, DRAINE } = X;
     for (let u = 0; u < N; u++) {
       const b = u * LN;
       const near = nodes[u].laneNear;
       const a = near ? X.active : X.activeT, na = near ? X.nActive : X.nActiveT;
       for (let k = 0; k < na; k++) {
         const j = b + a[k];
-        X.IN[j] = 0; X.RIN[j] = 0; X.INJ[j] = 0; X.FAILR[j] = 0; X.DONE[j] = 0; X.HITS[j] = 0; X.PUa[j] = 0;
+        IN[j] = 0; RIN[j] = 0; INJ[j] = 0; FAILR[j] = 0; DONE[j] = 0; HITS[j] = 0; PUa[j] = 0;
       }
     }
     for (let e = 0; e < E; e++) {
       const b = e * LN;
       const near = nodes[edges[e].fi].laneNear;
       const a = near ? X.active : X.activeT, na = near ? X.nActive : X.nActiveT;
-      for (let k = 0; k < na; k++) { X.ER[b + a[k]] = 0; X.DRAINE[b + a[k]] = 0; }
+      for (let k = 0; k < na; k++) { ER[b + a[k]] = 0; DRAINE[b + a[k]] = 0; }
     }
     X.wrRate.fill(0);
     X.BIN.fill(0);
@@ -735,6 +736,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     }
   }
   const compBuf = new Float64Array(T);
+  const lateByType = new Float64Array(T);
   function queueLateness(X, tn, dt) {
     const m = X.model;
     if (!X.queueNodes.length) return 0;
@@ -787,7 +789,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       q.procAvg = 0.9 * q.procAvg + 0.1 * proc;
       // Each type keeps its own deadline even when slower work shares the queue.
       let lateMsgs = 0, shortest = Infinity;
-      const lateByType = new Float64Array(T);
+      lateByType.fill(0);
       for (const stream of streams) for (let t = 0; t < T; t++) {
         if (!(stream.typeArr[t] > 0)) continue;
         let hist = stream.types.get(t);

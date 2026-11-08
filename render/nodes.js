@@ -119,6 +119,8 @@ export function createNodeLayer(PIXI, parent, env) {
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
     v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
     v.leader = new PIXI.Graphics();
+    v.captionC = new PIXI.Container();
+    v.captionC.addChild(v.leader, v.labelBg, v.labelT, v.evidenceT);
     v.regionC = new PIXI.Container(); v.regionC.y = -HALF - 12; v.regionC.visible = false;
     v.regionBg = new PIXI.Graphics(); v.regionC.addChild(v.regionBg);
     v.regionT = null;
@@ -127,9 +129,10 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
     c.addChild(v.glow, v.pulse, v.shadow, v.body, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
-      v.chip, v.zonesG, v.leader, v.labelBg, v.labelT, v.regionC, v.badge, v.evidenceT);
+      v.chip, v.zonesG, v.regionC, v.badge, v.captionC);
     c.alpha = 0;
     c.scale.set(v.s);
+    v.captionC.scale.set(1 / v.s);
     parent.addChild(c);
     views.set(n.id, v);
     update(v, n, true);
@@ -384,7 +387,10 @@ export function createNodeLayer(PIXI, parent, env) {
     update(dt, now, time) {
       const P = env.kit().P;
       const reduced = env.reduced();
-      for (const v of list) step(v, dt, now, P, reduced, time);
+      for (const v of list) {
+        step(v, dt, now, P, reduced, time);
+        v.captionC.scale.set(1 / Math.max(.01, v.c.scale.x));
+      }
       // Captions always belong to their module. Spacing is handled by graph layout, never by moving captions.
       for (const v of list) {
         const detail = detailZoom || selected === v.id;
@@ -408,6 +414,7 @@ export function createNodeLayer(PIXI, parent, env) {
         const k = Math.min(1, v.fade / (reduced ? 120 : 160));
         v.c.alpha = 1 - k;
         if (!reduced) v.c.scale.set(1 - 0.15 * k);
+        v.captionC.scale.set(1 / Math.max(.01, v.c.scale.x));
         if (k >= 1) { v.c.destroy({ children: true }); dying.splice(i, 1); }
       }
     },
