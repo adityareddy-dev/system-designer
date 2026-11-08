@@ -151,7 +151,7 @@ export default {
       "why": "Leave headroom for spikes and for servers being replaced."
     }
   ],
-  "takeaway": "Divide by 100,000 for a day, multiply by 3 for the peak, and leave headroom.",
+  "takeaway": "Divide daily requests by about 100,000 for an average each second. Three times average is an example peak, not a rule. Choose a peak factor for your traffic and leave headroom.",
   "transfer": {
     "kind": "transfer",
     "q": "A photo backup service receives only 200 uploads/s, but each upload is 8 MB. A relay accepts 10,000 requests/s and transfers 400 MB/s. Which quantity should set the fleet size first? Keep 25% of total relay capacity spare.",
