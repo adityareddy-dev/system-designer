@@ -13,11 +13,11 @@ const bad = () => { throw new HttpError(400, 'bad-input', 'Unknown or invalid an
 const fields = (obj, keys) => obj && typeof obj === 'object' && !Array.isArray(obj) && Object.keys(obj).every(k => keys.includes(k));
 const host = value => typeof value === 'string' && value.length <= 253 && (value === '' || /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$/.test(value));
 
-export function createObservation({ db, game, now }) {
+export function createObservation({ db, game, now, random = randomBytes }) {
   let day = '', salt, visitors = new Set();
   function rotate() {
     const today = dayOf(now());
-    if (today !== day) { day = today; salt = randomBytes(32); visitors.clear(); }
+    if (today !== day) { day = today; salt = random(32); visitors.clear(); }
   }
   function validate(e) {
     if (!fields(e, ['name', 'id', 'screen', 'referrer', 'errorName', 'message', 'file']) || !names.has(e.name) || !['phone', 'desktop'].includes(e.screen)) bad();

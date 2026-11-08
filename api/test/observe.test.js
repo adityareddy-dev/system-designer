@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { openDb } from '../db.js';
 import { cutoff } from '../observation-store.js';
+import { createObservation } from '../observation.js';
+import { Readable } from 'node:stream';
 
 const opened = { name: 'app_opened', screen: 'phone', referrer: 'example.org' };
 test('events accept only known names, ids and fields, with atomic batches and body caps', async t => {
@@ -36,6 +38,20 @@ test('daily visitors are counts only, rotate at midnight, and never join account
     assert.ok(columns.every(k => !/ip|user|hash|salt|agent|session/i.test(k)), columns.join(','));
     assert.ok(!JSON.stringify(a.db.raw.prepare(`SELECT * FROM ${table}`).all()).includes('192.0.2.42'));
   }
+});
+
+test('visitor salt is newly random each UTC day and repeat visits share only that day', async t => {
+  const db = openDb(':memory:'); t.after(() => db.close());
+  let time = Date.UTC(2026, 10, 7, 23, 59, 59), salts = 0;
+  const observation = createObservation({ db, game: { problemIds: new Set(), lessonIds: new Set() }, now: () => time, random: size => { salts++; return Buffer.alloc(size, salts); } });
+  const visit = async () => {
+    const req = Readable.from([Buffer.from(JSON.stringify({ events: [opened] }))]);
+    req.headers = { 'content-type': 'application/json', 'user-agent': 'one-browser' };
+    await observation.events(req, '192.0.2.42');
+  };
+  await visit(); await visit(); assert.equal(salts, 1);
+  time += 1000; await visit(); assert.equal(salts, 2);
+  assert.deepEqual(db.raw.prepare('SELECT count FROM visitor_counts ORDER BY day').all().map(r => r.count), [1,1]);
 });
 
 test('feedback keeps only rating, comment, page, version and date, even signed in', async t => {
