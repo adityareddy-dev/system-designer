@@ -76,6 +76,7 @@ function refuseReason(a, b) {
     return explain(`${ctrl.name} manages ${ctrl.id === 'disaster-recovery' ? 'parts that carry requests' : 'compute capacity'}. Connect ${ctrl.name} → App servers.`);
   }
   if (b.kind === 'source') return explain(`${B} is where requests start. ${flowAllowed(b, a) ? `Connect ${B} → ${A} instead.` : `Start with ${B} → App servers, then connect the service the servers need.`}`);
+  if (a.kind === 'queue' && ['external', 'lookaside'].includes(b.kind)) return explain(`${A} holds messages for a consumer. Connect ${A} → Background workers → ${B}.`);
   if (flowAllowed(b, a)) return explain(`This link runs in the other direction. Connect ${B} → ${A} instead.`);
   if (a.kind === 'store' && b.kind === 'store') {
     if (b.params?.role === 'replica') return explain(`${B} copies a primary of the same family. Connect its matching primary → ${B}, and App servers → ${B} for reads.`);

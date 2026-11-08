@@ -12,6 +12,9 @@ for (const a of catalog.elements) for (const b of catalog.elements) {
   rejected++;
   assert(r.reason.includes(a.name) && r.reason.includes(b.name), `${a.id} → ${b.id}: ${r.reason}`);
   assert(r.reason.length > `${a.name} → ${b.name} is not supported. `.length, 'give a next step');
+  if (a.kind === 'queue' && ['external', 'lookaside'].includes(b.kind)) {
+    assert.match(r.reason, /Background workers/, `${a.name} needs a consumer to call ${b.name}, even when that service can send webhooks`);
+  }
   const advice = r.reason.split('is not supported. ')[1];
   for (const [fromName, from] of names) for (const [toName, to] of names) {
     if (advice.includes(`${fromName} → ${toName}`)) assert(connectRule(from, to).ok, `${a.id} → ${b.id} recommends another rejected link: ${fromName} → ${toName}`);
