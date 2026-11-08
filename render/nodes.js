@@ -428,9 +428,15 @@ export function createNodeLayer(PIXI, parent, env) {
           v.evidenceBg.renderable=v.evidenceT.visible&&v.evidenceT.renderable;
         }
       };
-      // Panning translates captions with their parts without changing world-space obstacles.
+      // Retry an omitted name once when its part enters the free canvas.
       const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live}`)].join('/');
-      if (key === this.captionKey) { refreshVisibility(); return false; }
+      let retryName=false;
+      for(const v of list){
+        const inView=visible(camera.worldToScreen(v.x,v.y));
+        if(inView&&!v.captionWasVisible&&!v.nameCaption)retryName=true;
+        v.captionWasVisible=inView;
+      }
+      if (key === this.captionKey && !retryName) { refreshVisibility(); return false; }
       this.captionKey = key;
       const previous = list.map(v => [v.renderHalf, v.captionBoxes]);
       const parts = list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.live&&v.kind==='queue'?Math.max(42*z,26):42*z;v.portHalf=half/z-6;v.renderHalf=half/z;return {x:p.x-half-8,y:p.y-half,width:half*2+16,height:half*2};});
