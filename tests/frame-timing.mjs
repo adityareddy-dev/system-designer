@@ -21,15 +21,17 @@ try {
     try {
       scene = await createScene(host, { catalog });
       scene.sync({ nodes: [{ id: 'app', type: 'vm-fleet', x: 0, y: 0 }], edges: [] });
-      scene.fit(40, false);
+      scene.fit(40, false, { maxZ: .25 });
+      const labelPx = scene.stats().labelPx;
       const expected = scene.worldToScreen(0, 0);
-      scene.panBy(200, 100); scene.fit(40, true);
+      scene.panBy(200, 100); scene.fit(40, true, { maxZ: .25 });
       let elapsed = 0; scene.onFrame(dt => elapsed = dt);
       frame(performance.now() + 500);
-      return { expected, actual: scene.worldToScreen(0, 0), elapsed };
+      return { expected, actual: scene.worldToScreen(0, 0), elapsed, labelPx };
     } finally { scene?.destroy(); host.remove(); globalThis.requestAnimationFrame = original; }
   });
   assert(measured.elapsed >= 500, 'frame listeners receive elapsed wall time');
+  assert(measured.labelPx >= 12.99, 'an immediate fit keeps names readable before the next frame');
   assert(Math.hypot(measured.actual.x - measured.expected.x, measured.actual.y - measured.expected.y) < 1e-6, 'a delayed frame finishes the camera fit');
   await page.evaluate(() => {
     const graph = { nodes: [
