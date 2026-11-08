@@ -1,9 +1,11 @@
 // Browser checks for readable fits, live phone overviews, unobstructed wiring, inspector wrapping and truthful counters.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
 import { problemById } from '../content/problems/index.js';
 import { checkFor } from '../ui/play/design-check.js';
-const base = process.argv[2] || 'http://localhost:8765/';
+const site = await serveGame();
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const types = ['web-browser', 'dns', 'cdn', 'waf', 'api-gateway', 'mobile-app', 'regional-lb', 'vm-fleet', 'cache', 'sql-primary', 'metrics', 'object-storage', 'queue', 'worker-pool', 'third-party-api'];
@@ -143,4 +145,4 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log('Readable fits, live overviews, side calls, all inspector widths, transitions and fixed result facts passed.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

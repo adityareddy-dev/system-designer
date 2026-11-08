@@ -1,7 +1,9 @@
 // Canvas gestures and crowded layouts retain positions and readable, collision-free facts.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
-const base=process.argv[2]||'http://localhost:8765/';
+import { serveGame } from './browser-server.js';
+const site=await serveGame();
+const base=site.base;
 const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--enable-unsafe-swiftshader']});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const types=['web-browser','mobile-app','regional-lb','vm-fleet','cache','sql-primary','object-storage','queue','worker-pool','third-party-api','metrics','logs','alerting','backups','cdn'];
@@ -65,4 +67,4 @@ try{
  await recovery.evaluate(()=>{__game.setKnob('app','units',100);__game.step(60000);});await sleep(1800);
  assert.equal(await first(),'db','fixing the first limit reveals the next bottleneck');await recovery.close();
  assert.deepEqual(errors,[]);console.log('Saved positions, 15-part tidy and overload collisions, stable failure lanes, mouse ports and bodies, and touch ports and bodies passed.');
-}finally{await browser.close();}
+}finally{await browser.close();await site.close();}

@@ -2,8 +2,10 @@
 import { commitChoicePrediction } from './lesson-prediction.js';
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
 import { lessons } from '../content/lessons/index.js';
-const base=process.argv[2]||'http://localhost:8765/';
+const site=await serveGame();
+const base=site.base;
 const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:'new',args:['--no-sandbox']});
 try{
  const page=await browser.newPage();
@@ -65,4 +67,4 @@ try{
  assert.match(await page.$eval('.sh-quiz-result',e=>e.innerText),/Prediction checked/);
  assert.equal(await page.evaluate(()=>localStorage.getItem('lesson-estimate-sentinel')),'keep');
  console.log('Every lesson demo collects a prediction before sizing or hints; bandwidth transfer passed.');
-}finally{await browser.close();}
+}finally{await browser.close();await site.close();}
