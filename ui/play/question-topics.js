@@ -1,5 +1,6 @@
 // Clarification synonyms recognize engineering vocabulary while exposing uncertain matches.
 const topics = [
+  ['posting changes', /postings?.*(chang|revers|edit|delet)|(?:chang|revers|edit|delet).*postings?/i],
   ['idempotency', /idempoten|dedup|duplicate|twice|exactly.once|double.charge|repeat.*(send|request|command)|same.*(asked|sent|request|message)/i],
   ['scale', /scale|load|demand|how many|volume|peak|traffic|throughput|tps|qps|rps|users|audience|per.second/i],
   ['retention', /retention|retain|ttl|how long|keep.*(data|record|mail|trace|log|reading)|days|years|stored|storage/i],
