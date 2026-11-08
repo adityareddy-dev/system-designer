@@ -116,7 +116,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.chipText = null;
     v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, HALF + 6);
     v.labelT = makeText('', 12, P.text2, false, '500', 72); // narrow lines, so neighbours' names do not touch when zoomed out
-    v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
+    v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK / v.s); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
     v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
     v.leader = new PIXI.Graphics();
@@ -386,8 +386,10 @@ export function createNodeLayer(PIXI, parent, env) {
       const P = env.kit().P;
       const reduced = env.reduced();
       for (const v of list) step(v, dt, now, P, reduced, time);
-      // Captions always belong to their module. Spacing is handled by graph layout, never by moving captions.
+      // Keep names and facts in their own caption lanes.
       for (const v of list) {
+        // Keep names readable while the entry spring is below full size.
+        v.labelT.scale.set(labelK / Math.min(1, v.c.scale.x));
         const detail = detailZoom || selected === v.id;
         v.chip.visible = detail && v.units > 1;
         v.chip.scale.set(detailZoom ? 1 : labelK * 1.1);
@@ -605,7 +607,7 @@ export function createNodeLayer(PIXI, parent, env) {
     cull(x0, y0, x1, y1) {
       for (const v of list) v.c.visible = v.x + 90 > x0 && v.x - 90 < x1 && v.y + 90 > y0 && v.y - 90 < y1;
     },
-    // Below full zoom the names grow (up to 4.5 times, the lowest zoom) so they stay at about 13 px on screen (the base size is 12 px).
+    // Keep names at least 13 CSS pixels as the camera zooms out.
     setLabelScale(z) {
       detailZoom = z >= 1.05;
       for (const v of list) { v.icon.width = v.icon.height = detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z)); v.evidenceT.scale.set(1 / Math.max(.01, z)); }
@@ -615,7 +617,7 @@ export function createNodeLayer(PIXI, parent, env) {
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
       if (Math.abs(k - labelK) < 0.0001) return;
       labelK = k;
-      for (const v of list) v.labelT.scale.set(k);
+      for (const v of list) v.labelT.scale.set(k / Math.min(1, v.c.scale.x));
     },
     setTextResolution(r) {
       if (r === textRes) return;

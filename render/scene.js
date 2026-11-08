@@ -865,8 +865,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(opts.nodeIds ? { ...graph, nodes: graph.nodes.filter(n => opts.nodeIds.includes(n.id)) } : graph);
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
       camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, opts);
+      nodes.setLabelScale(camera.zoom);
     },
-    zoomBy(factor, cx, cy) { const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); },
+    zoomBy(factor, cx, cy) { const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
     panBy(dx, dy) { camera.panBy(dx, dy); },
     stopCamera() { camera.stop(); },
     screenToWorld(x, y) { return camera.screenToWorld(x, y); },

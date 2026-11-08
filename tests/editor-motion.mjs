@@ -110,14 +110,14 @@ try {
     const readings = await page.evaluate(async () => {
       window.__game.step(86400000);
       const samples = [], start = performance.now();
-      while (performance.now() - start < 1300) {
+      while ((performance.now() - start < 1300 || samples.length < 6) && performance.now() - start < 10000) {
         await new Promise(requestAnimationFrame);
         const target = document.querySelector('.pl-victory-numbers b'), score = document.querySelector('.pl-dial-n');
         if (target && score) samples.push([target.textContent, score.textContent]);
       }
       return samples;
     });
-    assert(readings.length > 5);
+    assert(readings.length > 5, `${motion}: collected ${readings.length} result frames, expected at least six`);
     assert(readings.every(([target, score]) => target === '99.90%' && score === '1,000'), `${motion}: thresholds and saved score stay fixed throughout the result`);
     assert(await page.$('.pl-run-evidence'), `${motion}: the same measured evidence survives every motion setting`);
     await page.goto(base + '#/practice'); await page.waitForSelector('.sh-practice-page');

@@ -1,4 +1,4 @@
-// Panning retries missing names and preserves routes for already reserved captions.
+// Names remain readable through camera movement, entry motion and crowded caption lanes.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
@@ -17,7 +17,7 @@ try {
   });
   await page.goto((process.argv[2] || 'http://localhost:8765/') + '#/sandbox');
   await page.waitForFunction(() => window.__game?.getState().nodes.length > 0);
-  const results = await page.evaluate(async () => {
+  const { scenarios, fitLabelPx, entryLabelPx } = await page.evaluate(async () => {
     const { createScene } = await import('./render/scene.js');
     const { loadCatalog } = await import('./sim/catalog.js');
     const host = document.createElement('div');
@@ -40,10 +40,15 @@ try {
         const returned = scene.measureDiagram();
         results.push({ blocked, before, entered, edge, returned, enteringBuilds, laterBuilds: window.routeBuilds - builds - enteringBuilds });
       }
-      return results;
+      scene.setReducedMotion(false);
+      scene.sync({ nodes: [{ id: 'entry', type: 'vm-fleet', x: 0, y: 0 }], edges: [] });
+      scene.fit(32, false, { minZ: 0.75, maxZ: 0.75 });
+      const fitLabelPx = scene.stats().labelPx;
+      scene.renderNow(0);
+      return { scenarios: results, fitLabelPx, entryLabelPx: scene.stats().labelPx };
     } finally { scene.destroy(); host.remove(); }
   });
-  for (const result of results) {
+  for (const result of scenarios) {
     assert(result.before.labels.some(label => label.id === 'p0'), 'the initial part has its name');
     assert(!result.before.labels.some(label => label.id === 'p1'), 'the offscreen part has no visible caption');
     assert(result.entered.labels.some(label => label.id === 'p1'), 'panning a previously offscreen part into view reveals its name');
@@ -53,5 +58,7 @@ try {
     assert.equal(result.laterBuilds, 0, 'reserved captions keep their wire routes while panning');
     if (!result.blocked) assert.equal(result.enteringBuilds, 0, 'an already reserved caption needs no route rebuild');
   }
-  console.log('Panning reveals entering names, including blocked offscreen lanes, and preserves reserved routes.');
+  assert(fitLabelPx >= 12.99, 'an immediate fit updates name size before the next frame');
+  assert(entryLabelPx >= 12.99, 'names stay at least 13 CSS pixels during the first entry frame');
+  console.log('Names remain readable during entry and panning, with stable routes for reserved captions.');
 } finally { await browser.close(); }
