@@ -1879,7 +1879,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- state for tests
   // Camera zoom and the free canvas area, for tests: the on-screen label size is 12 px times the label scale times the zoom.
   function viewInfo() {
-    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
+    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, moving: stats.cameraMoving, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
   }
   function getState() {
     const sim = S.sim;
