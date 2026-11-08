@@ -1086,3 +1086,7 @@
 /* The report scrollport begins below the steps, including after the first screenful. */
 .pl-root[data-step=debrief] .pl-overlay--debrief {top:calc(var(--pl-top-end, 60px) + 8px);padding-top:16px;scroll-padding-block:16px}
 .pl-overlay :is(h2,h3,.pl-defense-card,.pl-defense-field) {scroll-margin-block:16px}
+@media(max-width:719px) {
+  .pl-root[data-mode=lesson] .pl-goal {align-items:flex-start}
+  .pl-root[data-mode=lesson] .pl-goal--done {max-height:none;overflow:visible}
+}

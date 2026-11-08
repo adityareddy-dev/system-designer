@@ -127,11 +127,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     for (const [v, b] of speedBtns) { b.setAttribute('aria-checked', String(v === s)); b.classList.toggle('pl-speed-b--on', v === s); }
   }
 
-  let calm = false; // lesson goal reached: the meter the goal was about shows green, the others at most amber
-  let calmKey = null;
-  const GOAL_METER = { availability: 'avail', errors: 'avail', p99: 'lat', cost: 'cost', duplicates: 'safe', compliance: 'safe' };
   function meterSet(key, { text, sub, frac, tick, status }) {
-    if (calm) status = key === calmKey ? 'ok' : status === 'bad' ? 'warn' : status;
     const m = M[key];
     if (!m) return;
     m.val.textContent = text;
@@ -186,8 +182,6 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
 
     const cost = st.cost || {};
     const slo = st.slo || {};
-    calm = !!(lesson && extra.goalMet);
-    calmKey = GOAL_METER[extra.goalMetric] || null;
     if (sandbox) {
       // a low success rate with nothing busy means requests have no path: say so beside the number
       const busyMax = Math.max(0, ...(st.nodes || []).map((n) => n.util || 0));

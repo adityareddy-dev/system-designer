@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { createCatalog } from '../sim/catalog.js';
 import { connectRule } from '../sim/graph.js';
 const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(k => [k, JSON.parse(fs.readFileSync(`catalog/${k}.json`, 'utf8'))])));
+const names = [...catalog.elements.map(el => [el.name, el]), ['App servers', catalog.elementById.get('vm-fleet')]];
 let rejected = 0;
 for (const a of catalog.elements) for (const b of catalog.elements) {
   const r = connectRule(a, b);
@@ -11,6 +12,10 @@ for (const a of catalog.elements) for (const b of catalog.elements) {
   rejected++;
   assert(r.reason.includes(a.name) && r.reason.includes(b.name), `${a.id} → ${b.id}: ${r.reason}`);
   assert(r.reason.length > `${a.name} → ${b.name} is not supported. `.length, 'give a next step');
+  const advice = r.reason.split('is not supported. ')[1];
+  for (const [fromName, from] of names) for (const [toName, to] of names) {
+    if (advice.includes(`${fromName} → ${toName}`)) assert(connectRule(from, to).ok, `${a.id} → ${b.id} recommends another rejected link: ${fromName} → ${toName}`);
+  }
 }
 const reason = (a, b) => connectRule(catalog.elementById.get(a), catalog.elementById.get(b)).reason;
 assert.doesNotMatch(reason('object-storage', 'kms'), /database/i);

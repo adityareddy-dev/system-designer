@@ -1132,13 +1132,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       S.goalMet = true;
       if (opts.lesson?.id === 'replication-lag') hideCaption();
       goalChip.classList.add('pl-goal--done');
-      goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: mode === 'lesson' ? `${goalPassed(goal, v, nameOf(goal.node) || 'The part')} Day meters include earlier minutes.` : 'Goal reached. Nicely done.' }));
+      const passedText = goalPassed(goal, v, nameOf(goal.node) || 'The part', st);
+      goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: mode === 'lesson' ? passedText : 'Goal reached. Nicely done.' }));
       const before = S.goalBefore;
       if (before != null && Math.abs(before - v) > 0.000001) {
         const unit = ['availability', 'util', 'hitRate', 'errors', 'compliance'].includes(goal.metric) ? '%' : goal.metric === 'p99' ? ' ms' : '';
         const fmt = n => Math.round(n * (unit === '%' ? 100 : 1) * 10) / 10;
         hideCaption();
-        goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: `Check passed now. ${goal.metric === 'availability' ? 'Served' : goal.metric === 'util' ? 'Busy' : goal.metric}: ${fmt(before)}${unit} before at peak → ${fmt(v)}${unit} measured now. Goal ${goal.op} ${fmt(goal.value)}${unit}.` }));
+        goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: `${passedText} Before this repair: ${fmt(before)}${unit}; measured now: ${fmt(v)}${unit}.` }));
       }
       root.classList.add('pl-goal-celebrate'); later(() => root.classList.remove('pl-goal-celebrate'), 900);
       snd('pass');
