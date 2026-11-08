@@ -14,7 +14,8 @@ const node = (...a) => execFileSync(process.execPath, a, { cwd: root, stdio: 'in
 node('tools/gen-content.mjs');
 try { node('tools/gen-daily-pages.mjs'); }
 catch { console.warn('gen-daily-pages with images failed; writing the pages without new images'); node('tools/gen-daily-pages.mjs', '--no-images'); }
-const dist = path.join(root, 'dist');
+node('tools/gen-site-pages.mjs');
+const dist = path.resolve(process.env.RELEASE_DIR || path.join(root, 'dist'));
 const req = createRequire(path.join(process.env.ESBUILD_DIR || root, 'noop.js'));
 const esbuild = req('esbuild');
 
@@ -45,7 +46,9 @@ copy(path.join(root, 'catalog'), path.join(dist, 'catalog'));
 copy(path.join(root, 'content/data'), path.join(dist, 'content/data'));
 copy(path.join(root, 'assets'), path.join(dist, 'assets'), (f) => /\.(js|css)$/.test(f) || /preview\.html$/.test(f));
 copy(path.join(root, 'assets/fonts.css'), path.join(dist, 'assets/fonts.css'));
-for (const f of ['privacy.html', '404.html', 'd', 'p', 'LICENSE', 'CNAME', '.nojekyll']) if (fs.existsSync(path.join(root, f))) copy(path.join(root, f), path.join(dist, f));
+copy(path.join(root, 'assets/site.css'), path.join(dist, 'assets/site.css'));
+copy(path.join(root, 'assets/palette.css'), path.join(dist, 'assets/palette.css'));
+for (const f of ['privacy.html', '404.html', 'd', 'p', 'problems', 'learn', 'guides', 'sitemap.xml', 'robots.txt', 'llms.txt', 'llms-full.txt', 'LICENSE', 'CNAME', '.nojekyll']) if (fs.existsSync(path.join(root, f))) copy(path.join(root, f), path.join(dist, f));
 
 // All icons in one file (id → svg markup) so the workbench does not fetch them one by one.
 const iconIndex = JSON.parse(fs.readFileSync(path.join(root, 'assets/icons/index.json'), 'utf8'));
@@ -57,7 +60,7 @@ fs.writeFileSync(path.join(dist, 'assets/icons/index.json'), JSON.stringify({ ..
 // Page: one stylesheet, the bundle, and preloads for the files the first screen needs.
 const out = res.metafile.outputs;
 const mainOut = Object.keys(out).find((k) => out[k].entryPoint === 'main.js') || Object.keys(out).find((k) => out[k].entryPoint);
-const rel = (k) => path.posix.relative('dist', k);
+const rel = (k) => path.relative(dist, path.resolve(root, k)).replaceAll(path.sep, '/');
 // Chunks an output needs at start: its static imports, all the way down, minus what `skip` already covers.
 function staticChunks(start, skip = new Set()) {
   const seen = new Set(skip); const list = [];
