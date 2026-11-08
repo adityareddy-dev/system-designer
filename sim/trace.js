@@ -2,6 +2,8 @@
 import { M, compile } from './route.js';
 import { connectRule, makeNode } from './graph.js';
 
+const repairCache = new WeakMap();
+
 export function traceRoute(model, type) {
   const t = model.catalog.typeIndex.get(type);
   const result = { type, nodeIds: [], edgeIds: [], rejected: [], stops: [], repair: null };
@@ -52,7 +54,12 @@ export function traceRoute(model, type) {
     }
   };
   for (const u of model.sources) inspect(u);
-  if (!model.typeServed[t]) result.repair = findRepair(model, t);
+  if (!model.typeServed[t]) {
+    let repairs = repairCache.get(model);
+    if (!repairs) { repairs = new Map(); repairCache.set(model, repairs); }
+    if (!repairs.has(t)) repairs.set(t, findRepair(model, t));
+    result.repair = structuredClone(repairs.get(t));
+  }
   return result;
 }
 
