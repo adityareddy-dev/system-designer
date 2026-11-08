@@ -403,10 +403,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const a = freeArea();
     if(ids.length > 1) scene.fit({ l:42,r:42,t:a.t+24,b:a.b+42 }, false, { nodeIds:ids,maxZ:.9 });
   }
+  let fitAllTimer = 0;
   function fitAll() {
     S.manualViewUntil = performance.now() + 4000;
     if (isPhone()) { inspector.fold(true); toolbar.el.classList.remove('pl-toolbar--open'); reqCard?.toggle(false); trafficPanel?.fold(true); }
-    later(() => fitView(true, 0), 40);
+    clearTimeout(fitAllTimer); timers.delete(fitAllTimer);
+    fitAllTimer = later(() => { fitAllTimer = 0; fitView(true, 0); }, 40);
   }
   function placeAtCentre(type) {
     const a = freeArea();
@@ -1879,7 +1881,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- state for tests
   // Camera zoom and the free canvas area, for tests: the on-screen label size is 12 px times the label scale times the zoom.
   function viewInfo() {
-    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, moving: stats.cameraMoving, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
+    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, moving: stats.cameraMoving || !!fitAllTimer, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
   }
   function getState() {
     const sim = S.sim;

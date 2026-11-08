@@ -42,6 +42,19 @@ try {
     localStorage.setItem('hotpath.v1.draft.sandbox.sandbox', JSON.stringify({ graph, traffic: { rps: { read: 100000 }, curve: 'flat', regions: { us: 1 } } }));
     return window.__game.loadSandbox();
   });
+  const fit = await page.evaluate(() => {
+    const original = setTimeout;
+    let release;
+    globalThis.setTimeout = (fn, ms, ...args) => ms === 40 ? (release = () => fn(...args), -1) : original(fn, ms, ...args);
+    try {
+      document.querySelector('.pl-tool--fit').click();
+      const pending = window.__game.getState().view.moving;
+      release?.();
+      return { pending, started: window.__game.getState().view.moving };
+    } finally { globalThis.setTimeout = original; }
+  });
+  assert(fit.pending, 'a queued fit is moving before its delayed animation starts');
+  assert(fit.started, 'the fit remains moving while its animation runs');
   const stepped = await page.evaluate(() => { window.__game.startTraffic(); window.__game.pause(); return window.__game.step(60000); });
   assert(stepped.view.diagram.labels.some(label => label.kind === 'failure' && label.text.startsWith('First limit')), 'step renders the measured failure before returning');
   console.log('Delayed browser frames finish fits and report elapsed wall time.');

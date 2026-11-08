@@ -154,10 +154,13 @@ export function createCompeteUi(ctx, api) {
 
     copy.addEventListener('click', async () => {
       if (!url) return;
-      try { await navigator.clipboard.writeText(url); }
-      catch { link.select(); try { document.execCommand('copy'); } catch { /* ignore */ } }
-      toast('Link copied', 'ok');
-      metrics.once('result_shared', problem.id);
+      let copied = false;
+      try { await navigator.clipboard.writeText(url); copied = true; }
+      catch { link.select(); try { copied = document.execCommand('copy'); } catch { /* ignore */ } }
+      if (copied) {
+        toast('Link copied', 'ok');
+        metrics.once('result_shared', problem.id);
+      } else toast('Could not copy the link. Copy the selected link manually.', 'warn');
     });
     shareBtn.addEventListener('click', async () => {
       if (!blob) return;
