@@ -17,7 +17,7 @@ try {
   });
   await page.goto((process.argv[2] || 'http://localhost:8765/') + '#/sandbox');
   await page.waitForFunction(() => window.__game?.getState().nodes.length > 0);
-  const { scenarios, fitLabelPx, entryLabelPx } = await page.evaluate(async () => {
+  const { scenarios, fitLabelPx, entryLabelPx, omittedPan } = await page.evaluate(async () => {
     const { createScene } = await import('./render/scene.js');
     const { loadCatalog } = await import('./sim/catalog.js');
     const host = document.createElement('div');
@@ -40,12 +40,21 @@ try {
         const returned = scene.measureDiagram();
         results.push({ blocked, before, entered, edge, returned, enteringBuilds, laterBuilds: window.routeBuilds - builds - enteringBuilds });
       }
+      scene.sync({ nodes: [-150,-50,50,150].map((x,i) => ({ id: 'cache' + i, type: 'cache', x, y: 0 })), edges: [] });
+      scene.setCaptionArea({ l: 5, t: 150, r: 5, b: 150 });
+      scene.fit({ l: 5, t: 150, r: 5, b: 150 }, false, { minZ: 1, maxZ: 1 });
+      scene.renderNow();
+      const omittedPan = { before: scene.measureDiagram() };
+      scene.panBy(0, -30); scene.renderNow();
+      omittedPan.after = scene.measureDiagram();
+      scene.panBy(0, -5); scene.renderNow();
+      omittedPan.later = scene.measureDiagram();
       scene.setReducedMotion(false);
       scene.sync({ nodes: [{ id: 'entry', type: 'vm-fleet', x: 0, y: 0 }], edges: [] });
       scene.fit(32, false, { minZ: 0.75, maxZ: 0.75 });
       const fitLabelPx = scene.stats().labelPx;
       scene.renderNow(0);
-      return { scenarios: results, fitLabelPx, entryLabelPx: scene.stats().labelPx };
+      return { scenarios: results, omittedPan, fitLabelPx, entryLabelPx: scene.stats().labelPx };
     } finally { scene.destroy(); host.remove(); }
   });
   for (const result of scenarios) {
@@ -57,6 +66,14 @@ try {
     assert(result.returned.labels.some(label => label.id === 'p1'), 'panning back restores a caption hidden at a panel');
     assert.equal(result.laterBuilds, 0, 'reserved captions keep their wire routes while panning');
     if (!result.blocked) assert.equal(result.enteringBuilds, 0, 'an already reserved caption needs no route rebuild');
+  }
+  assert.equal(omittedPan.before.labels.length, 0, 'the crowded strip initially has no caption room');
+  assert.equal(omittedPan.after.labels.length, 4, 'panning visible parts into clear space retries omitted names');
+  assert.equal(omittedPan.after.labelPartOverlaps, 0);
+  for (const label of omittedPan.after.labels) {
+    const later = omittedPan.later.labels.find(other => other.id === label.id);
+    assert(later, 'a restored name stays reserved');
+    assert(Math.abs(later.x - label.x) < .01 && Math.abs(later.y - label.y + 5) < .01, 'existing names keep their world lanes during later panning');
   }
   assert(fitLabelPx >= 12.99, 'an immediate fit updates name size before the next frame');
   assert(entryLabelPx >= 12.99, 'names stay at least 13 CSS pixels during the first entry frame');

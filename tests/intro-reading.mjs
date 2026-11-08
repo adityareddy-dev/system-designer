@@ -16,6 +16,8 @@ try {
     await page.waitForSelector('.pl-caption-acts button');
     await page.waitForFunction(() => window.__game?.getState().nodes.some(node => node.id === 'app'));
     const before = await page.$eval('.pl-caption-t', element => element.textContent);
+    const reading = await page.evaluate(() => window.__game.getState());
+    assert.equal(reading.phase, 'paused', `${width}: the day pauses for an indefinite reading wait`);
     await new Promise(resolve => setTimeout(resolve, 500));
     const part = await page.evaluate(() => {
       const state = window.__game.getState(), point = state.view.screen.find(node => node.id === 'app');
@@ -40,6 +42,7 @@ try {
     assert.equal(await page.$eval('.pl-caption-acts button', button => button.textContent), 'Next', `${width}: building preserves Next`);
     await new Promise(resolve => setTimeout(resolve, 10000));
     assert.equal(await page.$eval('.pl-caption-t', element => element.textContent), before, `${width}: explanation stays until Next, beyond the former nine-second limit`);
+    assert.equal(await page.evaluate(() => window.__game.getState().clock.simMs), reading.clock.simMs, `${width}: reading cannot exhaust the day`);
     const next = await page.$eval('.pl-caption-acts button', button => {
       const bounds = button.getBoundingClientRect(), x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height / 2;
       return { x, y, reachable: button.contains(document.elementFromPoint(x, y)) };
@@ -48,6 +51,34 @@ try {
     await page.mouse.click(next.x, next.y);
     await page.waitForFunction(before => document.querySelector('.pl-caption-t')?.textContent !== before, {}, before);
     assert.match(await page.$eval('.pl-caption-t', element => element.textContent), /early morning/, `${width}: Next advances to the following explanation`);
+    const clickCaption = async text => {
+      await page.waitForFunction(text => [...document.querySelectorAll('.pl-caption-acts button')].some(b => b.textContent === text), {}, text);
+      await page.evaluate(text => [...document.querySelectorAll('.pl-caption-acts button')].find(b => b.textContent === text).click(), text);
+    };
+    await clickCaption('Next');
+    await page.waitForFunction(() => document.querySelector('.pl-caption-t')?.textContent.includes('3 servers'));
+    await page.evaluate(() => window.__game.setKnob('app', 'units', 3));
+    await clickCaption('Next');
+    await clickCaption('Retry insertion');
+    await clickCaption('Next');
+    await clickCaption('Retry insertion');
+    await page.waitForFunction(() => document.querySelector('.pl-caption-t')?.textContent.includes('switch on Autoscale'));
+    if (width === 1366) {
+      // Finish the event and day before the script has registered either trigger.
+      await page.evaluate(() => { window.__game.setKnob('app', 'autoscale', { on: true }); window.__game.step(86400000); });
+    } else {
+      await page.evaluate(() => window.__game.setKnob('app', 'autoscale', { on: true }));
+      await page.waitForFunction(() => window.__game.getState().phase === 'running');
+      await page.evaluate(() => window.__game.step(9 * 3600000));
+    }
+    await page.waitForFunction(() => document.querySelector('.pl-caption-t')?.textContent.includes('Viral spike!'));
+    await clickCaption('Next');
+    if (width !== 1366) {
+      await page.waitForFunction(() => window.__game.getState().phase === 'running');
+      await page.evaluate(() => window.__game.step(86400000));
+    }
+    await page.waitForFunction(() => /percent of requests succeeded/.test(document.querySelector('.pl-caption-t')?.textContent || ''));
+    assert.equal(await page.evaluate(() => window.__game.getState().phase), 'done', `${width}: elapsed triggers still complete the tutorial`);
     await page.close();
   }
   console.log('Intro explanations wait for Next while inspecting on desktop and phone, with normal and reduced motion.');

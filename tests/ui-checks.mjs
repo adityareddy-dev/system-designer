@@ -38,7 +38,7 @@ await sleep(600);
     const toast = [...document.querySelectorAll('.sh-toast')].map((t) => t.innerText).join(' | ');
     return { phase: before.phase, before: before.nodes.length, after: after.nodes.length, id, err, toast };
   });
-  check('intro: the load balancer can be placed during the running day', r.phase === 'running' && r.after === r.before + 1 && !/only be added/.test(r.toast), JSON.stringify(r));
+  check('intro: the load balancer can be placed while reading pauses the day', r.phase === 'paused' && r.after === r.before + 1 && !/only be added/.test(r.toast), JSON.stringify(r));
 }
 {
   await ev(() => window.__game.loadLesson('load-balancing'));

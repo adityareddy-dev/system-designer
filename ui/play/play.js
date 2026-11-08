@@ -886,6 +886,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function alreadyHolds(spec) {
     try {
       if (spec.action === 'day-end') return S.sim.phase === 'done';
+      if (spec.action === 'event-start') return S.sim.state().events.some(e => e.active || e.done) || S.sim.phase === 'done';
       const g = graph();
       if (mode === 'intro' && spec.action === 'knob') return introPathHolds(g, spec);
       if (spec.action === 'place') return introPathHolds(g, spec);
@@ -964,9 +965,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         showCaption(text, 0);
         await sleep(2500);
       } else {
+        const wasRunning = S.sim.phase === 'running';
+        if (wasRunning) pause();
         showCaption(text, 0, [{ label: 'Next', primary: true, onClick: () => S.captionNext?.() }]);
         await nextClick();
         S.captionNext = null;
+        if (wasRunning && !S.destroyed) resume();
       }
       toolbar.pulse(null);
     }

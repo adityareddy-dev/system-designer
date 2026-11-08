@@ -432,19 +432,25 @@ export function createNodeLayer(PIXI, parent, env) {
           v.evidenceBg.renderable=v.evidenceT.visible&&v.evidenceT.renderable;
         }
       };
-      // Retry an omitted name once when its part enters the free canvas.
+      // Retry missing names when panning opens space, keeping reserved lanes fixed.
       const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live}`)].join('/');
+      const origin=camera.worldToScreen(0,0);
+      const panned=origin.x!==this.captionOrigin?.x||origin.y!==this.captionOrigin?.y;
+      this.captionOrigin=origin;
       let retryName=false;
       for(const v of list){
         const inView=visible(camera.worldToScreen(v.x,v.y));
-        if(inView&&!v.captionWasVisible&&!v.nameCaption)retryName=true;
+        if(inView&&!v.nameCaption&&(panned||!v.captionWasVisible))retryName=true;
         v.captionWasVisible=inView;
       }
       if (key === this.captionKey && !retryName) { refreshVisibility(); return false; }
+      const preserve=key===this.captionKey;
       this.captionKey = key;
       const previous = list.map(v => [v.renderHalf, v.captionBoxes]);
       const parts = list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.live&&v.kind==='queue'?Math.max(42*z,26):42*z;v.portHalf=half/z-6;v.renderHalf=half/z;return {x:p.x-half-8,y:p.y-half,width:half*2+16,height:half*2};});
+      const screenBox=(v,box)=>{const p=camera.worldToScreen(v.x,v.y);return box?{x:p.x+box.x*z,y:p.y+box.y*z,width:box.width*z,height:box.height*z}:null;};
       const occupied = [...parts];
+      if(preserve)for(const v of list)for(const box of [v.nameCaption,v.factCaption])if(box)occupied.push(screenBox(v,box));
       const ordered = [...list].sort((a,b)=>a.y-b.y||a.x-b.x);
       const clear=r=>!occupied.some(o=>intersects(r,o));
       const choose=(base,p,maxMove=Infinity)=>{
@@ -468,14 +474,16 @@ export function createNodeLayer(PIXI, parent, env) {
       for(const v of ordered.filter(v=>v.evidenceT.visible).sort((a,b)=>Number(b.evidenceT.text.startsWith('First limit'))-Number(a.evidenceT.text.startsWith('First limit')))){
         const p=camera.worldToScreen(v.x,v.y);
         const height = v.kind === 'queue' ? 112 : 76;
-        const facts=choose({x:p.x-57,y:p.y-v.renderHalf*z-height-8,width:114,height},p);
-        factsById.set(v.id,facts);if(facts)occupied.push(facts);
+        const reserved=preserve&&v.factCaption;
+        const facts=reserved?screenBox(v,reserved):choose({x:p.x-57,y:p.y-v.renderHalf*z-height-8,width:114,height},p);
+        factsById.set(v.id,facts);if(facts&&!reserved)occupied.push(facts);
       }
       for (const v of ordered) {
         const p = camera.worldToScreen(v.x,v.y), width = Math.max(40,v.labelT.width*z+8), height = v.labelT.height*z+6;
         const preferred={x:p.x-width/2,y:p.y+v.renderHalf*z+5,width,height};
         // A dense overview keeps captions near their parts. Branch focus restores any omitted names.
-        const name=choose(preferred,p,z<.35?72:Infinity); if(name)occupied.push(name);
+        const reserved=preserve&&v.nameCaption;
+        const name=reserved?screenBox(v,reserved):choose(preferred,p,z<.35?72:Infinity); if(name&&!reserved)occupied.push(name);
         v.labelT.renderable=!!name;
         v.labelBg.clear();
         v.evidenceBg.clear();
