@@ -24,10 +24,19 @@ export function observationStore(db, tx) {
     ON CONFLICT(day,name,id,screen,referrer,error_name,message,file) DO UPDATE SET count=count+1`);
   const visitor = db.prepare('INSERT INTO visitor_counts VALUES (?,1) ON CONFLICT(day) DO UPDATE SET count=count+1');
   const feedback = db.prepare('INSERT INTO feedback VALUES (?,?,?,?,?)');
+  const referrers = db.prepare("SELECT DISTINCT referrer FROM event_counts WHERE day = ? AND referrer NOT IN ('', 'other') LIMIT 100");
   return {
     countEvents(day, events, distinct) {
       tx(() => {
-        for (const e of events) hit.run(day, e.name, e.id || '', e.screen, e.referrer || '', e.errorName || '', e.message || '', e.file || '');
+        const known = new Set(referrers.all(day).map(row => row.referrer));
+        for (const e of events) {
+          let referrer = e.referrer || '';
+          if (referrer && !known.has(referrer)) {
+            if (known.size >= 100) referrer = 'other';
+            else known.add(referrer);
+          }
+          hit.run(day, e.name, e.id || '', e.screen, referrer, e.errorName || '', e.message || '', e.file || '');
+        }
         if (distinct) visitor.run(day);
       });
     },

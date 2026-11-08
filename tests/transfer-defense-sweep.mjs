@@ -1,6 +1,9 @@
 // Every workload rejects unchanged references on transfer and checks each defense against broken routes.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { execFile } from 'node:child_process';
+import { availableParallelism } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { problems } from '../content/problems/index.js';
 import { twistProblem } from '../content/problems/twist.js';
 import { createCatalog } from '../sim/catalog.js';
@@ -8,10 +11,25 @@ import { createSim } from '../sim/engine.js';
 import { defenseQuestions } from '../ui/play/interview.js';
 import { checkClaim } from '../content/problems/defense-claims.js';
 import sizing, { twistSizing } from '../content/sizing.js';
+if (process.argv.length === 2) {
+  const lanes = Array.from({ length: Math.min(4, availableParallelism()) }, () => []);
+  problems.forEach((problem, i) => lanes[i % lanes.length].push(problem.id));
+  const children = [];
+  const outputs = await Promise.all(lanes.map(ids => new Promise((resolve, reject) => {
+    children.push(execFile(process.execPath, [fileURLToPath(import.meta.url), ...ids], { maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => error ? reject(new Error(stdout + stderr)) : resolve(stdout)));
+  }))).catch(error => { children.forEach(child => child.kill()); throw error; });
+  const totals = outputs.map(out => JSON.parse(out.trim().split('\n').at(-1))).reduce((a, b) => a.map((n, i) => n + b[i]), [0, 0, 0, 0, 0, 0]);
+  assert.equal(totals[0], problems.length);
+  assert(totals[4] > 0 && totals[5] > 0);
+  console.log(`${totals[0]} transfers, ${totals[1]} unchanged base references rejected, ${totals[2]} prompts, ${totals[3]} claims checked on own and broken graphs (${totals[4]} held, ${totals[5]} failed on reference counterexamples).`);
+  process.exit(0);
+}
 const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(name => [name, JSON.parse(fs.readFileSync(new URL(`../catalog/${name}.json`, import.meta.url)))])));
 const run = (problem, graph) => { const sim = createSim({ catalog, problem, seed: 'practice' }); sim.loadGraph(graph); sim.start(); sim.advance(86400000); return sim.result(); };
-let references = 0, prompts = 0, claims = 0, held = 0, failed = 0;
+let references = 0, prompts = 0, claims = 0, held = 0, failed = 0, checkedProblems = 0;
 for (const problem of problems) {
+  if (!process.argv.slice(2).includes(problem.id)) continue;
+  checkedProblems++;
   const twist = twistProblem(problem);
   assert(twist.requirements.budgetPerMonth < problem.requirements.budgetPerMonth, problem.id + ' has a binding changed constraint');
   const crowd = twist.events.find(e => e.id === 'flash-crowd');
@@ -59,4 +77,4 @@ for (const problem of problems) {
   }
 }
 assert(held > 0 && failed > 0, 'reference counterexamples include supported and unsupported claims');
-console.log(`${problems.length} transfers, ${references} unchanged base references rejected, ${prompts} prompts, ${claims} claims checked on own and broken graphs (${held} held, ${failed} failed on reference counterexamples).`);
+console.log(JSON.stringify([checkedProblems, references, prompts, claims, held, failed]));

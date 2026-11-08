@@ -590,9 +590,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   }
 
   let visualTime = 0;
-  function draw(dt, now) {
+  function draw(dt, now, wallDt = dt) {
     if (!flow || speed > 0) visualTime += dt;
-    const camMoved = camera.update(dt);
+    const camMoved = camera.update(wallDt);
     const viewChanged = camMoved || camera.takeDirty();
     if (viewChanged) {
       updateGrid();
@@ -600,7 +600,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       emitter.emit('view', { zoom: camera.zoom, x: c.x, y: c.y });
     }
     updateTextRes(now);
-    nodes.update(dt, now, visualTime);
+    nodes.update(wallDt, now, visualTime);
     const m = applyFlows(dt, now);
     const captionsMoved = nodes.layoutLabels(camera, captionArea);
     if (captionsMoved) edges.invalidateGeometry();
@@ -676,20 +676,21 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     let dt = now - last;
     last = now;
     if (!(dt >= 0)) dt = 0;
+    const wallDt = dt;
     if (dt > 100) dt = 100;
     for (const fn of frameFns) {
-      try { fn(dt); } catch (err) { queueMicrotask(() => { throw err; }); }
+      try { fn(wallDt); } catch (err) { queueMicrotask(() => { throw err; }); }
     }
     if (destroyed || app.renderer.context.isLost) { lastRenderMs = 0; return; }
     // nothing is moving: skip drawing and the GPU pass until something wakes the scene
-    if (now - lastActive > IDLE_AFTER_MS && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
+    if (now - lastActive > IDLE_AFTER_MS && !camera.moving && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
       idleFrames++; isIdle = true;
       lastRenderMs = 0;
       return;
     }
     isIdle = false;
     const t0 = performance.now();
-    draw(dt, now);
+    draw(dt, now, wallDt);
     if (!renderCanvas()) { lastRenderMs = 0; return; }
     const ms = performance.now() - t0;
     renderSamples[rsi] = ms; rsi = (rsi + 1) % renderSamples.length; rsn = Math.min(rsn + 1, renderSamples.length);

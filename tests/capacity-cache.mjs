@@ -8,6 +8,27 @@ import { problemById } from '../content/problems/index.js';
 const data = Object.fromEntries(['elements', 'requests', 'events', 'world'].map(name => [name,
   JSON.parse(fs.readFileSync(new URL(`../catalog/${name}.json`, import.meta.url), 'utf8'))]));
 const catalog = createCatalog(data);
+const outageProblem = {
+  id: 'preview-outage', requirements: { peakRps: 100, mix: { read: 1 }, userRegions: { us: 1 }, homeRegion: 'us' },
+  traffic: { curve: 'flat', sources: { 'web-browser': 1 } }, events: [],
+  starter: { nodes: [{ ref: 'users', type: 'web-browser' }], edges: [] },
+};
+const outageSims = [0, 1].map(() => {
+  const sim = createSim({ catalog, problem: outageProblem, mode: 'sandbox', seed: 'preview-outage' });
+  for (const region of ['us', 'eu']) {
+    sim.addNode('vm-fleet', 200, 0, { id: region, region, units: 10 });
+    sim.addNode('sql-primary', 400, 0, { id: region + '-db', region });
+    sim.connect('users', region); sim.connect(region, region + '-db');
+  }
+  sim.start(); sim.fireEvent('region-outage', { region: 'us' }); sim.tick();
+  sim.setTraffic({ peakRps: 200, mix: { read: 1 } }); sim.tick();
+  return sim;
+});
+const liveCapacity = outageSims[0].debug().effCap.slice();
+outageSims[0].estimate();
+assert.deepEqual(outageSims[0].debug().effCap, liveCapacity, 'preview cannot overwrite live outage capacities');
+outageSims.forEach(sim => sim.tick());
+assert.deepEqual(outageSims[0].state(), outageSims[1].state(), 'preview leaves the next outage tick unchanged');
 function pair(id, mode = 'practice') {
   const problem = problemById.get(id);
   return [0, 1].map(() => {

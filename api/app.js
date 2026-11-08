@@ -164,6 +164,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
 
   const routes = {
     'POST /e': async ({ req, ip }) => {
+      if (!config.dev || config.production) throw new HttpError(404, 'not-found', 'Not found.');
       limit('events', ip);
       await observation.events(req, ip);
       return [202, { ok: true }];

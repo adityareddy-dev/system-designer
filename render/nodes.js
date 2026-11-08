@@ -263,7 +263,7 @@ export function createNodeLayer(PIXI, parent, env) {
     } else if (reduced) {
       v.x = v.tx; v.y = v.ty;
     } else if (v.x !== v.tx || v.y !== v.ty || v.vx || v.vy) {
-      let rem = Math.min(dt, 64) / 1000;
+      let rem = Math.min(dt, 1000) / 1000;
       while (rem > 0) {
         const h = Math.min(rem, 0.004);
         v.vx += (-K * (v.x - v.tx) - C * v.vx) * h; v.x += v.vx * h;
@@ -435,17 +435,18 @@ export function createNodeLayer(PIXI, parent, env) {
       const inside=r=>r.x>=free.x&&r.y>=free.y&&r.x+r.width<=free.x+free.width&&r.y+r.height<=free.y+free.height;
       const choose=(base,p)=>{
           if(!visible(p))return base;
-          const candidates=[];
-          for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160])candidates.push({...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy});
-          const nearby=candidates.find(r=>inside(r)&&clear(r));
-          if(nearby)return nearby;
+          let fallback=null;
+          for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160]){
+            const r={...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy};
+            if(clear(r)){if(inside(r))return r;fallback ||= r;}
+          }
           // A crowded overview can leave a gap between the regular search lanes.
           // Test the exact edges of the occupied boxes before leaving the free canvas.
-          const xs=[free.x,free.x+free.width-base.width,...occupied.flatMap(r=>[r.x-base.width-2,r.x+r.width+2])];
-          const ys=[free.y,free.y+free.height-base.height,...occupied.flatMap(r=>[r.y-base.height-2,r.y+r.height+2])];
+          const xs=[free.x,free.x+free.width-base.width,...occupied.flatMap(r=>[r.x-base.width-2,r.x+r.width+2,r.x-base.width,r.x+r.width])];
+          const ys=[free.y,free.y+free.height-base.height,...occupied.flatMap(r=>[r.y-base.height-2,r.y+r.height+2,r.y-base.height,r.y+r.height])];
           let best=null,distance=Infinity;
           for(const x of xs)for(const y of ys){const r={...base,x,y},d=Math.abs(x-base.x)+Math.abs(y-base.y);if(d<distance&&inside(r)&&clear(r)){best=r;distance=d;}}
-          return best||candidates.find(clear)||base;
+          return best||fallback||base;
       };
       // Reserve the larger telemetry lanes first. Small names can fit around them.
       const factsById=new Map();

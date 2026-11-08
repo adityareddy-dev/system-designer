@@ -6,7 +6,7 @@
 import { Worker } from 'node:worker_threads';
 import { ReplayError } from './replay-core.js';
 
-export function createReplayer({ workers = 2, timeoutMs = 10_000, maxQueue = 24, maxWaitMs = 12_000, perKey = 1, perAddress = 3, workerUrl = new URL('./replay-worker.js', import.meta.url) } = {}) {
+export function createReplayer({ workers = 2, timeoutMs = 10_000, maxQueue = 24, maxWaitMs = 12_000, startupTimeoutMs = 12_000, perKey = 1, perAddress = 3, workerUrl = new URL('./replay-worker.js', import.meta.url) } = {}) {
   const pool = [];                 // { w, job|null }
   const lanes = { daily: [], other: [] };
   const byKey = new Map();         // user -> jobs waiting or running
@@ -34,11 +34,13 @@ export function createReplayer({ workers = 2, timeoutMs = 10_000, maxQueue = 24,
   }
 
   function spawn() {
-    const slot = { w: null, job: null };
+    const slot = { w: null, job: null, ready: false };
     const w = new Worker(workerUrl);
     slot.w = w;
     w.unref();
     w.on('message', (m) => {
+      if (m?.ready === true) { slot.ready = true; dispatch(slot); return; }
+      if (m?.ready === false) { gone(); w.terminate().catch(() => {}); return; }
       if (!m || m.id == null || !slot.job || slot.job.id !== m.id) return;
       const job = slot.job;
       slot.job = null;
@@ -55,6 +57,24 @@ export function createReplayer({ workers = 2, timeoutMs = 10_000, maxQueue = 24,
     w.on('exit', gone);
     pool.push(slot);
     return slot;
+  }
+
+  function expire(slot, job, code) {
+    if (slot.job !== job) return;
+    slot.job = null;
+    const i = pool.indexOf(slot);
+    if (i >= 0) pool.splice(i, 1);
+    slot.w.terminate().catch(() => {});
+    settle(job, new ReplayError(code, code === 'timeout' ? 'That design took too long to replay.' : 'The scorer is busy. Try again in a minute.'));
+    pump();
+  }
+
+  function dispatch(slot) {
+    const job = slot.job;
+    if (!slot.ready || !job) return;
+    clearTimeout(job.timer);
+    job.timer = setTimeout(() => expire(slot, job, 'timeout'), timeoutMs);
+    slot.w.postMessage({ id: job.id, payload: job.payload });
   }
 
   // Daily boards first; within a lane, the address with the fewest jobs running, then the one served longest ago, then the oldest job.
@@ -86,17 +106,9 @@ export function createReplayer({ workers = 2, timeoutMs = 10_000, maxQueue = 24,
       slot.job = job;
       job.running = true;
       bump(runningAt, job.address, 1);
-      // the time limit starts now that the job runs
-      job.timer = setTimeout(() => {
-        if (slot.job !== job) return;
-        slot.job = null;
-        const i = pool.indexOf(slot);
-        if (i >= 0) pool.splice(i, 1);
-        slot.w.terminate().catch(() => {});
-        settle(job, new ReplayError('timeout', 'That design took too long to replay.'));
-        pump();
-      }, timeoutMs);
-      slot.w.postMessage({ id: job.id, payload: job.payload });
+      // Boot has a bounded wait of its own; replay time starts only after the worker is ready.
+      job.timer = setTimeout(() => expire(slot, job, 'busy'), startupTimeoutMs);
+      dispatch(slot);
     }
   }
 

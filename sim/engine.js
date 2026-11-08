@@ -1352,7 +1352,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     const X = fastState(null);
     for (const k of Object.keys(S)) X[k] = S[k];
     X.model = m;
-    X.laneSucc = new Float64Array(LN); X.laneP99 = new Float64Array(LN); X.rttE = null; X.frame = null; X.stateObj = null;
+    X.laneSucc = new Float64Array(LN); X.laneP99 = new Float64Array(LN); X.effCap = null; X.rttE = null; X.frame = null; X.stateObj = null;
     X.version = S.version;
     X.noise = new Float64Array(T);
     X.trafficMul = new Float64Array(T); X.fanTypes = new Uint8Array(T); X.regShare = new Float64Array(R);

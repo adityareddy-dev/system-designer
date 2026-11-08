@@ -98,8 +98,9 @@ export function createCamera(world) {
         moved = true;
       }
       if (vx || vy) {
-        cx -= (vx * dt) / z; cy -= (vy * dt) / z;
         const f = Math.pow(0.92, dt / 16.667);
+        const travel = 16.667 * (1 - f) / (1 - .92);
+        cx -= (vx * travel) / z; cy -= (vy * travel) / z;
         vx *= f; vy *= f;
         if (Math.hypot(vx, vy) < 0.01) vx = vy = 0;
         moved = true;

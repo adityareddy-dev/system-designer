@@ -13,6 +13,30 @@ import { createObservation } from '../observation.js';
 import { Readable } from 'node:stream';
 
 const opened = { name: 'app_opened', screen: 'phone', referrer: 'example.org' };
+test('production refuses anonymous event collection without storing counts', async t => {
+  const a = await startApp({ env: { NODE_ENV: 'production', DEV: '0', AUTH_FAKE: '0' } });
+  t.after(() => a.close());
+  assert.equal((await client(a.base).req('POST', '/e', { body: { events: [opened] } })).status, 404);
+  assert.equal(a.db.raw.prepare('SELECT count(*) AS n FROM event_counts').get().n, 0);
+  assert.equal(a.db.raw.prepare('SELECT count(*) AS n FROM visitor_counts').get().n, 0);
+});
+
+test('daily referrer storage stays bounded across batches and service restarts', t => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sd-referrers-'));
+  let db = openDb(path.join(dir, 'counts.db'));
+  t.after(() => { db.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const day = '2026-11-08';
+  for (let i = 0; i < 200; i++) {
+    if (i === 100) { db.close(); db = openDb(path.join(dir, 'counts.db')); }
+    db.countEvents(day, [{ ...opened, referrer: `site${i}.example` }], false);
+  }
+  assert(db.raw.prepare('SELECT count(DISTINCT referrer) AS n FROM event_counts WHERE day = ?').get(day).n <= 101);
+  assert.equal(db.raw.prepare('SELECT sum(count) AS n FROM event_counts').get().n, 200);
+  assert.equal(db.raw.prepare("SELECT count FROM event_counts WHERE referrer = 'other'").get().count, 100);
+  db.countEvents('2026-11-09', [opened], false);
+  assert.equal(db.raw.prepare('SELECT referrer FROM event_counts WHERE day = ?').get('2026-11-09').referrer, 'example.org');
+});
+
 test('events accept only known names, ids and fields, with atomic batches and body caps', async t => {
   const a = await startApp(); t.after(() => a.close()); const c = client(a.base);
   assert.equal((await c.req('POST', '/e', { body: { events: [opened, { name: 'problem_passed', id: 'url-shortener', screen: 'desktop' }] } })).status, 202);
