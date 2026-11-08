@@ -432,18 +432,18 @@ export function createNodeLayer(PIXI, parent, env) {
           v.evidenceBg.renderable=v.evidenceT.visible&&v.evidenceT.renderable;
         }
       };
-      // Retry missing names when panning opens space, keeping reserved lanes fixed.
+      // Retry missing captions when panning opens space, keeping reserved lanes fixed.
       const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live}`)].join('/');
       const origin=camera.worldToScreen(0,0);
       const panned=origin.x!==this.captionOrigin?.x||origin.y!==this.captionOrigin?.y;
       this.captionOrigin=origin;
-      let retryName=false;
+      let retryCaption=false;
       for(const v of list){
         const inView=visible(camera.worldToScreen(v.x,v.y));
-        if(inView&&!v.nameCaption&&(panned||!v.captionWasVisible))retryName=true;
+        if(inView&&(!v.nameCaption||(v.evidenceT.visible&&!v.factCaption))&&(panned||!v.captionWasVisible))retryCaption=true;
         v.captionWasVisible=inView;
       }
-      if (key === this.captionKey && !retryName) { refreshVisibility(); return false; }
+      if (key === this.captionKey && !retryCaption) { refreshVisibility(); return false; }
       const preserve=key===this.captionKey;
       this.captionKey = key;
       const previous = list.map(v => [v.renderHalf, v.captionBoxes]);

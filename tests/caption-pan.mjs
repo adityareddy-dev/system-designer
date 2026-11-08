@@ -17,9 +17,10 @@ try {
   });
   await page.goto((process.argv[2] || 'http://localhost:8765/') + '#/sandbox');
   await page.waitForFunction(() => window.__game?.getState().nodes.length > 0);
-  const { scenarios, fitLabelPx, entryLabelPx, omittedPan } = await page.evaluate(async () => {
+  const { scenarios, fitLabelPx, entryLabelPx, omittedPan, queuePan } = await page.evaluate(async () => {
     const { createScene } = await import('./render/scene.js');
     const { loadCatalog } = await import('./sim/catalog.js');
+    const { createSim } = await import('./sim/engine.js');
     const host = document.createElement('div');
     host.style.cssText = 'position:fixed;inset:0;width:400px;height:400px'; document.body.append(host);
     const scene = await createScene(host, { catalog: await loadCatalog(), reducedMotion: true }), results = [];
@@ -49,12 +50,35 @@ try {
       omittedPan.after = scene.measureDiagram();
       scene.panBy(0, -5); scene.renderNow();
       omittedPan.later = scene.measureDiagram();
+      host.style.width = host.style.height = '600px';
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const sim = createSim({ catalog: await loadCatalog(), mode: 'sandbox', problem: {
+        id: 'queue-pan', requirements: { peakRps: 100000, mix: { write: 1 } },
+        traffic: { curve: 'flat', sources: { 'web-browser': 1 } }, events: [],
+      } });
+      sim.loadGraph({ nodes: [
+        { id: 'u', type: 'web-browser', x: 0, y: 0 },
+        { id: 'q', type: 'queue', x: 500, y: 0 },
+        { id: 'wk', type: 'worker-pool', x: 1000, y: 0 },
+        { id: 'db', type: 'sql-primary', x: 500, y: -150 },
+      ], edges: [['u', 'q'], ['q', 'wk'], ['wk', 'db']] });
+      scene.sync(sim.getGraph());
+      sim.start(); sim.advance(120000);
+      scene.setFlows(sim.flows(), { nodeStates: sim.state().nodes, speed: 0 });
+      scene.setCaptionArea({ l: 32, t: 60, r: 80, b: 70 });
+      scene.fit({ l: 32, t: 60, r: 80, b: 70 }, false, { focusId: 'u', minZ: 1, maxZ: 1 });
+      scene.renderNow();
+      scene.panBy(-500, 0); scene.renderNow();
+      const queuePan = { entered: scene.measureDiagram(), builds: window.routeBuilds };
+      scene.panBy(5, 0); scene.renderNow();
+      queuePan.later = scene.measureDiagram();
+      queuePan.laterBuilds = window.routeBuilds - queuePan.builds;
       scene.setReducedMotion(false);
       scene.sync({ nodes: [{ id: 'entry', type: 'vm-fleet', x: 0, y: 0 }], edges: [] });
       scene.fit(32, false, { minZ: 0.75, maxZ: 0.75 });
       const fitLabelPx = scene.stats().labelPx;
       scene.renderNow(0);
-      return { scenarios: results, omittedPan, fitLabelPx, entryLabelPx: scene.stats().labelPx };
+      return { scenarios: results, omittedPan, queuePan, fitLabelPx, entryLabelPx: scene.stats().labelPx };
     } finally { scene.destroy(); host.remove(); }
   });
   for (const result of scenarios) {
@@ -70,6 +94,21 @@ try {
   assert.equal(omittedPan.before.labels.length, 0, 'the crowded strip initially has no caption room');
   assert.equal(omittedPan.after.labels.length, 4, 'panning visible parts into clear space retries omitted names');
   assert.equal(omittedPan.after.labelPartOverlaps, 0);
+  const queueName = queuePan.entered.labels.find(l => l.id === 'q' && l.kind === 'name');
+  const queueFacts = queuePan.entered.labels.find(l => l.id === 'q' && l.kind === 'failure');
+  assert(queueName, 'the entering queue retains its reserved name');
+  assert(queueFacts, 'panning retries missing queue readings even when its name is reserved');
+  assert.match(queueFacts.text, /waiting/);
+  assert.match(queueFacts.text, /oldest/i);
+  assert.match(queueFacts.text, /deadline/i);
+  assert.equal(queuePan.entered.labelPartOverlaps, 0);
+  assert.equal(queuePan.entered.labelPanelOverlaps, 0);
+  for (const label of [queueName, queueFacts]) {
+    const later = queuePan.later.labels.find(l => l.id === label.id && l.kind === label.kind);
+    assert(later && Math.abs(later.x - label.x - 5) < .01 && Math.abs(later.y - label.y) < .01,
+      'restored queue captions retain their world lanes during later panning');
+  }
+  assert.equal(queuePan.laterBuilds, 0, 'reserved queue captions do not rebuild routes during later panning');
   for (const label of omittedPan.after.labels) {
     const later = omittedPan.later.labels.find(other => other.id === label.id);
     assert(later, 'a restored name stays reserved');
