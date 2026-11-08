@@ -9,7 +9,8 @@ const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH
 const failures = [];
 try {
   for (const width of [1366, 390]) for (const theme of ['light', 'dark']) {
-    const page = await browser.newPage();
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.setViewport({ width, height: width === 390 ? 844 : 800, isMobile: width === 390, hasTouch: width === 390 });
@@ -24,6 +25,7 @@ try {
       const action = await page.evaluate(() => [...document.querySelectorAll('.sh-quickplay,.sh-playmain')].find(e => e.checkVisibility())?.getAttribute('href'));
       await snap(`challenge-${attempt}`);
       if (!action) { failures.push(`${width} ${theme}: Challenge hides all launch actions`); break; }
+      if (!attempt) assert.match(await page.$eval('.sh-challenge-page', e => e.textContent), /Play today's challenge/, 'a fresh browser offers a first attempt');
       if (attempt && !/Try again/.test(await page.$eval('.sh-challenge-page', e => e.textContent))) failures.push(`${width} ${theme}: a zero-score attempt has no retry label`);
       await page.click(await page.$eval('.sh-quickplay', e => e.checkVisibility()) ? '.sh-quickplay' : '.sh-playmain');
       await page.waitForSelector('.pl-root');
@@ -50,7 +52,7 @@ try {
     if (margin.gap < 8 || margin.margin < 8) failures.push(`${width} ${theme}: lesson heading lacks scroll clearance ${JSON.stringify(margin)}`);
     await snap('lesson-heading');
     assert.deepEqual(errors, []);
-    await page.close();
+    await context.close();
   }
   assert.deepEqual(failures, []);
   console.log('Challenge plays twice, before and after saved scores; reports and lesson headings clear navigation at both sizes and themes.');
