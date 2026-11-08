@@ -150,7 +150,7 @@ export function renderSettings(hostEl, ctx) {
   const feedbackHost = h('div');
   const privacy = card('Privacy and feedback',
     toggleRow('Anonymous usage counts', 'Helps us see what gets played and where the game breaks. No cookies or player ids. Browser privacy signals turn this off too.', settings.get('anonymousCounts'), v => set('anonymousCounts', v), 'sh-s-counts'),
-    h('a', { href: new URL('../../privacy.html', import.meta.url).href, text: 'Read the privacy page' }),
+    h('a', { href: new URL('./privacy.html', document.baseURI).href, text: 'Read the privacy page' }),
     h('button', { type: 'button', class: 'sh-btn', 'data-feedback-general': '', text: 'Send feedback', onclick: () => {
       feedbackHost.replaceChildren(); mountFeedback(feedbackHost, ctx, 'general', null, true); feedbackHost.querySelector('input')?.focus();
     } }), feedbackHost);
