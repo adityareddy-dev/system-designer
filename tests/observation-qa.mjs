@@ -177,23 +177,35 @@ try {
     assert.deepEqual(errors, []); await page.close(); console.log(`Checked ${width}px ${theme}: intro, lesson, problem, share, beat, daily, interview and feedback.`);
   }
 
-  for (const moduleFailure of [false, true]) {
+  for (const moduleFailure of [false, 'main.js', 'account/index.js']) {
     const page = await browser.newPage(), events = [];
     await page.evaluateOnNewDocument(() => { localStorage.clear(); localStorage.setItem('hotpath.v1.seenIntro','true'); });
     await page.setRequestInterception(true);
-    page.on('request', r => moduleFailure && r.url().endsWith('/main.js') ? r.abort() : r.continue());
+    page.on('request', r => moduleFailure && r.url().endsWith('/' + moduleFailure) ? r.abort() : r.continue());
     page.on('request', async r => { if (r.url().endsWith('/e') && r.method() === 'POST') events.push(...JSON.parse(r.postData() || await r.fetchPostData()).events); });
     await page.goto(base + '?measure=8794#/');
     if (!moduleFailure) {
       await page.waitForFunction(() => document.documentElement.dataset.ready === '1');
       await page.evaluate(() => { for (let i=0;i<2;i++) dispatchEvent(new ErrorEvent('error', { error: new TypeError('Cannot read private answer https://example.org/a?secret from null'), filename: 'https://systemdesigner.io/ui/play/play.js?secret' })); });
     }
-    await wait(1500);
+    const errorDeadline = Date.now() + 8000;
+    while (!events.some(e => e.name === 'error') && Date.now() < errorDeadline) await wait(100);
     assert.equal(events.filter(e => e.name === 'error').length, 1);
     assert.doesNotMatch(JSON.stringify(events), /private answer|secret|https:/);
     assert.equal(events.find(e => e.name === 'error').errorName, moduleFailure ? 'ModuleError' : 'TypeError');
     await page.close();
   }
+  const unavailable = await browser.newPage(), unavailableErrors = [];
+  unavailable.on('pageerror', e => unavailableErrors.push(e.message));
+  await unavailable.evaluateOnNewDocument(() => { localStorage.clear(); localStorage.setItem('hotpath.v1.seenIntro', 'true'); localStorage.setItem('hotpath.v1.settings', JSON.stringify({ soundMuted: true, reducedMotion: 'reduce' })); });
+  await unavailable.goto(base + '?measure=65534#/practice/url-shortener');
+  await unavailable.waitForFunction(() => window.__game?.getState().problemId === 'url-shortener');
+  await unavailable.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); });
+  await unavailable.waitForSelector('.pl-debrief .sh-feedback');
+  await unavailable.click('.sh-feedback input[value="3"]'); await click(unavailable, 'Send');
+  await unavailable.waitForFunction(() => document.querySelector('.sh-feedback [role=status]')?.textContent.includes('Could not send'));
+  assert.ok(await unavailable.$('.pl-debrief > .pl-actions button'));
+  assert.deepEqual(unavailableErrors, []); await unavailable.close();
   const db = new DatabaseSync(dbPath, { readOnly: true });
   assert.ok(db.prepare('SELECT sum(count) AS n FROM event_counts').get().n > 0);
   assert.equal(db.prepare('SELECT count(*) AS n FROM feedback').get().n, 12); db.close();
