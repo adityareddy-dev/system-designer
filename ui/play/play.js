@@ -1933,7 +1933,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   if (isPhone()) trafficPanel?.fold(true);
   later(() => { if (!S.destroyed) fitEntry(); }, 60);
   // Panels keep the canvas clear: their edges follow the HUD's real height.
-  let hudObs = null, toolbarObs = null;
+  let hudObs = null, toolbarObs = null, hudSyncFrame = 0;
   const syncHud = () => {
     if (S.destroyed) return;
     const r = hud.el.getBoundingClientRect(), rr = root.getBoundingClientRect();
@@ -1982,12 +1982,18 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   try {
     let lastSize = { width: root.clientWidth, height: root.clientHeight };
     hudObs = new ResizeObserver(() => {
-      const nextSize = { width: root.clientWidth, height: root.clientHeight };
-      const resized = nextSize.width !== lastSize.width || nextSize.height !== lastSize.height;
-      lastSize = nextSize;
-      syncHud();
-      if (resized) refreshChecks();
-      refitSoon(resized);
+      if (hudSyncFrame) return;
+      // Reconcile styles after resize delivery; moving panels inside it can resize observed descendants again.
+      hudSyncFrame = requestAnimationFrame(() => {
+        hudSyncFrame = 0;
+        if (S.destroyed) return;
+        const nextSize = { width: root.clientWidth, height: root.clientHeight };
+        const resized = nextSize.width !== lastSize.width || nextSize.height !== lastSize.height;
+        lastSize = nextSize;
+        syncHud();
+        if (resized) refreshChecks();
+        refitSoon(resized);
+      });
     });
     hudObs.observe(hud.el); hudObs.observe(root); hudObs.observe(top);
     hudObs.observe(right);
@@ -2077,6 +2083,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       try { trafficPanel?.destroy(); } catch { /* ignore */ }
       try { ctx.audio?.setLoad(0); } catch { /* ignore */ }
       try { hudObs?.disconnect(); toolbarObs?.disconnect(); } catch { /* ignore */ }
+      cancelAnimationFrame(hudSyncFrame);
       clearTimeout(refitT);
       try { scene.destroy(); } catch { /* ignore */ }
       root.remove();
