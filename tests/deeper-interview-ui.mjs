@@ -62,6 +62,7 @@ try {
       answer.value = 'Use the measured peak and surviving units. Test durable recovery and bound retries before increasing traffic.';
       answer.dispatchEvent(new Event('input'));
       card.querySelector('form').requestSubmit();
+      const prediction = card.querySelector('.hp-defense-claims select'); prediction.value = 'hold'; prediction.dispatchEvent(new Event('change'));
       card.querySelector('.hp-defense-claims input[type=checkbox]').click();
     }));
     await click('Save interview report');

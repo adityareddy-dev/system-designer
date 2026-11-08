@@ -2,7 +2,7 @@
 import { h, fmtNum, fmtUsd } from './util.js';
 import { estimateUnit, estimateFeedback } from './estimate-units.js';
 import { mountDefense } from '../defense.js';
-import { claimsFor, checkClaim } from '../../content/problems/defense-claims.js';
+import { claimsFor, checkClaim, summarizeClaims } from '../../content/problems/defense-claims.js';
 
 import { questionAnalysis } from './question-topics.js';
 export function questionCoverage(text, questions) { return questionAnalysis(text, questions).coverage; }
@@ -116,7 +116,7 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     h('div', { class: 'pl-kicker', text: 'Interview mode · Defend your design' }),
     h('h2', { class: 'pl-h2', text: result.passed ? 'The system held. Explain the tradeoffs.' : 'The day found a limit. Explain the evidence.' }),
     h('p', { text: result.score.total + '/1,000 · ' + fmtUsd(result.slo.cost.perMonth) + '/month' }),
-    h('p', { text: 'Write before each reveal, then commit the claims your explanation relies on. Counterexamples replay your design. Writing review and computed claims are separate from the day score.' }));
+    h('p', { text: 'Write before each reveal, then predict whether the listed claim holds or fails. Replays test your design against that prediction. Writing review and predictions are separate from the day score.' }));
   host.replaceChildren(root);
   const priorities = h('section', { class: 'pl-interview-priorities', 'aria-live': 'polite' });
   root.append(priorities);
@@ -125,17 +125,17 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
   const update = () => {
     report.hidden = true;
     report.replaceChildren();
-    const gaps = questions.flatMap((q,i) => Object.values(state.defense[i]?.claims || {}).filter(c => !c.held).map(c => 'Follow-up ' + (i + 1) + ': ' + q.claims.find(claim => claim.id === c.claimId)?.text));
-    priorities.replaceChildren(h('h3', { text: 'What to work on next' }), h('p', { text: gaps[0] || 'Commit a claim for each follow-up and inspect its trace. A held claim supports only the tested scenario.' }), h('small', { text: 'Computed counterexamples check the committed claims. The written answer still needs human review.' }));
+    const gaps = questions.flatMap((q,i) => Object.values(state.defense[i]?.claims || {}).filter(c => c.applied !== false && c.matched === false).map(c => 'Follow-up ' + (i + 1) + ': your prediction did not match the replay. ' + q.claims.find(claim => claim.id === c.claimId)?.text));
+    priorities.replaceChildren(h('h3', { text: 'What to work on next' }), h('p', { text: gaps[0] || 'Commit a prediction for each follow-up and inspect its trace. If an experiment is not tested, use its trace to choose an applicable boundary.' }), h('small', { text: 'Replays compare your committed position with the measured outcome. The written answer still needs human review.' }));
     if (!questions.every((_, i) => state.defense[i]?.revealed && Object.keys(state.defense[i]?.claims || {}).length)) return;
     const outcomes = state.defense.flatMap(d => Object.values(d.claims || {}));
-    const covered = outcomes.filter(c => c.held).length;
-    const total = outcomes.length;
+    const summary = summarizeClaims(outcomes);
+    const { covered, total, held, failed, untested } = summary;
     const saveButton = button(state.complete ? 'Interview report saved' : 'Save interview report', () => {
       if (state.complete) return;
       save({ questionCount: state.coverage.filter(Boolean).length, questionsTotal: problem.clarify.length,
         estimates: state.estimates, scope: state.requirements, questions: state.questions, topicMatches: state.closest,
-        defense: state.defense.map((d,i) => ({ ...d, question: questions[i].q, evidence: questions[i].evidence, checklist: questions[i].checklist, claimDefinitions: questions[i].claims })), coverageKind: 'computed-claims', covered, total, score: result.score.total, passed: result.passed });
+        defense: state.defense.map((d,i) => ({ ...d, question: questions[i].q, evidence: questions[i].evidence, checklist: questions[i].checklist, claimDefinitions: questions[i].claims })), coverageKind: 'computed-predictions', ...summary, score: result.score.total, passed: result.passed });
       state.complete = true;
       controls.forEach(control => control.lock());
       root.querySelectorAll('.pl-defense-card').forEach(card => card.open = false);
@@ -144,10 +144,10 @@ export function renderInterviewResult(host, problem, state, result, catalog, sav
     saveButton.disabled = state.complete;
     report.hidden = false;
     report.replaceChildren(h('h3', { text: 'Your interview report' }),
-      h('p', { text: 'Question topics recorded: ' + state.coverage.filter(Boolean).length + '/' + problem.clarify.length + '. Computed claims held: ' + covered + '/' + total + '. Day score: ' + result.score.total + '/1,000.' }),
+      h('p', { text: 'Question topics recorded: ' + state.coverage.filter(Boolean).length + '/' + problem.clarify.length + '. Predictions matched: ' + covered + '/' + total + ' tested. Claims held: ' + held + '; failed: ' + failed + '. Not tested by this replay: ' + untested + '. Day score: ' + result.score.total + '/1,000.' }),
       h('p', { text: state.requirements }),
       ...problem.numbers.map((n, i) => h('p', { text: n.label + ': estimated ' + fmtNum(state.estimates[i] * estimateUnit(n).factor) + ' ' + estimateUnit(n).unit + ', worked ≈ ' + fmtNum(estimateUnit(n).value) + ' ' + estimateUnit(n).unit + '.' })), saveButton,
-      ...(state.complete ? [h('p', { role: 'status', text: 'Saved on this device with your claims and counterexample traces. Best claim results and best day score are kept separately.' })] : []),
+      ...(state.complete ? [h('p', { role: 'status', text: 'Saved on this device with your predictions and replay traces. Best prediction results and best day score are kept separately.' })] : []),
       h('a', { class: 'pl-btn', href: '#/practice/' + problem.id + '?interview=1', onClick: () => location.reload(), text: 'New interview' }));
   };
   questions.forEach((q, i) => {

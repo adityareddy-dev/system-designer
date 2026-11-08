@@ -83,4 +83,44 @@ blocked.graph.edges = blocked.graph.edges.filter(e => e.from !== 'client')
   .concat([{ from: 'client', to: 'limiter' }, { from: 'limiter', to: 'app' }]);
 blocked.problem.events = [{ id: 'bad-deploy', at: '11:59', params: { target: 'limiter', errorRate: 1, durationSec: 120 } }];
 assert.equal(check('retry', baseline(blocked.problem, blocked.graph), false).applied, false, 'a fleet active earlier and later must carry traffic at the intervention tick');
+// The same measured failure supports a committed negative prediction, not an optimistic claim.
+const coldOrigin = fixture({ rate: 15000, units: 24, cache: true });
+const predictedFailure = checkClaim({ id: 'cold', kind: 'cold', nodeId: 'cache', position: 'fail' }, coldOrigin);
+assert.equal(predictedFailure.held, false, 'the measured targets still fail');
+assert.equal(predictedFailure.position, 'fail');
+assert.equal(predictedFailure.matched, true, 'correctly predicting an unsafe bypass earns prediction credit');
+assert.equal(checkClaim({ id: 'cold', kind: 'cold', nodeId: 'cache', position: 'hold' }, coldOrigin).matched, false);
+const predictedHold = checkClaim({ id: 'growth', kind: 'growth', position: 'hold' }, fixture());
+assert.equal(predictedHold.matched, true);
+assert.equal(checkClaim({ id: 'growth', kind: 'growth', position: 'fail' }, fixture()).matched, false);
+for (const position of ['hold', 'fail']) {
+  const untested = checkClaim({ id: 'cut', kind: 'cut', nodeId: 'app', position }, fixture({ units: 2, zones: 2 }));
+  assert.equal(untested.outcome, 'untested');
+  assert.equal(untested.matched, null, 'an unapplied intervention neither supports nor contradicts a prediction');
+  assert.match(untested.steps.at(-1), /Not tested by this replay/);
+  assert.doesNotMatch(untested.steps.at(-1), /Claim failed/);
+  assert(untested.steps.some(s => /Try .+before replaying/.test(s)), 'unsupported experiments explain how to become applicable');
+}
+// A disconnected part and an idle edge do not exercise the advertised boundary.
+const unused = fixture();
+unused.graph.nodes.push({ id: 'unused-cache', type: 'cache', x: 0, y: 300 }, { id: 'unused-app', type: 'vm-fleet', units: 20, x: 200, y: 300 });
+const unusedContext = baseline(unused.problem, unused.graph);
+for (const [kind, nodeId] of [['cold', 'unused-cache'], ['replica', 'unused-app'], ['cut', 'unused-app'], ['saving', 'unused-app'], ['distance', 'unused-app']]) {
+  const checked = checkClaim({ id: kind, kind, nodeId, position: 'fail' }, unusedContext);
+  assert.equal(checked.applied, false, kind + ' must target a part carrying baseline work');
+  assert.equal(checked.outcome, 'untested'); assert.equal(checked.matched, null);
+}
+const idleFirst = { ...unused.graph, edges: [['unused-app', 'db'], ...unused.graph.edges] };
+const routeContext = baseline(unused.problem, idleFirst);
+const routeTest = checkClaim({ id: 'route', kind: 'route', position: 'fail' }, routeContext);
+assert.equal(routeTest.applied, true);
+assert(routeTest.steps.some(s => s.startsWith('Disconnect ') && s.includes('client')), 'route replay skips the first edge when it carried no requests');
+const noTrafficProblem = { ...unused.problem, traffic: { ...unused.problem.traffic, curve: 'no-traffic' } };
+const noTrafficCatalog = { ...catalog, world: { ...catalog.world, curves: { ...catalog.world.curves, 'no-traffic': Array(24).fill(0) } } };
+const noSourceSim = createSim({ catalog: noTrafficCatalog, problem: noTrafficProblem });
+noSourceSim.loadGraph({ nodes: unused.graph.nodes.filter(n => n.id !== 'client'), edges: [] });
+noSourceSim.start(); noSourceSim.advance(86400000);
+const noSource = noSourceSim.result();
+assert(noSource.timeline.every(row => row.offeredRps === 0), 'fixture offers no traffic despite a positive configured peak');
+assert.equal(checkClaim({ id: 'growth', kind: 'growth', position: 'fail' }, { catalog: noTrafficCatalog, problem: noTrafficProblem, graph: noSource.graph, result: noSource }).outcome, 'untested', 'positive configured peak is not evidence of offered traffic');
 console.log('Claim fixtures passed for surviving capacity, growth, minimum fleets, whole-bill savings, alternate routes, cold origins, applicable hot items and retry targets.');

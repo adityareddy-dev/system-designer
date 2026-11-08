@@ -10,7 +10,7 @@ import { checkClaim } from '../content/problems/defense-claims.js';
 import sizing, { twistSizing } from '../content/sizing.js';
 const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(name => [name, JSON.parse(fs.readFileSync(new URL(`../catalog/${name}.json`, import.meta.url)))])));
 const run = (problem, graph) => { const sim = createSim({ catalog, problem, seed: 'practice' }); sim.loadGraph(graph); sim.start(); sim.advance(86400000); return sim.result(); };
-let references = 0, prompts = 0, claims = 0, held = 0, failed = 0;
+let references = 0, prompts = 0, claims = 0, held = 0, failed = 0, untested = 0;
 for (const problem of problems) {
   const twist = twistProblem(problem);
   assert(twist.requirements.budgetPerMonth < problem.requirements.budgetPerMonth, problem.id + ' has a binding changed constraint');
@@ -50,13 +50,13 @@ for (const problem of problems) {
       const service = checked.checks.availability && checked.checks.latency;
       const expected = claim.kind === 'saving' ? service && checked.checks.safety && checked.cost <= result.slo.cost.perMonth * .7 : claim.kind === 'cut' ? service && checked.checks.safety : service;
       assert.equal(checked.held, checked.applied && expected, problem.id + ' ' + claim.id);
-      assert(checked.steps.length >= 4 && checked.steps.at(-1).includes(checked.held ? 'Claim held' : 'Claim failed'));
+      assert(checked.steps.length >= 4 && checked.steps.at(-1).includes(!checked.applied ? 'Not tested by this replay' : checked.held ? 'Claim held' : 'Claim failed'));
       assert(!checkClaim(claim, { ...context, graph: broken }).held, problem.id + ' broken ' + claim.id);
       if (claims % 30 === 0) assert.deepEqual(checkClaim(claim, context), checked, 'replays are deterministic');
-      checked.held ? held++ : failed++; claims++;
+      !checked.applied ? untested++ : checked.held ? held++ : failed++; claims++;
     }
   }
   }
 }
 assert(held > 0 && failed > 0, 'reference counterexamples include supported and unsupported claims');
-console.log(`${problems.length} transfers, ${references} unchanged base references rejected, ${prompts} prompts, ${claims} claims checked on own and broken graphs (${held} held, ${failed} failed on reference counterexamples).`);
+console.log(`${problems.length} transfers, ${references} unchanged base references rejected, ${prompts} prompts, ${claims} claims checked on own and broken graphs (${held} held, ${failed} failed, ${untested} not tested on reference counterexamples).`);
