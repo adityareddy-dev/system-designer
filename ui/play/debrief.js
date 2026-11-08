@@ -1,4 +1,5 @@
 // End-of-day evidence and actions.
+import { mountFeedback } from '../shell/feedback.js';
 export const duration = sec => sec < 60 ? `${Math.round(sec)} ${Math.round(sec) === 1 ? 'second' : 'seconds'}` : `${Math.round(sec / 6) / 10} ${sec === 60 ? 'minute' : 'minutes'}`;
 // The debrief: verdict, score dial, four SLO cards, timeline, event stories, trade-offs, one thing to try next.
 import { renderRepair } from './repair.js';
@@ -473,4 +474,5 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     h('button', { class: 'pl-btn pl-btn--ghost', type: 'button', onClick: () => handlers.onBack?.() }, iconEl('ui.back', 16), 'Back to my design')));
   gateTransfer(root, problem, result, catalog);
   host.append(root);
+  mountFeedback(root, ctx, 'problem:' + problem.id, result);
 }

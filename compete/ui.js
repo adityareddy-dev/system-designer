@@ -1,4 +1,5 @@
 // Compete UI pieces the shell mounts into hosts it owns: daily panel, share dialog, "beat my design" landing.
+import { metrics } from '../core/metrics.js';
 import { icon } from '../assets/icons/index.js';
 import { eventById, fmtInt, fmtMoney, fmtPct, cleanName, problemLookup } from './util.js';
 import { ShareError } from './share.js';
@@ -156,13 +157,15 @@ export function createCompeteUi(ctx, api) {
       try { await navigator.clipboard.writeText(url); }
       catch { link.select(); try { document.execCommand('copy'); } catch { /* ignore */ } }
       toast('Link copied', 'ok');
+      metrics.once('result_shared', problem.id);
     });
     shareBtn.addEventListener('click', async () => {
       if (!blob) return;
       const r = await api.card.shareCard(blob, { title: `${problem.title}: ${fmtInt(result.score.total)} points`, text: `I scored ${fmtInt(result.score.total)} on ${problem.title}. Can you beat my design?`, url });
+      if (r !== 'cancelled') metrics.once('result_shared', problem.id);
       if (r === 'downloaded') toast('Image saved. Paste the link next to it.', 'ok');
     });
-    dl.addEventListener('click', async () => { if (blob) { api.card.downloadCard(blob, problem.title); } });
+    dl.addEventListener('click', async () => { if (blob) { api.card.downloadCard(blob, problem.title); metrics.once('result_shared', problem.id); } });
 
     const prevFocus = document.activeElement;
     const closeDlg = () => {
@@ -199,6 +202,7 @@ export function createCompeteUi(ctx, api) {
     let data;
     try {
       data = await api.share.decodeShare(payload);
+      metrics.once('beat_link_opened', data.problemId);
     } catch (err) {
       const msg = err instanceof ShareError ? err.message : 'This link could not be opened.';
       root.append(h('h2', 'cp-title', 'This link did not open'), h('p', 'cp-muted', msg));

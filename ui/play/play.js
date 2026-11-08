@@ -1,4 +1,6 @@
 // In-problem screen: mountPlay() builds the canvas, toolbar, inspector, HUD, steps, hints, debrief and editorial.
+import { metrics } from '../../core/metrics.js';
+import { mountFeedback } from '../shell/feedback.js';
 import { twistProblem } from '../../content/problems/twist.js';
 import { createInterview, renderInterviewPrep, renderInterviewResult } from './interview.js';
 import { pathLayout } from '../../render/layout.js';
@@ -1430,6 +1432,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       S.prevBest = mode === 'practice' ? bestOf(ctx.progress?.get(S.problem.id)) : bestOf(ctx.compete?.bests?.get?.(`${mode}:${S.problem.id}:${S.seed}`));
     } catch { S.prevBest = null; }
     S.step = 'debrief';
+    if (result.passed && !warm) { metrics.track('problem_passed', S.problem.id); metrics.once('first_problem_passed', S.problem.id); }
     const traces = result.passed ? Object.entries(S.problem.requirements.mix).filter(([, share]) => share > 0).map(([type]) => S.sim.trace(type)) : [];
     carryRunIntoReport({ host: debriefWrap, stage, scene, result: S.result, catalog, traces, interview, reduced: ctx.reducedMotion(), render: () => {
       if (S.destroyed || S.step !== 'debrief' || S.result?.graph !== result.graph) return false;
@@ -1458,6 +1461,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         if (S.interviewSaved) return;
         S.interviewSaved = true;
         ctx.progress.recordInterview(S.problem.id, report);
+        metrics.track('interview_finished', S.problem.id);
+        mountFeedback(debriefWrap.querySelector('.pl-debrief'), ctx, 'problem:' + S.problem.id, S.result);
       });
       debriefWrap.hidden = false; debriefWrap.scrollTop = 0; return;
     }
