@@ -159,7 +159,7 @@ function blankState() {
     minOff: null, minSucc: null, hourOff: null, hourSucc: null, hourP99: null, hourW: null,
     complianceChecked: null, interventions: null, result: null, counters: null, firstBreak: null, tickNow: null,
     laneOff: null, laneSucc: null, laneP99: null, lastStorageGb: null, stateObj: null, frameDirty: false, rttE: null,
-    loc: null, effCap: null,
+    loc: null, effCap: null, effCapInputs: null,
     qHist: null, lateCarry: null, lateType: null, lateDay: -0, readBack: -0, readBackEdge: -0, privateReads: -0, typeP99Now: null, typeWNow: null, latWorstT: -1,
     // per node (N)
     cap: null, capNom: null, rho: null, sv: null, sPrev: null, rhoPrev: null, rhoQacc: null, rhoQPrev: null, health: null, unhealthySince: null,
@@ -190,6 +190,7 @@ function allocArrays(S, N, E) {
   for (const k of N_F64) S[k] = new Float64Array(N);
   for (const k of N_U8) S[k] = new Uint8Array(N);
   S.loc = new Int8Array(N);
+  S.effCap = null; S.effCapInputs = null;
   for (const k of NL) S[k] = new Float64Array(N * LN);
   for (const k of EL) S[k] = new Float64Array(Math.max(1, E) * LN);
 }
@@ -735,6 +736,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     }
   }
   const compBuf = new Float64Array(T);
+  const lateBuf = new Float64Array(T);
+  const queueStreams = [];
   function queueLateness(X, tn, dt) {
     const m = X.model;
     if (!X.queueNodes.length) return 0;
@@ -751,7 +754,10 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         X.qHist.set(n.id, q);
       }
       const b = u * LN;
-      const streams = n.fanoutQ ? Array.from(n.consumers, ei => queueStream(q, m.edges[ei].id, ei)) : [queueStream(q, null)];
+      const streams = queueStreams;
+      streams.length = 0;
+      if (n.fanoutQ) for (const ei of n.consumers) streams.push(queueStream(q, m.edges[ei].id, ei));
+      else streams.push(queueStream(q, null));
       for (const [key, stream] of q.streams) if (!streams.includes(stream)) q.streams.delete(key);
       const la = n.laneNear ? X.active : X.activeT, ln = n.laneNear ? X.nActive : X.nActiveT;
       let arr = 0;
@@ -787,7 +793,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       q.procAvg = 0.9 * q.procAvg + 0.1 * proc;
       // Each type keeps its own deadline even when slower work shares the queue.
       let lateMsgs = 0, shortest = Infinity;
-      const lateByType = new Float64Array(T);
+      const lateByType = lateBuf;
+      lateByType.fill(0);
       for (const stream of streams) for (let t = 0; t < T; t++) {
         if (!(stream.typeArr[t] > 0)) continue;
         let hist = stream.types.get(t);
@@ -885,7 +892,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       const q = X.qHist.get(n.id);
       if (!q || n.isDLQ) continue;
       const k = Math.min(DAY_TICKS - 1, q.lastK);
-      const lateByType = new Float64Array(T);
+      const lateByType = lateBuf;
+      lateByType.fill(0);
       for (const stream of q.streams.values()) for (const [t, hist] of stream.types) {
         const limit = queueLimitFor(X.problem.requirements, catalog.requests[t]);
         const Lt = Math.max(1, Math.ceil(limit / X.dt));
