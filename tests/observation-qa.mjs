@@ -13,6 +13,7 @@ const base = process.argv[2] || 'http://localhost:8765/';
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sd-browser-'));
 const dbPath = path.join(dir, 'qa.db');
 const api = await start({ NODE_ENV: 'test', DEV: '1', PORT: '8794', DB_PATH: dbPath });
+api.config.sites.push(new URL(base).origin);
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 const wait = ms => new Promise(r => setTimeout(r, ms));
 if (process.env.SD_QA_SHOTS) fs.mkdirSync(process.env.SD_QA_SHOTS, { recursive: true });
@@ -49,6 +50,9 @@ try {
     assert.ok(await page.$('button[data-feedback-general]'));
     if (process.env.SD_QA_SHOTS) await page.screenshot({ path: path.join(process.env.SD_QA_SHOTS, `settings-${width}-${theme}.png`) });
     await click(page, 'Send feedback'); await page.waitForSelector('.sh-feedback');
+    await page.focus('.sh-feedback button[type=button]'); await page.keyboard.press('Enter');
+    assert.ok(await page.$eval('[data-feedback-general]', el => document.activeElement === el), 'dismiss restores keyboard focus to Send feedback');
+    await page.keyboard.press('Enter'); await page.waitForSelector('.sh-feedback:not([hidden])');
     await page.click('.sh-feedback input[value="4"]'); await page.type('.sh-feedback textarea', 'General feedback'); await click(page, 'Send');
     await page.waitForFunction(() => document.querySelector('.sh-feedback [role=status]')?.textContent.includes('Thanks'));
     await page.evaluate(() => window.__game.loadLesson('intro'));

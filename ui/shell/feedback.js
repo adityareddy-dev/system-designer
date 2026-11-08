@@ -4,7 +4,7 @@ import { metrics } from '../../core/metrics.js';
 import { APP_VERSION } from '../../core/version.js';
 
 const mounted = new WeakMap();
-export function mountFeedback(host, ctx, page, token = host, general = false) {
+export function mountFeedback(host, ctx, page, token = host, general = false, opener = null) {
   if (!ctx?.store) return;
   const previous = mounted.get(host);
   if (!general && previous?.token === token && previous.page === page) { host.append(previous.form); return; }
@@ -21,7 +21,7 @@ export function mountFeedback(host, ctx, page, token = host, general = false) {
   const send = h('button', { class: 'sh-btn', type: 'submit', text: 'Send' });
   const status = h('p', { role: 'status', 'aria-live': 'polite', class: 'sh-muted' });
   const dismiss = h('button', { class: 'sh-btn sh-btn--ghost', type: 'button', text: 'Dismiss', onclick: () => {
-    const next = host.querySelector('button:not(.sh-feedback button), a[href]');
+    const next = opener || host.querySelector('button:not(.sh-feedback button), a[href]');
     form.hidden = true; next?.focus({ preventScroll: true });
   } });
   form.append(group, h('label', {}, h('span', { text: 'Comment (optional, up to 500 characters)' }), comment),

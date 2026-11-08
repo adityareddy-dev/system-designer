@@ -10,7 +10,8 @@ function endpoint() {
   return local() && /^\d{4,5}$/.test(port || '') && +port >= 1024 && +port <= 65535 ? `http://127.0.0.1:${port}` : null;
 }
 function allowed() {
-  return !!endpoint() && navigator.onLine !== false && navigator.doNotTrack !== '1' && globalThis.doNotTrack !== '1' && navigator.msDoNotTrack !== '1' && navigator.globalPrivacyControl !== true &&
+  // Automatic collection is limited to the explicitly selected local test service.
+  return local() && !!endpoint() && navigator.onLine !== false && navigator.doNotTrack !== '1' && globalThis.doNotTrack !== '1' && navigator.msDoNotTrack !== '1' && navigator.globalPrivacyControl !== true &&
     (ctx ? ctx.settings.get('anonymousCounts') !== false : store?.get('settings', {})?.anonymousCounts !== false);
 }
 function flush() {
@@ -45,6 +46,7 @@ function reportError(error, file = 'unknown', module = false) {
 const afterPaint = [];
 export const metrics = {
   track, once, reportError,
+  countsAvailable: () => local() && !!endpoint(),
   bind(context) {
     ctx = context;
     ctx.bus.on('settings', ({ key, value }) => { if (key === 'anonymousCounts' && !value) { pending.length = 0; clearTimeout(timer); timer = null; } });

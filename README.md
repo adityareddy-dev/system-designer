@@ -78,7 +78,7 @@ cd api && node --test test/*.test.js   # sign-in service: Google token checks, G
 
 ## Privacy
 
-Anonymous daily counts help us see what gets played and where the game breaks, without cookies or lasting player ids. Turn them off in Settings or with your browser's privacy signals. Feedback is optional and anonymous. Signing in stores your provider id, a display name, your avatar link, progress and scores; nothing is sold and you can delete it anytime. See [privacy.html](privacy.html).
+Automatic usage counts and error reports are disabled on public sites. Feedback is optional and anonymous. Signing in stores your provider id, a display name, your avatar link, progress and scores; nothing is sold and you can delete it anytime. See [privacy.html](privacy.html).
 
 ## License
 
