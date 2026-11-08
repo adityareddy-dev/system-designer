@@ -25,7 +25,16 @@ try {
     await page.waitForFunction(() => window.__game?.getState().nodes.length === 15);
     await sleep(800);
     if (width === 390) { await page.click('.pl-overview button'); await sleep(700); }
-    assert((await page.evaluate(() => window.__game.getState().view.labelPx)) >= 12.99, 'fit measures at least 13 CSS pixels for names');
+    const fitView = await page.evaluate(() => window.__game.getState().view);
+    assert(fitView.labelPx >= 12.99, `${width}px fit measures at least 13 CSS pixels for names: ${fitView.labelPx}px at zoom ${fitView.zoom}`);
+    await sleep(1700);
+    const entryPx = await page.evaluate(() => {
+      window.__game.placeComponent('cache', 950, 360);
+      return window.__game.getState().view.labelPx;
+    });
+    assert(entryPx >= 12.99, 'names stay readable when a new part wakes an idle scene');
+    const animatedPx = await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(window.__game.getState().view.labelPx))));
+    assert(animatedPx >= 12.99, 'part entry motion keeps names at least 13 CSS pixels tall');
     const p = await page.evaluate(() => {
       const point = window.__game.getState().view.screen.find(n => n.id === 'n7'), r = document.querySelector('.pl-stage').getBoundingClientRect();
       return { x: point.x + r.x, y: point.y + r.y };
@@ -109,8 +118,9 @@ try {
       form.querySelector('input').value = 'Commit the operation and result atomically and test recovery against a completed durable copy.'; form.requestSubmit();
       window.__game.pause();
     }, problemById.get('shopping-cart').correctness.fields.map(f => f.correct));
+    await page.evaluate(() => window.__game.step(86400000));
+    await page.waitForSelector('.pl-victory-numbers b');
     const readings = await page.evaluate(async () => {
-      window.__game.step(86400000);
       const samples = [], start = performance.now();
       while (performance.now() - start < 1300) {
         await new Promise(requestAnimationFrame);
@@ -119,7 +129,7 @@ try {
       }
       return samples;
     });
-    assert(readings.length > 5);
+    assert(readings.length > 5, `${motion}: sampled ${readings.length} rendered result frames`);
     assert(readings.every(([target, score]) => target === '99.90%' && score === '1,000'), `${motion}: thresholds and saved score stay fixed throughout the result`);
     assert(await page.$('.pl-run-evidence'), `${motion}: the same measured evidence survives every motion setting`);
     await page.goto(base + '#/practice'); await page.waitForSelector('.sh-practice-page');

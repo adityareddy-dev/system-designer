@@ -115,7 +115,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.chipText = null;
     v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, HALF + 6);
     v.labelT = makeText('', 12, P.text2, false, '500', 72); // narrow lines, so neighbours' names do not touch when zoomed out
-    v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
+    v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK / v.s); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
     v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
     v.leader = new PIXI.Graphics();
@@ -347,6 +347,7 @@ export function createNodeLayer(PIXI, parent, env) {
   return {
     views,
     get list() { return list; },
+    get moving() { return dying.length > 0 || list.some(v => v.s !== 1 || v.vs !== 0 || v.x !== v.tx || v.y !== v.ty); },
     get selected() { return selected; },
     get hovered() { return hovered; },
     sync(graph) {
@@ -384,7 +385,10 @@ export function createNodeLayer(PIXI, parent, env) {
     update(dt, now, time) {
       const P = env.kit().P;
       const reduced = env.reduced();
-      for (const v of list) step(v, dt, now, P, reduced, time);
+      for (const v of list) {
+        step(v, dt, now, P, reduced, time);
+        v.labelT.scale.set(labelK / v.c.scale.x);
+      }
       // Captions always belong to their module. Spacing is handled by graph layout, never by moving captions.
       for (const v of list) {
         const detail = detailZoom || selected === v.id;
@@ -575,7 +579,7 @@ export function createNodeLayer(PIXI, parent, env) {
     cull(x0, y0, x1, y1) {
       for (const v of list) v.c.visible = v.x + 90 > x0 && v.x - 90 < x1 && v.y + 90 > y0 && v.y - 90 < y1;
     },
-    // Below full zoom the names grow (up to 4.5 times, the lowest zoom) so they stay at about 13 px on screen (the base size is 12 px).
+    // Keep names readable through zoom and part entry motion.
     setLabelScale(z) {
       detailZoom = z >= 1.05;
       for (const v of list) { v.icon.width = v.icon.height = detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z)); v.evidenceT.scale.set(1 / Math.max(.01, z)); }
@@ -585,7 +589,7 @@ export function createNodeLayer(PIXI, parent, env) {
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
       if (Math.abs(k - labelK) < 0.0001) return;
       labelK = k;
-      for (const v of list) v.labelT.scale.set(k);
+      for (const v of list) v.labelT.scale.set(k / v.c.scale.x);
     },
     setTextResolution(r) {
       if (r === textRes) return;

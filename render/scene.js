@@ -682,7 +682,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     }
     if (destroyed || app.renderer.context.isLost) { lastRenderMs = 0; return; }
     // nothing is moving: skip drawing and the GPU pass until something wakes the scene
-    if (now - lastActive > IDLE_AFTER_MS && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
+    if (now - lastActive > IDLE_AFTER_MS && !camera.moving && !nodes.moving && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
       idleFrames++; isIdle = true;
       lastRenderMs = 0;
       return;
@@ -703,6 +703,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
 
   const ro = new ResizeObserver(() => {
     if (destroyed) return;
+    wake();
     wake();
     const w = Math.max(1, hostEl.clientWidth), h = Math.max(1, hostEl.clientHeight);
     const { w: cw, h: ch } = camera.size;
@@ -731,6 +732,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     },
     setRegionGroups(on) { regionGroups = !!on; drawRegions(); },
     sync(g, fv) {
+      wake();
       graph = g || null;
       if (fv !== undefined && fv !== flowVersion) { flowVersion = fv; map = null; }
       const a = nodes.sync(graph);
@@ -861,13 +863,15 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     setCaptionArea(area) { captionArea = area; wake(); },
     // opts: { minZ, maxZ } keep a fitted view readable: a big graph is panned rather than shrunk past minZ.
     fit(padding = 80, animate = true, opts = {}) {
+      wake();
       const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
       const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(opts.nodeIds ? { ...graph, nodes: graph.nodes.filter(n => opts.nodeIds.includes(n.id)) } : graph);
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
       camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, opts);
+      nodes.setLabelScale(camera.zoom);
     },
-    zoomBy(factor, cx, cy) { const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); },
-    panBy(dx, dy) { camera.panBy(dx, dy); },
+    zoomBy(factor, cx, cy) { wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); },
+    panBy(dx, dy) { wake(); camera.panBy(dx, dy); },
     stopCamera() { camera.stop(); },
     screenToWorld(x, y) { return camera.screenToWorld(x, y); },
     worldToScreen(x, y) { return camera.worldToScreen(x, y); },
