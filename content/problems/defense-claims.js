@@ -1,5 +1,13 @@
 // Prompt-specific, deterministic counterexamples replay the candidate's graph and workload.
 import { createSim } from '../../sim/engine.js';
+const trialCache = new WeakMap();
+function trialsFor(result, catalog) {
+  let catalogs = trialCache.get(result);
+  if (!catalogs) { catalogs = new WeakMap(); trialCache.set(result, catalogs); }
+  let trials = catalogs.get(catalog);
+  if (!trials) { trials = new Map(); catalogs.set(catalog, trials); }
+  return trials;
+}
 export function claimsFor(question, problem, graph, catalog, result) {
   const fleetCost = n => {
     const measured = result?.nodes?.find(row => row.id === n.id)?.usd;
@@ -88,34 +96,47 @@ export function checkClaim(claim, { problem, graph, result, catalog }) {
     applied = node.region !== region && active(node.id);
     node.region = region; steps.push(`Move ${label(node.id)} to ${node.region}. Keep its callers in place; replay synchronous travel and service time.`);
   }
-  const replay = createSim({ catalog, problem: { ...problem, events, requirements }, seed: result.seed || 'practice' });
-  replay.loadGraph(candidate); replay.start();
-  if (['hot', 'retry'].includes(claim.kind)) {
-    replay.advance(12 * 3600000);
-    // Observe the intervention tick: disconnected and idle boundaries cannot test the claim.
-    replay.tick();
-    const state = replay.state();
-    const flows = replay.flows();
-    const eventId = claim.kind === 'hot' ? 'hot-key' : 'retry-storm';
-    const targets = new Set(state.events.findLast(e => e.id === eventId && e.atMs === 12 * 3600000)?.nodeIds || []);
-    applied = candidate.nodes.some(n => {
-      if (!targets.has(n.id)) return false;
-      const el = catalog.elementById.get(n.type);
-      if (claim.kind === 'retry') {
-        const offset = flows.nodeIds.indexOf(n.id) * flows.typeIds.length;
-        return el.kind === 'compute' && flows.nodeFailRps.subarray(offset, offset + flows.typeIds.length).some(rps => rps > 0);
-      }
-      const cachedTraffic = el.kind === 'cache' && flows.typeIds.some((type, t) => catalog.requestById.get(type)?.cacheable && candidate.edges.some(edge => edge.to === n.id && flows.edgeRps[flows.edgeIds.indexOf(edge.id) * flows.typeIds.length + t] > 0));
-      const modeled = el.params?.keyed && (n.units > 1 || el.params.perKeyReadRps) || cachedTraffic;
-      if (!modeled) return false;
-      return state.nodes.find(s => s.id === n.id)?.incomingRps > 0;
-    });
+  const probeKind = ['hot', 'retry'].includes(claim.kind) ? claim.kind : '';
+  const trials = trialsFor(result, catalog);
+  const trialKey = JSON.stringify([problem, graph, candidate, events, requirements, result.seed || 'practice', probeKind]);
+  let trial = trials.get(trialKey);
+  if (!trial) {
+    const replay = createSim({ catalog, problem: { ...problem, events, requirements }, seed: result.seed || 'practice' });
+    replay.loadGraph(candidate); replay.start();
+    let probe = null;
+    if (probeKind) {
+      replay.advance(12 * 3600000);
+      // Observe the intervention tick: disconnected and idle boundaries cannot test the claim.
+      replay.tick();
+      const state = replay.state();
+      const flows = replay.flows();
+      const eventId = claim.kind === 'hot' ? 'hot-key' : 'retry-storm';
+      const targets = new Set(state.events.findLast(e => e.id === eventId && e.atMs === 12 * 3600000)?.nodeIds || []);
+      const tested = candidate.nodes.some(n => {
+        if (!targets.has(n.id)) return false;
+        const el = catalog.elementById.get(n.type);
+        if (claim.kind === 'retry') {
+          const offset = flows.nodeIds.indexOf(n.id) * flows.typeIds.length;
+          return el.kind === 'compute' && flows.nodeFailRps.subarray(offset, offset + flows.typeIds.length).some(rps => rps > 0);
+        }
+        const cachedTraffic = el.kind === 'cache' && flows.typeIds.some((type, t) => catalog.requestById.get(type)?.cacheable && candidate.edges.some(edge => edge.to === n.id && flows.edgeRps[flows.edgeIds.indexOf(edge.id) * flows.typeIds.length + t] > 0));
+        const modeled = el.params?.keyed && (n.units > 1 || el.params.perKeyReadRps) || cachedTraffic;
+        if (!modeled) return false;
+        return state.nodes.find(s => s.id === n.id)?.incomingRps > 0;
+      });
+      probe = { applied: tested, targets: [...targets] };
+    }
+    replay.advance(86400000);
+    trial = { checked: replay.result(), probe };
+    trials.set(trialKey, trial);
+  }
+  if (trial.probe) {
+    applied = trial.probe.applied;
     if (claim.kind === 'retry') steps.push(applied
-      ? `At the intervention tick, the error burst lost replies at ${[...targets].map(label).join(', ')}.`
+      ? `At the intervention tick, the error burst lost replies at ${trial.probe.targets.map(label).join(', ')}.`
       : 'At the intervention tick, the error burst reached no compute part carrying requests.');
   }
-  replay.advance(86400000);
-  const checked = replay.result(), slo = checked.slo;
+  const checked = trial.checked, slo = checked.slo;
   const service = checked.checks.availability && checked.checks.latency;
   const guarantees = service && checked.checks.safety;
   const held = applied && (claim.kind === 'saving' ? guarantees && slo.cost.perMonth <= result.slo.cost.perMonth * .7 : claim.kind === 'cut' ? guarantees : service);
@@ -139,7 +160,7 @@ export function checkClaim(claim, { problem, graph, result, catalog }) {
   const matched = applied ? held === (position === 'hold') : null;
   const outcome = !applied ? 'untested' : held ? 'held' : 'failed';
   steps.push(`${!applied ? 'Not tested by this replay' : held ? 'Claim held' : 'Claim failed'}. ${applied ? `Your prediction that the claim would ${position} ${matched ? 'matched' : 'did not match'} the measured result. ` : 'Neither prediction receives credit or a failure. '}A passing rate-model replay does not prove transactions, per-tenant quotas or external exactly-once effects.`);
-  return { claimId: claim.id, position, matched, outcome, held: !!held, applied, steps, checks: checked.checks, score: checked.score.total, cost: slo.cost.perMonth };
+  return { claimId: claim.id, position, matched, outcome, held: !!held, applied, steps, checks: { ...checked.checks }, score: checked.score.total, cost: slo.cost.perMonth };
 }
 
 export function summarizeClaims(outcomes) {

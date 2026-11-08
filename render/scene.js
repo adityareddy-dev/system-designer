@@ -591,8 +591,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
 
   let visualTime = 0;
   function draw(dt, now) {
-    if (!flow || speed > 0) visualTime += dt;
     const camMoved = camera.update(dt);
+    dt = Math.min(dt, 100);
+    if (!flow || speed > 0) visualTime += dt;
     const viewChanged = camMoved || camera.takeDirty();
     if (viewChanged) {
       updateGrid();
@@ -676,13 +677,12 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     let dt = now - last;
     last = now;
     if (!(dt >= 0)) dt = 0;
-    if (dt > 100) dt = 100;
     for (const fn of frameFns) {
       try { fn(dt); } catch (err) { queueMicrotask(() => { throw err; }); }
     }
     if (destroyed || app.renderer.context.isLost) { lastRenderMs = 0; return; }
     // nothing is moving: skip drawing and the GPU pass until something wakes the scene
-    if (now - lastActive > IDLE_AFTER_MS && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
+    if (now - lastActive > IDLE_AFTER_MS && !camera.moving && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
       idleFrames++; isIdle = true;
       lastRenderMs = 0;
       return;
@@ -861,14 +861,15 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     setCaptionArea(area) { captionArea = area; wake(); },
     // opts: { minZ, maxZ } keep a fitted view readable: a big graph is panned rather than shrunk past minZ.
     fit(padding = 80, animate = true, opts = {}) {
+      wake();
       const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
       const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(opts.nodeIds ? { ...graph, nodes: graph.nodes.filter(n => opts.nodeIds.includes(n.id)) } : graph);
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
       camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, opts);
       nodes.setLabelScale(camera.zoom);
     },
-    zoomBy(factor, cx, cy) { const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
-    panBy(dx, dy) { camera.panBy(dx, dy); },
+    zoomBy(factor, cx, cy) { wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
+    panBy(dx, dy) { wake(); camera.panBy(dx, dy); },
     stopCamera() { camera.stop(); },
     screenToWorld(x, y) { return camera.screenToWorld(x, y); },
     worldToScreen(x, y) { return camera.worldToScreen(x, y); },
@@ -913,7 +914,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       return {
         particles: particles.count, renderMs: rsn ? sum / rsn : 0, renderMsLast: lastRenderMs,
         idle: isIdle, idleFrames, quality: level, qualitySetting, dotScale, effects: fx.count, nodes: nodes.list.length, edges: edges.list.length,
-        zoom: camera.zoom,
+        zoom: camera.zoom, cameraMoving: camera.moving,
         labelPx: Math.min(...nodes.list.map(v => v.labelT.style.fontSize * v.labelT.scale.x * v.c.scale.x * camera.zoom)),
       };
     },

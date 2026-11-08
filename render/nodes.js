@@ -170,6 +170,7 @@ export function createNodeLayer(PIXI, parent, env) {
   function update(v, n, fresh = false) {
     // tx, ty always follow the graph; an active drag only overrides what is shown
     if (fresh || n.x !== v.tx || n.y !== v.ty) {
+      v.moveAt = performance.now();
       v.tx = n.x; v.ty = n.y;
       if ((env.reduced() || fresh) && !v.drag) { v.x = v.tx; v.y = v.ty; v.vx = v.vy = 0; v.c.position.set(v.x, v.y); }
     }
@@ -258,8 +259,9 @@ export function createNodeLayer(PIXI, parent, env) {
     if (v.drag) {
       v.x = v.drag.x; v.y = v.drag.y; v.vx = v.vy = 0;
       if (v.dragUntil && now > v.dragUntil) { v.drag = null; v.dragUntil = 0; }
-    } else if (reduced) {
+    } else if (reduced || now - v.moveAt >= 600) {
       v.x = v.tx; v.y = v.ty;
+      v.vx = v.vy = 0;
     } else if (v.x !== v.tx || v.y !== v.ty || v.vx || v.vy) {
       let rem = Math.min(dt, 64) / 1000;
       while (rem > 0) {

@@ -38,7 +38,7 @@ function placeToasts() {
   if (top < Infinity) toastBox.style.bottom = Math.max(base, innerHeight - top + 10) + 'px';
 }
 
-export function toast({ text, level = 'info', ms = 3200 }) {
+export function toast({ text, level = 'info', ms = Math.max(3200, Math.min(12000, text.length * 60)) }) {
   if (!toastBox) return;
   const iconId = { ok: 'ui.check', warn: 'ui.warn', bad: 'ui.error', info: 'ui.info' }[level] || 'ui.info';
   // the same message twice in a row shows once

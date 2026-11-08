@@ -159,7 +159,7 @@ function blankState() {
     minOff: null, minSucc: null, hourOff: null, hourSucc: null, hourP99: null, hourW: null,
     complianceChecked: null, interventions: null, result: null, counters: null, firstBreak: null, tickNow: null,
     laneOff: null, laneSucc: null, laneP99: null, lastStorageGb: null, stateObj: null, frameDirty: false, rttE: null,
-    loc: null, effCap: null, effCapInputs: null, effCapModel: null,
+    loc: null, effCap: null, effCapInputs: null, effCapModel: null, _blocked: null,
     qHist: null, lateCarry: null, lateType: null, lateDay: -0, readBack: -0, readBackEdge: -0, privateReads: -0, typeP99Now: null, typeWNow: null, latWorstT: -1,
     // per node (N)
     cap: null, capNom: null, rho: null, sv: null, sPrev: null, rhoPrev: null, rhoQacc: null, rhoQPrev: null, health: null, unhealthySince: null,

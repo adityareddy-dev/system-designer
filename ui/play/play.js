@@ -389,6 +389,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     try { scene.fit({ l: a.l + side, t: a.t + pad, r: a.r + side, b: a.b + pad + 22 }, animate, zoom); } catch { try { scene.fit(); } catch { /* optional */ } }
   }
   function fitEntry() {
+    syncHud();
     fitView(false);
   }
   function fitAll() {
@@ -838,6 +839,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     : t);
   function showCaption(text, ms = 0, actions = []) {
     text = touchWords(text);
+    if (S.captionNext) { toast(text, 'info', ms || 7000); return; }
     caption.hidden = false;
     // the buttons sit in their own row under the sentence, right-aligned like every other panel's actions
     caption.replaceChildren(h('span', { class: 'pl-caption-t', text }),
@@ -845,7 +847,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     clearTimeout(captionTimer);
     if (ms) captionTimer = setTimeout(hideCaption, ms);
   }
-  function hideCaption() { caption.hidden = true; }
+  function hideCaption() { if (!S.captionNext) caption.hidden = true; }
 
   // The control a lesson step names is scrolled into view inside the inspector and highlighted until it is used.
   function pointAtKnob(knob) {
@@ -1189,7 +1191,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (structureBlocked()) return;
       inspection.open = false;
       top.classList.remove('pl-top--tools-open');
-      select(null); inspector.fold(true); caption.hidden = true;
+      select(null); inspector.fold(true); hideCaption();
       for (const n of pathLayout(graph(), catalog)) S.sim.moveNode(n.id, n.x, n.y);
       toolbar.el.classList.add('pl-toolbar--folded'); trafficPanel?.fold(true);
       commit(); fitView(true, 0);
@@ -1339,8 +1341,6 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     hud.setSpeed(S.speed);
     updateEditable();
     closeHints();
-    // A deliberate traffic run can fit the meters; a lesson's first edit preserves its camera.
-    if (!isLesson) later(() => { if (!S.destroyed) fitView(true); }, 140);
     snd('start');
     bus.emit('play:start', { mode, problemId: S.problem.id, seed: S.seed });
     return getState();
@@ -1752,13 +1752,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     const dropped = perf.droppedTicks - (S.dropSeen || 0);
     S.dropSeen = perf.droppedTicks;
-    hudClock += dt;
+    hudClock += dtRaw || 16.7;
     if (interviewClock && !interviewState.complete) {
       const left = 2700 - Math.floor((Date.now() - interviewState.startedAt) / 1000);
       const shown = left >= 0 ? `Interview · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Interview · Overtime';
       if (interviewClock.textContent !== shown) interviewClock.textContent = shown;
     }
-    if (hudClock >= 250) { hudClock = 0; const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
+    if (hudClock >= 250) { hudClock %= 250; const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
     try { scene.setFlows(sim.phase === 'build' ? null : sim.flows(), { speed: sim.phase === 'running' ? effectiveSpeed() : 0, dtWallMs: dt, nodeStates: S.nodeStates }); } catch (e) { if (!S.flowErr) { S.flowErr = 1; S.errors.push({ code: 'render', message: String(e?.message || e) }); } }
     if (ctx.recordFrame) {
       try {
@@ -1867,7 +1867,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- state for tests
   // Camera zoom and the free canvas area, for tests: the on-screen label size is 12 px times the label scale times the zoom.
   function viewInfo() {
-    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
+    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, cameraMoving: stats.cameraMoving, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
   }
   function getState() {
     const sim = S.sim;

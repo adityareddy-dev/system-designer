@@ -24,6 +24,20 @@ try {
     });
     await page.mouse.click(part.x, part.y);
     await page.waitForSelector('.pl-inspector:not([hidden])');
+    await page.evaluate(() => {
+      const palette = document.querySelector('.pl-toolbar');
+      palette.querySelector('.pl-tb-grab')?.click();
+      const loadBalancer = palette.querySelector('[data-el="regional-lb"]');
+      if (!loadBalancer) throw Error('Load balancer is missing from the palette');
+      loadBalancer.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    });
+    assert.equal(await page.$eval('.pl-caption-t', element => element.textContent), before, `${width}: arming placement preserves the reading caption`);
+    await page.evaluate(() => {
+      const id = __game.placeComponent('regional-lb', -120, 160);
+      __game.connect('users', id);
+      __game.connect(id, 'app');
+    });
+    assert.equal(await page.$eval('.pl-caption-acts button', button => button.textContent), 'Next', `${width}: building preserves Next`);
     await new Promise(resolve => setTimeout(resolve, 10000));
     assert.equal(await page.$eval('.pl-caption-t', element => element.textContent), before, `${width}: explanation stays until Next, beyond the former nine-second limit`);
     const next = await page.$eval('.pl-caption-acts button', button => {
