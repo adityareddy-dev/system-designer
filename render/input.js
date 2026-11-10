@@ -249,7 +249,8 @@ export function createInput(canvas, host, d) {
       } else nodes.cancelDrag(dragId);
     } else if (mode === 'connect') {
       d.ui.clearBand();
-      if (connectTarget) emit('connect', { from: connectFrom.id, to: connectTarget.id });
+      const target = nodes.hit(w.x, w.y, tolFor(type) * 2);
+      if (target && target !== connectFrom) emit('connect', { from: connectFrom.id, to: target.id });
     }
     dragId = null; dragPos = null; connectFrom = null; connectTarget = null;
     mode = 'idle';

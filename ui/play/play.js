@@ -1,4 +1,6 @@
 // In-problem screen: mountPlay() builds the canvas, toolbar, inspector, HUD, steps, hints, debrief and editorial.
+import { metrics } from '../../core/metrics.js';
+import { mountFeedback } from '../shell/feedback.js';
 import { twistProblem } from '../../content/problems/twist.js';
 import { createInterview, renderInterviewPrep, renderInterviewResult } from './interview.js';
 import { pathLayout } from '../../render/layout.js';
@@ -392,10 +394,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     syncHud();
     fitView(false);
   }
+  let fitAllTimer = 0;
   function fitAll() {
     S.manualViewUntil = performance.now() + 4000;
     if (isPhone()) { inspector.fold(true); toolbar.el.classList.remove('pl-toolbar--open'); reqCard?.toggle(false); trafficPanel?.fold(true); }
-    later(() => fitView(true, 0), 40);
+    clearTimeout(fitAllTimer); timers.delete(fitAllTimer);
+    fitAllTimer = later(() => { fitAllTimer = 0; fitView(true, 0); }, 40);
   }
   function placeAtCentre(type) {
     const a = freeArea();
@@ -1425,6 +1429,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       S.prevBest = mode === 'practice' ? bestOf(ctx.progress?.get(S.problem.id)) : bestOf(ctx.compete?.bests?.get?.(`${mode}:${S.problem.id}:${S.seed}`));
     } catch { S.prevBest = null; }
     S.step = 'debrief';
+    if (result.passed && !warm) { metrics.track('problem_passed', S.problem.id); metrics.once('first_problem_passed', S.problem.id); }
     const traces = result.passed ? Object.entries(S.problem.requirements.mix).filter(([, share]) => share > 0).map(([type]) => S.sim.trace(type)) : [];
     carryRunIntoReport({ host: debriefWrap, stage, scene, result: S.result, catalog, traces, interview, reduced: ctx.reducedMotion(), render: () => {
       if (S.destroyed || S.step !== 'debrief' || S.result?.graph !== result.graph) return false;
@@ -1453,6 +1458,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         if (S.interviewSaved) return;
         S.interviewSaved = true;
         ctx.progress.recordInterview(S.problem.id, report);
+        metrics.track('interview_finished', S.problem.id);
+        mountFeedback(debriefWrap.querySelector('.pl-debrief'), ctx, 'problem:' + S.problem.id, S.result);
       });
       debriefWrap.hidden = false; debriefWrap.scrollTop = 0; return;
     }
@@ -1756,7 +1763,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     const dropped = perf.droppedTicks - (S.dropSeen || 0);
     S.dropSeen = perf.droppedTicks;
-    hudClock += dtRaw || 16.7;
+    hudClock += Math.max(0, dtRaw || 16.7);
     if (interviewClock && !interviewState.complete) {
       const left = 2700 - Math.floor((Date.now() - interviewState.startedAt) / 1000);
       const shown = left >= 0 ? `Interview · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Interview · Overtime';
@@ -1871,7 +1878,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- state for tests
   // Camera zoom and the free canvas area, for tests: the on-screen label size is 12 px times the label scale times the zoom.
   function viewInfo() {
-    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, cameraMoving: stats.cameraMoving, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
+    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, cameraMoving: stats.cameraMoving, moving: stats.cameraMoving || !!fitAllTimer, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
   }
   function getState() {
     const sim = S.sim;
@@ -1912,6 +1919,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     try { scene.setFlows(S.sim.flows(), { speed: 0, dtWallMs: 16, nodeStates: S.sim.state().nodes }); } catch { /* optional */ }
     hudTick();
+    scene.renderNow(0);
     return getState();
   }
 

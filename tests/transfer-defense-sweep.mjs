@@ -18,7 +18,7 @@ if (process.argv.length === 2) {
   const outputs = await Promise.all(lanes.map(ids => new Promise((resolve, reject) => {
     children.push(execFile(process.execPath, [fileURLToPath(import.meta.url), ...ids], { maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => error ? reject(new Error(stdout + stderr)) : resolve(stdout)));
   }))).catch(error => { children.forEach(child => child.kill()); throw error; });
-  const totals = outputs.map(out => out.trim().split(' ').map(Number)).reduce((a, b) => a.map((value, i) => value + b[i]), Array(7).fill(0));
+  const totals = outputs.map(out => JSON.parse(out.trim().split('\n').at(-1))).reduce((a, b) => a.map((value, i) => value + b[i]), Array(7).fill(0));
   assert.equal(totals[0], problems.length);
   assert(totals[4] > 0 && totals[5] > 0, 'reference counterexamples include supported and unsupported claims');
   const [count, references, prompts, claims, held, failed, untested] = totals;
@@ -27,9 +27,10 @@ if (process.argv.length === 2) {
 }
 const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(name => [name, JSON.parse(fs.readFileSync(new URL(`../catalog/${name}.json`, import.meta.url)))])));
 const run = (problem, graph) => { const sim = createSim({ catalog, problem, seed: 'practice' }); sim.loadGraph(graph); sim.start(); sim.advance(86400000); return sim.result(); };
-let references = 0, prompts = 0, claims = 0, held = 0, failed = 0, untested = 0;
+let references = 0, prompts = 0, claims = 0, held = 0, failed = 0, untested = 0, checkedProblems = 0;
 for (const problem of problems) {
   if (!process.argv.slice(2).includes(problem.id)) continue;
+  checkedProblems++;
   const twist = twistProblem(problem);
   assert(twist.requirements.budgetPerMonth < problem.requirements.budgetPerMonth, problem.id + ' has a binding changed constraint');
   const crowd = twist.events.find(e => e.id === 'flash-crowd');
@@ -76,4 +77,4 @@ for (const problem of problems) {
   }
   }
 }
-console.log(process.argv.length - 2, references, prompts, claims, held, failed, untested);
+console.log(JSON.stringify([checkedProblems, references, prompts, claims, held, failed, untested]));

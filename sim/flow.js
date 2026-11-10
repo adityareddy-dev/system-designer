@@ -61,29 +61,39 @@ export function prepareNode(n, model) {
   n.capUnit = cap;
 }
 
+const capacityCache = new WeakMap();
+
 // Capacity a neighbour can really take for type t, in requests of that type a second: a part that only passes requests
 // on is limited by what lies behind it, so a wide filter or balancer in front of a small helper does not attract more than
 // that helper can serve. Each part counts in its own cost of the type (a store that writes cheaply takes more writes
 // than reads; a database whose writes are dear takes fewer).
 function computeEffCap(S) {
-  const { model, T } = S;
+  const { model, T, activeT, nActiveT } = S;
   const { nodes, topo, route, edges, N } = model;
   if (!S.effCap || S.effCap.length !== N * T) S.effCap = new Float64Array(N * T);
   const E = S.effCap;
-  // Reuse routing capacities until the graph or an effective node capacity changes.
-  if (!S.effCapInputs || S.effCapInputs.length !== N) S.effCapInputs = new Float64Array(N);
-  let changed = S.effCapModel !== model;
-  for (const n of nodes) {
-    const own = n.isDns ? S.capNom[n.i] : S.cap[n.i];
-    if (S.effCapInputs[n.i] !== own) changed = true;
-    S.effCapInputs[n.i] = own;
+  let cached = capacityCache.get(S);
+  let changed = !cached || cached.model !== model || cached.output !== E;
+  let sameTypes = cached && cached.types.length === nActiveT;
+  if (sameTypes) for (let a = 0; a < nActiveT; a++) {
+    if (cached.types[a] !== activeT[a]) { sameTypes = false; break; }
+  }
+  if (!sameTypes) { changed = true; E.fill(0); }
+  if (changed) {
+    cached = { model, output: E, capacities: new Float64Array(N), types: activeT.slice(0, nActiveT) };
+    capacityCache.set(S, cached);
+  }
+  for (let v = 0; v < N; v++) {
+    const own = nodes[v].isDns ? S.capNom[v] : S.cap[v];
+    if (cached.capacities[v] !== own) changed = true;
+    cached.capacities[v] = own;
   }
   if (!changed) return;
-  S.effCapModel = model;
   for (let oi = N - 1; oi >= 0; oi--) {
     const v = topo[oi];
     const own = nodes[v].isDns ? S.capNom[v] : S.cap[v];
-    for (let t = 0; t < T; t++) {
+    for (let a = 0; a < nActiveT; a++) {
+      const t = activeT[a];
       const r = route[v * T + t];
       let c = own / costT(S, v, t);
       if (r && r.mode === M.FORWARD && r.P.length) {
@@ -128,16 +138,20 @@ function routerHealthy(S, v, failSec) {
 
 // Writes normalised weights for lane L over the edge list into S.W; returns 0 when nothing can take traffic.
 function weights(S, u, list, L, t) {
+  if (list.length === 1) {
+    const e = S.model.edges[list[0]];
+    const ok = blocked(S, e) ? 0 : 1;
+    S.W[list[0] * S.LN + L] = ok;
+    return ok;
+  }
+  return branchWeights(S, u, list, L, t);
+}
+
+function branchWeights(S, u, list, L, t) {
   const { model, LN, W } = S;
   const edges = model.edges;
   const n = model.nodes[u];
   const len = list.length;
-  if (len === 1) {
-    const e = edges[list[0]];
-    const ok = blocked(S, e) ? 0 : 1;
-    W[list[0] * LN + L] = ok;
-    return ok;
-  }
   let sum = 0;
   if (n.isGeo) {
     const r = S.laneR[L];

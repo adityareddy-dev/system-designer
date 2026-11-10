@@ -20,7 +20,9 @@ try{
   await p.evaluate(()=>[...document.querySelectorAll('button')].find(e=>e.textContent==='Tidy request paths').click());await sleep(800);
   const check=async()=>{const v=await p.evaluate(()=>__game.getState().view);assert(v.labelPx>=12.99);for(const key of ['labelOverlaps','labelPartOverlaps','wirePartCrossings','wireLabelCrossings','labelPanelOverlaps'])assert.equal(v.diagram[key],0,`${width} ${theme} ${key}`);};
   await check();
+  const openingCamera=await p.evaluate(()=>{const v=__game.getState().view;return {zoom:v.zoom,screen:v.screen};});
   await p.evaluate(()=>{__game.startTraffic();__game.pause();__game.step(120000);});await sleep(700);await check();
+  assert.deepEqual(await p.evaluate(()=>{const v=__game.getState().view;return {zoom:v.zoom,screen:v.screen};}),openingCamera,'starting traffic preserves the player camera');
   assert(await p.evaluate(()=>__game.getState().view.diagram.labels.some(l=>l.text.startsWith('First limit'))),'paused overload identifies its first bottleneck');
   const before=await p.evaluate(()=>__game.getState().view.diagram.labels.filter(l=>l.kind==='failure').map(({id,x,y})=>({id,x,y})));
   await p.evaluate(()=>__game.step(120000));await sleep(200);await check();
@@ -32,8 +34,8 @@ try{
   await p.evaluateOnNewDocument(()=>{localStorage.clear();localStorage.setItem('hotpath.v1.seenIntro','true');localStorage.setItem('hotpath.v1.settings',JSON.stringify({soundMuted:true}));});
   await p.goto(base+'#/sandbox');await p.waitForFunction(()=>window.__game?.getState().nodes.length===4);await sleep(700);
   await p.evaluate(()=>__game.placeComponent('cache',520,260));await sleep(600);
-  await p.$eval('.pl-tool--fit',b=>b.click());await sleep(600);
-  await p.waitForFunction(()=>!__game.getState().view.cameraMoving);
+  await p.$eval('.pl-tool--fit',b=>b.click());await sleep(80);
+  await p.waitForFunction(()=>__game.getState().view.moving===false);
   const data=await p.evaluate(()=>{const s=__game.getState(),r=document.querySelector('.pl-stage').getBoundingClientRect();return {s,r:{x:r.x,y:r.y}};});
   const app=data.s.nodes.find(n=>n.id==='app'),target=data.s.nodes.find(n=>n.type==='cache');
   const point=id=>{const n=data.s.view.screen.find(n=>n.id===id);return{x:n.x+data.r.x,y:n.y+data.r.y};};

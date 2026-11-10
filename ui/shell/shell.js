@@ -1,4 +1,5 @@
 // App shell: top bar, section navigation, route to view switching, toasts, progress wiring.
+import { metrics } from '../../core/metrics.js';
 import { h, ico, clear, lessonOf } from './dom.js';
 import { setOverlayHost, toast, closeAllModals } from './overlay.js';
 import { transitionScreen } from './motion.js';
@@ -139,7 +140,7 @@ export function mountShell(rootEl, ctx) {
       let mod, error;
       main.setAttribute('aria-busy', 'true');
       try { if (spec) [mod] = await Promise.all([spec.load(), spec.prep ? spec.prep() : null]); }
-      catch (err) { console.error(err); error = err; }
+      catch (err) { metrics.reportError(err, 'shell.js', true); console.error(err); error = err; }
       if (mine !== seq) return;
       const depth = path => (path || '').split('/').filter(Boolean).length;
       await transitionScreen(() => {
@@ -156,7 +157,7 @@ export function mountShell(rootEl, ctx) {
         });
         const page = h('div', { class: 'sh-view' + (document.documentElement.dataset.transitioning ? ' sh-view--native' : '') }); main.append(page);
         try { view = error || !spec ? (page.append(notFound(error ? 'This page could not load. Check your connection and try again.' : undefined)), {}) : spec.make(mod, page, r) || {}; }
-        catch (err) { console.error(err); page.append(notFound('Something went wrong drawing this page.')); view = {}; }
+        catch (err) { metrics.reportError(err, 'shell.js'); console.error(err); page.append(notFound('Something went wrong drawing this page.')); view = {}; }
         finish(opts);
       }, { reduced: !previous || ctx.reducedMotion(), direction: returning || depth(previous) > depth(key) ? 'back' : 'forward' });
     })();

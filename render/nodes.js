@@ -120,6 +120,8 @@ export function createNodeLayer(PIXI, parent, env) {
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
     v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
     v.leader = new PIXI.Graphics();
+    v.captionC = new PIXI.Container();
+    v.captionC.addChild(v.leader, v.labelBg, v.labelT, v.evidenceBg, v.evidenceT);
     v.regionC = new PIXI.Container(); v.regionC.y = -HALF - 12; v.regionC.visible = false;
     v.regionBg = new PIXI.Graphics(); v.regionC.addChild(v.regionBg);
     v.regionT = null;
@@ -128,9 +130,10 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
     c.addChild(v.glow, v.pulse, v.shadow, v.body, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
-      v.chip, v.zonesG, v.leader, v.labelBg, v.labelT, v.regionC, v.badge, v.evidenceBg, v.evidenceT);
+      v.chip, v.zonesG, v.regionC, v.badge, v.captionC);
     c.alpha = 0;
     c.scale.set(v.s);
+    v.captionC.scale.set(1 / v.s);
     parent.addChild(c);
     views.set(n.id, v);
     update(v, n, true);
@@ -263,7 +266,7 @@ export function createNodeLayer(PIXI, parent, env) {
       v.x = v.tx; v.y = v.ty;
       v.vx = v.vy = 0;
     } else if (v.x !== v.tx || v.y !== v.ty || v.vx || v.vy) {
-      let rem = Math.min(dt, 64) / 1000;
+      let rem = Math.min(dt, 1000) / 1000;
       while (rem > 0) {
         const h = Math.min(rem, 0.004);
         v.vx += (-K * (v.x - v.tx) - C * v.vx) * h; v.x += v.vx * h;
@@ -387,11 +390,13 @@ export function createNodeLayer(PIXI, parent, env) {
     update(dt, now, time) {
       const P = env.kit().P;
       const reduced = env.reduced();
-      for (const v of list) step(v, dt, now, P, reduced, time);
+      for (const v of list) {
+        step(v, dt, now, P, reduced, time);
+        v.captionC.scale.set(1 / Math.max(.01, v.c.scale.x));
+      }
       // Keep names and facts in their own caption lanes.
       for (const v of list) {
-        // Keep names readable while the entry spring is below full size.
-        v.labelT.scale.set(labelK / Math.min(1, v.c.scale.x));
+        v.labelT.scale.set(labelK);
         const detail = detailZoom || selected === v.id;
         v.chip.visible = detail && v.units > 1;
         v.chip.scale.set(detailZoom ? 1 : labelK * 1.1);
@@ -413,6 +418,7 @@ export function createNodeLayer(PIXI, parent, env) {
         const k = Math.min(1, v.fade / (reduced ? 120 : 160));
         v.c.alpha = 1 - k;
         if (!reduced) v.c.scale.set(1 - 0.15 * k);
+        v.captionC.scale.set(1 / Math.max(.01, v.c.scale.x));
         if (k >= 1) { v.c.destroy({ children: true }); dying.splice(i, 1); }
       }
     },
@@ -457,14 +463,14 @@ export function createNodeLayer(PIXI, parent, env) {
           // Reserve a local world-space slot for offscreen captions so panning can reveal them without rerouting.
           if(!visible(p))return clear(base)?base:null;
           const close=r=>Math.abs(r.x-base.x)+Math.abs(r.y-base.y)<=maxMove;
-          const candidates=[];
-          for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160])candidates.push({...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy});
-          const nearby=candidates.find(r=>inside(r)&&clear(r)&&close(r));
-          if(nearby)return nearby;
+          for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160]){
+            const r={...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy};
+            if(inside(r)&&clear(r)&&close(r))return r;
+          }
           // A crowded overview can leave a gap between the regular search lanes.
           // Test the exact edges of the occupied boxes before leaving the free canvas.
-          const xs=[free.x,free.x+free.width-base.width,...occupied.flatMap(r=>[r.x-base.width-2,r.x+r.width+2])];
-          const ys=[free.y,free.y+free.height-base.height,...occupied.flatMap(r=>[r.y-base.height-2,r.y+r.height+2])];
+          const xs=[free.x,free.x+free.width-base.width,...occupied.flatMap(r=>[r.x-base.width-2,r.x+r.width+2,r.x-base.width,r.x+r.width])];
+          const ys=[free.y,free.y+free.height-base.height,...occupied.flatMap(r=>[r.y-base.height-2,r.y+r.height+2,r.y-base.height,r.y+r.height])];
           let best=null,distance=Infinity;
           for(const x of xs)for(const y of ys){const r={...base,x,y},d=Math.abs(x-base.x)+Math.abs(y-base.y);if(d<distance&&inside(r)&&clear(r)&&close(r)){best=r;distance=d;}}
           return best;

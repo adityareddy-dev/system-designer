@@ -11,7 +11,7 @@ const waitForLesson = (page, lesson) => page.waitForFunction(title => {
   const main = document.querySelector('#sh-main');
   return main && !main.hasAttribute('aria-busy') && document.querySelector('.sh-lp-card')
     && document.querySelector('.sh-lp-title h1')?.textContent === title;
-}, {}, lesson.title);
+}, { polling: 'mutation' }, lesson.title);
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
@@ -41,10 +41,16 @@ try {
   assert(await page.$('.sh-lp-card'), 'the retained card alone cannot signal that navigation finished');
   assert.equal(await page.$eval('#sh-main', el => el.getAttribute('aria-busy')), 'true');
   assert.equal(await page.$eval('.sh-lp-title h1', el => el.textContent), lessons.find(l => l.id === 'lead-interview').title);
+  // Readiness follows DOM changes even when a hidden tab has stopped drawing frames.
+  const foreground = await browser.newPage();
+  await page.waitForFunction(() => document.visibilityState === 'hidden', { polling: 50 });
+  const ready = waitForLesson(page, lessons.find(l => l.id === 'simplest-design'));
   await release();
-  await waitForLesson(page, lessons.find(l => l.id === 'simplest-design'));
-  await page.setRequestInterception(false);
+  await ready;
+  await foreground.close();
+  await page.bringToFront();
   page.off('request', intercept);
+  await page.setRequestInterception(false);
   for (const [width,theme] of [[1280,'light'],[1280,'dark'],[390,'light'],[390,'dark']]) {
     await page.setViewport({width,height:900,isMobile:width<500,hasTouch:width<500});
     for (const lesson of lessons.slice(-17)) {
@@ -69,7 +75,8 @@ try {
           assert.equal(await page.$eval('.sh-quiz-result',el=>el.dataset.ok),'1');
         } else if (step.kind === 'defend') {
           assert(await page.$eval('button[type=submit]',b=>b.disabled));
-          await page.type('textarea','I would state the invariant, estimate the work and test the failure before changing ownership.');
+          await page.focus('textarea');
+          await page.keyboard.sendCharacter('I would state the invariant, estimate the work and test the failure before changing ownership.');
           await page.click('button[type=submit]');
           assert.equal(await page.$eval('.sh-defend-comparison',el=>el.hidden),false);
           await page.click('.sh-defend-point');
@@ -92,7 +99,8 @@ try {
       await commitChoicePrediction(page);
       await page.waitForSelector('.sh-choices');
       await page.evaluate(index=>document.querySelectorAll('.sh-choice')[index].click(),transfer.answer);
-      await page.type('input[type=number]',String(transfer.value));
+      await page.focus('input[type=number]');
+      await page.keyboard.sendCharacter(String(transfer.value));
       await page.keyboard.press('Enter');
       await page.waitForFunction(() => document.querySelector('.sh-lp-nav .sh-btn--primary')?.disabled === false);
       await page.focus('.sh-lp-nav .sh-btn--primary');

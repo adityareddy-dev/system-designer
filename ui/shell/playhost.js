@@ -1,4 +1,5 @@
 // Creates the host element for a play canvas, mounts ui/play, and tears it down safely.
+import { metrics } from '../../core/metrics.js';
 import { h, clear } from './dom.js';
 
 // PixiJS is only needed on canvas routes, so it is fetched the first time one opens.
@@ -38,6 +39,7 @@ export function mountPlayHost(parent, ctx, opts) {
       status.remove();
       return c;
     } catch (err) {
+      metrics.reportError(err, 'play.js', true);
       if (dead) return null;
       clear(host);
       host.append(h('div', { class: 'sh-play-status sh-play-status--bad', role: 'alert' },

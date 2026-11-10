@@ -590,10 +590,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   }
 
   let visualTime = 0;
-  function draw(dt, now) {
-    const camMoved = camera.update(dt);
-    dt = Math.min(dt, 100);
+  function draw(dt, now, wallDt = dt) {
     if (!flow || speed > 0) visualTime += dt;
+    const camMoved = camera.update(wallDt);
     const viewChanged = camMoved || camera.takeDirty();
     if (viewChanged) {
       updateGrid();
@@ -601,7 +600,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       emitter.emit('view', { zoom: camera.zoom, x: c.x, y: c.y });
     }
     updateTextRes(now);
-    nodes.update(dt, now, visualTime);
+    nodes.update(wallDt, now, visualTime);
     const m = applyFlows(dt, now);
     const captionsMoved = nodes.layoutLabels(camera, captionArea);
     if (captionsMoved) edges.invalidateGeometry();
@@ -677,8 +676,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     let dt = now - last;
     last = now;
     if (!(dt >= 0)) dt = 0;
+    const wallDt = dt;
+    if (dt > 100) dt = 100;
     for (const fn of frameFns) {
-      try { fn(dt); } catch (err) { queueMicrotask(() => { throw err; }); }
+      try { fn(wallDt); } catch (err) { queueMicrotask(() => { throw err; }); }
     }
     if (destroyed || app.renderer.context.isLost) { lastRenderMs = 0; return; }
     // nothing is moving: skip drawing and the GPU pass until something wakes the scene
@@ -689,7 +690,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     }
     isIdle = false;
     const t0 = performance.now();
-    draw(dt, now);
+    draw(dt, now, wallDt);
     if (!renderCanvas()) { lastRenderMs = 0; return; }
     const ms = performance.now() - t0;
     renderSamples[rsi] = ms; rsi = (rsi + 1) % renderSamples.length; rsn = Math.min(rsn + 1, renderSamples.length);
@@ -915,7 +916,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         particles: particles.count, renderMs: rsn ? sum / rsn : 0, renderMsLast: lastRenderMs,
         idle: isIdle, idleFrames, quality: level, qualitySetting, dotScale, effects: fx.count, nodes: nodes.list.length, edges: edges.list.length,
         zoom: camera.zoom, cameraMoving: camera.moving,
-        labelPx: Math.min(...nodes.list.map(v => v.labelT.style.fontSize * v.labelT.scale.x * v.c.scale.x * camera.zoom)),
+        labelPx: Math.min(...nodes.list.map(v => v.labelT.style.fontSize * v.labelT.scale.x * v.captionC.scale.x * v.c.scale.x * camera.zoom)),
       };
     },
     async snapshot({ width = 600, height = 315, graph: g2 } = {}) {

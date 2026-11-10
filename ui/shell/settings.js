@@ -1,10 +1,12 @@
 // Settings store and the settings view (theme, motion, sound, shapes legend, data).
 import { h, ico, clear, append } from './dom.js';
 import { confirmDialog, toast, modal } from './overlay.js';
+import { mountFeedback } from './feedback.js';
+import { metrics } from '../../core/metrics.js';
 
 export const SETTING_DEFAULTS = {
   theme: 'system', reducedMotion: 'system', quality: 'auto', soundMaster: 0.6, soundMuted: false,
-  ambient: true, autoSlowOnEvent: true, highContrast: false, playerName: '',
+  ambient: true, autoSlowOnEvent: true, highContrast: false, playerName: '', anonymousCounts: true,
 };
 
 const CHECK = {
@@ -17,6 +19,7 @@ const CHECK = {
   autoSlowOnEvent: (v) => typeof v === 'boolean',
   highContrast: (v) => typeof v === 'boolean',
   playerName: (v) => typeof v === 'string' && v.length <= 24,
+  anonymousCounts: (v) => typeof v === 'boolean',
 };
 
 export function createSettings(store, bus) {
@@ -116,7 +119,7 @@ export function renderSettings(hostEl, ctx) {
   // Data
   const statsText = () => {
     const stats = progress.stats();
-    return `Everything stays in this browser. ${stats.solved} problems solved, ${stats.lessonsDone} lessons done, ${stats.stars} stars.`;
+    return `Progress is saved in this browser. ${stats.solved} problems solved, ${stats.lessonsDone} lessons done, ${stats.stars} stars.`;
   };
   const statsSummary = h('p', { class: 'sh-muted', text: statsText() });
   const fileIn = h('input', { type: 'file', accept: 'application/json,.json', class: 'sh-hidden', 'aria-label': 'Import progress file' });
@@ -145,7 +148,16 @@ export function renderSettings(hostEl, ctx) {
   const keys = [['Enter', 'Start the traffic day'], ['Space', 'Pause or resume'], ['1 to 7', 'Speed: 0, 0.25, 0.5, 1, 2, 4, 8 times'], ['F', 'Fit the view'], ['/', 'Search the toolbar'], ['H', 'Show a hint'], ['M', 'Mute'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo and redo'], ['Delete', 'Remove the selected element'], ['Ctrl+D', 'Duplicate'], ['Esc', 'Cancel']];
   const keysCard = card('Keyboard shortcuts', h('dl', { class: 'sh-keys' }, keys.map(([k, v]) => [h('dt', null, h('kbd', { class: 'sh-kbd', text: k })), h('dd', { text: v })])));
 
-  append(page, [h('h1', { class: 'sh-h1', text: 'Settings' }), appearance, motion, sound, shapesCard, profile, data, keysCard]);
+  const feedbackHost = h('div');
+  const privacy = card('Privacy and feedback',
+    metrics.countsAvailable()
+      ? toggleRow('Anonymous usage counts', 'Helps us see what gets played and where the game breaks. No cookies or player ids. Browser privacy signals turn this off too.', settings.get('anonymousCounts'), v => set('anonymousCounts', v), 'sh-s-counts')
+      : h('p', { class: 'sh-muted', text: 'Automatic usage counts and error reports are disabled.' }),
+    h('a', { href: new URL('./privacy.html', document.baseURI).href, text: 'Read the privacy page' }),
+    h('button', { type: 'button', class: 'sh-btn', 'data-feedback-general': '', text: 'Send feedback', onclick: event => {
+      feedbackHost.replaceChildren(); mountFeedback(feedbackHost, ctx, 'general', null, true, event.currentTarget); feedbackHost.querySelector('input')?.focus();
+    } }), feedbackHost);
+  append(page, [h('h1', { class: 'sh-h1', text: 'Settings' }), appearance, privacy, motion, sound, shapesCard, profile, data, keysCard]);
   hostEl.append(page);
   const off = ctx.bus.on('settings', ({ key, value }) => {
     const label = { theme: 'Theme', reducedMotion: 'Reduced motion', quality: 'Graphics quality' }[key];

@@ -22,7 +22,7 @@ fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
 
 const res = await esbuild.build({
-  entryPoints: { main: path.join(root, 'main.js') },
+  entryPoints: { main: path.join(root, 'core/boot.js') },
   bundle: true, splitting: true, format: 'esm', minify: true, target: 'es2022',
   outdir: path.join(dist, 'js'), entryNames: '[name]', chunkNames: '[name]-[hash]',
   metafile: true, legalComments: 'none', logLevel: 'warning',
@@ -56,7 +56,7 @@ fs.writeFileSync(path.join(dist, 'assets/icons/index.json'), JSON.stringify({ ..
 
 // Page: one stylesheet, the bundle, and preloads for the files the first screen needs.
 const out = res.metafile.outputs;
-const mainOut = Object.keys(out).find((k) => out[k].entryPoint === 'main.js') || Object.keys(out).find((k) => out[k].entryPoint);
+const mainOut = Object.keys(out).find((k) => out[k].entryPoint === 'core/boot.js') || Object.keys(out).find((k) => out[k].entryPoint);
 const rel = (k) => path.posix.relative('dist', k);
 // Chunks an output needs at start: its static imports, all the way down, minus what `skip` already covers.
 function staticChunks(start, skip = new Set()) {
@@ -92,7 +92,7 @@ html = html.replace(/  <!-- preload:start[\s\S]*?<!-- preload:end -->/, () => [
   '  <link rel="preload" as="fetch" href="content/data/lite.json" crossorigin>',
   head,
 ].join('\n'));
-html = html.replace('<script type="module" src="main.js"></script>', '<script type="module" src="js/main.js"></script>');
+html = html.replace('<script type="module" src="core/boot.js"></script>', '<script type="module" src="js/main.js"></script>');
 fs.writeFileSync(path.join(dist, 'index.html'), html);
 
 // Size report

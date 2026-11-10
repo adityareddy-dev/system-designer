@@ -7,6 +7,22 @@ import { createReplayer } from '../replay.js';
 const workerUrl = new URL('./fixtures/slow-worker.js', import.meta.url);
 const codeOf = (p) => p.then(() => 'ok', (e) => e.code);
 
+test('worker startup does not consume the replay time limit', async () => {
+  const delayed = new URL('./fixtures/delayed-worker.js', import.meta.url);
+  const r = createReplayer({ workers: 1, timeoutMs: 400, workerUrl: delayed });
+  try { assert.equal(await codeOf(r.run('work:10')), 'ok'); }
+  finally { await r.close(); }
+});
+
+test('a worker that cannot start promptly returns busy and releases its job', async () => {
+  const delayed = new URL('./fixtures/delayed-worker.js', import.meta.url);
+  const r = createReplayer({ workers: 1, startupTimeoutMs: 100, workerUrl: delayed });
+  try {
+    assert.equal(await codeOf(r.run('work:10')), 'busy');
+    assert.equal(r.pending(), 0);
+  } finally { await r.close(); }
+});
+
 test('the time limit counts from when a job starts, not from when it was queued', async () => {
   const r = createReplayer({ workers: 1, timeoutMs: 700, workerUrl });
   try {
@@ -43,6 +59,7 @@ test('one job at a time per player, and a few per address', async () => {
 test('daily boards go first; a full queue and a long wait answer busy', async () => {
   const r = createReplayer({ workers: 1, maxQueue: 3, maxWaitMs: 600, workerUrl });
   try {
+    await r.run('work:1');
     const order = [];
     const busy = r.run('work:250', { key: 'a', address: '1' }).then((x) => order.push('first'));
     await new Promise((res) => setTimeout(res, 30));
@@ -62,7 +79,7 @@ test('daily boards go first; a full queue and a long wait answer busy', async ()
 test('two workers score two jobs at once', async () => {
   const r = createReplayer({ workers: 2, workerUrl });
   try {
-    await codeOf(r.run('work:1', { key: 'warm1' }));
+    await Promise.all(['warm1', 'warm2'].map(key => r.run('work:1', { key })));
     const t0 = Date.now();
     await Promise.all([r.run('work:300', { key: 'x' }), r.run('work:300', { key: 'y' })]);
     assert.ok(Date.now() - t0 < 550, `ran side by side (${Date.now() - t0} ms)`);

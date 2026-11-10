@@ -1,4 +1,6 @@
 // Lesson page frame (read, demo, numbers, quiz steps) and the full-screen intro.
+import { mountFeedback } from './feedback.js';
+import { metrics } from '../../core/metrics.js';
 import { h, ico, clear, append, lessonOf, buildHash } from './dom.js';
 import { mountPlayHost } from './playhost.js';
 import { modal } from './overlay.js';
@@ -156,7 +158,8 @@ export function renderLesson(host, ctx, route) {
         if (version !== figureVersion) return;
         clear(stage); stage.removeAttribute('aria-busy');
         figure = module.mountFigure(stage, ctx, step);
-      }).catch(() => {
+      }).catch(err => {
+        metrics.reportError(err, lesson.id + '.js', true);
         if (version !== figureVersion) return;
         stage.removeAttribute('aria-busy'); clear(stage);
         stage.append(h('p', { text: 'The figure could not open. Reload this page to try again.' }));
@@ -359,6 +362,7 @@ export function renderLesson(host, ctx, route) {
   function drawTakeaway() {
     if (transfer && !transferDone) { idx = steps.length - 1; drawHead(); const check = h('section', { class: 'sh-card sh-lp-card' }); body.append(check); drawTransfer(check, transfer); return; }
     ctx.progress.lessonDone(lesson.id);
+    metrics.once('lesson_finished', lesson.id);
     const all = ctx.content.lessons || [];
     const i = all.findIndex((l) => l.id === lesson.id);
     const nextLesson = all.slice(i + 1).find((l) => !ctx.progress.isLessonDone(l.id)) || all[i + 1];
@@ -376,6 +380,7 @@ export function renderLesson(host, ctx, route) {
         nextLesson ? h('a', { class: 'sh-btn sh-btn--primary', href: '#/learn/' + nextLesson.id }, `Next: ${nextLesson.title}`, ico('ui.chevron-right', 18))
           : h('a', { class: 'sh-btn sh-btn--primary', href: '#/practice' }, 'Go to Practice', ico('ui.chevron-right', 18))));
     body.append(card);
+    mountFeedback(card, ctx, 'lesson:' + lesson.id);
   }
 
   const offRoute = ctx.bus.on('route', r => {

@@ -10,6 +10,7 @@ import { mountShell } from './ui/shell/shell.js';
 import { createAudio } from './assets/sound.js';
 import { getPalette } from './assets/palette.js';
 import { createCompete } from './compete/index.js';
+import { metrics } from './core/metrics.js';
 
 const root = document.documentElement;
 const media = (q) => { try { return globalThis.matchMedia ? matchMedia(q) : null; } catch { return null; } };
@@ -71,6 +72,7 @@ async function boot() {
     recordFrame: (f) => (perf ? perf.record(f) : undefined),
   };
   ctx.compete = createCompete(ctx);
+  metrics.bind(ctx);
   // Optional sign-in: loaded after the first screen; when it cannot start, the game simply has no account features.
   ctx.account = null;
 
@@ -104,7 +106,7 @@ async function boot() {
   const appEl = document.getElementById('app');
   appEl.innerHTML = '';
   const shell = mountShell(appEl, ctx);
-  const startAccount = () => import('./account/index.js').then((m) => { ctx.account = m.createAccount(ctx); shell.attachAccount?.(); }).catch(() => { ctx.account = null; });
+  const startAccount = () => import('./account/index.js').then((m) => { ctx.account = m.createAccount(ctx); shell.attachAccount?.(); }).catch(err => { metrics.reportError(err, 'index.js', true); ctx.account = null; });
 
   // ---- window.__game: drives the mounted play controller (CONTRACT 13.1)
   const nextRoute = (hash) => new Promise((resolve) => {
@@ -188,6 +190,7 @@ async function boot() {
 }
 
 boot().catch((err) => {
+  metrics.reportError(err, 'main.js');
   console.error(err);
   fatal(err && err.message ? err.message : String(err));
 });
