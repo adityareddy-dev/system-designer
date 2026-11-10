@@ -2,9 +2,11 @@
 // fresh profile's first full day for the same plain design, and a Beat link made after Retry replays to the same score.
 // Run from the harness folder: node warmup-retry.mjs [baseUrl]
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import assert from 'node:assert/strict';
 
-const BASE = process.argv[2] || 'http://localhost:8765/';
+const BASE = site.base;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 
@@ -74,7 +76,7 @@ assert.equal(await B.$('.pl-cat--suggest'), null, 'attempts on another problem d
 const full = await run(B);
 await B.evaluate(() => window.__game.loadProblem('url-shortener'));
 assert.ok(await B.$('.pl-cat--suggest'), 'saved attempts unlock suggestions when reopening a problem');
-await browser.close();
+await browser.close(); await site.close();
 
 console.log(`warm-up ${warm}, retry ${retry}, fresh full day ${full}, link replay ${link.replayScore} (verified ${link.verified})`);
 const ok = Number.isFinite(retry) && retry === full && warm > retry;

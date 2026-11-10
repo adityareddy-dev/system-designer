@@ -14,6 +14,12 @@ function check(test, id) {
 }
 for (const p of problems) check(checkFor(p), p.id);
 for (const l of lessons.filter(l => l.id !== 'intro')) check(transferFor(l.id), l.id);
+const bandwidth = lessons.find(l => l.id === 'back-of-envelope').transfer;
+assert(transferCorrect(bandwidth, bandwidth.answer, 6), 'six whole relays pass');
+assert(!transferCorrect(bandwidth, bandwidth.answer, 5.7), 'zero tolerance rejects fractional relays');
+assert(transferCorrect({ answer: 0, value: 6 }, 0, 5.7), 'legacy questions keep five percent tolerance');
+assert(transferCorrect({ answer: 0, value: 6, tolerance: .1 }, 0, 6.09), 'explicit nonzero tolerance is honored');
+assert(!transferCorrect({ answer: 0, value: 6, tolerance: .1 }, 0, 6.2));
 const pool = buildPool(lessons);
 for (const q of pool.quiz) check(q, q.lesson + ' drill');
 for (const n of pool.num) {

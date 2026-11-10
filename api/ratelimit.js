@@ -62,6 +62,8 @@ export function createLimiter({ now = Date.now, maxKeys = 100000 } = {}) {
 // Limits per route group: [hits, window in ms]. "ip" counts per address (an IPv6 /64 counts as one), "user" per signed-in
 // account, "global" for everyone together, counted only for requests that passed their own limits.
 export const LIMITS = {
+  events: { ip: [30, 60_000] },
+  feedback: { ip: [5, 600_000] },
   all: { ip: [300, 60_000] },
   auth: { ip: [20, 60_000], global: [600, 60_000] },
   results: { ip: [60, 600_000], user: [30, 600_000], global: [300, 60_000] },

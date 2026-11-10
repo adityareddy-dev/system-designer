@@ -1,6 +1,6 @@
 // Indexes original scene drawings using the shared palette in both themes.
 import fs from 'node:fs';
-const tokens = { '#F5F2E9': '--bg', '#FFFEFA': '--surface-solid', '#FFFFFF': '--surface-solid', '#182F40': '--text', '#526575': '--text-2', '#405868': '--text-2', '#C7D1D0': '--border', '#657A87': '--edge-idle', '#244ED8': '--accent', '#006E68': '--cat-compute', '#865400': '--cat-data', '#4051A1': '--cat-edge', '#24643F': '--ok', '#B42C37': '--bad', '#875500': '--warn' };
+const tokens = { '#EDF2F9': '--bg', '#F1F5FB': '--surface-solid', '#FFFFFF': '--surface-solid', '#1B2B45': '--text', '#4D607B': '--text-2', '#3D506E': '--text-2', '#C5D0E1': '--border', '#60738D': '--edge-idle', '#244ED8': '--accent', '#006E68': '--cat-compute', '#865400': '--cat-data', '#4051A1': '--cat-edge', '#24643F': '--ok', '#A92733': '--bad', '#875500': '--warn' };
 const scenes = {};
 for (const name of fs.readdirSync('assets/scenes').filter(n => n.endsWith('.svg'))) {
   let svg = fs.readFileSync('assets/scenes/' + name, 'utf8');

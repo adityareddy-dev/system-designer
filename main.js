@@ -10,6 +10,7 @@ import { mountShell } from './ui/shell/shell.js';
 import { createAudio } from './assets/sound.js';
 import { getPalette } from './assets/palette.js';
 import { createCompete } from './compete/index.js';
+import { metrics } from './core/metrics.js';
 
 const root = document.documentElement;
 const media = (q) => { try { return globalThis.matchMedia ? matchMedia(q) : null; } catch { return null; } };
@@ -71,6 +72,7 @@ async function boot() {
     recordFrame: (f) => (perf ? perf.record(f) : undefined),
   };
   ctx.compete = createCompete(ctx);
+  metrics.bind(ctx);
   // Optional sign-in: loaded after the first screen; when it cannot start, the game simply has no account features.
   ctx.account = null;
 
@@ -82,7 +84,7 @@ async function boot() {
     root.dataset.motion = reducedMotion() ? 'reduce' : 'full';
     root.dataset.contrast = settings.get('highContrast') ? 'high' : 'normal';
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', t === 'dark' ? '#0A0E18' : '#F3F5FA');
+    if (meta) meta.setAttribute('content', t === 'dark' ? '#0A0E18' : '#EDF2F9');
     if (t !== shownTheme) { shownTheme = t; bus.emit('theme', { theme: t }); }
   }
   function applySound() {
@@ -101,10 +103,12 @@ async function boot() {
   darkQuery?.addEventListener?.('change', applyLook);
   motionQuery?.addEventListener?.('change', () => { applyLook(); bus.emit('settings', { key: 'reducedMotion', value: settings.get('reducedMotion') }); });
 
+  // The readable home page uses a content anchor before the game takes over.
+  if (location.hash === '#content') router.replace('#/');
   const appEl = document.getElementById('app');
   appEl.innerHTML = '';
   const shell = mountShell(appEl, ctx);
-  const startAccount = () => import('./account/index.js').then((m) => { ctx.account = m.createAccount(ctx); shell.attachAccount?.(); }).catch(() => { ctx.account = null; });
+  const startAccount = () => import('./account/index.js').then((m) => { ctx.account = m.createAccount(ctx); shell.attachAccount?.(); }).catch(err => { metrics.reportError(err, 'index.js', true); ctx.account = null; });
 
   // ---- window.__game: drives the mounted play controller (CONTRACT 13.1)
   const nextRoute = (hash) => new Promise((resolve) => {
@@ -114,9 +118,9 @@ async function boot() {
     const off = bus.once('route', () => { clearTimeout(t); resolve(); });
     router.go(h);
   });
-  async function playFor(hash) {
+  async function playFor(hash, opts) {
     await nextRoute(hash);
-    const c = await shell.whenPlay();
+    const c = await shell.whenPlay(opts);
     if (!c) throw new Error('No workbench on ' + hash);
     await loadPerf();
     return c;
@@ -149,7 +153,7 @@ async function boot() {
       if (id === 'intro') return withErrors((await playFor('#/intro')).getState());
       const steps = lesson.steps || [];
       const n = stepIndex ?? Math.max(0, steps.findIndex((s) => s.kind === 'demo'));
-      const c = await playFor(`#/learn/${id}${n ? '?step=' + n : ''}`);
+      const c = await playFor(`#/learn/${id}${n ? '?step=' + n : ''}`, { prepareLesson: true });
       return withErrors(c.getState());
     },
     // an optional fourth argument drops the part onto that connection, as dragging onto a line does
@@ -188,6 +192,7 @@ async function boot() {
 }
 
 boot().catch((err) => {
+  metrics.reportError(err, 'main.js');
   console.error(err);
   fatal(err && err.message ? err.message : String(err));
 });

@@ -91,7 +91,8 @@ export default {
         "value": 0.99,
         "maxUtil": 0.75
       },
-      "hint": "One server handles about 1,000 requests a second (approx.). Divide the peak by that capacity, then leave at least 25% spare for a slow server or a small burst."
+      "hint": "One server handles about 1,000 requests a second (approx.). Divide the peak by that capacity, then leave at least 25% spare for a slow server or a small burst.",
+      "estimate": "Peak is 9,000 requests/s. One app server has a measured ceiling of about 1,000 requests/s. Keep at least 25% of total app capacity spare. Record a first estimate before opening the workbench."
     },
     {
       "kind": "numbers",
@@ -150,5 +151,20 @@ export default {
       "why": "Leave headroom for spikes and for servers being replaced."
     }
   ],
-  "takeaway": "Divide by 100,000 for a day, multiply by 3 for the peak, and leave headroom."
+  "takeaway": "Divide daily requests by about 100,000 for an average each second. Three times average is an example peak, not a rule. Choose a peak factor for your traffic and leave headroom.",
+  "transfer": {
+    "kind": "transfer",
+    "q": "A photo backup service receives only 200 uploads/s, but each upload is 8 MB. A relay accepts 10,000 requests/s and transfers 400 MB/s. Which quantity should set the fleet size first? Keep 25% of total relay capacity spare.",
+    "choices": [
+      "Requests per second at each relay",
+      "The number of photos retained for a year",
+      "Transferred megabytes per second"
+    ],
+    "answer": 2,
+    "why": "The workload sends 1,600 MB/s, so the network is the binding limit. Request capacity alone would miss it. Retained photos size storage, not this relay fleet.",
+    "calculation": "How many whole relays keep network use at or below 75%?",
+    "value": 6,
+    "unit": "relays",
+    "tolerance": 0
+  }
 };

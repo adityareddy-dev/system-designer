@@ -36,6 +36,10 @@ export function createInput(canvas, host, d) {
 
   function inRing(v, w, type) {
     if (!v) return false;
+    // The visible side port and the arrow share one finger-sized target.
+    const px = (w.x - v.x) * camera.zoom, py = (w.y - v.y) * camera.zoom;
+    if (px >= Math.max(HALF * camera.zoom - 12, HALF * camera.zoom * .6) &&
+      px <= HALF * camera.zoom + 44 && Math.abs(py) <= 22) return true;
     const dd = Math.hypot(w.x - v.x, w.y - v.y);
     const t = tolFor(type);
     const inBody = Math.abs(w.x - v.x) <= HALF && Math.abs(w.y - v.y) <= HALF && dd < PORT_IN;
@@ -66,8 +70,9 @@ export function createInput(canvas, host, d) {
     if (type !== 'mouse' || mode !== 'idle') return;
     const w = camera.screenToWorld(p.x, p.y);
     hoverWorld = w;
-    const ring = activeRingNode('mouse');
-    if (ring && inRing(ring, w, 'mouse')) { setCursor('crosshair'); d.ui.setPortRing(ring, true); return; }
+    const body = nodes.hit(w.x, w.y, 0);
+    const ring = d.editable() && nodes.list.find(v => (!body || body.id === v.id) && inRing(v, w, 'mouse')) || activeRingNode('mouse');
+    if (ring && (!body || body.id === ring.id) && inRing(ring, w, 'mouse')) { setCursor('crosshair'); d.ui.setPortRing(ring, true); return; }
     const v = nodes.hit(w.x, w.y, tolFor('mouse'));
     nodes.setHover(v ? v.id : null);
     d.ui.setPortRing(activeRingNode('mouse'), false);
@@ -105,8 +110,9 @@ export function createInput(canvas, host, d) {
     if (e.button === 2) { mode = 'idle'; return; }
     if (e.button === 1 || spaceDown) { mode = 'pan'; setCursor('grabbing'); return; }
     if (d.ghost.type()) { d.ghost.pointer(w.x, w.y); mode = 'pendingCanvas'; return; }
-    const ring = activeRingNode(e.pointerType);
-    if (ring && inRing(ring, w, e.pointerType)) {
+    const body = nodes.hit(w.x, w.y, 0);
+    const ring = d.editable() && nodes.list.find(v => (!body || body.id === v.id) && inRing(v, w, e.pointerType)) || activeRingNode(e.pointerType);
+    if (ring && (!body || body.id === ring.id) && inRing(ring, w, e.pointerType)) {
       mode = 'connect'; connectFrom = ring; connectTarget = null;
       d.ui.drawBand(ring, w.x, w.y, null, true);
       return;
@@ -165,7 +171,7 @@ export function createInput(canvas, host, d) {
     const w = camera.screenToWorld(p.x, p.y);
     if (mode === 'pendingNode' && moved > slopFor(e.pointerType)) {
       clearTimeout(longTimer);
-      if (e.pointerType === 'mouse' && startDrag(start.id, start.w)) { /* dragging */ }
+      if (startDrag(start.id, start.w)) { /* dragging */ }
       else { mode = 'pan'; setCursor('grabbing'); }
     } else if (mode === 'longpressed' && moved > slopFor(e.pointerType)) {
       startDrag(start.id, start.w);
@@ -242,8 +248,10 @@ export function createInput(canvas, host, d) {
         emit('node:dragend', { id: dragId, x: pos.x, y: pos.y });
       } else nodes.cancelDrag(dragId);
     } else if (mode === 'connect') {
+      // The final move can be coalesced, so resolve the target at release.
+      const v = nodes.hit(w.x, w.y, tolFor(type) * 2);
       d.ui.clearBand();
-      if (connectTarget) emit('connect', { from: connectFrom.id, to: connectTarget.id });
+      if (v && v !== connectFrom) emit('connect', { from: connectFrom.id, to: v.id });
     }
     dragId = null; dragPos = null; connectFrom = null; connectTarget = null;
     mode = 'idle';

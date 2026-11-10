@@ -3,7 +3,7 @@ import { estimateUnit } from './estimate-units.js';
 import { h, iconEl, fmtNum, fmtUsd, approx } from './util.js';
 import { iconInner } from '../../assets/icons/index.js';
 import { referenceSettings } from './reference-settings.js';
-import sizing from '../../content/sizing.js';
+import sizing, { twistSizing } from '../../content/sizing.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const s = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
@@ -123,7 +123,7 @@ export function renderEditorial(host, { problem, catalog, passed, onLoad, onClos
         h('div', { class: 'pl-ed-actions' },
           h('button', { class: 'pl-btn', type: 'button', onClick: () => onLoad?.(d, { run: false }) }, iconEl('ui.download', 16), 'Load onto my canvas'),
           h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: () => onLoad?.(d, { run: true }) }, iconEl('ui.play', 16), 'Load and run it'))].filter(Boolean));
-      const measured = sizing[problem.id]?.[cur];
+      const measured = (problem.twistDay ? twistSizing : sizing)[problem.id]?.find(m => m.graphKey === JSON.stringify(d.graph));
       if (problem.difficulty === 'Hard' && measured) {
         const r = problem.requirements;
         const writeShare = Object.entries(r.mix).filter(([id]) => catalog.requestById.get(id)?.isWrite).reduce((a, [,v]) => a + v, 0);

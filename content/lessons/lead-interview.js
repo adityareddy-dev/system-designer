@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: choose the deep question",
-      "text": "Assume 10 million users receive 3 notifications/day. That is 30 million/day, or about 347/s average. With a 10 times burst, plan about 3,470/s. At an assumed 1 KB payload, raw events add about 30 GB/day, before replicas and delivery attempts. If the provider admits only 2,000/s, an extra app fleet cannot erase the downstream limit. Using the unrounded burst rate of about 3,472/s, a five-minute burst creates about 441,667 queued notifications if service stays at 2,000/s. That calculation suggests going deep on admission, deadlines and recovery. It is a worked design exercise, not a sim run."
+      "text": "Assume a 1 KB payload: the raw events add about 30 GB/day before replicas and delivery attempts. Extra app servers cannot erase a downstream provider limit. The backlog calculation points to admission, deadlines and recovery as the useful depth. It is a worked design example, not a traffic run.",
+      "diagram": {
+        "label": "The provider is the ceiling",
+        "parts": [
+          [
+            "30 million/day",
+            "10 million people × 3 notifications. About 347/s average."
+          ],
+          [
+            "10 times burst",
+            "About 3,472/s arrive while the provider admits 2,000/s."
+          ],
+          [
+            "Five-minute backlog",
+            "About 441,667 notifications wait. Decide deadlines and recovery before adding app servers."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -68,7 +85,25 @@ export default {
     {
       "kind": "read",
       "title": "Make the reasoning visible",
-      "text": "Say which numbers are assumptions and which would come from measurement. Explain one simple design before alternatives. Tie each component to a requirement and name what happens on failure. Ask for pushback on a concrete decision: is delayed delivery acceptable for this message class? If you do not know a provider limit, give a plausible range, show how the design changes across it and name the measurement needed. Do not invent certainty. End with the key invariant, the bottleneck, the cost driver and one unresolved risk. A good discussion can disagree with your choice because it can see why you made it."
+      "text": "Explain one simple design before alternatives. Tie every component to a requirement and invite pushback on a concrete choice. If a provider limit is unknown, give a plausible range, show which result changes the design and name the measurement needed. End with the key invariant, bottleneck, cost driver and one unresolved risk. Reasoning can be useful even when a reviewer chooses differently.",
+      "diagram": {
+        "label": "Make a claim testable",
+        "parts": [
+          [
+            "State the promise",
+            "Name the user outcome and distinguish assumptions from measurements."
+          ],
+          [
+            "Trace a failure",
+            "Walk one request and explain which invariant survives."
+          ],
+          [
+            "Name the experiment",
+            "Measure the uncertain limit and say which result changes the design."
+          ]
+        ],
+        "flow": true
+      }
     },
     {
       "kind": "quiz",

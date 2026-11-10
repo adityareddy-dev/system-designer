@@ -1,5 +1,6 @@
 // Clarification synonyms recognize engineering vocabulary while exposing uncertain matches.
 const topics = [
+  ['posting changes', /postings?.*(chang|revers|edit|delet)|(?:chang|revers|edit|delet).*postings?/i],
   ['idempotency', /idempoten|dedup|duplicate|twice|exactly.once|double.charge|repeat.*(send|request|command)|same.*(asked|sent|request|message)/i],
   ['scale', /scale|load|demand|how many|volume|peak|traffic|throughput|tps|qps|rps|users|audience|per.second/i],
   ['retention', /retention|retain|ttl|how long|keep.*(data|record|mail|trace|log|reading)|days|years|stored|storage/i],
@@ -43,12 +44,14 @@ export function questionAnalysis(text, questions) {
     const a = tokens(line), b = tokens(question.q);
     const lexical = [...b].filter(w => a.has(w) || [...a].some(v => v.length > 4 && w.startsWith(v.slice(0,-1)))).length;
     const shared = topics.filter(([,pattern]) => pattern.test(line) && pattern.test(question.q)).length;
-    return { score: lexical + shared * 2, matched: shared > 0 || lexical >= Math.min(2, b.size || 2) };
+    const phrases = topics.filter(([,pattern]) => pattern.test(line) && pattern.test(question.q)).map(([,pattern]) => line.match(pattern)?.[0]);
+    const matchedWords = [...a].filter(v => [...b].some(w => v === w || v.length > 4 && w.startsWith(v.slice(0,-1))));
+    return { score: lexical + shared * 2, matched: shared > 0 || lexical >= Math.min(2, b.size || 2), phrase: phrases.filter(Boolean).join(', ') || matchedWords.join(', ') };
   };
   const coverage = questions.map(q => own.some(line => score(line, q).matched));
   const closest = own.map(line => {
     const ranked = questions.map((q,i) => ({ i, ...score(line,q) })).sort((a,b) => b.score-a.score);
-    return { text: line, question: ranked[0]?.i ?? 0, matched: ranked[0]?.matched || false };
+    return { text: line, question: ranked[0]?.i ?? 0, matched: ranked[0]?.matched || false, phrase: ranked[0]?.phrase || '', matches: ranked.filter(r => r.matched).map(r => ({ question: r.i, phrase: r.phrase })) };
   });
   return { coverage, closest };
 }

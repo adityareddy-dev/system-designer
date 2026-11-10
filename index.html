@@ -1,11 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8">
+<meta charset="utf-8">
+  <meta name="theme-color" content="#0A0E18">
+  <!-- theme:start --><script>
+// Applies the saved theme before styles and page content can paint.
+(function () {
+  function apply() {
+    var theme = 'dark';
+    try {
+      var saved = JSON.parse(localStorage.getItem('hotpath.v1.settings') || '{}') || {};
+      if (saved.theme === 'light' || saved.theme === 'dark') theme = saved.theme;
+      else if (saved.theme === 'system' && saved.themeExplicit === true) {
+        theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+    } catch (e) { /* Storage can be unavailable. */ }
+    document.documentElement.dataset.theme = theme;
+    var bar = document.querySelector('meta[name="theme-color"]');
+    if (bar) bar.content = theme === 'dark' ? '#0A0E18' : '#EDF2F9';
+  }
+  apply();
+  if (typeof matchMedia === 'function') matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', apply);
+})();
+</script><!-- theme:end -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>System Designer</title>
   <meta name="description" content="A free browser game for practising system design: build a real architecture, survive a traffic day of spikes and outages, and see in plain words why it held.">
-  <meta name="theme-color" content="#F3F5FA">
+  <!-- site:head:start -->
+  <link rel="canonical" href="https://systemdesigner.io/">
+  <link rel="stylesheet" href="assets/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebApplication","@id":"https://systemdesigner.io/#app","name":"System Designer","url":"https://systemdesigner.io/","description":"A free browser game for learning system design. Practise 82 problems across 15 industries, study 41 lessons and see how your architecture handles spikes, outages and retries.","applicationCategory":"EducationalApplication","operatingSystem":"Any modern browser","browserRequirements":"JavaScript is required to play; lessons and guides can be read without it.","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"LearningResource","name":"System Designer learning library","url":"https://systemdesigner.io/","learningResourceType":"Interactive system design practice","isAccessibleForFree":true,"educationalLevel":"Beginner to advanced","hasPart":[{"@type":"CollectionPage","url":"https://systemdesigner.io/problems/"},{"@type":"CollectionPage","url":"https://systemdesigner.io/learn/"},{"@type":"CollectionPage","url":"https://systemdesigner.io/guides/"}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://systemdesigner.io/index.html"}]},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is System Designer?","acceptedAnswer":{"@type":"Answer","text":"A free browser game for learning system design. Build an architecture, run a simulated traffic day of spikes and outages, and see how it handles reliability, speed, data safety and cost."}},{"@type":"Question","name":"Who is it for?","acceptedAnswer":{"@type":"Answer","text":"Backend engineers, students and interview candidates who want to understand how systems behave. Beginners can start with the guided first system; experienced engineers can try harder constraints."}},{"@type":"Question","name":"Is it free?","acceptedAnswer":{"@type":"Answer","text":"Yes. The lessons, practice problems, daily challenge and sandbox are free."}},{"@type":"Question","name":"Does it need sign-up?","acceptedAnswer":{"@type":"Answer","text":"No. Play immediately and keep progress in your browser. Optional sign-in keeps progress across devices and adds leaderboards."}},{"@type":"Question","name":"Does it help with interviews?","acceptedAnswer":{"@type":"Answer","text":"It helps you practise clarification, estimates, architecture, failures and trade-offs. Interview mode on Medium and Hard problems adds a timed discussion and evidence-based defenses."}},{"@type":"Question","name":"How is it different from reading a book?","acceptedAnswer":{"@type":"Answer","text":"You make a prediction and watch your own design face traffic and failures. A debrief gives measurements for a retry. Books can explain the ideas; playing makes you apply and test them."}}]}]}</script>
+  <!-- site:head:end -->
   <meta property="og:title" content="System Designer">
   <meta property="og:description" content="Build the system. Survive the day. See why it held. Free system design practice in your browser, no sign-up.">
   <meta property="og:type" content="website">
@@ -48,9 +73,15 @@
   <link rel="modulepreload" href="assets/icons/index.js">
   <link rel="modulepreload" href="assets/icons/data.js">
   <link rel="modulepreload" href="ui/shell/overlay.js">
+  <link rel="modulepreload" href="ui/shell/feedback.js">
+  <link rel="modulepreload" href="core/metrics.js">
+  <link rel="modulepreload" href="core/version.js">
   <link rel="modulepreload" href="ui/shell/progress.js">
   <link rel="modulepreload" href="ui/shell/shell.js">
   <link rel="modulepreload" href="ui/shell/motion.js">
+  <link rel="modulepreload" href="ui/play/completion.js">
+  <link rel="modulepreload" href="ui/play/correctness.js">
+  <link rel="modulepreload" href="ui/play/util.js">
   <link rel="modulepreload" href="assets/sound.js">
   <link rel="modulepreload" href="assets/palette.js">
   <link rel="modulepreload" href="assets/tokens.js">
@@ -71,7 +102,7 @@
   <script>
   // Starts fetching the code and data of the page being opened (made by tools/gen-preload.mjs).
   (function () {
-    var M = {"home":["ui/shell/home.js","ui/shell/concepts.js","ui/shell/next-tracks.js"],"learn":["ui/shell/learn.js","assets/scenes/index.js","ui/shell/next-tracks.js"],"lesson":["ui/shell/lesson-page.js","ui/shell/playhost.js","content/transfers.js","assets/scenes/index.js","ui/shell/allocation.js","ui/shell/defend.js","ui/defense.js"],"practice":["ui/shell/practice.js","ui/shell/home.js","ui/shell/concepts.js","ui/shell/next-tracks.js","assets/scenes/index.js"],"problem":["ui/shell/problem-page.js","ui/shell/playhost.js","ui/shell/home.js","ui/shell/concepts.js","ui/shell/next-tracks.js"],"challenge":["ui/shell/challenge.js","ui/shell/playhost.js","assets/scenes/index.js"],"sandbox":["ui/shell/sandbox.js","ui/shell/playhost.js"],"drill":["ui/shell/drill.js","content/transfers.js"],"settings":[],"play":["ui/play/play.js","ui/play/interview.js","ui/play/util.js","ui/play/estimate-units.js","ui/play/question-topics.js","render/diagram.js","ui/play/design-check.js","sim/engine.js","sim/graph.js","sim/route.js","sim/sources.js","sim/service-profile.js","sim/trace.js","sim/flow.js","sim/util.js","sim/events.js","sim/event-guidance.js","sim/paths.js","sim/cost.js","sim/score.js","sim/validate.js","sim/obligations.js","sim/debrief.js","sim/cost-advice.js","sim/efficiency.js","render/scene.js","render/theme.js","render/textures.js","render/geom.js","render/icons.js","render/camera.js","render/nodes.js","render/pool.js","render/edges.js","render/particles.js","render/fx.js","render/input.js","render/grid.js","ui/play/steps.js","ui/play/req-card.js","ui/play/load-labels.js","assets/shapes.js","ui/play/clarify.js","ui/play/numbers.js","ui/play/toolbar.js","ui/play/inspector.js","ui/play/draw-controls.js","ui/play/inspector-facts.js","ui/play/hud.js","ui/play/hints.js","ui/play/debrief.js","ui/play/repair.js","ui/play/correctness.js","ui/play/reflection.js","ui/play/event-copy.js","ui/play/editorial.js","ui/play/reference-settings.js","content/sizing.js","ui/play/traffic-panel.js","ui/play/lesson-queue.js","ui/play/route-trace.js","ui/play/mastery.js","ui/play/capacity-preview.js","ui/play/intro-path.js","ui/play/victory.js","ui/play/run-transition.js","render/placement.js","ui/play/connection-caption.js","ui/play/goal-feedback.js","ui/play/lesson-replica.js"]};
+    var M = {"home":["ui/shell/home.js","ui/shell/concepts.js","ui/shell/next-tracks.js"],"learn":["ui/shell/learn.js","assets/scenes/index.js","ui/shell/next-tracks.js"],"lesson":["ui/shell/lesson-page.js","ui/shell/playhost.js","content/transfers.js","assets/scenes/index.js","assets/scenes/workloads.js","ui/shell/allocation.js","ui/shell/defend.js","ui/defense.js","ui/shell/lesson-visuals.js","ui/shell/prediction.js"],"practice":["ui/shell/practice.js","ui/shell/home.js","ui/shell/concepts.js","ui/shell/next-tracks.js","assets/scenes/index.js","assets/scenes/workloads.js"],"problem":["ui/shell/problem-page.js","ui/shell/playhost.js","ui/shell/home.js","ui/shell/concepts.js","ui/shell/next-tracks.js"],"challenge":["ui/shell/challenge.js","ui/shell/playhost.js","assets/scenes/index.js"],"sandbox":["ui/shell/sandbox.js","ui/shell/playhost.js"],"drill":["ui/shell/drill.js","content/drills.js","content/transfers.js","ui/shell/prediction.js"],"settings":[],"play":["ui/play/play.js","content/problems/twist.js","ui/play/interview.js","ui/play/estimate-units.js","content/problems/defense-claims.js","sim/engine.js","sim/graph.js","sim/route.js","sim/sources.js","sim/service-profile.js","sim/trace.js","sim/flow.js","sim/util.js","sim/events.js","sim/event-guidance.js","sim/paths.js","sim/cost.js","sim/score.js","sim/validate.js","sim/obligations.js","sim/debrief.js","sim/cost-advice.js","sim/efficiency.js","ui/play/question-topics.js","render/layout.js","ui/play/design-check.js","render/scene.js","render/theme.js","render/textures.js","render/geom.js","render/icons.js","render/camera.js","render/nodes.js","render/pool.js","render/pressure.js","render/routing.js","render/edges.js","render/particles.js","render/fx.js","render/input.js","render/grid.js","render/diagram.js","ui/play/steps.js","ui/play/req-card.js","ui/play/load-labels.js","assets/shapes.js","ui/play/clarify.js","ui/play/numbers.js","ui/play/toolbar.js","ui/play/inspector.js","ui/play/draw-controls.js","ui/play/inspector-facts.js","ui/play/hud.js","ui/play/hints.js","ui/play/debrief.js","ui/play/repair.js","ui/play/transfer-reflection.js","ui/play/reflection.js","ui/play/event-copy.js","ui/play/editorial.js","ui/play/reference-settings.js","content/sizing.js","ui/play/traffic-panel.js","ui/play/lesson-queue.js","ui/play/route-trace.js","ui/play/mastery.js","ui/play/capacity-preview.js","ui/play/intro-path.js","ui/play/victory.js","ui/play/run-transition.js","render/placement.js","ui/play/connection-caption.js","ui/play/goal-feedback.js","ui/play/lesson-replica.js"]};
     var hs = location.hash.slice(1); if (hs.charAt(0) === '/') hs = hs.slice(1);
     var parts = hs.split('?')[0].split('/');
     var a = parts[0], b = parts[1], seen = false, use = [], data = [], play = false;
@@ -96,11 +127,13 @@
   })();
   </script>
   <!-- preload:end -->
-  <script type="module" src="main.js"></script>
+  <script type="module" src="core/boot.js"></script>
 </head>
 <body>
-  <div id="app"><div class="sh-boot" role="status"><div class="sh-boot-mark" aria-hidden="true"></div><span>Loading System Designer</span></div></div>
+<!-- site:body:start -->
+<div id="app"><div class="site"><a class="site-skip" href="#content">Skip to content</a><header class="site-header"><a class="site-brand" href="./"><span class="site-mark" aria-hidden="true">S</span>System Designer</a><nav aria-label="Main navigation"><a href="problems/">Problems</a><a href="learn/">Learn</a><a href="guides/">Guides</a><a href="#/">Open game</a></nav></header><main id="content" class="site-main" tabindex="-1"><nav class="site-crumbs" aria-label="Breadcrumb"><span aria-current="page">Home</span></nav><div class="site-hero"><div><p class="site-kicker">Build the system. Survive the day.</p><h1>Build the system. Survive the day. See why it held.</h1><p class="site-lead">A free browser game for learning system design. Practise 82 problems across 15 industries, study 41 lessons and see how your architecture handles spikes, outages and retries.</p><a class="site-button" href="#/intro">Build your first system</a></div></div><div class="site-prose"><section><h2>Learn by making a design work</h2><p>Clarify the brief, estimate the scale and connect the parts. Fast-forward through a traffic day, then use the plain-words debrief to compare reliability, speed, data safety and monthly cost. No sign-up is needed; progress stays in your browser.</p><p><a href="problems/">Browse the practice problems</a>, <a href="learn/">read the lessons</a> or <a href="guides/">follow a guide</a> before you play.</p></section><section><h2>Start here</h2><ul><li><a href="learn/intro/">Your first system</a></li><li><a href="p/url-shortener/">URL shortener practice</a></li><li><a href="guides/how-to-practise-system-design/">How to practise system design</a></li><li><a href="guides/two-week-system-design-plan/">A two-week interview plan</a></li></ul></section><section><h2>Common questions</h2><h3>What is System Designer?</h3><p>A free browser game for learning system design. Build an architecture, run a simulated traffic day of spikes and outages, and see how it handles reliability, speed, data safety and cost.</p><h3>Who is it for?</h3><p>Backend engineers, students and interview candidates who want to understand how systems behave. Beginners can start with the guided first system; experienced engineers can try harder constraints.</p><h3>Is it free?</h3><p>Yes. The lessons, practice problems, daily challenge and sandbox are free.</p><h3>Does it need sign-up?</h3><p>No. Play immediately and keep progress in your browser. Optional sign-in keeps progress across devices and adds leaderboards.</p><h3>Does it help with interviews?</h3><p>It helps you practise clarification, estimates, architecture, failures and trade-offs. Interview mode on Medium and Hard problems adds a timed discussion and evidence-based defenses.</p><h3>How is it different from reading a book?</h3><p>You make a prediction and watch your own design face traffic and failures. A debrief gives measurements for a retry. Books can explain the ideas; playing makes you apply and test them.</p></section></div></main><footer class="site-footer"><p>System Designer · Free system design practice in your browser.</p><nav aria-label="Footer"><a href="problems/">All problems</a> <a href="learn/">All lessons</a> <a href="guides/">Guides</a> <a href="privacy.html">Privacy</a></nav></footer></div></div>
   <div id="overlay"></div>
-  <noscript><p style="padding:16px">System Designer needs JavaScript to run.</p></noscript>
+  <noscript><p class="site site-note">JavaScript is needed to play. Read the <a href="problems/">problems</a>, <a href="learn/">lessons</a> and <a href="guides/">guides</a> without it.</p></noscript>
+<!-- site:body:end -->
 </body>
 </html>

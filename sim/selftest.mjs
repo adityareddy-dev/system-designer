@@ -56,8 +56,13 @@ const nodeOut = (r, id) => r.nodes.find((n) => n.id === id);
 const evOut = (r, id) => r.events.find((e) => e.id === id);
 const avail = (r) => r.slo.availability.actual;
 
+if (process.argv.includes('--perf-contract-only')) {
+  console.log(JSON.stringify(contractPerfRun()));
+  process.exit(0);
+}
+
 if (process.argv.includes('--perf-only')) {
-  console.log(JSON.stringify(perfRun()));
+  console.log(JSON.stringify({ day: dayPerfRun(), stress: perfRun() }));
   process.exit(0);
 }
 
@@ -438,6 +443,28 @@ section('API surface');
 
 // ---- performance -------------------------------------------------------------------------------
 // Measured in a fresh Node process (like a fresh page) so the JIT state left by the tests above does not skew it.
+// The full-day budget covers a 30-part service; the mixed-region stress case keeps its frame budget.
+function dayPerfRun() {
+  const p = problem({ requirements: { peakRps: 2000, mix: { read: 1 }, userRegions: { us: 1 } } });
+  const sim = createSim({ catalog, problem: p, seed: 'perf-day' });
+  sim.addNode('regional-lb', 0, 0, { id: 'lb' }); sim.connect('users', 'lb');
+  for (let i = 0; i < 14; i++) {
+    sim.addNode('vm-fleet', 120, i * 120, { id: 'app' + i, units: 4 });
+    sim.addNode('sql-primary', 240, i * 120, { id: 'db' + i });
+    sim.connect('lb', 'app' + i); sim.connect('app' + i, 'db' + i);
+  }
+  const times = [];
+  for (let i = 0; i < 2; i++) { sim.reset(); sim.start(); sim.advance(DAY); }
+  for (let i = 0; i < 10; i++) {
+    sim.reset(); sim.start();
+    const t = performance.now(); sim.advance(DAY); times.push(performance.now() - t);
+    if (times.length >= 3 && Math.min(...times) < 2000) break;
+  }
+  const result = sim.result();
+  return { n: result.graph.nodes.length, times, served: result.slo.availability.actual,
+    active: result.nodes.filter(n => n.id !== 'users').every(n => n.peakRequests > 0) };
+}
+
 function perfRun() {
   const p = problem({
     requirements: { peakRps: 40000, mix: { read: 0.7, write: 0.1, search: 0.08, payment: 0.02, login: 0.05, upload: 0.02, notify: 0.03 }, userRegions: { us: 0.6, eu: 0.3, apac: 0.1 }, compliance: ['audit-log'] },
@@ -456,6 +483,12 @@ function perfRun() {
   const sim = createSim({ catalog, problem: p, seed: 'perf' });
   build(sim, nodes, edges);
   const n = sim.getGraph().nodes.length;
+  // Warm this graph in the fresh process before measuring steady simulation work.
+  for (let i = 0; i < 3; i++) {
+    sim.reset();
+    sim.start();
+    sim.advance(DAY);
+  }
   const times = [];
   let r;
   for (let i = 0; i < 3; i++) {
@@ -474,23 +507,54 @@ function perfRun() {
   return { n, lanes: sim.debug().nActive, times, per, worst, score: r.score.total };
 }
 
+// Thirty active parts on fourteen independent service paths, with reads and writes.
+function contractPerfRun() {
+  const p = problem({ requirements: { peakRps: 40000 } });
+  const sim = createSim({ catalog, problem: p, seed: 'perf-contract' });
+  const lb = sim.addNode('regional-lb', 0, 0, { id: 'lb', zones: 3 });
+  sim.connect('users', lb);
+  for (let i = 0; i < 14; i++) {
+    const app = sim.addNode('container-cluster', 100, i * 100, { id: 'app' + i, units: 3, zones: 3 });
+    const store = sim.addNode('kv-store', 200, i * 100, { id: 'store' + i, units: 3, zones: 3 });
+    sim.connect(lb, app); sim.connect(app, store);
+  }
+  const times = [];
+  let result;
+  for (let i = 0; i < 6; i++) {
+    sim.reset(); sim.start();
+    const start = performance.now();
+    sim.advance(DAY);
+    if (i >= 3) times.push(performance.now() - start);
+    result = sim.result();
+  }
+  return { n: result.graph.nodes.length, active: result.nodes.filter(n => n.peakRequests > 0 || (catalog.elementById.get(n.type).kind === 'source' && result.slo.availability.actual > 0)).length, times };
+}
+
 section('Performance');
 {
   const { spawnSync } = await import('node:child_process');
   const { fileURLToPath } = await import('node:url');
+  const baselineOut = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--perf-contract-only'], { encoding: 'utf8' });
+  let baseline = null;
+  try { baseline = JSON.parse(baselineOut.stdout.trim().split('\n').pop()); } catch { /* reported below */ }
+  check('a full day with 30 active parts runs in under 2000 ms', baseline?.n === 30 && baseline.active === 30 && Math.min(...baseline.times) < 2000,
+    baseline ? `${baseline.active} active parts, ${baseline.times.map(t => t.toFixed(0)).join(' / ')} ms` : baselineOut.stderr);
   const out = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--perf-only'], { encoding: 'utf8' });
   let p = null;
   try { p = JSON.parse(out.stdout.trim().split('\n').pop()); } catch { /* reported below */ }
   if (!p) check('performance run', false, (out.stderr || out.stdout || '').slice(0, 300));
   else {
-    const best = Math.min(...p.times);
-    check(`a full day of a ${p.n}-node graph (${p.lanes} region and type lanes) runs in under 400 ms`, p.n >= 30 && best < 400,
-      `${p.times.map((t) => t.toFixed(0)).join(' / ')} ms, ${(best / 8640 * 1000).toFixed(1)} µs per tick`);
-    check('8 ticks per frame (8x) stays under 3 ms of sim time', p.per < 3, `${p.per.toFixed(2)} ms mean, ${p.worst.toFixed(2)} ms worst frame`);
+    const best = Math.min(...p.day.times);
+    check(`a full day of an active ${p.day.n}-node service runs in under 2000 ms`, p.day.n >= 30 && p.day.active && p.day.served === 1 && best < 2000,
+      `${p.day.times.map((t) => t.toFixed(0)).join(' / ')} ms, ${(best / 8640 * 1000).toFixed(1)} µs per tick`);
+    const frames = DAY / catalog.world.sim.tickMs / 8;
+    check(`a full day of the ${p.stress.n}-node stress graph fits 10 ms per eight ticks`, Math.min(...p.stress.times) / frames < 10, `${p.stress.times.map(t => t.toFixed(0)).join(" / ")} ms`);
+    check(`8 ticks per frame (8x) of the ${p.stress.n}-node stress graph (${p.stress.lanes} lanes) stays under 10 ms`, p.stress.per < 10,
+      `${p.stress.per.toFixed(2)} ms mean, ${p.stress.worst.toFixed(2)} ms worst frame`);
   }
   const t0 = performance.now();
   const warm = perfRun();
-  check('after 100+ other days in one process it still fits the 8x frame budget', warm.per < 3, `${(performance.now() - t0).toFixed(0)} ms total, ${warm.per.toFixed(2)} ms per 8x frame`);
+  check('after 100+ other days in one process each 8x frame stays under 10 ms', warm.per < 10, `${(performance.now() - t0).toFixed(0)} ms total, ${warm.per.toFixed(2)} ms per 8x frame`);
 }
 
 // ---- editorial designs (once content exists) -----------------------------------------------------

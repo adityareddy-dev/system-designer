@@ -1,7 +1,9 @@
 // Practice view: the problem bank with search, difficulty, industry, concept and status filters.
+import { completionState } from '../play/completion.js';
 import { h, ico, clear, append, buildHash, groupsOf, groupIdOf, lessonOf, diffBadge, stars, GROUP_ICON, DIFF_ORDER } from './dom.js';
 import { nextProblem } from './home.js';
 import { sceneMarkup } from '../../assets/scenes/index.js';
+import { workloadMarkup } from '../../assets/scenes/workloads.js';
 
 const DIFFS = ['Easy', 'Medium', 'Hard'];
 const STATUSES = [['new', 'New'], ['tried', 'Tried'], ['solved', 'Solved']];
@@ -157,8 +159,9 @@ export function renderPractice(host, ctx, route) {
     const r = ctx.progress.get(p.id);
     const status = statusOf(p);
     return h('li', null, h('a', { class: 'sh-card sh-card--link sh-prob', href: '#/practice/' + p.id, dataset: { status, diff: p.difficulty } },
+      h('span', { class: 'sh-workload-art', 'aria-hidden': 'true', html: workloadMarkup(p,groupOf.get(p.id)) }),
       h('span', { class: 'sh-prob-top' }, diffBadge(p.difficulty),
-        status === 'solved' ? h('span', { class: 'sh-prob-state is-ok' }, ico('ui.check', 14), r?.learning?.masteredAt ? 'Mastered' : r?.learning?.assistedAt ? 'Passed with assistance' : 'Solved') : status === 'tried' ? h('span', { class: 'sh-prob-state' + (warmed(p) ? ' is-ok' : '') }, warmed(p) ? ico('ui.check', 14) : null, warmed(p) ? 'Warm-up passed' : 'Tried') : null),
+        status === 'solved' ? h('span', { class: 'sh-prob-state is-ok' }, ico('ui.check', 14), completionState(p, {}, null, r).label) : status === 'tried' ? h('span', { class: 'sh-prob-state' + (warmed(p) ? ' is-ok' : '') }, warmed(p) ? ico('ui.check', 14) : null, warmed(p) ? 'Warm-up passed' : 'Tried') : null),
       h('span', { class: 'sh-prob-title', text: p.title }),
       h('span', { class: 'sh-prob-like', text: p.like || '' }),
       h('span', { class: 'sh-prob-tags' }, (p.concepts || []).slice(0, 3).map((c) => h('span', { class: 'sh-tag', text: conceptName(c) }))),

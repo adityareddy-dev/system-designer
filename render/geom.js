@@ -154,6 +154,7 @@ export function edgeSides(ax, ay, bx, by) {
 // Ports and control points: horizontal tangents between the side ports, vertical ones when stacked.
 // oa and ob slide the ports along their side so several edges on one side fan out.
 export function edgeCurve(lut, ax, ay, bx, by, offset = 0, oa = 0, ob = 0) {
+  lut.segs = LUT_SEGS; lut.points = null;
   const dx = bx - ax, dy = by - ay;
   let p0x, p0y, p3x, p3y, c1x, c1y, c2x, c2y;
   if (Math.abs(dx) >= HALF * 1.6 || Math.abs(dx) >= Math.abs(dy) * 0.9) {
@@ -196,10 +197,11 @@ export function edgeCurve(lut, ax, ay, bx, by, offset = 0, oa = 0, ob = 0) {
 // Point and unit tangent at arc length s. `hint` is a segment index to start from (monotonic walks).
 export function lutAt(lut, s, out, hint = 0) {
   const { xs, ys, cum } = lut;
+  const count = lut.segs || LUT_SEGS;
   if (s <= 0) { s = 0; hint = 0; }
   if (s >= lut.len) s = lut.len;
-  let i = hint > 0 && hint < LUT_SEGS && cum[hint] <= s ? hint : 0;
-  while (i < LUT_SEGS - 1 && cum[i + 1] < s) i++;
+  let i = hint > 0 && hint < count && cum[hint] <= s ? hint : 0;
+  while (i < count - 1 && cum[i + 1] < s) i++;
   const seg = cum[i + 1] - cum[i] || 1e-6;
   const t = (s - cum[i]) / seg;
   const dx = xs[i + 1] - xs[i], dy = ys[i + 1] - ys[i];
@@ -215,7 +217,7 @@ export function lutAt(lut, s, out, hint = 0) {
 export function distToLut(lut, x, y) {
   const { xs, ys } = lut;
   let best = Infinity, bestS = 0;
-  for (let i = 0; i < LUT_SEGS; i++) {
+  for (let i = 0; i < (lut.segs || LUT_SEGS); i++) {
     const ax = xs[i], ay = ys[i], bx = xs[i + 1], by = ys[i + 1];
     const dx = bx - ax, dy = by - ay;
     const l2 = dx * dx + dy * dy || 1e-6;

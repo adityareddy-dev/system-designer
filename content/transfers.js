@@ -48,7 +48,8 @@ export function transferFor(id) {
   return { kind: 'transfer', q, choices, answer, why, calculation, value, unit };
 }
 export function transferCorrect(test, choice, value) {
-  return choice === test.answer && Number.isFinite(value) && Math.abs(value - test.value) <= Math.max(.01, test.value * .05);
+  const tolerance = test.tolerance ?? Math.max(.01, Math.abs(test.value) * .05);
+  return choice === test.answer && Number.isFinite(value) && Math.abs(value - test.value) <= tolerance;
 }
 
 // Independent workloads, rather than copies of the lesson's recognition question.

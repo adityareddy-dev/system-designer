@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: three years",
-      "text": "Assume loaded engineering cost of $180,000 per engineer-year. Building a specialized queue needs 0.5 engineer for year one and 0.2 for each of years two and three: 0.9 engineer-years, or $162,000. Add $2,000/month infrastructure for 36 months: $72,000. Total is about $234,000. Buying at $4,000/month costs $144,000. Add 0.1 engineer-year integration and 0.05/year operations for three years: $45,000, total $189,000. Buying is about $45,000 cheaper under these assumptions. A 50% vendor price rise applying to all 36 months would add $72,000 and reverse the result unless other costs change. This is a sensitivity exercise, not catalog pricing."
+      "text": "Assume loaded engineering cost of $180,000 per engineer-year. Building needs 0.5 in year one and 0.2 in each later year. Buying needs 0.1 for integration plus 0.05 per year for operations. The comparison changes if staffing, fees, recovery or exit costs change. This is a sensitivity exercise, not catalog pricing.",
+      "diagram": {
+        "label": "Compare the same three years",
+        "parts": [
+          [
+            "Build: $234,000",
+            "0.9 engineer-years costs $162,000. Infrastructure adds $72,000."
+          ],
+          [
+            "Buy: $189,000",
+            "Service fees cost $144,000. Integration and operations add $45,000."
+          ],
+          [
+            "Change one assumption",
+            "A 50% fee rise over all 36 months adds $72,000 and reverses this result."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -66,9 +83,11 @@ export default {
       "model": "I would show today's tested capacity, the tenfold case and where the first ceiling lies. At 200 requests/s, tenfold traffic is 2,000/s, which may still fit one well-indexed store depending on the write mix. I would avoid promising that without a benchmark. Stable keys, modular boundaries and exportable data leave room for a later split. I would fund the migration before measured headroom or recovery time crosses its trigger, while retaining backups and correctness from day one."
     },
     {
-      "kind": "read",
+      "kind": "figure",
+      "figure": "simplest-design",
+      "view": "timeline",
       "title": "A plan with triggers",
-      "text": "Month one: one deployable service, a transactional store, backups with a restore test, and basic user-outcome monitoring. Month six: add a cache or background queue only if measured latency or workload justifies it; keep the invariant in one place. Year two: split ownership or shard when an observed ceiling, team boundary or recovery target demands it. Start migration before forecast write utilization crosses the tested safe level or restore time exceeds the recovery objective. Include the time to migrate and verify, so the trigger leaves enough headroom. Keep identifiers, APIs and export paths ready for change. Simpler is not an excuse to omit durability, authorization or a viable rollback. The minimum design must still satisfy every binding requirement."
+      "text": "Move the migration start and verification time. Finish before forecast writes or measured restore time reaches its tested ceiling. Keep backups, authorization and a rollback path from month one; add complexity when evidence calls for it."
     },
     {
       "kind": "quiz",

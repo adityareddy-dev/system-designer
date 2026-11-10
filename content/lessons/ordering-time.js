@@ -70,7 +70,24 @@ export default {
     {
       "kind": "read",
       "title": "Convergence is not every invariant",
-      "text": "Sets need rules for concurrent add and remove. Text needs stable operation identities and a deliberate policy for concurrent inserts and deletes. CRDTs do not automatically protect a global stock limit or make a merged document useful to its author. A bounded inventory decrement may require coordination or preallocated rights. Order matters for debits against a balance, seat allocation and commands with dependencies. It often need not be global for independent counters or separate users' edits. Prefer per-key order, preserve causal dependencies and retain enough history to explain a conflict. If the requirement says newest, ask newest by whose observation."
+      "text": "Convergence does not guarantee that the merged result preserves a business invariant. Concurrent adds, removes and text edits need deliberate rules and enough history to explain conflicts. A stock decrement may require coordination or preallocated rights. Prefer per-key order for dependent commands; independent counters or different users often need less coordination. If a requirement says newest, ask newest by whose observation.",
+      "diagram": {
+        "label": "Pick the invariant before the merge rule",
+        "parts": [
+          [
+            "Independent counters",
+            "Merge per-participant maxima without adding a repeated state twice."
+          ],
+          [
+            "Concurrent text edits",
+            "Keep operation identities and a deliberate conflict policy."
+          ],
+          [
+            "One remaining seat",
+            "Coordinate or allocate rights before accepting competing decrements."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",

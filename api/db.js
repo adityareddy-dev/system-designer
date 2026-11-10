@@ -2,6 +2,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { observationStore } from './observation-store.js';
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -58,7 +59,7 @@ const MAX_SESSIONS_PER_USER = 20;
 export function openDb(file) {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000; PRAGMA synchronous = NORMAL;');
+  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000; PRAGMA synchronous = NORMAL; PRAGMA secure_delete = ON;');
   db.exec(SCHEMA);
   db.exec('PRAGMA user_version = 1;');
 
@@ -98,6 +99,7 @@ export function openDb(file) {
   }
 
   return {
+    ...observationStore(db, tx),
     raw: db,
     close: () => db.close(),
     tx,

@@ -1,5 +1,6 @@
 // Challenge view (daily scenario, streak, history) and the "beat my design" landing.
 import { h, ico, clear, append, problemOf, diffBadge, scoreOf, buildHash, stars } from './dom.js';
+import { metrics } from '../../core/metrics.js';
 import { mountPlayHost } from './playhost.js';
 import { sceneMarkup } from '../../assets/scenes/index.js';
 
@@ -124,7 +125,7 @@ export function renderChallenge(host, ctx, route0) {
       h('div', { class: 'sh-streak', role: 'img', 'aria-label': streakText }, ico('ui.streak', 28), streakN ? h('span', { class: 'sh-streak-num', text: String(streakN) }) : null, h('span', { class: 'sh-streak-label', text: streakN ? (streakN === 1 ? 'day in a row' : 'days in a row') : streakText })));
 
     const playHref = buildHash('challenge/' + date, { play: 1 });
-    const playLabel = bestScore ? 'Try again' : isToday ? "Play today's challenge" : 'Play this day';
+    const playLabel = best ? 'Try again' : isToday ? "Play today's challenge" : 'Play this day';
     // phones: the same button right under the date, so it is not pushed below the fold and the tab bar
     const solvedAny = items0(hist).length > 0;
     const hardNudge = problem.difficulty === 'Hard' && !solvedAny
@@ -256,6 +257,7 @@ export function renderBeat(host, ctx, route0) {
     const s = normShare(raw);
     let problem = ctx.content.ensureProblem ? await ctx.content.ensureProblem(s.problemId) : problemOf(ctx, s.problemId);
     if (!problem) throw new Error('That problem is not in this version of the game.');
+    metrics.once('beat_link_opened', s.problemId);
     if (s.seed.startsWith('daily-')) {
       try { problem = compete.daily.applyVariant(problem, compete.daily.dailyFor(s.seed.slice(6)).variant); } catch { /* use base problem */ }
     }
@@ -343,7 +345,7 @@ export function renderBeat(host, ctx, route0) {
       h('div', { class: 'sh-btn-row' },
         h('button', { type: 'button', class: 'sh-btn sh-btn--primary sh-btn--lg', onclick: () => ctx.router.go(buildHash('beat/' + route.parts.slice(1).join('/'), { go: 1, ghost: ghostBox.checked ? 1 : undefined })) }, ico('ui.play', 20), 'Beat it'),
         h('a', { class: 'sh-btn sh-btn--lg', href: '#/practice/' + problem.id }, 'Practice it first')),
-      h('p', { class: 'sh-fine', text: 'Same problem, same seed, same traffic. The score is replayed in your browser, nothing is sent anywhere.' }));
+      h('p', { class: 'sh-fine', text: 'Same problem, same seed, same traffic. The score is replayed in your browser. The design stays inside the link.' }));
     host.append(h('div', { class: 'sh-page sh-page--narrow' }, card));
   }
 

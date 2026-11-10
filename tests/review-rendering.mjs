@@ -2,12 +2,17 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 try {
   const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('requestfailed', request => errors.push(request.url() + ': ' + request.failure()?.errorText));
   await page.setViewport({ width: 1366, height: 800 });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem('hotpath.v1.seenIntro', 'true');
@@ -51,7 +56,11 @@ try {
 
   for (const [route, selector] of [['learn', '.sh-chapter-art'], ['practice', '.sh-industry-art']]) {
     await page.goto(base + '#/' + route);
-    await page.waitForSelector(selector + ' svg');
+    try { await page.waitForSelector(selector + ' svg'); }
+    catch (error) {
+      console.error({ errors, page: await page.$eval('#sh-main', el => el.textContent) });
+      throw error;
+    }
     for (let i = 0; i < 3; i++) {
       if (await page.$eval('#sh-theme-btn', b => b.getAttribute('aria-label').startsWith('Theme: light.'))) break;
       await page.click('#sh-theme-btn');
@@ -69,4 +78,4 @@ try {
     for (let i = 0; i < before.length; i++) assert.notEqual(after[i], before[i], `${route} scene ${i + 1} follows a live theme change`);
   }
   console.log('Idle Draw state reads, HUD cadence, fleet contrast and chapter/industry scene themes passed.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

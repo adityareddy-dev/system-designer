@@ -28,7 +28,7 @@ function placeToasts() {
   if (root.dataset.step === 'debrief') return;
   const base = parseFloat(getComputedStyle(toastBox).bottom) || 24;
   let top = Infinity;
-  for (const sel of ['.pl-hud', '.pl-caption', '.pl-tb-grab', '.pl-inspector', '.pl-toolbar--open', '.pl-slow']) {
+  for (const sel of ['.pl-hud', '.pl-caption', '.pl-tb-grab', '.pl-inspector', '.pl-toolbar--open', '.pl-traffic', '.pl-overview', '.pl-slow']) {
     const el = root.querySelector(sel);
     if (!el || el.hidden || !el.checkVisibility()) continue;
     const r = el.getBoundingClientRect();
@@ -38,7 +38,7 @@ function placeToasts() {
   if (top < Infinity) toastBox.style.bottom = Math.max(base, innerHeight - top + 10) + 'px';
 }
 
-export function toast({ text, level = 'info', ms = 3200 }) {
+export function toast({ text, level = 'info', ms = Math.max(3200, Math.min(12000, text.length * 60)) }) {
   if (!toastBox) return;
   const iconId = { ok: 'ui.check', warn: 'ui.warn', bad: 'ui.error', info: 'ui.info' }[level] || 'ui.info';
   // the same message twice in a row shows once

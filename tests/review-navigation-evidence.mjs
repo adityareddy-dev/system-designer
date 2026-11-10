@@ -1,9 +1,11 @@
 // Delayed navigation cannot replace a retained view, and report cards show actual workload evidence.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import { problemById } from '../content/problems/index.js';
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 try {
   for (const motion of ['reduce', 'full']) {
     const page = await browser.newPage(), errors = [];
@@ -54,4 +56,4 @@ try {
     await page.close();
   }
   console.log('Returning during delayed navigation retains the view; safety cards show failed promises in both motion modes.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

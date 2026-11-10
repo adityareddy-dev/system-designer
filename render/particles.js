@@ -83,7 +83,7 @@ export function createParticles(PIXI, parent, env) {
     const x = tmp.x - tmp.ty * lane[i], y = tmp.y + tmp.tx * lane[i];
     if (hasPC) { p.x = x; p.y = y; p.scaleX = p.scaleY = scale; }
     else { p.position.set(x, y); p.scale.set(scale); }
-    p.alpha = alpha;
+    p.alpha = alpha * (v.quiet ? .2 : 1);
   }
 
   return {
@@ -135,13 +135,13 @@ export function createParticles(PIXI, parent, env) {
             const pf = v.pFail ? v.pFail[t] : 0, ph2 = v.pHit ? v.pHit[t] : 0, pz = v.pFizzle ? v.pFizzle[t] : 0;
             if (r < pf) {
               lutAt(v.lut, s[i], tmp, seg[i]);
-              fx.burst(tmp.x, tmp.y, colorBad, size / 10);
+              if (!v.quiet) fx.burst(tmp.x, tmp.y, colorBad, size / 10);
               kill(i);
               continue;
             } else if (r < pf + ph2) {
               phase[i] = BOUNCE; tph[i] = 0;
               lutAt(v.lut, s[i], tmp, seg[i]);
-              fx.sparkle(tmp.x, tmp.y, colorHit, size / 10);
+              if (!v.quiet) fx.sparkle(tmp.x, tmp.y, colorHit, size / 10);
             } else if (r < pf + ph2 + pz) {
               phase[i] = FIZZLE; tph[i] = 0;
             } else {

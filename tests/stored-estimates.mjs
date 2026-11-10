@@ -66,6 +66,17 @@ progress = phone;
 assert.deepEqual(open().map((e) => e.value), ['', '8', '3.5']);
 assert.equal(progress.get(problem.id).bestScore, 400);
 assert.equal(progress.get('other-problem'), null);
+const original = structuredClone(progress.get(problem.id));
+const transfer = { ...problem, twistDay: true, numbers: [{ ask: true, label: 'New ceiling', value: 19531, unit: 'dollars/month' }] };
+const transferGuesses = {};
+const transferHost = new Element();
+renderNumbers(transferHost, { problem: transfer, guesses: transferGuesses, progress });
+assert.equal(inputs(transferHost)[0].value, '', 'transfer never reads the original estimate at the same index');
+type(inputs(transferHost)[0], '19000');
+assert.equal(transferGuesses[0], 19000);
+renderNumbers(transferHost, { problem: transfer, guesses: transferGuesses, progress });
+assert.equal(inputs(transferHost)[0].value, '19000', 'transfer keeps its own estimates within the session');
+assert.deepEqual(progress.get(problem.id), original, 'transfer leaves original estimates and timestamps intact');
 const malformed = sanitizeProgress({ problems: { bad: { estimatesAt: Date.now(), estimates: [Infinity, -1, '2', null, 1e99, 4] } } });
 assert.deepEqual(malformed.problems.bad.estimates, [null, null, null, null, null, 4]);
 const percentProblem = { id: 'search-autocomplete', numbers: [

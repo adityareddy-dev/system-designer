@@ -1,11 +1,16 @@
 // Lesson page frame (read, demo, numbers, quiz steps) and the full-screen intro.
+import { mountFeedback } from './feedback.js';
+import { metrics } from '../../core/metrics.js';
 import { h, ico, clear, append, lessonOf, buildHash } from './dom.js';
 import { mountPlayHost } from './playhost.js';
 import { modal } from './overlay.js';
 import { transferFor, transferCorrect } from '../../content/transfers.js';
 import { sceneMarkup } from '../../assets/scenes/index.js';
+import { lessonScene } from '../../assets/scenes/workloads.js';
 import { mountAllocation } from './allocation.js';
 import { drawDefend } from './defend.js';
+import { lessonVisualStyles, readingDiagram, predictionBrief } from './lesson-visuals.js';
+import { predictionGate } from './prediction.js';
 
 function notFoundLesson() {
   return h('div', { class: 'sh-page sh-page--narrow sh-empty' },
@@ -64,10 +69,12 @@ export function renderLesson(host, ctx, route) {
   if (!lesson) { host.append(notFoundLesson()); return {}; }
   if (lesson.id === 'intro') { ctx.router.replace('#/intro'); return {}; }
 
-  const transfer = transferFor(lesson.id);
+  lessonVisualStyles();
+  const transfer = lesson.transfer || transferFor(lesson.id);
   const steps = [...(lesson.steps || []), ...(transfer ? [transfer] : [])];
   let transferDone = false;
   const defenses = new Map();
+  const estimates = new Map();
   let poolOff = null;
   let figure = null;
   let figureVersion = 0;
@@ -75,7 +82,9 @@ export function renderLesson(host, ctx, route) {
   const total = steps.length + 1; // last page is the takeaway
   let idx = Math.max(0, Math.min(total - 1, parseInt(route.query.step, 10) || 0));
   let play = null;
+  let prepareDemo = null;
   let goalOff = null;
+  let prediction = null;
 
   const wrap = h('div', { class: 'sh-lesson-page' });
   const head = h('header', { class: 'sh-lp-head' });
@@ -84,6 +93,8 @@ export function renderLesson(host, ctx, route) {
   host.append(wrap);
 
   function stopPlay() {
+    prediction?.destroy(); prediction = null;
+    prepareDemo = null;
     figureVersion++;
     figure?.destroy(); figure = null;
     poolOff?.(); poolOff = null;
@@ -126,7 +137,7 @@ export function renderLesson(host, ctx, route) {
     body.append(card);
     if (step.kind === 'read' && !step.tap && (idx === 0 || !lesson.steps.some(s => s.kind === 'figure'))) {
       card.classList.add('sh-lp-card--illustrated');
-      card.append(h('figure', { class: 'sh-concept-plate', 'aria-label': `${lesson.title}: a diagram of the mechanism`, html: sceneMarkup(lesson.id) }));
+      card.append(h('figure', { class: 'sh-concept-plate', 'aria-label': `${lesson.title}: the people behind the workload`, html: sceneMarkup(lessonScene(lesson.id)) }));
     }
     if (step.kind === 'read' && step.tap) {
       drawTap(card, step);
@@ -134,6 +145,7 @@ export function renderLesson(host, ctx, route) {
       append(card, [
         step.icon ? h('div', { class: 'sh-lp-hero-ico' }, ico(step.icon, 40)) : null,
         step.title ? h('h2', { class: 'sh-h2', text: step.title }) : null,
+        step.diagram ? readingDiagram(step.diagram) : null,
         h('p', { class: 'sh-lp-text', text: step.text }),
         navRow({})]);
     } else if (step.kind === 'figure') {
@@ -146,7 +158,8 @@ export function renderLesson(host, ctx, route) {
         if (version !== figureVersion) return;
         clear(stage); stage.removeAttribute('aria-busy');
         figure = module.mountFigure(stage, ctx, step);
-      }).catch(() => {
+      }).catch(err => {
+        metrics.reportError(err, lesson.id + '.js', true);
         if (version !== figureVersion) return;
         stage.removeAttribute('aria-busy'); clear(stage);
         stage.append(h('p', { text: 'The figure could not open. Reload this page to try again.' }));
@@ -231,27 +244,30 @@ export function renderLesson(host, ctx, route) {
     const next = navRow({ nextLabel: 'Continue' });
     next.querySelector('.sh-btn--primary').disabled = true;
     const choices = h('div', { class: 'sh-choices', role: 'group', 'aria-label': 'Answers' });
+    prediction = predictionGate(choices);
     // Choices appear in a stable shuffled order, so the right answer is not always in the same place.
     const hash = (str) => { let x = 2166136261; for (let k = 0; k < str.length; k++) { x ^= str.charCodeAt(k); x = Math.imul(x, 16777619); } return x >>> 0; };
     const order = (step.choices || []).map((c, i) => i).sort((a, b) => hash(step.q + '|' + step.choices[a]) - hash(step.q + '|' + step.choices[b]));
     order.forEach((i, pos) => {
       const c = step.choices[i];
-      const b = h('button', { type: 'button', class: 'sh-choice' }, h('span', { class: 'sh-choice-key', text: String.fromCharCode(65 + pos) }), h('span', { text: c }));
+      const b = h('button', { type: 'button', class: 'sh-choice' }, h('span', { class: 'sh-choice-key', text: String(pos + 1) }), h('span', { text: c }));
       b.addEventListener('click', () => {
+        if (!prediction?.value) return;
         const right = i === step.answer;
         b.dataset.state = right ? 'right' : 'wrong';
         b.prepend(ico(right ? 'ui.check' : 'ui.close', 18));
         // a wrong pick gets the idea behind the answer, not just a no
-        result.textContent = right ? `Right. ${step.why || ''}` : `Not quite. ${step.why ? 'Think about it this way: ' + step.why.charAt(0).toLowerCase() + step.why.slice(1) + ' ' : ''}Try another.`;
+        result.textContent = `Your prediction (not graded): ${prediction.value}. ` + (right ? `Your choice is correct. ${step.why || ''}` : `Revisit your choice. ${step.why || ''} Try another.`);
         result.dataset.ok = right ? '1' : '0';
         if (right) {
           choices.querySelectorAll('button').forEach((x) => { x.disabled = true; });
           next.querySelector('.sh-btn--primary').disabled = false;
+          next.querySelector('.sh-btn--primary').focus();
         } else b.disabled = true;
       });
       choices.append(b);
     });
-    card.append(h('h2', { class: 'sh-h2', text: 'Quick check' }), h('p', { class: 'sh-lp-text', text: step.q }), choices, result, next);
+    card.append(h('h2', { class: 'sh-h2', text: 'Quick check' }), h('p', { class: 'sh-lp-text', text: step.q }), prediction.form, choices, result, next);
   }
 
   function drawDemo(card, step) {
@@ -260,16 +276,50 @@ export function renderLesson(host, ctx, route) {
     const cont = h('button', { type: 'button', class: 'sh-btn ' + (hasGoal ? 'sh-btn--ghost' : 'sh-btn--primary'), onclick: () => go(idx + 1), title: hasGoal ? 'Move on without finishing this step' : null }, hasGoal ? 'Skip this step' : 'Continue', ico('ui.chevron-right', 18));
     const hintBox = h('p', { class: 'sh-lp-hint', hidden: true, text: step.hint || '' });
     const hintBtn = step.hint ? h('button', { type: 'button', class: 'sh-btn sh-btn--ghost', onclick: () => { hintBox.hidden = !hintBox.hidden; } }, ico('ui.hint', 18), 'Hint') : null;
+    const committed = estimates.has(idx);
+    const brief = h('div', { class: 'sh-demo-prompt', hidden: committed, 'data-prediction-brief': '' }, ico('ui.sandbox', 20), h('p', { class: 'sh-lp-text', text: predictionBrief(lesson.id) }));
+    const instructions = h('div', { class: 'sh-demo-prompt', hidden: !committed, 'data-demo-instructions': '' }, ico('ui.sandbox', 20), h('p', { class: 'sh-lp-text', text: step.prompt }));
     card.classList.add('sh-lp-card--demo');
     card.append(
-      h('div', { class: 'sh-demo-prompt' }, ico('ui.sandbox', 20), h('p', { class: 'sh-lp-text', text: step.prompt })),
+      brief, instructions,
       hintBox);
     const stage = h('div', { class: 'sh-demo-stage' });
-    if (lesson.id === 'load-balancing') poolOff = mountAllocation(card, ctx);
-    card.append(stage, h('div', { class: 'sh-lp-nav' },
+    const openWorkbench = () => {
+      play?.destroy();
+      play = mountPlayHost(stage, ctx, { mode: 'lesson', lesson: touchWording(lesson), stepIndex: idx, seed: 'lesson-' + lesson.id });
+    };
+    const guidance = h('div', { class: 'sh-demo-guidance', hidden: !estimates.has(idx) });
+    // Keep the workbench's sizing advice out of view until the learner records a first estimate.
+    {
+      const saved=estimates.get(idx);
+      const recorded=value=>step.estimate?`Your first estimate: ${value} servers. Test it below, then compare with the measured load.`:`Your first prediction: ${value}`;
+      const receipt=h('p',{class:'sh-estimate-receipt',hidden:!saved,text:saved?recorded(saved):''});
+      stage.hidden=!saved;
+      const input=step.estimate?h('input',{class:'sh-input',type:'number',min:'1',max:'10000',step:'1',required:true,'aria-label':'Your first server estimate'}):h('textarea',{class:'sh-input',rows:'3',required:true,'aria-label':'Your first prediction'});
+      const form=h('form',{class:'sh-estimate-form',hidden:!!saved,onsubmit:event=>{
+        event.preventDefault();if(!input.checkValidity()||!input.value.trim())return;
+        estimates.set(idx,input.value);receipt.textContent=recorded(input.value);
+        receipt.hidden=false;stage.hidden=false;guidance.hidden=false;form.hidden=true;hintBtn&&(hintBtn.hidden=false);
+        brief.hidden=true;instructions.hidden=false;
+        // Measure the visible stage for its opening camera, after the prediction form leaves the layout.
+        openWorkbench();
+        play.ready.then(() => { if (stage.isConnected && !stage.hidden) stage.scrollIntoView({ block: 'nearest' }); });
+      }},h('h2',{class:'sh-h2',text:step.estimate?'Make your first estimate':'Predict before you try'}),h('p',{class:'sh-lp-text',text:step.estimate||'Name the first limit you would measure. Predict what will happen to the user outcome after your first change, then test it in the workbench.'}),h('label',null,h('span',{text:step.estimate?'How many app servers would you start with?':'What do you expect, and why?'}),input),h('button',{class:'sh-btn sh-btn--primary',type:'submit',text:step.estimate?'Commit my estimate':'Commit my prediction'}));
+      // The documented loadLesson testing hook opens a demo without inventing a prediction.
+      prepareDemo=()=>{
+        stage.hidden=false;guidance.hidden=false;form.hidden=true;
+        brief.hidden=true;instructions.hidden=false;
+        if(hintBtn)hintBtn.hidden=false;
+        if(!play)openWorkbench();
+      };
+      if(hintBtn)hintBtn.hidden=!saved;
+      card.append(form,receipt);
+    }
+    if (lesson.id === 'load-balancing') poolOff = mountAllocation(guidance, ctx);
+    card.append(guidance, stage, h('div', { class: 'sh-lp-nav' },
       idx > 0 ? h('button', { type: 'button', class: 'sh-btn sh-btn--ghost', onclick: () => go(idx - 1) }, ico('ui.chevron-left', 18), 'Back') : h('span'),
       hintBtn, cont));
-    play = mountPlayHost(stage, ctx, { mode: 'lesson', lesson: touchWording(lesson), stepIndex: idx, seed: 'lesson-' + lesson.id });
+    if (committed) openWorkbench();
     const mark = () => { cont.classList.add('is-goal'); cont.classList.remove('sh-btn--ghost'); cont.classList.add('sh-btn--primary'); cont.removeAttribute('title'); cont.firstChild.textContent = 'Goal reached. Continue';
       try { cont.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch { /* optional */ }
     };
@@ -283,12 +333,14 @@ export function renderLesson(host, ctx, route) {
     const result = h('p', { role: 'status', class: 'sh-quiz-result' });
     const input = h('input', { class: 'sh-input', type: 'number', step: 'any', required: true, 'aria-label': step.calculation });
     const options = h('div', { class: 'sh-choices' });
+    prediction = predictionGate(options);
     step.choices.forEach((text, i) => {
-      const b = h('button', { type: 'button', class: 'sh-choice', 'aria-pressed': 'false', onclick: () => { choice = i; [...options.children].forEach((x,j) => x.setAttribute('aria-pressed', String(i === j))); } }, text);
+      const b = h('button', { type: 'button', class: 'sh-choice', 'aria-pressed': 'false', onclick: () => { if (!prediction?.value) return; choice = i; [...options.children].forEach((x,j) => x.setAttribute('aria-pressed', String(i === j))); } }, h('span', { class: 'sh-choice-key', text: String(i + 1) }), h('span', { text }));
       options.append(b);
     });
     const form = h('form', { onsubmit: event => {
       event.preventDefault();
+      if (!prediction?.value) return;
       if (transferCorrect(step, choice, input.value === '' ? NaN : Number(input.value))) {
         transferDone = true;
         result.textContent = `Prediction checked. ${step.why} The calculation gives ${step.value.toLocaleString('en-US')} ${step.unit}.`;
@@ -303,12 +355,14 @@ export function renderLesson(host, ctx, route) {
       h('label', {}, h('p', { text: step.calculation }), input, h('span', { class: 'sh-muted', text: step.unit })),
       h('button', { class: 'sh-btn', type: 'submit', text: 'Check my prediction' }), result);
     const next = h('button', { class: 'sh-btn sh-btn--primary', type: 'button', disabled: true, onclick: () => go(steps.length) }, 'Finish lesson');
-    card.append(form, h('div', { class: 'sh-lp-nav' }, h('button', { class: 'sh-btn sh-btn--ghost', type: 'button', onclick: () => go(idx - 1) }, 'Back'), next));
+    const question = form.querySelector('.sh-lp-text');
+    card.append(form.querySelector('h2'), question, prediction.form, form, h('div', { class: 'sh-lp-nav' }, h('button', { class: 'sh-btn sh-btn--ghost', type: 'button', onclick: () => go(idx - 1) }, 'Back'), next));
   }
 
   function drawTakeaway() {
     if (transfer && !transferDone) { idx = steps.length - 1; drawHead(); const check = h('section', { class: 'sh-card sh-lp-card' }); body.append(check); drawTransfer(check, transfer); return; }
     ctx.progress.lessonDone(lesson.id);
+    metrics.once('lesson_finished', lesson.id);
     const all = ctx.content.lessons || [];
     const i = all.findIndex((l) => l.id === lesson.id);
     const nextLesson = all.slice(i + 1).find((l) => !ctx.progress.isLessonDone(l.id)) || all[i + 1];
@@ -326,6 +380,7 @@ export function renderLesson(host, ctx, route) {
         nextLesson ? h('a', { class: 'sh-btn sh-btn--primary', href: '#/learn/' + nextLesson.id }, `Next: ${nextLesson.title}`, ico('ui.chevron-right', 18))
           : h('a', { class: 'sh-btn sh-btn--primary', href: '#/practice' }, 'Go to Practice', ico('ui.chevron-right', 18))));
     body.append(card);
+    mountFeedback(card, ctx, 'lesson:' + lesson.id);
   }
 
   const offRoute = ctx.bus.on('route', r => {
@@ -334,6 +389,7 @@ export function renderLesson(host, ctx, route) {
   draw();
   return {
     title: lesson.title,
+    preparePlay() { prepareDemo?.(); },
     update(r) {
       const n = Math.max(0, Math.min(total - 1, parseInt(r.query.step, 10) || 0));
       if (n !== idx || suspended) { idx = n; suspended = false; draw(); }

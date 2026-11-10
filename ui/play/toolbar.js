@@ -16,7 +16,7 @@ export function createToolbar(host, { catalog, palette = null, onArm, onPlace, o
   const body = h('div', { class: 'pl-tb-body', 'aria-label': 'Components: arrow keys move, Enter places the part in the middle of the canvas' });
   let focusId = null; // the one component that is a tab stop (roving tab index)
   const note = h('div', { class: 'pl-tb-note', 'aria-live': 'polite' });
-  const grab = h('button', { class: 'pl-tb-grab', type: 'button', 'aria-label': 'Open or close the components drawer', onClick: () => { root.classList.toggle('pl-toolbar--open'); root.classList.remove('pl-toolbar--folded'); } }, iconEl('ui.plus', 18), h('span', { text: 'Add component' }));
+  const grab = h('button', { class: 'pl-tb-grab', type: 'button', 'aria-label': 'Open or close the components drawer', onClick: () => { const open = !root.classList.contains('pl-toolbar--open'); root.classList.toggle('pl-toolbar--open', open); root.classList.toggle('pl-toolbar--folded', !open); } }, iconEl('ui.plus', 18), h('span', { text: 'Add component' }));
   root.append(grab, h('div', { class: 'pl-tb-head' }, iconEl('ui.search', 16, 'pl-ic pl-tb-sicon'), search), tabs, body, note);
   host.append(root);
 

@@ -272,6 +272,8 @@
 .sh-group-head .sh-h2 { color: var(--text); }
 .sh-group-head p { font-size: 13px; }
 .sh-prob { gap: 8px; padding: 18px; }
+.sh-workload-art {display:block;overflow:hidden;border-radius:8px;background:var(--canvas);margin-bottom:6px}
+.sh-workload-art svg {display:block;width:100%;height:150px;object-fit:contain}
 .sh-prob-top { display: flex; justify-content: space-between; align-items: center; }
 .sh-prob-state { font-size: 12px; font-weight: 600; color: var(--text-3); display: inline-flex; align-items: center; gap: 3px; }
 .sh-prob-state.is-ok { color: var(--ok); }
@@ -673,8 +675,11 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-lesson-page:has(.sh-allocation) {max-width:1200px}
  .sh-lp-card--demo:has(.sh-allocation) {grid-template-columns:minmax(0,1fr) 260px;align-items:start}
  .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-prompt {grid-column:1/-1}
- .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-stage {grid-column:1;grid-row:2}
- .sh-lp-card--demo:has(.sh-allocation)>.sh-allocation {grid-column:2;grid-row:2}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-estimate-form,
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-estimate-receipt {grid-column:1/-1;grid-row:2}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-stage {grid-column:1;grid-row:3}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-demo-guidance {grid-column:2;grid-row:3}
+ .sh-lp-card--demo:has(.sh-allocation)>.sh-lp-hint {grid-column:1/-1;grid-row:4}
  .sh-lp-card--demo:has(.sh-allocation)>.sh-lp-nav {grid-column:1/-1}
  .sh-allocation .sh-pool {flex-direction:column;align-items:stretch}
  .sh-allocation .sh-btn-row {flex-direction:column}
@@ -689,7 +694,7 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-challenge-page .sh-streak .sh-ico {width:16px;height:16px}
  .sh-challenge-page .sh-head-side {margin-top:0}
  .sh-challenge-page .sh-page-head {gap:8px;margin-bottom:12px}
- .sh-challenge-page .sh-diff-row,.sh-challenge-page .sh-quickplay {display:none}
+ .sh-challenge-page .sh-diff-row {display:none}
  .sh-challenge-page .sh-scenario {padding:16px;gap:10px}
  .sh-challenge-page .sh-scenario-title {grid-row:1}
  .sh-challenge-page .sh-scenario-top {font-size:13px}
@@ -886,3 +891,46 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 @keyframes sh-screen-out {to {opacity:0;transform:translateX(var(--screen-exit,-32px))}}
 :root[data-motion=reduce] .sh-view,:root[data-motion=reduce] .sh-view--native>.sh-page>* {animation:none}
 :root[data-motion=reduce]::view-transition-group(*),:root[data-motion=reduce]::view-transition-old(*),:root[data-motion=reduce]::view-transition-new(*) {animation:none!important}
+@media(max-width:719px) {
+ .sh-intro-skip {bottom:76px}
+}
+
+/* Prediction commitments use the same reading width in lessons and drills. */
+.sh-prediction-form {display:grid;gap:12px;margin-block:20px}
+.sh-prediction-form label {display:grid;gap:8px}
+.sh-prediction-form label p {margin:0}
+.sh-prediction-form textarea {width:100%;min-height:88px;height:auto;padding:12px;font:16px/1.5 var(--font-ui);resize:vertical}
+.sh-prediction-form button {justify-self:start;min-height:44px;white-space:normal;text-align:left}
+.sh-prediction-receipt {margin:0;overflow-wrap:anywhere}
+.sh-choices[hidden],.sh-prediction-form [hidden] {display:none}
+
+/* Scroll targets leave a reading gap inside the area below the header and above phone navigation. */
+.sh-main {scroll-padding-block:16px}
+.sh-lesson-page :is(h1,h2,h3,.sh-lp-card,.sh-defense-field) {scroll-margin-block:16px}
+@media(max-width:719px) {
+  [data-immersive="1"] > .sh-toasts:has(.sh-toast:is([data-level=warn],[data-level=bad])) {width:calc(100vw - 32px);justify-items:stretch}
+  [data-immersive="1"] .sh-toast:is([data-level=warn],[data-level=bad]) {border-radius:12px;padding:12px 16px}
+}
+/* Inline feedback stays below completion actions and follows the current theme. */
+.sh-feedback { position: static; box-sizing: border-box; width: 100%; max-width: 620px; margin: 24px 0 0; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-strong); color: var(--text); font: 400 14px/1.5 var(--font-ui); }
+.sh-feedback[hidden] { display: none; }
+.sh-feedback fieldset { min-width: 0; margin: 0 0 12px; padding: 0; border: 0; }
+.sh-feedback legend { font-weight: 600; font-size: 17px; }
+.sh-feedback p { margin: 8px 0; }
+.sh-feedback > label { display: grid; gap: 6px; }
+.sh-feedback textarea { box-sizing: border-box; width: 100%; min-width: 0; resize: vertical; font: inherit; }
+.sh-feedback-ratings { display: flex; gap: 8px; flex-wrap: wrap; }
+.sh-feedback-ratings label { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; padding: 0 5px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.sh-feedback-ratings label:has(:checked) { background: var(--accent-soft); border-color: var(--accent); }
+.sh-feedback-ratings label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sh-feedback input { accent-color: var(--accent); }
+.sh-feedback .sh-btn-row { margin-top: 12px; }
+/* The privacy link reads as a link and keeps its distance from Send feedback; phones stack the two. */
+.sh-privacy-actions { align-items: center; column-gap: 24px; row-gap: 12px; }
+.sh-privacy-actions a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.sh-privacy-actions a:hover { text-decoration-thickness: 2px; }
+@media (max-width: 720px) { .sh-privacy-actions { flex-direction: column; align-items: flex-start; } }
+
+/* Light controls keep a clear outline on the pale panels. */
+:root[data-theme="light"] :is(.sh-btn:not(.sh-btn--primary):not(.sh-btn--ghost), .sh-chip:not(.is-on), .sh-switch-track) { border-color: var(--border-strong); }
+:root[data-theme="light"] .sh-switch-track { background: var(--border-strong); }

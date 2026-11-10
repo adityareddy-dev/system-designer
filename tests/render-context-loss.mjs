@@ -1,8 +1,10 @@
 // A lost WebGL context suspends GPU work while frame callbacks and recovery stay usable.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage();
@@ -79,5 +81,5 @@ try {
   assert.deepEqual(errors, []);
   console.log('Context loss skips GPU draws and restores the intact scene and snapshots.');
 } finally {
-  await browser.close();
+  await browser.close(); await site.close();
 }

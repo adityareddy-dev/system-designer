@@ -2,6 +2,8 @@
 import { M, compile } from './route.js';
 import { connectRule, makeNode } from './graph.js';
 
+const repairCache = new WeakMap();
+
 export function traceRoute(model, type) {
   const t = model.catalog.typeIndex.get(type);
   const result = { type, nodeIds: [], edgeIds: [], rejected: [], stops: [], repair: null };
@@ -52,7 +54,12 @@ export function traceRoute(model, type) {
     }
   };
   for (const u of model.sources) inspect(u);
-  if (!model.typeServed[t]) result.repair = findRepair(model, t);
+  if (!model.typeServed[t]) {
+    let repairs = repairCache.get(model);
+    if (!repairs) { repairs = new Map(); repairCache.set(model, repairs); }
+    if (!repairs.has(t)) repairs.set(t, findRepair(model, t));
+    result.repair = structuredClone(repairs.get(t));
+  }
   return result;
 }
 
@@ -94,9 +101,26 @@ function findRepair(model, t) {
   const reachable = new Set(), pending = [...model.sources].filter(u => model.sourceShare[u * model.T + t] > 0);
   while (pending.length) { const u = pending.pop(); if (reachable.has(u)) continue; reachable.add(u); for (const e of model.outFlow[u]) if (model.H(e.ti,t)) pending.push(e.ti); }
   const queues = nodes.filter(n => n.kind === 'queue' && !n.isDLQ && reachable.has(n.i));
+  // A single added hop must join a path before or after a required queue.
+  // Include ignored flow links here so this only rules out impossible repairs.
+  const aroundQueues = (reverse) => {
+    const seen = new Set(), pending = queues.map(q => q.i);
+    while (pending.length) {
+      const u = pending.pop();
+      if (seen.has(u)) continue;
+      seen.add(u);
+      for (const e of reverse ? model.inAll[u] : model.outAll[u]) {
+        const v = reverse ? e.fi : e.ti;
+        if (e.kind === 'flow' && model.H(v, t)) pending.push(v);
+      }
+    }
+    return seen;
+  };
+  const afterQueue = aroundQueues(false), beforeQueue = aroundQueues(true);
   const callers = [...nodes.filter((n) => n.kind === 'compute').reverse(), ...nodes.filter((n) => n.kind !== 'compute')];
   for (const a of callers) for (const b of nodes) {
     if (a.i === b.i || !model.H(a.i, t) || !model.canServe[b.i * model.T + t]) continue;
+    if (queues.length && !afterQueue.has(a.i) && !beforeQueue.has(b.i)) continue;
     if (edges.some((e) => e.fi === a.i && e.ti === b.i)) continue;
     const rule = connectRule(a.el, b.el);
     if (!rule.ok || rule.swap || rule.kind !== 'flow') continue;

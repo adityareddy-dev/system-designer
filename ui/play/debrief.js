@@ -1,8 +1,10 @@
 // End-of-day evidence and actions.
+import { mountFeedback } from '../shell/feedback.js';
 export const duration = sec => sec < 60 ? `${Math.round(sec)} ${Math.round(sec) === 1 ? 'second' : 'seconds'}` : `${Math.round(sec / 6) / 10} ${sec === 60 ? 'minute' : 'minutes'}`;
 // The debrief: verdict, score dial, four SLO cards, timeline, event stories, trade-offs, one thing to try next.
 import { renderRepair } from './repair.js';
-import { checkpointCorrect } from './correctness.js';
+import { gateTransfer } from './transfer-reflection.js';
+import { completionState } from './completion.js';
 import { loadSummary } from './load-labels.js';
 import { renderReflection } from './reflection.js';
 import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, clockLabel, minuteLabel, fill, approx } from './util.js';
@@ -115,6 +117,7 @@ export function missedConcepts(result, catalog, problem, lessons = []) {
 function twistTip(problem, catalog) {
   const t = problem?.twist;
   if (!t) return '';
+  if (t.brief) return t.brief;
   const shift = Math.abs(t.shiftMin || 0);
   const when = shift ? `Events move ${shift >= 60 ? (shift / 60) + (shift === 60 ? ' hour' : ' hours') : shift + ' minutes'} ${t.shiftMin < 0 ? 'earlier' : 'later'}` : 'Events keep their times';
   const extra = t.extra ? ` and ${(catalog.eventById.get(t.extra.id)?.name || t.extra.id).toLowerCase()} is added at ${t.extra.at}` : '';
@@ -299,18 +302,12 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const missedKeys = Object.keys(CHECK_NAME).filter((k) => ckm[k] === false);
   const near = !result.passed && !result.reference && missedKeys.length === 1 && slo.availability.actual > 0.5;
   const demanding = !!problem?.difficulty && problem.difficulty !== 'Easy';
-  const traceChecked = !problem?.correctness || checkpointCorrect(problem.correctness, correctnessAnswer);
-  const assisted = result.learning?.assisted || hintsUsed >= 3;
+  const completion = completionState(problem, { ...result, learning: { ...result.learning, assisted: result.learning?.assisted || hintsUsed >= 3 } }, correctnessAnswer, ctx?.progress?.get?.(problem.id));
+  const { traceChecked, assisted, message: learningMessage } = completion;
   root.dataset.credit = !traceChecked ? 'trace-open' : assisted ? 'assisted' : 'checked';
-  let learningMessage = 'Traffic passed, but the central responsibility trace is still open. Complete it on your next run before a clean sweep or mastery counts.';
-  if (result.mode && result.mode !== 'practice') learningMessage = 'Traffic passed. Open this problem in Practice to check its central responsibility and earn mastery on a later New twist.';
-  else if (traceChecked) learningMessage = result.learning?.independentTwist ? 'Full mastery earned: changed conditions passed without hints, and the responsibility trace is checked.'
-    : result.learning?.needsOriginal ? 'Traffic and trace passed on the twist. Pass the original day with its trace first, then return for an unhinted twist to earn full mastery.'
-    : problem?.twistDay ? 'Traffic and trace passed, but this twist used help. Retry the twist without hints or worked repairs for full mastery.'
-    : assisted ? 'Traffic passed with assistance. Your trace is checked. Next: pass New twist with no hints for full mastery.'
-    : 'Traffic and responsibility trace passed. Next: pass New twist without hints for full mastery.';
+  root.dataset.completion = completion.key;
   const passBadge = result.passed
-    ? h('span', { class: 'pl-badge pl-badge--ok' }, iconEl('ui.check', 14), assisted ? 'Passed with assistance' : 'Traffic passed')
+    ? h('span', { class: 'pl-badge pl-badge--ok' }, iconEl('ui.check', 14), completion.label)
     : near
     ? h('span', { class: 'pl-badge pl-badge--near', 'data-near': missedKeys[0] }, iconEl('ui.info', 14), `Almost there: one bar missed (${CHECK_NAME[missedKeys[0]]})`)
     : h('span', { class: 'pl-badge pl-badge--bad' }, iconEl('ui.warn', 14), 'Not passed yet');
@@ -338,9 +335,9 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
         result.reference || result.warmUp ? null : h('button', { class: 'pl-btn pl-btn--primary pl-challenge-friend', type: 'button', 'data-act': 'challenge-friend', onClick: () => handlers.onShare?.() }, iconEl('ui.share', 16), 'Challenge a friend'),
         h('span', { class: 'pl-muted pl-small', text: `Hints used: ${hintsUsed}. Hints are free and never lower the score.` }))),
     result.passed && problem?.correctness && !problem?.warmUp ? h('p', { class: 'pl-learning-status', role: 'status', text: learningMessage }) : null,
-    result.passed && handlers.onTwist && !problem?.twistDay && !problem?.warmUp ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', 'data-act': 'mastery-twist', onClick: handlers.onTwist, text: 'Next: New twist without hints' }) : null,
-    result.passed && problem?.twistDay && !result.learning?.independentTwist ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: result.learning?.needsOriginal ? handlers.onTwist : handlers.onIndependentRetry, text: result.learning?.needsOriginal ? 'Next: Pass the original day with its trace' : 'Next: Retry twist without hints' }) : null,
-    result.passed && problem?.correctness && result.mode && result.mode !== 'practice' ? h('a', { class: 'pl-btn pl-btn--primary', href: '#/practice/' + problem.id, text: 'Next: Check the trace in Practice' }) : null,
+    result.passed && completion.next === 'twist' && handlers.onTwist ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', 'data-act': 'mastery-twist', onClick: handlers.onTwist, text: 'Next: New twist without hints' }) : null,
+    result.passed && ['original','retry'].includes(completion.next) ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: completion.next === 'original' ? handlers.onTwist : handlers.onIndependentRetry, text: completion.next === 'original' ? 'Next: Pass the original day with its trace' : 'Next: Retry twist without hints' }) : null,
+    result.passed && completion.next === 'practice' ? h('a', { class: 'pl-btn pl-btn--primary', href: '#/practice/' + problem.id, text: 'Next: Check the trace in Practice' }) : null,
     tryNext,
     problem?.warmUp ? h('p', { class: 'pl-warmup', 'data-act': 'warm-up' }, iconEl('ui.info', 16), 'Warm-up done, now play the real day. This first day had no traffic spike, so its score is practice only: it is not saved, not posted and not shared. Retry plays the full day, spike included.') : null));
   const reflection = renderReflection(result, catalog);
@@ -421,7 +418,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     sloCard({ key: 'cost', title: 'Cost', iconId: 'ui.cost', pts: sc.cost, max: 200, ok: okCost, flag: none || thin ? 'none' : null, target: `≤ ${fmtUsd(c.budget)} a month`, actual: `≈ ${fmtUsd(c.perMonth)} a month`,
       lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (result.efficiency?.length ? 'Under budget, with avoidable idle capacity. See the capacity decision above.' : a.actual < a.target ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
   root.append(cards, h('p', { class: 'pl-footnote' }, approx('Every dollar and millisecond here is a sensible real-world approximation, not a quote.')));
-  const checkpoint = renderCorrectness(problem?.correctness, correctnessAnswer);
+  const checkpoint = renderCorrectness(problem?.correctness, correctnessAnswer, completion);
   if (checkpoint) root.append(checkpoint);
 
   root.append(h('p', { class: 'pl-muted', text: loadSummary(problem) }));
@@ -475,5 +472,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     handlers.onTwist ? h('button', { class: 'pl-btn', type: 'button', 'data-act': 'twist', title: problem?.twistDay ? 'Play the original day again' : twistTip(problem, catalog), onClick: () => handlers.onTwist() }, iconEl('ui.restart', 16), problem?.twistDay ? 'Original day' : 'New twist') : null,
     hasNext ? h('button', { class: 'pl-btn', type: 'button', onClick: () => handlers.onNext?.() }, 'Next problem', iconEl('ui.chevron-right', 16)) : null,
     h('button', { class: 'pl-btn pl-btn--ghost', type: 'button', onClick: () => handlers.onBack?.() }, iconEl('ui.back', 16), 'Back to my design')));
+  gateTransfer(root, problem, result, catalog);
   host.append(root);
+  mountFeedback(root, ctx, 'problem:' + problem.id, result);
 }
