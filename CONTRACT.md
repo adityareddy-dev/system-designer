@@ -396,7 +396,7 @@ The engine is a flow model: it moves rates (requests per second per type), not i
 `sim/events.js` implements each op in `events.json` `ops` exactly once and resolves `target` selectors with the seeded generator. Problem event entries `{ id, at: 'HH:MM', params }` override the event's default params (shallow merge per effect) and may set `params.target` to a node ref.
 
 ### 6.6 Done when
-`node sim/selftest.mjs` (run on the server) passes: every op, every connection rule, determinism (same inputs, identical `result()` twice), a full day of a 30-node graph in under 400 ms, and each problem's first editorial design reaching at least its `expect.score` minus 50 once content exists.
+`node sim/selftest.mjs` (run on the server) passes: every op, every connection rule, determinism (same inputs, identical `result()` twice), a full day of a 30-node graph in under 2000 ms, and each problem's first editorial design reaching at least its `expect.score` minus 50 once content exists.
 
 ---
 

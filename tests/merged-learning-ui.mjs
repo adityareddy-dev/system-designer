@@ -1,8 +1,10 @@
 // Merged reports keep loop diagnoses visible and lesson navigation cancels pending figures.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 try {
   const page = await browser.newPage(), errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -57,4 +59,4 @@ try {
   assert.deepEqual(rendered, []);
   assert.deepEqual(errors, []);
   console.log('Delayed figure navigation cancels imports and motion; every report keeps loop removal ahead of experiments.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

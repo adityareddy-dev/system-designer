@@ -1,6 +1,8 @@
 // Browser regressions for empty lesson measurements, headroom, freshness, hints and theme synchronization.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage();
 const errors = [];
@@ -8,7 +10,7 @@ page.on('pageerror', e => errors.push(e.message));
 const delay = ms => new Promise(r => setTimeout(r, ms));
 try {
   await page.setViewport({ width: 1366, height: 800 });
-  await page.goto(process.argv[2] || 'http://localhost:8765/');
+  await page.goto(site.base);
   await page.waitForFunction(() => document.documentElement.dataset.ready === '1');
   await page.evaluate(() => window.__game.loadLesson('requests-and-latency'));
   let state = await page.evaluate(() => { window.__game.startTraffic(); window.__game.pause(); return { clock: window.__game.getState().clock.simMs, text: document.querySelector('.pl-goal').textContent, done: document.querySelector('.pl-goal').classList.contains('pl-goal--done') }; });
@@ -100,4 +102,4 @@ try {
   assert.equal(theme.header, `Theme: ${theme.active}`);
   assert.deepEqual(errors, []);
   console.log('Measured lesson goals, headroom, TTL, visible hints and synchronized theme passed.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

@@ -280,7 +280,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.c.position.set(v.x, v.y);
     if (reduced) {
       if (v.c.alpha < 1) v.c.alpha = Math.min(1, v.c.alpha + dt / 120);
-      if (v.s !== 1) { v.s = 1; v.c.scale.set(1); }
+      v.s = 1; v.vs = 0; v.c.scale.set(1);
     } else if (v.s !== 1 || v.vs) {
       let rem = Math.min(dt, 64) / 1000;
       while (rem > 0) { const h = Math.min(rem, 0.004); v.vs += (-K * (v.s - 1) - C * v.vs) * h; v.s += v.vs * h; rem -= h; }
@@ -353,6 +353,7 @@ export function createNodeLayer(PIXI, parent, env) {
   return {
     views,
     get list() { return list; },
+    get moving() { return dying.length > 0 || list.some(v => v.s !== 1 || v.vs !== 0 || v.x !== v.tx || v.y !== v.ty); },
     get selected() { return selected; },
     get hovered() { return hovered; },
     sync(graph) {
@@ -623,7 +624,7 @@ export function createNodeLayer(PIXI, parent, env) {
     cull(x0, y0, x1, y1) {
       for (const v of list) v.c.visible = v.x + 90 > x0 && v.x - 90 < x1 && v.y + 90 > y0 && v.y - 90 < y1;
     },
-    // Keep names at least 13 CSS pixels as the camera zooms out.
+    // Keep names readable through zoom and part entry motion.
     setLabelScale(z) {
       detailZoom = z >= 1.05;
       for (const v of list) { v.icon.width = v.icon.height = detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z)); v.evidenceT.scale.set(1 / Math.max(.01, z)); }
@@ -633,7 +634,7 @@ export function createNodeLayer(PIXI, parent, env) {
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
       if (Math.abs(k - labelK) < 0.0001) return;
       labelK = k;
-      for (const v of list) v.labelT.scale.set(k / Math.min(1, v.c.scale.x));
+      for (const v of list) v.labelT.scale.set(k);
     },
     setTextResolution(r) {
       if (r === textRes) return;

@@ -2,8 +2,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 try {
@@ -76,4 +78,4 @@ try {
     for (let i = 0; i < before.length; i++) assert.notEqual(after[i], before[i], `${route} scene ${i + 1} follows a live theme change`);
   }
   console.log('Idle Draw state reads, HUD cadence, fleet contrast and chapter/industry scene themes passed.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

@@ -3,10 +3,12 @@ import { commitChoicePrediction } from './lesson-prediction.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
 import { lessons } from '../content/lessons/index.js';
 import { transferFor } from '../content/transfers.js';
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const site = await serveGame();
+const base = site.base;
 const waitForLesson = (page, lesson) => page.waitForFunction(title => {
   const main = document.querySelector('#sh-main');
   return main && !main.hasAttribute('aria-busy') && document.querySelector('.sh-lp-card')
@@ -23,19 +25,23 @@ try {
     // Existing progress must survive completion of the new tracks.
     localStorage.setItem('staff-progress-sentinel','old progress survives');
   });
+  // Keep interception active for this page's lifetime, including late asset requests.
+  let release, captured;
+  let holdNext = true;
+  const matches = request => new URL(request.url()).pathname.endsWith('/content/data/l/simplest-design.json');
+  const pending = new Promise(resolve => { captured = resolve; });
+  const intercept = request => {
+    if (holdNext && matches(request)) {
+      holdNext = false;
+      release = () => request.continue();
+      captured();
+    } else return request.continue();
+  };
+  page.on('request', intercept);
+  await page.setRequestInterception(true);
   // Hash navigation retains the previous card while the next lesson is loading.
   await page.goto(base+'#/learn/lead-interview');
   await waitForLesson(page, lessons.find(l => l.id === 'lead-interview'));
-  await page.setRequestInterception(true);
-  let release;
-  const matches = request => new URL(request.url()).pathname.endsWith('/content/data/l/simplest-design.json');
-  const pending = page.waitForRequest(matches);
-  const intercept = request => {
-    if (matches(request)) {
-      release = () => request.continue();
-    } else request.continue();
-  };
-  page.on('request', intercept);
   await page.goto(base+'#/learn/simplest-design');
   await pending;
   assert(await page.$('.sh-lp-card'), 'the retained card alone cannot signal that navigation finished');
@@ -113,4 +119,4 @@ try {
   assert.equal(await page.evaluate(()=>localStorage.getItem('staff-progress-sentinel')),'old progress survives');
   assert.deepEqual(errors,[]);
   console.log('All 17 new lessons completed on desktop and phone in both themes, including defenses and transfers.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

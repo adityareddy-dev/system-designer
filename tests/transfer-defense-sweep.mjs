@@ -12,7 +12,7 @@ import { defenseQuestions } from '../ui/play/interview.js';
 import { checkClaim } from '../content/problems/defense-claims.js';
 import sizing, { twistSizing } from '../content/sizing.js';
 if (process.argv.length === 2) {
-  const lanes = Array.from({ length: Math.min(4, availableParallelism()) }, () => []);
+  const lanes = Array.from({ length: Math.min(8, availableParallelism(), problems.length) }, () => []);
   problems.forEach((problem, i) => lanes[i % lanes.length].push(problem.id));
   const children = [];
   const outputs = await Promise.all(lanes.map(ids => new Promise((resolve, reject) => {
@@ -71,7 +71,7 @@ for (const problem of problems) {
       assert.equal(checked.held, checked.applied && expected, problem.id + ' ' + claim.id);
       assert(checked.steps.length >= 4 && checked.steps.at(-1).includes(!checked.applied ? 'Not tested by this replay' : checked.held ? 'Claim held' : 'Claim failed'));
       assert(!checkClaim(claim, { ...context, graph: broken }).held, problem.id + ' broken ' + claim.id);
-      if (claims % 30 === 0) assert.deepEqual(checkClaim(claim, context), checked, 'replays are deterministic');
+      assert.deepEqual(checkClaim(claim, context), checked, 'replays are deterministic');
       !checked.applied ? untested++ : checked.held ? held++ : failed++; claims++;
     }
   }

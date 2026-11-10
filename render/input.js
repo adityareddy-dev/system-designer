@@ -248,9 +248,10 @@ export function createInput(canvas, host, d) {
         emit('node:dragend', { id: dragId, x: pos.x, y: pos.y });
       } else nodes.cancelDrag(dragId);
     } else if (mode === 'connect') {
+      // The final move can be coalesced, so resolve the target at release.
+      const v = nodes.hit(w.x, w.y, tolFor(type) * 2);
       d.ui.clearBand();
-      const target = nodes.hit(w.x, w.y, tolFor(type) * 2);
-      if (target && target !== connectFrom) emit('connect', { from: connectFrom.id, to: target.id });
+      if (v && v !== connectFrom) emit('connect', { from: connectFrom.id, to: v.id });
     }
     dragId = null; dragPos = null; connectFrom = null; connectTarget = null;
     mode = 'idle';

@@ -1,7 +1,9 @@
 // Failed transfer reflection survives drawing resets, and editorials use the transfer's measured graph.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
-const base = process.argv[2] || 'http://localhost:8765/';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage(), errors = [];
@@ -88,4 +90,4 @@ try {
   for (const row of sizing.rows) assert(sizing.graph.nodes.some(n => row.startsWith(n.ref + ':')), 'every measured row belongs to this transfer graph');
   assert.deepEqual(errors, []);
   console.log('Failed-transfer advice gates survive drawing resets; twist editorials render their own measured capacity and bill.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

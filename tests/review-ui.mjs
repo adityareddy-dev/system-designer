@@ -1,9 +1,11 @@
 // Browser regressions for drill rounds, phone lesson controls, telemetry and restored graph positions.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import { commitLessonPrediction } from './lesson-prediction.js';
 
-const BASE = process.argv[2] || 'http://localhost:8765/';
+const BASE = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
 const page = await browser.newPage();
@@ -198,5 +200,5 @@ try {
   assert.deepEqual(errors, []);
   console.log('Review browser regressions passed.');
 } finally {
-  await browser.close();
+  await browser.close(); await site.close();
 }

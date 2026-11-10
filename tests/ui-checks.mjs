@@ -2,8 +2,10 @@
 // honest build status, synchronous step(), keyboard placement and connection, the phone layout, the debrief dial
 // and the sound levels. Run from the harness folder: node ui-checks.mjs [baseUrl]
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 
-const BASE = process.argv[2] || 'http://localhost:8765/';
+const BASE = site.base;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const check = (name, ok, detail = '') => { if (ok) pass++; else fail++; console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${name}${detail !== '' ? '  (' + detail + ')' : ''}`); };
@@ -102,11 +104,9 @@ console.log('\nBuild status and empty designs');
   check('an empty design is not told it holds', !/Everything holds/.test(chip) && /Nothing to test yet/.test(chip), chip);
   const r = await ev(() => { window.__game.startTraffic(); const s = window.__game.step(86400000); return s.score; });
   check('an empty design scores almost nothing', r && r.total <= 60 && !r.passed, JSON.stringify(r));
-  await page.waitForSelector('.pl-score-details', { visible: true });
-  const txt = await ev(() => {
-    document.querySelector('.pl-score-details').open = true;
-    return document.querySelector('.pl-overlay--debrief').innerText;
-  });
+  await page.waitForFunction(() => document.querySelector('.pl-overlay--debrief')?.innerText.includes('Nothing was served'));
+  await ev(() => { const details = document.querySelector('.pl-score-details'); if (details) details.open = true; });
+  const txt = await ev(() => document.querySelector('.pl-overlay--debrief')?.innerText || '');
   const bad = (txt.match(/[^.\n]*\b0 minutes[^.\n]*/) || [''])[0];
   const noTraffic = /Nothing was served/.test(txt), noSpeed = /nothing served/.test(txt);
   check('its debrief does not praise speed or cost', noTraffic && !bad && noSpeed, JSON.stringify({ noTraffic, noSpeed, bad }));
@@ -278,7 +278,7 @@ await sleep(900);
   check('no inspector pops open when the day starts', !r.inspOpen);
 }
 await phone.close();
-await browser.close();
+await browser.close(); await site.close();
 
 console.log(`\nconsole errors: ${errors.length}${errors.length ? '\n  ' + errors.slice(0, 8).join('\n  ') : ''}`);
 check('zero console errors', errors.length === 0);

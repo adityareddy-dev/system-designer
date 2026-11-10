@@ -1735,7 +1735,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
 
   // ---- frame loop
   const effectiveSpeed = () => (S.slowUntil > performance.now() ? Math.min(S.speed, 1) : S.speed);
-  let hudClock = 0;
+  let hudAt = performance.now();
   offs.push(scene.onFrame((dtRaw) => {
     if (S.destroyed) return;
     const dt = Math.min(dtRaw || 16.7, 100);
@@ -1763,13 +1763,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     const dropped = perf.droppedTicks - (S.dropSeen || 0);
     S.dropSeen = perf.droppedTicks;
-    hudClock += Math.max(0, dtRaw || 16.7);
     if (interviewClock && !interviewState.complete) {
       const left = 2700 - Math.floor((Date.now() - interviewState.startedAt) / 1000);
       const shown = left >= 0 ? `Interview · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Interview · Overtime';
       if (interviewClock.textContent !== shown) interviewClock.textContent = shown;
     }
-    if (hudClock >= 250) { hudClock %= 250; const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
+    if (performance.now() - hudAt >= 250) { hudAt = performance.now(); const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
     try { scene.setFlows(sim.phase === 'build' ? null : sim.flows(), { speed: sim.phase === 'running' ? effectiveSpeed() : 0, dtWallMs: dt, nodeStates: S.nodeStates }); } catch (e) { if (!S.flowErr) { S.flowErr = 1; S.errors.push({ code: 'render', message: String(e?.message || e) }); } }
     if (ctx.recordFrame) {
       try {

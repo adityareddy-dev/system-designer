@@ -683,7 +683,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     }
     if (destroyed || app.renderer.context.isLost) { lastRenderMs = 0; return; }
     // nothing is moving: skip drawing and the GPU pass until something wakes the scene
-    if (now - lastActive > IDLE_AFTER_MS && !camera.moving && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
+    if (now - lastActive > IDLE_AFTER_MS && !camera.moving && !nodes.moving && !particles.count && !fx.count && !flashes.size && !flashDirty && !(flow && speed > 0) && !ghost.view) {
       idleFrames++; isIdle = true;
       lastRenderMs = 0;
       return;
@@ -704,6 +704,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
 
   const ro = new ResizeObserver(() => {
     if (destroyed) return;
+    wake();
     wake();
     const w = Math.max(1, hostEl.clientWidth), h = Math.max(1, hostEl.clientHeight);
     const { w: cw, h: ch } = camera.size;
@@ -732,6 +733,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     },
     setRegionGroups(on) { regionGroups = !!on; drawRegions(); },
     sync(g, fv) {
+      wake();
       graph = g || null;
       if (fv !== undefined && fv !== flowVersion) { flowVersion = fv; map = null; }
       const a = nodes.sync(graph);

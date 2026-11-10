@@ -262,6 +262,7 @@ class RuntimeState {
     this.rttE = null;
     this.loc = null;
     this.effCap = null;
+    this.effCapInputs = null;
     this._blocked = null;
     this.qHist = null;
     this.lateCarry = null;
@@ -622,6 +623,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   // ---- run state
   function resetRun() {
     measuredVersion = -1;
+    queueStreams.length = 0;
     S.rng = mulberry32(hashSeed(`${seed}|${prob.id}`));
     S.clock = 0;
     S.noise.fill(0);
@@ -939,7 +941,9 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   }
   const compBuf = new Float64Array(T);
   const lateByType = new Float64Array(T);
+  const queueStreams = [];
   function queueLateness(X, tn, dt) {
+    queueStreams.length = 0;
     const m = X.model;
     if (!X.queueNodes.length) return 0;
     X.lateType.fill(0);
@@ -955,7 +959,10 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         X.qHist.set(n.id, q);
       }
       const b = u * LN;
-      const streams = n.fanoutQ ? Array.from(n.consumers, ei => queueStream(q, m.edges[ei].id, ei)) : [queueStream(q, null)];
+      const streams = queueStreams;
+      streams.length = 0;
+      if (n.fanoutQ) for (const ei of n.consumers) streams.push(queueStream(q, m.edges[ei].id, ei));
+      else streams.push(queueStream(q, null));
       for (const [key, stream] of q.streams) if (!streams.includes(stream)) q.streams.delete(key);
       const la = n.laneNear ? X.active : X.activeT, ln = n.laneNear ? X.nActive : X.nActiveT;
       let arr = 0;

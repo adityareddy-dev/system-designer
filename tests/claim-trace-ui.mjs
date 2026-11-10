@@ -1,10 +1,13 @@
 // Computed claims reveal readable steps without blocking controls, with an immediate still version.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless:'new', args:['--no-sandbox'] });
 try {
   const page = await browser.newPage();
-  await page.goto(process.argv[2] || 'http://localhost:8765/');
+  await page.goto(site.base);
+  await page.waitForFunction(() => document.documentElement.dataset.ready === '1');
   for (const width of [1366,390]) for (const theme of ['light','dark']) for (const motion of ['full','reduce']) {
     await page.setViewport({width,height:844});
     const measured = await page.evaluate(async ({theme,motion}) => {
@@ -25,4 +28,4 @@ try {
     assert.equal(measured.animation==='none',motion==='reduce','trace follows the motion setting');
   }
   console.log('Claim steps wrap and animate in both themes and sizes, keep input usable, and render still under reduced motion.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

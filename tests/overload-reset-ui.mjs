@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox','--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage();
@@ -26,7 +28,7 @@ try {
       request.respond({ contentType: 'text/javascript', body: source });
     } else request.continue();
   });
-  await page.goto((process.argv[2] || 'http://localhost:8765/') + '#/sandbox');
+  await page.goto((site.base) + '#/sandbox');
   await page.waitForFunction(() => window.__game?.getState().nodes.length === 4);
   await page.evaluate(() => { __game.startTraffic(); __game.pause(); __game.step(60000); });
   await page.waitForFunction(() => [...window.__resetEdges.values()].some(e => e.quiet && e.g.alpha === .35));
@@ -51,4 +53,4 @@ try {
   await new Promise(r => setTimeout(r,200));
   assert(await page.evaluate(() => [...window.__resetNodes.values()].filter(v => v.kind === 'queue').every(v => v.icon.visible && !v.qbar.visible)), 'reset restores queue icons after hiding the bounded fill');
   console.log('Sandbox reset clears first-limit labels and every edge quiet flag and alpha.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

@@ -1,6 +1,8 @@
 // Candidate-led preparation requires commitment, locks the run and persists an honest defense report.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import { questionCoverage, defenseQuestions } from '../ui/play/interview.js';
 import { createProgress } from '../ui/shell/progress.js';
 import { mergeProgress, sanitizeProgress } from '../account/merge.js';
@@ -46,7 +48,7 @@ page.on('console', message => {
   if (recentConsole.length > 8) recentConsole.shift();
 });
 page.on('pageerror', error => errors.push({ stack: error.stack || error.message, url: page.url(), console: [...recentConsole] }));
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const click = text => page.evaluate(text => { const el = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === text && b.checkVisibility()); assertButton(el); function assertButton(el) { if (!el) throw new Error('Missing visible button: ' + text); el.click(); } }, text);
 try {
   for (const width of [1366,390,320]) {
@@ -228,4 +230,4 @@ try {
   assert.doesNotMatch(proofPreflight, /wiring guidance|Add |Connect |Put |Set /);
   assert.deepEqual(errors, []);
   console.log('Interview preparation, visible clock, typed estimates, one locked run, defense, sync and backup restoration passed at all sizes.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

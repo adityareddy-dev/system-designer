@@ -1,9 +1,11 @@
 // Browser checks for readable fits, live phone overviews, unobstructed wiring, inspector wrapping and truthful counters.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
 import { problemById } from '../content/problems/index.js';
 import { checkFor } from '../ui/play/design-check.js';
-const base = process.argv[2] || 'http://localhost:8765/';
+const site = await serveGame();
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const types = ['web-browser', 'dns', 'cdn', 'waf', 'api-gateway', 'mobile-app', 'regional-lb', 'vm-fleet', 'cache', 'sql-primary', 'metrics', 'object-storage', 'queue', 'worker-pool', 'third-party-api'];
@@ -32,7 +34,16 @@ try {
     assert(entrySizes.every(px => px >= 12.99), 'entry motion keeps names at least 13 CSS pixels');
     await sleep(800);
     if (width === 390) { await page.click('.pl-overview button'); await sleep(700); }
-    assert((await page.evaluate(() => window.__game.getState().view.labelPx)) >= 12.99, 'fit measures at least 13 CSS pixels for names');
+    const fitView = await page.evaluate(() => window.__game.getState().view);
+    assert(fitView.labelPx >= 12.99, `${width}px fit measures at least 13 CSS pixels for names: ${fitView.labelPx}px at zoom ${fitView.zoom}`);
+    await sleep(1700);
+    const entryPx = await page.evaluate(() => {
+      window.__game.placeComponent('cache', 950, 360);
+      return window.__game.getState().view.labelPx;
+    });
+    assert(entryPx >= 12.99, 'names stay readable when a new part wakes an idle scene');
+    const animatedPx = await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(window.__game.getState().view.labelPx))));
+    assert(animatedPx >= 12.99, 'part entry motion keeps names at least 13 CSS pixels tall');
     const p = await page.evaluate(() => {
       const point = window.__game.getState().view.screen.find(n => n.id === 'n7'), r = document.querySelector('.pl-stage').getBoundingClientRect();
       return { x: point.x + r.x, y: point.y + r.y };
@@ -116,8 +127,9 @@ try {
       form.querySelector('input').value = 'Commit the operation and result atomically and test recovery against a completed durable copy.'; form.requestSubmit();
       window.__game.pause();
     }, problemById.get('shopping-cart').correctness.fields.map(f => f.correct));
+    await page.evaluate(() => window.__game.step(86400000));
+    await page.waitForSelector('.pl-victory-numbers b');
     const readings = await page.evaluate(async () => {
-      window.__game.step(86400000);
       const samples = [], start = performance.now();
       while ((performance.now() - start < 1300 || samples.length < 6) && performance.now() - start < 10000) {
         await new Promise(requestAnimationFrame);
@@ -152,4 +164,4 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log('Readable fits, live overviews, side calls, all inspector widths, transitions and fixed result facts passed.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }
