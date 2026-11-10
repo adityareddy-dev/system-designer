@@ -86,7 +86,7 @@ cd api && node --test test/*.test.js   # sign-in service: Google token checks, G
 
 ## Privacy
 
-Automatic usage counts and error reports are disabled on public sites. Feedback is optional and anonymous. Signing in stores your provider id, a display name, your avatar link, progress and scores; nothing is sold and you can delete it anytime. See [privacy.html](privacy.html).
+The game's own usage counts and error reports are disabled on public sites. The hosted site is served through Cloudflare, which counts page visits with its Web Analytics script, without cookies. Feedback is optional and anonymous. Signing in stores your provider id, a display name, your avatar link, progress and scores; nothing is sold and you can delete it anytime. See [privacy.html](privacy.html).
 
 ## License
 
