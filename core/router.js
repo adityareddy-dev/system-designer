@@ -11,8 +11,11 @@ function parse(hash) {
 
 export function createRouter(bus) {
   let cur = parse(location.hash);
+  let replacedAt = -Infinity;
   const norm = (h) => (String(h).startsWith('#') ? String(h) : '#' + String(h).replace(/^\/?/, '/'));
   function onHash(event) {
+    // Hash events retain their creation time while waiting in the browser's queue.
+    if (event && event.timeStamp < replacedAt) return;
     // A later navigation may already have changed location while this event waited.
     cur = parse(event?.newURL ? new URL(event.newURL).hash : location.hash);
     bus.emit('route', cur);
@@ -29,6 +32,7 @@ export function createRouter(bus) {
     replace(hash) {
       const h = norm(hash);
       history.replaceState(history.state, '', location.pathname + location.search + h);
+      replacedAt = performance.now();
       onHash();
     },
     parse,
