@@ -5,7 +5,7 @@ import { mountFeedback } from './feedback.js';
 import { metrics } from '../../core/metrics.js';
 
 export const SETTING_DEFAULTS = {
-  theme: 'system', reducedMotion: 'system', quality: 'auto', soundMaster: 0.6, soundMuted: false,
+  theme: 'dark', reducedMotion: 'system', quality: 'auto', soundMaster: 0.6, soundMuted: false,
   ambient: true, autoSlowOnEvent: true, highContrast: false, playerName: '', anonymousCounts: true,
 };
 
@@ -26,12 +26,16 @@ export function createSettings(store, bus) {
   const saved = store.get('settings', {}) || {};
   const state = { ...SETTING_DEFAULTS };
   for (const k of Object.keys(SETTING_DEFAULTS)) if (k in saved && CHECK[k](saved[k])) state[k] = saved[k];
+  // Older System values were saved even without a player choice.
+  let themeExplicit = saved.themeExplicit === true;
+  if (state.theme === 'system' && !themeExplicit) state.theme = 'dark';
   return {
     get: (key) => state[key],
     set(key, value) {
       if (!(key in SETTING_DEFAULTS) || !CHECK[key](value)) return false;
       state[key] = value;
-      store.set('settings', { ...state });
+      if (key === 'theme') themeExplicit = true;
+      store.set('settings', { ...state, themeExplicit });
       bus.emit('settings', { key, value });
       return true;
     },
@@ -82,7 +86,7 @@ export function renderSettings(hostEl, ctx) {
   // Appearance
   const themeSeg = segmented('Theme', [['system', 'System', 'ui.theme-system'], ['light', 'Light', 'ui.theme-light'], ['dark', 'Dark', 'ui.theme-dark']], settings.get('theme'), (v) => set('theme', v));
   const appearance = card('Appearance',
-    row('Theme', 'System follows your device.', themeSeg),
+    row('Theme', 'Dark by default. System follows your device.', themeSeg),
     toggleRow('High contrast', 'Stronger borders and text for hard lighting or low vision.', settings.get('highContrast'), (v) => set('highContrast', v), 'sh-s-contrast'));
 
   // Motion

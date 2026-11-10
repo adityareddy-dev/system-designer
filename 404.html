@@ -1,15 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
+  <script>
+// Applies the saved theme before styles and page content can paint.
+(function () {
+  var theme = 'dark';
+  try {
+    var saved = JSON.parse(localStorage.getItem('hotpath.v1.settings') || '{}') || {};
+    if (saved.theme === 'light' || saved.theme === 'dark') theme = saved.theme;
+    else if (saved.theme === 'system' && saved.themeExplicit === true) {
+      theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+  } catch (e) { /* Storage can be unavailable. */ }
+  document.documentElement.dataset.theme = theme;
+})();
+  </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>System Designer</title>
 <meta name="robots" content="noindex">
 <style>
-  :root { color-scheme: light dark; }
+  :root { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
   body { margin: 0; min-height: 100vh; display: grid; place-content: center; gap: 12px; padding: 24px; text-align: center; font: 500 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: #f3f5fa; color: #1b2433; }
   a { color: #3a5bd9; font-weight: 600; }
-  @media (prefers-color-scheme: dark) { body { background: #0e1422; color: #e6ebf5; } a { color: #8fa8ff; } }
+  :root[data-theme="dark"] body { background: #0e1422; color: #e6ebf5; } :root[data-theme="dark"] a { color: #8fa8ff; }
 </style>
 </head>
 <body>
