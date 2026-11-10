@@ -11,7 +11,7 @@ const waitForLesson = (page, lesson) => page.waitForFunction(title => {
   const main = document.querySelector('#sh-main');
   return main && !main.hasAttribute('aria-busy') && document.querySelector('.sh-lp-card')
     && document.querySelector('.sh-lp-title h1')?.textContent === title;
-}, {}, lesson.title);
+}, { polling: 'mutation' }, lesson.title);
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
@@ -41,8 +41,14 @@ try {
   assert(await page.$('.sh-lp-card'), 'the retained card alone cannot signal that navigation finished');
   assert.equal(await page.$eval('#sh-main', el => el.getAttribute('aria-busy')), 'true');
   assert.equal(await page.$eval('.sh-lp-title h1', el => el.textContent), lessons.find(l => l.id === 'lead-interview').title);
+  // Readiness follows DOM changes even when a hidden tab has stopped drawing frames.
+  const foreground = await browser.newPage();
+  await page.waitForFunction(() => document.visibilityState === 'hidden', { polling: 50 });
+  const ready = waitForLesson(page, lessons.find(l => l.id === 'simplest-design'));
   await release();
-  await waitForLesson(page, lessons.find(l => l.id === 'simplest-design'));
+  await ready;
+  await foreground.close();
+  await page.bringToFront();
   page.off('request', intercept);
   await page.setRequestInterception(false);
   for (const [width,theme] of [[1280,'light'],[1280,'dark'],[390,'light'],[390,'dark']]) {
