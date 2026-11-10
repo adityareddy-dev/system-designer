@@ -27,8 +27,8 @@ export function createRouter(bus) {
       const h = norm(hash);
       if (location.hash === h) { onHash(); return; }
       location.hash = h;
-      // Keep the route current before a quick browser Back can overtake hashchange.
-      onHash();
+      // Keep the route current while its queued hashchange controls screen updates.
+      cur = parse(h);
     },
     back() { history.back(); },
     replace(hash) {

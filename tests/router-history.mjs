@@ -10,6 +10,8 @@ try {
   const routes = [];
   const router = createRouter({ emit(name, route) { routes.push(route.query.step || '0'); } });
   router.go(reading);
+  assert.equal(router.current().query.step, undefined, 'the current route changes before hashchange arrives');
+  assert.deepEqual(routes, [], 'screen updates wait for queued history events');
   // History can return before the earlier hashchange event is delivered.
   location.hash = demo;
   listener({ newURL: 'http://localhost/' + reading });
