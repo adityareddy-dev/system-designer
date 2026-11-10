@@ -23,7 +23,8 @@ const CHECK = {
 };
 
 export function createSettings(store, bus) {
-  const saved = store.get('settings', {}) || {};
+  const raw = store.get('settings', {});
+  const saved = raw && typeof raw === 'object' ? raw : {};
   const state = { ...SETTING_DEFAULTS };
   for (const k of Object.keys(SETTING_DEFAULTS)) if (k in saved && CHECK[k](saved[k])) state[k] = saved[k];
   // Older System values were saved even without a player choice.

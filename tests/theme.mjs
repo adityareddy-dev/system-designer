@@ -9,7 +9,7 @@ function settingsFor(saved) {
   const settings = createSettings({ get: () => value, set: (_, next) => { value = next; } }, { emit() {} });
   return { settings, saved: () => value };
 }
-for (const [saved, expected] of [[{}, 'dark'], [{ theme: 'system' }, 'dark'], [{ theme: 'system', themeExplicit: true }, 'system'], [{ theme: 'light' }, 'light'], [{ theme: 'dark' }, 'dark']]) {
+for (const [saved, expected] of [[null, 'dark'], ['invalid', 'dark'], [42, 'dark'], [{}, 'dark'], [{ theme: 'system' }, 'dark'], [{ theme: 'system', themeExplicit: true }, 'system'], [{ theme: 'light' }, 'light'], [{ theme: 'dark' }, 'dark']]) {
   const s = settingsFor(saved);
   assert.equal(s.settings.get('theme'), expected);
   s.settings.set('soundMuted', true);
