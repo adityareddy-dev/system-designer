@@ -48,6 +48,20 @@ try {
     await page.goto(base + '?measure=8794#/settings');
     await page.waitForSelector('#sh-s-counts');
     assert.ok(await page.$('button[data-feedback-general]'));
+    const privacy = await page.evaluate(() => {
+      const link = document.querySelector('.sh-privacy-actions a'), button = document.querySelector('[data-feedback-general]');
+      const box = el => el.getBoundingClientRect(), style = getComputedStyle(link), probe = document.createElement('i');
+      probe.style.color = 'var(--accent)'; document.body.append(probe); const accent = getComputedStyle(probe).color; probe.remove();
+      return { link: box(link).toJSON(), button: box(button).toJSON(), color: style.color, accent, underline: style.textDecorationLine };
+    });
+    assert.equal(privacy.color, privacy.accent, 'privacy link uses the link color');
+    assert.equal(privacy.underline, 'underline', 'privacy link is underlined');
+    const apart = privacy.link.right + 16 <= privacy.button.left || privacy.link.bottom + 8 <= privacy.button.top;
+    assert.ok(apart, `privacy link keeps its distance from Send feedback: ${JSON.stringify(privacy)}`);
+    if (width === 390) {
+      assert.ok(privacy.link.bottom <= privacy.button.top, 'phones stack the privacy link above Send feedback');
+      assert.ok(privacy.link.height >= 44 && privacy.button.height >= 44, 'privacy controls are at least 44 px tall');
+    }
     if (process.env.SD_QA_SHOTS) await page.screenshot({ path: path.join(process.env.SD_QA_SHOTS, `settings-${width}-${theme}.png`) });
     await click(page, 'Send feedback'); await page.waitForSelector('.sh-feedback');
     await page.focus('.sh-feedback button[type=button]'); await page.keyboard.press('Enter');

@@ -925,7 +925,11 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 .sh-feedback-ratings label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sh-feedback input { accent-color: var(--accent); }
 .sh-feedback .sh-btn-row { margin-top: 12px; }
-.sh-settings-card > [data-feedback-general] { margin-top: 12px; align-self: flex-start; }
+/* The privacy link reads as a link and keeps its distance from Send feedback; phones stack the two. */
+.sh-privacy-actions { align-items: center; column-gap: 24px; row-gap: 12px; }
+.sh-privacy-actions a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.sh-privacy-actions a:hover { text-decoration-thickness: 2px; }
+@media (max-width: 720px) { .sh-privacy-actions { flex-direction: column; align-items: flex-start; } }
 
 /* Light controls keep a clear outline on the pale panels. */
 :root[data-theme="light"] :is(.sh-btn:not(.sh-btn--primary):not(.sh-btn--ghost), .sh-chip:not(.is-on), .sh-switch-track) { border-color: var(--border-strong); }

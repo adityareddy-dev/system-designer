@@ -158,10 +158,11 @@ export function renderSettings(hostEl, ctx) {
     metrics.countsAvailable()
       ? toggleRow('Anonymous usage counts', 'Helps us see what gets played and where the game breaks. No cookies or player ids. Browser privacy signals turn this off too.', settings.get('anonymousCounts'), v => set('anonymousCounts', v), 'sh-s-counts')
       : h('p', { class: 'sh-muted', text: 'Automatic usage counts and error reports are disabled.' }),
-    h('a', { href: new URL('./privacy.html', document.baseURI).href, text: 'Read the privacy page' }),
-    h('button', { type: 'button', class: 'sh-btn', 'data-feedback-general': '', text: 'Send feedback', onclick: event => {
-      feedbackHost.replaceChildren(); mountFeedback(feedbackHost, ctx, 'general', null, true, event.currentTarget); feedbackHost.querySelector('input')?.focus();
-    } }), feedbackHost);
+    h('div', { class: 'sh-btn-row sh-privacy-actions' },
+      h('a', { href: new URL('./privacy.html', document.baseURI).href, text: 'Read the privacy page' }),
+      h('button', { type: 'button', class: 'sh-btn', 'data-feedback-general': '', text: 'Send feedback', onclick: event => {
+        feedbackHost.replaceChildren(); mountFeedback(feedbackHost, ctx, 'general', null, true, event.currentTarget); feedbackHost.querySelector('input')?.focus();
+      } })), feedbackHost);
   append(page, [h('h1', { class: 'sh-h1', text: 'Settings' }), appearance, privacy, motion, sound, shapesCard, profile, data, keysCard]);
   hostEl.append(page);
   const off = ctx.bus.on('settings', ({ key, value }) => {
