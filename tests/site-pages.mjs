@@ -8,6 +8,7 @@ import { problems } from '../content/problems/index.js';
 import { lessons } from '../content/lessons/index.js';
 import { createCatalog } from '../sim/catalog.js';
 import { makeGuides } from '../tools/site-guides.mjs';
+import { themeHead } from '../tools/site-template.mjs';
 import { trafficDay } from '../tools/site-content.mjs';
 
 const root = path.resolve(process.argv[2] || '.');
@@ -55,6 +56,8 @@ for (const url of locations) {
   const file = toFile(url);
   assert.ok(exists(file), `sitemap page exists: ${file}`);
   const html = read(file);
+  assert.equal(html.split(themeHead).length, 2, `one early theme script: ${file}`);
+  assert.ok(html.indexOf(themeHead) < html.indexOf('<link rel="stylesheet"'), `theme before styles: ${file}`);
   const title = /<title>([^<]+)<\/title>/.exec(html)?.[1];
   assert.ok(title && !titles.has(title), `unique title: ${file}: ${title}`); titles.add(title);
   assert.match(html, /<meta name="description" content="[^"]+"/);
@@ -77,7 +80,7 @@ for (const url of locations) {
   if (file.startsWith('p/')) {
     assert.match(html, /Play this problem/);
     assert.doesNotMatch(html, /(?:main\.js|pixi\.js|http-equiv="refresh")/i);
-    const js = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n');
+    const js = [...html.replace(themeHead, '').matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n');
     assert.ok(js.length < 600, 'tiny forwarding script');
     for (const hash of ['', '#requirements', '#/practice/url-shortener', '#/beat/jEncoded_design-123']) {
       let forwarded;
