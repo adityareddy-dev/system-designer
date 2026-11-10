@@ -18,6 +18,11 @@ for (const token of ['--ok', '--warn', '--bad']) {
   const fg = rgb(css[token]);
   assert(contrast(fg, mix(fg, rgb(css['--surface-solid']), .16)) >= 4.5, 'tinted verdict ' + token);
 }
+const shellCss = fs.readFileSync('ui/shell/shell.css', 'utf8');
+const warningTint = Number(shellCss.match(/\.sh-badge--warn\s*\{[^}]*var\(--warn\)\s+(\d+)%/)[1]) / 100;
+assert.equal(warningTint, .18, 'warning badge uses its actual 18% tint');
+const warning = rgb(css['--warn']);
+assert(contrast(warning, mix(warning, rgb(css['--surface-solid']), warningTint)) >= 4.5, 'warning badge contrast');
 assert(contrast(rgb(css['--accent']), rgb('#FFFFFF')) >= 4.5);
 assert(luminance(rgb(css['--canvas'])) > luminance(rgb(css['--surface-solid'])), 'canvas is lighter than panels');
 assert.equal(css['--accent'], '#244ED8', 'existing accent stays');

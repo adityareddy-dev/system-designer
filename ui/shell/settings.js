@@ -27,16 +27,12 @@ export function createSettings(store, bus) {
   const saved = raw && typeof raw === 'object' ? raw : {};
   const state = { ...SETTING_DEFAULTS };
   for (const k of Object.keys(SETTING_DEFAULTS)) if (k in saved && CHECK[k](saved[k])) state[k] = saved[k];
-  // Older System values were saved even without a player choice.
-  let themeExplicit = saved.themeExplicit === true;
-  if (state.theme === 'system' && !themeExplicit) state.theme = 'dark';
   return {
     get: (key) => state[key],
     set(key, value) {
       if (!(key in SETTING_DEFAULTS) || !CHECK[key](value)) return false;
       state[key] = value;
-      if (key === 'theme') themeExplicit = true;
-      store.set('settings', { ...state, themeExplicit });
+      store.set('settings', { ...state });
       bus.emit('settings', { key, value });
       return true;
     },

@@ -9,13 +9,13 @@ function settingsFor(saved) {
   const settings = createSettings({ get: () => value, set: (_, next) => { value = next; } }, { emit() {} });
   return { settings, saved: () => value };
 }
-for (const [saved, expected] of [[null, 'dark'], ['invalid', 'dark'], [42, 'dark'], [{}, 'dark'], [{ theme: 'system' }, 'dark'], [{ theme: 'system', themeExplicit: true }, 'system'], [{ theme: 'light' }, 'light'], [{ theme: 'dark' }, 'dark']]) {
+for (const [saved, expected] of [[null, 'dark'], ['invalid', 'dark'], [42, 'dark'], [{}, 'dark'], [{ theme: 'invalid' }, 'dark'], [{ theme: 'system' }, 'system'], [{ theme: 'system', themeExplicit: false }, 'system'], [{ theme: 'system', themeExplicit: true }, 'system'], [{ theme: 'light' }, 'light'], [{ theme: 'dark' }, 'dark']]) {
   const s = settingsFor(saved);
   assert.equal(s.settings.get('theme'), expected);
   s.settings.set('soundMuted', true);
   assert.equal(settingsFor(s.saved()).settings.get('theme'), expected);
   s.settings.set('theme', 'system');
-  assert.equal(s.saved().themeExplicit, true);
+  assert.equal(s.saved().theme, 'system');
   assert.equal(settingsFor(s.saved()).settings.get('theme'), 'system');
 }
 const site = await serveGame();
@@ -28,7 +28,7 @@ try {
   const routes = ['', 'p/url-shortener/', 'problems/', 'learn/consistent-hashing/', 'guides/two-week-system-design-plan/', 'privacy.html', '404.html'];
   for (const device of ['light', 'dark']) {
     await pg.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: device }]);
-    for (const [saved, expected] of [[null, 'dark'], ['{broken', 'dark'], [JSON.stringify({ theme: 'system' }), 'dark'], [JSON.stringify({ theme: 'system', themeExplicit: true }), device], [JSON.stringify({ theme: 'light' }), 'light'], [JSON.stringify({ theme: 'dark' }), 'dark']]) {
+    for (const [saved, expected] of [[null, 'dark'], ['{broken', 'dark'], [JSON.stringify({ theme: 'invalid' }), 'dark'], [JSON.stringify({ theme: 'system' }), device], [JSON.stringify({ theme: 'system', themeExplicit: false }), device], [JSON.stringify({ theme: 'system', themeExplicit: true }), device], [JSON.stringify({ theme: 'light' }), 'light'], [JSON.stringify({ theme: 'dark' }), 'dark']]) {
       await pg.goto(site.base + 'privacy.html');
       await pg.evaluate(value => value === null ? localStorage.removeItem('hotpath.v1.settings') : localStorage.setItem('hotpath.v1.settings', value), saved);
       for (const route of routes) {
@@ -39,7 +39,7 @@ try {
       }
     }
   }
-  await pg.evaluate(() => localStorage.setItem('hotpath.v1.settings', JSON.stringify({ theme: 'system', themeExplicit: true })));
+  await pg.evaluate(() => localStorage.setItem('hotpath.v1.settings', JSON.stringify({ theme: 'system' })));
   await pg.goto(site.base + 'p/url-shortener/');
   await pg.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
   await pg.waitForFunction(() => document.documentElement.dataset.theme === 'light');

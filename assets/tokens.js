@@ -17,7 +17,7 @@ export const TOKENS = {
   "--accent-2": "#006E68",
   "--accent-soft": "#E7ECFF",
   "--ok": "#24643F",
-  "--warn": "#875500",
+  "--warn": "#825200",
   "--hot": "#A84C15",
   "--bad": "#A92733",
   "--info": "#244ED8",
