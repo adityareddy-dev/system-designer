@@ -70,6 +70,16 @@ function computeEffCap(S) {
   const { nodes, topo, route, edges, N } = model;
   if (!S.effCap || S.effCap.length !== N * T) S.effCap = new Float64Array(N * T);
   const E = S.effCap;
+  // Reuse routing capacities until the graph or an effective node capacity changes.
+  if (!S.effCapInputs || S.effCapInputs.length !== N) S.effCapInputs = new Float64Array(N);
+  let changed = S.effCapModel !== model;
+  for (const n of nodes) {
+    const own = n.isDns ? S.capNom[n.i] : S.cap[n.i];
+    if (S.effCapInputs[n.i] !== own) changed = true;
+    S.effCapInputs[n.i] = own;
+  }
+  if (!changed) return;
+  S.effCapModel = model;
   for (let oi = N - 1; oi >= 0; oi--) {
     const v = topo[oi];
     const own = nodes[v].isDns ? S.capNom[v] : S.cap[v];

@@ -389,17 +389,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     try { scene.fit({ l: a.l + side, t: a.t + pad, r: a.r + side, b: a.b + pad + 22 }, animate, zoom); } catch { try { scene.fit(); } catch { /* optional */ } }
   }
   function fitEntry() {
+    syncHud();
     fitView(false);
-    if (!isPhone() || graph().nodes.length <= 8) return;
-    const g = graph(), ids = [], seen = new Set();
-    let current = g.nodes.find(n => catalog.elementById.get(n.type)?.kind === 'source');
-    while (current && ids.length < 5 && !seen.has(current.id)) {
-      ids.push(current.id); seen.add(current.id);
-      const next = g.edges.filter(e => e.from === current.id && e.kind === 'flow').map(e => g.nodes.find(n => n.id === e.to)).filter(n => n && !seen.has(n.id));
-      current = next.find(n => !['queue','worker-pool'].includes(n.type)) || next[0];
-    }
-    const a = freeArea();
-    if(ids.length > 1) scene.fit({ l:42,r:42,t:a.t+24,b:a.b+42 }, false, { nodeIds:ids,maxZ:.9 });
   }
   function fitAll() {
     S.manualViewUntil = performance.now() + 4000;
@@ -649,7 +640,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       later(() => { const n = graph().nodes.find((q) => q.id === id); if (n && !S.destroyed && S.selected === id) revealIfHidden(n.x, n.y); }, 120);
     }
     root.classList.toggle('pl-has-selection', !!id);
-    if (id && canStructure() && !store.get('seenConnectHandle', false)) {
+    if (id && canStructure() && !S.captionNext && !store.get('seenConnectHandle', false)) {
       store.set('seenConnectHandle', true);
       showCaption('Drag the port to connect. Drag the body to move.', 6500);
     }
@@ -848,6 +839,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     : t);
   function showCaption(text, ms = 0, actions = []) {
     text = touchWords(text);
+    if (S.captionNext) { toast(text, 'info', ms || 7000); return; }
     caption.hidden = false;
     // the buttons sit in their own row under the sentence, right-aligned like every other panel's actions
     caption.replaceChildren(h('span', { class: 'pl-caption-t', text }),
@@ -855,7 +847,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     clearTimeout(captionTimer);
     if (ms) captionTimer = setTimeout(hideCaption, ms);
   }
-  function hideCaption() { caption.hidden = true; }
+  function hideCaption() { if (!S.captionNext) caption.hidden = true; }
 
   // The control a lesson step names is scrolled into view inside the inspector and highlighted until it is used.
   function pointAtKnob(knob) {
@@ -894,6 +886,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function alreadyHolds(spec) {
     try {
       if (spec.action === 'day-end') return S.sim.phase === 'done';
+      if (spec.action === 'event-start') return S.sim.state().events.some(e => e.active || e.done) || S.sim.phase === 'done';
       const g = graph();
       if (mode === 'intro' && spec.action === 'knob') return introPathHolds(g, spec);
       if (spec.action === 'place') return introPathHolds(g, spec);
@@ -910,7 +903,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   const waitFor = (spec) => (alreadyHolds(spec) ? Promise.resolve() : new Promise((resolve) => waiters.push({ spec, resolve })));
   const sleep = (ms) => new Promise((r) => later(r, ms));
-  // A beat that only explains can be skipped with Next; a beat that asks for an action pauses the day until it is done;
+  // A beat that only explains waits for Next; a beat that asks for an action pauses the day until it is done;
   // waiting for a moment in the day (the spike, the end) offers a fast-forward.
   const nextClick = () => new Promise((resolve) => { S.captionNext = resolve; });
   async function waitTrigger(spec, text) {
@@ -972,9 +965,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         showCaption(text, 0);
         await sleep(2500);
       } else {
+        const wasRunning = S.sim.phase === 'running';
+        if (wasRunning) pause();
         showCaption(text, 0, [{ label: 'Next', primary: true, onClick: () => S.captionNext?.() }]);
-        await Promise.race([sleep(clamp(text.split(/\s+/).length * 330, 3000, 9000)), nextClick()]);
+        await nextClick();
         S.captionNext = null;
+        if (wasRunning && !S.destroyed) resume();
       }
       toolbar.pulse(null);
     }
@@ -1142,13 +1138,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       S.goalMet = true;
       if (opts.lesson?.id === 'replication-lag') hideCaption();
       goalChip.classList.add('pl-goal--done');
-      goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: mode === 'lesson' ? `${goalPassed(goal, v, nameOf(goal.node) || 'The part')} Day meters include earlier minutes.` : 'Goal reached. Nicely done.' }));
+      const passedText = goalPassed(goal, v, nameOf(goal.node) || 'The part', st);
+      goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: mode === 'lesson' ? passedText : 'Goal reached. Nicely done.' }));
       const before = S.goalBefore;
       if (before != null && Math.abs(before - v) > 0.000001) {
         const unit = ['availability', 'util', 'hitRate', 'errors', 'compliance'].includes(goal.metric) ? '%' : goal.metric === 'p99' ? ' ms' : '';
         const fmt = n => Math.round(n * (unit === '%' ? 100 : 1) * 10) / 10;
         hideCaption();
-        goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: `Check passed now. ${goal.metric === 'availability' ? 'Served' : goal.metric === 'util' ? 'Busy' : goal.metric}: ${fmt(before)}${unit} before at peak → ${fmt(v)}${unit} measured now. Goal ${goal.op} ${fmt(goal.value)}${unit}.` }));
+        goalChip.replaceChildren(iconEl('ui.check', 16), h('span', { text: `${passedText} Before this repair: ${fmt(before)}${unit}; measured now: ${fmt(v)}${unit}.` }));
       }
       root.classList.add('pl-goal-celebrate'); later(() => root.classList.remove('pl-goal-celebrate'), 900);
       snd('pass');
@@ -1198,7 +1195,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (structureBlocked()) return;
       inspection.open = false;
       top.classList.remove('pl-top--tools-open');
-      select(null); inspector.fold(true); caption.hidden = true;
+      select(null); inspector.fold(true); hideCaption();
       for (const n of pathLayout(graph(), catalog)) S.sim.moveNode(n.id, n.x, n.y);
       toolbar.el.classList.add('pl-toolbar--folded'); trafficPanel?.fold(true);
       commit(); fitView(true, 0);
@@ -1348,8 +1345,6 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     hud.setSpeed(S.speed);
     updateEditable();
     closeHints();
-    // A deliberate traffic run can fit the meters; a lesson's first edit preserves its camera.
-    if (!isLesson) later(() => { if (!S.destroyed) fitView(true); }, 140);
     snd('start');
     bus.emit('play:start', { mode, problemId: S.problem.id, seed: S.seed });
     return getState();
@@ -1761,13 +1756,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     const dropped = perf.droppedTicks - (S.dropSeen || 0);
     S.dropSeen = perf.droppedTicks;
-    hudClock += dt;
+    hudClock += dtRaw || 16.7;
     if (interviewClock && !interviewState.complete) {
       const left = 2700 - Math.floor((Date.now() - interviewState.startedAt) / 1000);
       const shown = left >= 0 ? `Interview · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Interview · Overtime';
       if (interviewClock.textContent !== shown) interviewClock.textContent = shown;
     }
-    if (hudClock >= 250) { hudClock = 0; const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
+    if (hudClock >= 250) { hudClock %= 250; const d0 = performance.now(); hudTick(); lowEffects(); perf.domMs = performance.now() - d0; }
     try { scene.setFlows(sim.phase === 'build' ? null : sim.flows(), { speed: sim.phase === 'running' ? effectiveSpeed() : 0, dtWallMs: dt, nodeStates: S.nodeStates }); } catch (e) { if (!S.flowErr) { S.flowErr = 1; S.errors.push({ code: 'render', message: String(e?.message || e) }); } }
     if (ctx.recordFrame) {
       try {
@@ -1876,7 +1871,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // ---- state for tests
   // Camera zoom and the free canvas area, for tests: the on-screen label size is 12 px times the label scale times the zoom.
   function viewInfo() {
-    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
+    try { const stats = scene.stats(), z = stats.zoom; return { zoom: z, cameraMoving: stats.cameraMoving, labelPx: stats.labelPx, diagram: scene.measureDiagram(), free: freeArea(), screen: graph().nodes.map((n) => ({ id: n.id, ...scene.worldToScreen(n.x, n.y) })) }; } catch (e) { return { error: String(e) }; }
   }
   function getState() {
     const sim = S.sim;
@@ -1943,7 +1938,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   if (isPhone()) trafficPanel?.fold(true);
   later(() => { if (!S.destroyed) fitEntry(); }, 60);
   // Panels keep the canvas clear: their edges follow the HUD's real height.
-  let hudObs = null, toolbarObs = null;
+  let hudObs = null, toolbarObs = null, hudSyncFrame = 0;
   const syncHud = () => {
     if (S.destroyed) return;
     const r = hud.el.getBoundingClientRect(), rr = root.getBoundingClientRect();
@@ -1955,6 +1950,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const coachTop = Math.max(r.bottom, ...coachBlocks.map(el => el.getBoundingClientRect().bottom));
     root.style.setProperty('--pl-coach-top', Math.ceil(coachTop - rr.top + 8) + 'px');
     syncFocusMap();
+    freeArea();
   };
   // When a panel changes size (the status bar grows with live meters, the traffic panel folds), a diagram that now runs
   // underneath a panel is fitted back into the free part of the canvas.
@@ -1969,11 +1965,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   };
   right.addEventListener('click', () => refitSoon());
   let refitT = 0;
-  const refitSoon = () => {
-    if (S.booted) return;
+  const refitSoon = (viewportChanged = false) => {
+    if (S.booted && !viewportChanged) return;
     clearTimeout(refitT);
     refitT = setTimeout(() => {
-      if (S.destroyed || S.connectFrom || !(S.sim.phase !== 'build' || isLesson || isSandbox) || !nodesHidden()) return;
+      if (S.destroyed || S.connectFrom || (!viewportChanged && !(S.sim.phase !== 'build' || isLesson || isSandbox)) || !nodesHidden()) return;
+      if (viewportChanged) { fitView(true); return; }
       const remaining = (S.editUntil || 0) - performance.now();
       if (remaining > 0) { refitT = setTimeout(refitSoon, remaining + 20); return; }
       fitView(true, null, true);
@@ -1988,8 +1985,23 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }, 300);
   };
   try {
-    hudObs = new ResizeObserver(() => { syncHud(); refitSoon(); });
+    let lastSize = { width: root.clientWidth, height: root.clientHeight };
+    hudObs = new ResizeObserver(() => {
+      if (hudSyncFrame) return;
+      // Reconcile styles after resize delivery; moving panels inside it can resize observed descendants again.
+      hudSyncFrame = requestAnimationFrame(() => {
+        hudSyncFrame = 0;
+        if (S.destroyed) return;
+        const nextSize = { width: root.clientWidth, height: root.clientHeight };
+        const resized = nextSize.width !== lastSize.width || nextSize.height !== lastSize.height;
+        lastSize = nextSize;
+        syncHud();
+        if (resized) refreshChecks();
+        refitSoon(resized);
+      });
+    });
     hudObs.observe(hud.el); hudObs.observe(root); hudObs.observe(top);
+    hudObs.observe(right);
     hudObs.observe(caption); hudObs.observe(goalChip);
     const traceEl = root.querySelector('.pl-trace');
     if (traceEl) hudObs.observe(traceEl);
@@ -2076,6 +2088,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       try { trafficPanel?.destroy(); } catch { /* ignore */ }
       try { ctx.audio?.setLoad(0); } catch { /* ignore */ }
       try { hudObs?.disconnect(); toolbarObs?.disconnect(); } catch { /* ignore */ }
+      cancelAnimationFrame(hudSyncFrame);
       clearTimeout(refitT);
       try { scene.destroy(); } catch { /* ignore */ }
       root.remove();

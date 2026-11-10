@@ -29,7 +29,7 @@ export function createProgress(store, bus) {
       const old = prev.interview || {};
       const entry = { ...JSON.parse(JSON.stringify(report)), at: Date.now() };
       const ratio = x => x?.total > 0 ? x.covered / x.total : -1;
-      const coverageField = entry.coverageKind === 'computed-claims' ? 'bestClaims' : 'bestCoverage';
+      const coverageField = entry.coverageKind === 'computed-predictions' ? 'bestPredictions' : entry.coverageKind === 'computed-claims' ? 'bestClaims' : 'bestCoverage';
       probs[problemId] = { ...prev, interview: { ...old, attempts: (old.attempts || 0) + 1, latest: entry,
         [coverageField]: ratio(entry) > ratio(old[coverageField]) ? entry : old[coverageField],
         bestDay: !old.bestDay || entry.score > old.bestDay.score ? entry : old.bestDay } };

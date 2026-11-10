@@ -694,7 +694,7 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-challenge-page .sh-streak .sh-ico {width:16px;height:16px}
  .sh-challenge-page .sh-head-side {margin-top:0}
  .sh-challenge-page .sh-page-head {gap:8px;margin-bottom:12px}
- .sh-challenge-page .sh-diff-row,.sh-challenge-page .sh-quickplay {display:none}
+ .sh-challenge-page .sh-diff-row {display:none}
  .sh-challenge-page .sh-scenario {padding:16px;gap:10px}
  .sh-challenge-page .sh-scenario-title {grid-row:1}
  .sh-challenge-page .sh-scenario-top {font-size:13px}
@@ -903,3 +903,11 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 .sh-prediction-form button {justify-self:start;min-height:44px;white-space:normal;text-align:left}
 .sh-prediction-receipt {margin:0;overflow-wrap:anywhere}
 .sh-choices[hidden],.sh-prediction-form [hidden] {display:none}
+
+/* Scroll targets leave a reading gap inside the area below the header and above phone navigation. */
+.sh-main {scroll-padding-block:16px}
+.sh-lesson-page :is(h1,h2,h3,.sh-lp-card,.sh-defense-field) {scroll-margin-block:16px}
+@media(max-width:719px) {
+  [data-immersive="1"] > .sh-toasts:has(.sh-toast:is([data-level=warn],[data-level=bad])) {width:calc(100vw - 32px);justify-items:stretch}
+  [data-immersive="1"] .sh-toast:is([data-level=warn],[data-level=bad]) {border-radius:12px;padding:12px 16px}
+}

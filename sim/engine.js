@@ -134,7 +134,7 @@ const N_U8 = ['down', 'blockW', 'poison', 'scaleBlocked', 'cbOpen', 'status', 't
 const NL = ['IN', 'RIN', 'INJ', 'OKS', 'FAILR', 'DONE', 'HITS', 'PUa', 'SUCC', 'SOFT', 'LAT', 'TM', 'TV', 'EXTRA', 'PD', 'TMO', 'DD', 'BACK', 'DRAIN', 'RNEXT', 'RPEND', 'WNEXT', 'PQ'];
 const EL = ['W', 'ER', 'BACKE', 'DRAINE'];
 const PERSIST_N = ['unitsCur', 'sPrev', 'rhoPrev', 'rhoQPrev', 'health', 'unhealthySince', 'extraPrev', 'cbOpenUntil', 'cbDown', 'cbLat', 'realInPrev',
-  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'unitsLo', 'unitsHi', 'peakUnits', 'peakInstalledUnits', 'peakCapacity', 'peakRequests'];
+  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'down', 'aliveFactor', 'unitsLo', 'unitsHi', 'peakUnits', 'peakInstalledUnits', 'peakCapacity', 'peakRequests'];
 const PERSIST_NL = ['BACK', 'RPEND', 'RNEXT', 'WNEXT', 'PQ'];
 const PERSIST_EL = ['BACKE'];
 // Every field the engine state ever holds, declared up front so the object keeps one fast shape in V8.
@@ -159,7 +159,7 @@ function blankState() {
     minOff: null, minSucc: null, hourOff: null, hourSucc: null, hourP99: null, hourW: null,
     complianceChecked: null, interventions: null, result: null, counters: null, firstBreak: null, tickNow: null,
     laneOff: null, laneSucc: null, laneP99: null, lastStorageGb: null, stateObj: null, frameDirty: false, rttE: null,
-    loc: null, effCap: null,
+    loc: null, effCap: null, effCapInputs: null, effCapModel: null, _blocked: null,
     qHist: null, lateCarry: null, lateType: null, lateDay: -0, readBack: -0, readBackEdge: -0, privateReads: -0, typeP99Now: null, typeWNow: null, latWorstT: -1,
     // per node (N)
     cap: null, capNom: null, rho: null, sv: null, sPrev: null, rhoPrev: null, rhoQacc: null, rhoQPrev: null, health: null, unhealthySince: null,
@@ -202,6 +202,7 @@ function initNodeRuntime(S) {
     S.unitsHi[n.i] = 0;
     S.sPrev[n.i] = 1;
     S.health[n.i] = 1;
+    S.aliveFactor[n.i] = 1;
     S.unhealthySince[n.i] = -1;
     S.highSince[n.i] = -1;
     S.lowSince[n.i] = -1;
@@ -302,6 +303,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   let counter = 1;
   let dirty = true;
   let phase = 'build';
+  let measuredVersion = -1;
   const listeners = new Map();
   const emit = (name, payload) => { const l = listeners.get(name); if (l) for (const fn of [...l]) fn(payload); };
 
@@ -321,6 +323,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     if (old && phase !== 'build') restorePersist(old);
     prepareModel();
     allocFrame();
+    S.frameDirty = true;
     dirty = false;
   }
 
@@ -420,6 +423,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
 
   // ---- run state
   function resetRun() {
+    measuredVersion = -1;
     S.rng = mulberry32(hashSeed(`${seed}|${prob.id}`));
     S.clock = 0;
     S.noise.fill(0);
@@ -735,6 +739,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     }
   }
   const compBuf = new Float64Array(T);
+  const lateByType = new Float64Array(T);
   function queueLateness(X, tn, dt) {
     const m = X.model;
     if (!X.queueNodes.length) return 0;
@@ -787,7 +792,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       q.procAvg = 0.9 * q.procAvg + 0.1 * proc;
       // Each type keeps its own deadline even when slower work shares the queue.
       let lateMsgs = 0, shortest = Infinity;
-      const lateByType = new Float64Array(T);
+      lateByType.fill(0);
       for (const stream of streams) for (let t = 0; t < T; t++) {
         if (!(stream.typeArr[t] > 0)) continue;
         let hist = stream.types.get(t);
@@ -885,7 +890,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       const q = X.qHist.get(n.id);
       if (!q || n.isDLQ) continue;
       const k = Math.min(DAY_TICKS - 1, q.lastK);
-      const lateByType = new Float64Array(T);
+      lateByType.fill(0);
       for (const stream of q.streams.values()) for (const [t, hist] of stream.types) {
         const limit = queueLimitFor(X.problem.requirements, catalog.requests[t]);
         const Lt = Math.max(1, Math.ceil(limit / X.dt));
@@ -1217,7 +1222,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         q += mx;
       }
       F.nodeUtil[u] = Math.min(S.rho[u], UTIL_SHOW_MAX);
-      F.nodeStatus[u] = S.status[u];
+      F.nodeStatus[u] = measuredVersion === S.version ? S.status[u] : S.down[u] ? 4 : 0;
       F.nodeQueue[u] = q;
     }
     F.activeEvents = S.instances.filter((i) => i.started && !i.ended).map((i) => i.id);
@@ -1265,6 +1270,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     scheduleRetries(S);
     const dupsNow = account();
     eventStats(dupsNow);
+    measuredVersion = S.version;
     S.frameDirty = true;
     S.clock += tickMs;
     emit('tick', { clockMs: S.clock });
@@ -1517,6 +1523,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     ensureModel();
     const st = S.stateObj || (S.stateObj = { phase, clockMs: 0, clockLabel: '00:00', nodes: [], edges: [], traffic: {}, slo: {}, cost: {}, scoreLive: {}, events: [] });
     const m = S.model;
+    const measured = measuredVersion === S.version;
     if (S.frameDirty) { updateFrame(); S.frameDirty = false; }
     st.phase = phase;
     st.clockMs = S.clock;
@@ -1528,7 +1535,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       retryRps: phase === 'build' ? 0 : S.RIN.subarray(n.i * S.LN, (n.i + 1) * S.LN).reduce((sum, rate) => sum + rate, 0),
       availableUnits: phase === 'build' || S.clock === 0 ? Math.round(S.unitsCur[n.i]) : Math.max(0, Math.round(S.unitsCur[n.i] * (S.down[n.i] ? 0 : S.aliveFactor[n.i]))),
       util: Math.round(Math.min(S.rho[n.i], UTIL_SHOW_MAX) * 1000) / 1000,
-      status: ['ok', 'warn', 'hot', 'overload', 'down'][S.status[n.i]],
+      status: ['ok', 'warn', 'hot', 'overload', 'down'][measured ? S.status[n.i] : S.down[n.i] ? 4 : 0],
       p99Ms: Math.round(S.hop99[n.i] * 10) / 10,
       failRps: Math.round(S.failedNow[n.i] * 10) / 10,
       queueDepth: S.frame ? Math.round(S.frame.nodeQueue[n.i]) : 0,
@@ -1545,7 +1552,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       for (let t = 0; t < T; t++) rps += S.frame.edgeRps[e.i * T + t];
       return { id: e.id, rps: Math.round(rps * 10) / 10 };
     });
-    const tn = S.tickNow || { offered: 0, success: 0, p99: 0, byType: new Float64Array(T * 3) };
+    const tn = measured && S.tickNow || { offered: 0, success: 0, p99: 0, byType: new Float64Array(T * 3) };
     const byType = {};
     for (let t = 0; t < T; t++) if (tn.byType[t * 3] > 0) byType[catalog.requests[t].id] = { offered: tn.byType[t * 3], success: tn.byType[t * 3 + 1], failed: tn.byType[t * 3 + 2] };
     st.traffic = { offeredRps: tn.offered, successRps: tn.success, failRps: Math.max(0, tn.offered - tn.success), byType };
@@ -1555,7 +1562,9 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     st.slo = {
       availability: { target: req.availability, actual: mt.availability },
       // the type furthest from its own target this moment, against that target (a sign-in keeps its longer budget)
-      latency: S.latWorstT >= 0 && phase !== 'build'
+      latency: !measured && phase !== 'build' && S.clock > 0
+        ? { targetMs: interactiveTarget(), p99Ms: null, shareOk: mt.latencyShare, typeId: null }
+        : S.latWorstT >= 0 && phase !== 'build'
         ? { targetMs: S.latTarget[S.latWorstT], p99Ms: Math.round(S.typeP99Now[S.latWorstT]), shareOk: mt.latencyShare, typeId: catalog.requests[S.latWorstT].id }
         : { targetMs: interactiveTarget(), p99Ms: Math.round(tn.p99), shareOk: mt.latencyShare, typeId: null },
       safety: { lostWrites: Math.round(S.lostWrites || 0), duplicates: Math.round(S.duplicates || 0), staleReads: Math.round(S.staleReads || 0), complianceFailed: mt.ledger.complianceFailed, promiseFailures: mt.ledger.promiseFailures },

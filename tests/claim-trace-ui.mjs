@@ -13,6 +13,7 @@ try {
       const host=document.createElement('section'); host.className='pl-defense-model';
       host.style.cssText='max-width:620px;margin:0 auto'; document.body.replaceChildren(host);
       mountDefense(host,{ model:'Compare failed work with the available capacity.',checklist:[],claims:[{id:'test',text:'Losing one unit of App servers (app) preserves service.'}] }, {answer:'I expect the remaining pool to receive more work.',revealed:true}, {id:'trace-test',checkClaim:()=>({held:false,steps:['Crash one unit of App servers (app).','Replay the full day: 99.12% served against 99.9%.','First material failure: capacity at App servers (app).','Claim failed in this counterexample.']})});
+      const select=host.querySelector('.hp-defense-claims select'); select.value='hold'; select.dispatchEvent(new Event('change'));
       const check=host.querySelector('.hp-defense-claims input'); check.click();
       const li=host.querySelector('.pl-claim-trace li'), style=getComputedStyle(li);
       const steps=host.querySelectorAll('.pl-claim-trace li').length;

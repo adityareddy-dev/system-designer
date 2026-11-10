@@ -124,7 +124,7 @@ export function renderChallenge(host, ctx, route0) {
       h('div', { class: 'sh-streak', role: 'img', 'aria-label': streakText }, ico('ui.streak', 28), streakN ? h('span', { class: 'sh-streak-num', text: String(streakN) }) : null, h('span', { class: 'sh-streak-label', text: streakN ? (streakN === 1 ? 'day in a row' : 'days in a row') : streakText })));
 
     const playHref = buildHash('challenge/' + date, { play: 1 });
-    const playLabel = bestScore ? 'Try again' : isToday ? "Play today's challenge" : 'Play this day';
+    const playLabel = best ? 'Try again' : isToday ? "Play today's challenge" : 'Play this day';
     // phones: the same button right under the date, so it is not pushed below the fold and the tab bar
     const solvedAny = items0(hist).length > 0;
     const hardNudge = problem.difficulty === 'Hard' && !solvedAny

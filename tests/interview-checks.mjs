@@ -124,6 +124,7 @@ try {
       const input = card.querySelector('textarea'); input.value = 'Measure surviving capacity and use health checks to detect unavailable replicas.'; input.dispatchEvent(new Event('input'));
       card.querySelector('button').click();
       card.querySelectorAll('.hp-defense-checklist input').forEach(box => box.click());
+      card.querySelectorAll('.hp-defense-claims select').forEach(select => { select.value = 'hold'; select.dispatchEvent(new Event('change')); });
       const claims = [...card.querySelectorAll('.hp-defense-claims input')];
       claims.slice(0, -1).forEach(box => box.click());
       claims.at(-1).focus();
@@ -137,12 +138,14 @@ try {
       'completing a follow-up with the keyboard moves focus to its visible summary');
     await page.$$eval('.pl-defense-card', cards => cards.forEach(card => {
       const input = card.querySelector('textarea'); input.value = 'The failed path must be measured before choosing capacity or routing changes.'; input.dispatchEvent(new Event('input'));
-      card.querySelector('button').click(); card.querySelectorAll('input[type=checkbox]').forEach(box => { if (!box.checked) box.click(); });
+      card.querySelector('button').click();
+      card.querySelectorAll('.hp-defense-claims select').forEach(select => { if (!select.disabled) { select.value = 'hold'; select.dispatchEvent(new Event('change')); } });
+      card.querySelectorAll('input[type=checkbox]').forEach(box => { if (!box.checked) box.click(); });
     }));
     assert.equal(await page.$$eval('.pl-defense-card', els => els.length >= 3 && els.length <= 5), true);
     await click('Save interview report');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('hotpath.v1.progress'))['observability-platform'].interview);
-    assert(saved.latest.total > 0); assert.equal(saved.latest.coverageKind, 'computed-claims'); assert(saved.latest.defense.every(d => Object.values(d.claims).every(c => c.steps.length >= 4))); assert(saved.bestDay); assert(saved.bestClaims);
+    assert(saved.latest.total > 0); assert.equal(saved.latest.coverageKind, 'computed-predictions'); assert(saved.latest.defense.every(d => Object.values(d.claims).every(c => c.steps.length >= 4 && c.position === 'hold'))); assert(saved.bestDay); assert(saved.bestPredictions);
     assert(await page.$$eval('.pl-defense-card input[type=checkbox]', boxes => boxes.every(box => box.disabled)), 'saved checklist locks');
     assert(await page.$eval('.pl-interview-report button', button => button.disabled), 'save locks');
     await page.$$eval('.pl-defense-card input[type=checkbox]', boxes => boxes.forEach(box => box.click()));

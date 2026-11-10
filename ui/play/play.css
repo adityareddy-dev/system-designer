@@ -1082,3 +1082,11 @@
 .pl-claim-trace li:nth-child(n+4) {animation-delay:240ms}
 :root[data-motion=reduce] .pl-claim-trace li {animation:none}
 @media(max-width:719px) {.pl-claim-trace {padding:12px}.pl-claim-trace li {font-size:15px}}
+
+/* The report scrollport begins below the steps, including after the first screenful. */
+.pl-root[data-step=debrief] .pl-overlay--debrief {top:calc(var(--pl-top-end, 60px) + 8px);padding-top:16px;scroll-padding-block:16px}
+.pl-overlay :is(h2,h3,.pl-defense-card,.pl-defense-field) {scroll-margin-block:16px}
+@media(max-width:719px) {
+  .pl-root[data-mode=lesson] .pl-goal {align-items:flex-start}
+  .pl-root[data-mode=lesson] .pl-goal--done {max-height:none;overflow:visible}
+}

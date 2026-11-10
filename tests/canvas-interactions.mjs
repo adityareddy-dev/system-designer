@@ -33,6 +33,7 @@ try{
   await p.goto(base+'#/sandbox');await p.waitForFunction(()=>window.__game?.getState().nodes.length===4);await sleep(700);
   await p.evaluate(()=>__game.placeComponent('cache',520,260));await sleep(600);
   await p.$eval('.pl-tool--fit',b=>b.click());await sleep(600);
+  await p.waitForFunction(()=>!__game.getState().view.cameraMoving);
   const data=await p.evaluate(()=>{const s=__game.getState(),r=document.querySelector('.pl-stage').getBoundingClientRect();return {s,r:{x:r.x,y:r.y}};});
   const app=data.s.nodes.find(n=>n.id==='app'),target=data.s.nodes.find(n=>n.type==='cache');
   const point=id=>{const n=data.s.view.screen.find(n=>n.id===id);return{x:n.x+data.r.x,y:n.y+data.r.y};};

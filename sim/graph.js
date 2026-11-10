@@ -61,31 +61,38 @@ function flowAllowed(a, b) {
 
 function refuseReason(a, b) {
   const A = a.name, B = b.name;
-  if (a.kind === 'queue' && b.kind === 'external') return `${A} holds work until a consumer reads it. Connect ${A} to Background workers, then connect the workers to ${B}.`;
-  if (b.kind === 'source') return `${B} is where requests start, so nothing connects into it. Connect ${B} to ${A} instead.`;
-  if (flowAllowed(b, a)) return `${A} does not send requests to ${B}. Connect ${B} to ${A} instead.`;
-  if (a.kind === 'store' && b.kind === 'store') {
-    if (b.params?.role === 'replica') return `${B} copies a primary database of the same kind; connect a matching primary to it.`;
-    return `Databases do not call each other. Connect your servers to each database instead.`;
+  const attempt = `${A} → ${B} is not supported. `;
+  const explain = advice => attempt + advice;
+  if (a.kind === 'observer' || b.kind === 'observer') {
+    const observer = a.kind === 'observer' ? a : b;
+    const advice = observer.id === 'pager' ? 'Connect Alerting → On-call pager.'
+      : ['alerting', 'dashboards'].includes(observer.id) ? `Connect Metrics → ${observer.name}.`
+      : `Connect a request-handling part such as App servers → ${observer.name}. Metrics → Alerting → On-call pager and Metrics → Dashboards are the supported links between monitoring parts.`;
+    return explain(advice);
   }
-  if (a.kind === 'store') return `A database cannot call ${B}; connect servers to the database instead.`;
-  if (a.kind === 'external') {
-    if (!(a.handles || []).includes('webhook')) return `${A} is someone else's service; it only answers calls. Connect your servers to it.`;
-    return `${A} calls back with webhooks only, into servers, a load balancer or a queue.`;
-  }
-  if (b.kind === 'tap' && b.id === 'cdc-connector') return `A change-data connector hangs off a database: connect the database to it.`;
-  if (a.kind === 'source' && b.kind === 'store') return `Users never talk to a database directly. Put servers between ${A} and ${B}.`;
-  if (a.kind === 'source' && b.kind === 'external') return `Users reach outside services through your servers. Put servers between them.`;
-  if (a.kind === 'source' && b.kind === 'lookaside') return `${B} is called by your servers, not by users directly.`;
-  if (a.kind === 'queue' && (b.kind === 'external' || b.kind === 'lookaside')) return `A queue hands messages to workers; connect it to a worker pool that calls ${B}.`;
-  if (a.kind === 'lookaside') return `${A} is called by your servers and only calls outside services.`;
-  if (a.kind === 'observer' || b.kind === 'observer') return `Monitoring watches parts that carry requests: connect a part to it, or metrics to alerting, alerting to the pager, metrics to dashboards.`;
   if (a.kind === 'control' || b.kind === 'control') {
     const ctrl = a.kind === 'control' ? a : b;
-    const what = ctrl.id === 'backups' ? 'a database' : ctrl.id === 'disaster-recovery' ? 'any part that carries requests' : 'a group of servers';
-    return `${ctrl.name} manages ${what}; connect it to one.`;
+    if (ctrl.id === 'backups') return explain('Backups protects stored data. Connect Backups → a storage part such as Object storage or SQL database.');
+    return explain(`${ctrl.name} manages ${ctrl.id === 'disaster-recovery' ? 'parts that carry requests' : 'compute capacity'}. Connect ${ctrl.name} → App servers.`);
   }
-  return `${A} cannot connect to ${B}.`;
+  if (b.kind === 'source') return explain(`${B} is where requests start. ${flowAllowed(b, a) ? `Connect ${B} → ${A} instead.` : `Start with ${B} → App servers, then connect the service the servers need.`}`);
+  if (a.kind === 'queue' && ['external', 'lookaside'].includes(b.kind)) return explain(`${A} holds messages for a consumer. Connect ${A} → Background workers → ${B}.`);
+  if (flowAllowed(b, a)) return explain(`This link runs in the other direction. Connect ${B} → ${A} instead.`);
+  if (a.kind === 'store' && b.kind === 'store') {
+    if (b.params?.role === 'replica') return explain(`${B} copies a primary of the same family. Connect its matching primary → ${B}, and App servers → ${B} for reads.`);
+    return explain(`These storage parts do not call each other. Connect App servers → ${A} and App servers → ${B}.`);
+  }
+  if (a.kind === 'store') return explain(`${A} stores data and does not initiate this call. Connect App servers → ${A} and App servers → ${B}.`);
+  if (b.id === 'cdc-connector') return explain(`Change data capture receives a copy from storage. Connect a storage part → ${B}, then ${B} → a queue or destination store.`);
+  if (a.kind === 'external') {
+    if (!(a.handles || []).includes('webhook')) return explain(`${A} answers calls from your system. Connect App servers → ${A}; connect App servers → ${B} separately.`);
+    return explain(`${A} sends webhooks into compute, routers or queues. Connect ${A} → App servers, then App servers → ${B}.`);
+  }
+  if (a.kind === 'source') return explain(`Put App servers between these parts: ${A} → App servers → ${B}.`);
+  if (a.kind === 'queue') return explain(`${A} holds messages for a consumer. Connect ${A} → Background workers → ${B}.`);
+  if (a.kind === 'lookaside') return explain(`${A} is a side service called by servers. Connect App servers → ${A} and App servers → ${B} separately.`);
+  if (a.kind === 'tap') return explain(`${A} sends copied work to compute, queues, caches or storage. Connect ${A} → Background workers → ${B}.`);
+  return explain(`Use App servers to call each service, and keep monitoring and control links beside the request path.`);
 }
 
 // Connection rule check on element objects. Returns { ok, kind, reason, swap }.

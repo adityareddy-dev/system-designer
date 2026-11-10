@@ -3,6 +3,7 @@ import { h, iconEl, fmtNum, fmtUsd, fmtMs, fmtPct, approx, statusGlyph } from '.
 import { stepCount } from './draw-controls.js';
 import { capacityText, inspectorStatus } from './inspector-facts.js';
 import { serviceElement } from '../../sim/service-profile.js';
+import { poolCells } from '../../render/pool.js';
 
 export function createInspector(host, { catalog, getNode, getHome, getProblem, onKnob, onDelete, onDuplicate, onConnect, onClose, lesson = false }) {
   const root = h('aside', { class: 'pl-inspector', 'aria-label': 'Inspector', hidden: '' });
@@ -241,12 +242,14 @@ export function createInspector(host, { catalog, getNode, getHome, getProblem, o
         refs.pool.replaceChildren(h('b', { text: 'Inside this pool' }), h('div', { class: 'pl-replica-cells' }, Array.from({ length: buckets }, (_,i) => h('div', { class: 'pl-replica-cell' }, h('span', { text: count <= 6 ? `Replica ${i + 1}` : `Group ${i + 1}` }), h('i')))), h('small', { class: 'pl-replica-summary' }));
       }
       const cells = refs.pool.querySelectorAll('.pl-replica-cell');
+      const shares = poolCells(count, alive, util, 6);
       cells.forEach((cell,i) => {
-        const failed = count <= 6 ? i >= alive : alive < count && i === 0;
-        const load = failed ? 0 : Math.min(1, util * (1 + (i - (buckets - 1) / 2) * .025));
+        const share = shares[i];
+        const failed = share.available === 0;
+        const load = share.busy;
         cell.dataset.failed = String(failed);
         cell.querySelector('i').style.transform = `scaleX(${load})`;
-        cell.title = failed ? 'Unavailable capacity' : `${Math.round(load * 100)}% busy, schematic share`;
+        cell.title = failed ? 'Unavailable capacity' : `${Math.round(share.available * 100)}% capacity available · ${Math.round(Math.min(1, util) * 100)}% busy across survivors`;
       });
       refs.pool.querySelector('small').textContent = `${alive}/${count} units available · ${fmtNum(s.incomingRps || 0)} requests/s shared across survivors. ${count > 6 ? 'Six groups summarize this fleet. ' : ''}Bars illustrate distribution, not separately simulated replicas. This box includes internal routing; production still needs discovery and health checks.`;
       refs.pool.classList.toggle('is-flowing', !!s.incomingRps);
