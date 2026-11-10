@@ -5,8 +5,10 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import { releaseDirectory, prepareReleaseDirectory } from './release-output.mjs';
 
 const root = process.cwd();
+const dist = releaseDirectory(root, process.env.RELEASE_DIR || path.join(root, 'dist'));
 
 // Content data first, then the static preview pages (d/<date>/ and p/<problem>/) from that data, so a page never names a
 // problem the game does not play that day. Preview images are drawn again for changed pages when puppeteer-core is there.
@@ -15,12 +17,10 @@ node('tools/gen-content.mjs');
 try { node('tools/gen-daily-pages.mjs'); }
 catch { console.warn('gen-daily-pages with images failed; writing the pages without new images'); node('tools/gen-daily-pages.mjs', '--no-images'); }
 node('tools/gen-site-pages.mjs');
-const dist = path.resolve(process.env.RELEASE_DIR || path.join(root, 'dist'));
 const req = createRequire(path.join(process.env.ESBUILD_DIR || root, 'noop.js'));
 const esbuild = req('esbuild');
 
-fs.rmSync(dist, { recursive: true, force: true });
-fs.mkdirSync(dist, { recursive: true });
+prepareReleaseDirectory(root, dist);
 
 const res = await esbuild.build({
   entryPoints: { main: path.join(root, 'main.js') },

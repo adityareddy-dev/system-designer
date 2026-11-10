@@ -554,7 +554,7 @@ Consumer traffic, busiest in the evening. The clock covers 00:00 to 24:00 in the
 
 Many callers send requests together instead of spreading them over time.
 
-Traffic reaches 10 times the scheduled load; rises over 10 seconds, holds for 60 seconds and eases over 300 seconds.
+Traffic for Sign-in, Message, Read, Sync change reaches 10 times the scheduled load; rises over 10 seconds, holds for 60 seconds and eases over 300 seconds. Other request types keep their scheduled load.
 
 14:00 · Zone outage
 

@@ -421,6 +421,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
 
   // ---- run state
   function resetRun() {
+    queueStreams.length = 0;
     S.rng = mulberry32(hashSeed(`${seed}|${prob.id}`));
     S.clock = 0;
     S.noise.fill(0);
@@ -739,6 +740,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   const lateBuf = new Float64Array(T);
   const queueStreams = [];
   function queueLateness(X, tn, dt) {
+    queueStreams.length = 0;
     const m = X.model;
     if (!X.queueNodes.length) return 0;
     X.lateType.fill(0);

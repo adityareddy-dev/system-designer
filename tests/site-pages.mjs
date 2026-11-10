@@ -17,6 +17,7 @@ const catalog = createCatalog(Object.fromEntries(['elements','requests','events'
 for (const [id, stale, expected] of [
   ['video-upload-pipeline', /20 minutes/, /2,400 seconds/],
   ['calendar-invites', /1 percent/, /Affected share: 5%/],
+  ['payroll-run', /Traffic reaches 4 times/, /Traffic for Read, Sign-in reaches 4 times[\s\S]*Other request types keep their scheduled load/],
 ]) {
   const problem = problems.find(p => p.id === id);
   const day = trafficDay(problem, catalog);
@@ -26,6 +27,10 @@ for (const [id, stale, expected] of [
   const authored = { ...problem, events: problem.events.map(e => ({ ...e, text: { ...e.text, description: 'The upstream service is unavailable during maintenance.' } })) };
   assert.match(trafficDay(authored, catalog), /The upstream service is unavailable during maintenance/);
 }
+const payroll = problems.find(p => p.id === 'payroll-run');
+const unfiltered = { ...payroll, events: [{ id: 'viral-spike', at: '02:00', params: { types: undefined, factor: 4 } }] };
+assert.match(trafficDay(unfiltered, catalog), /Traffic reaches 4 times/);
+assert.doesNotMatch(trafficDay(unfiltered, catalog), /Other request types/);
 const changedLessons = lessons.map(l=>l.id!=='caching' ? l : {...l,steps:l.steps.map(s=>s.kind!=='demo'?s:{...s,goal:{...s.goal,maxTtlSec:123}})});
 const changedGuide = makeGuides({problems,lessons:changedLessons,catalog,accountLive:true}).find(g=>g.id==='caching-load-balancing-queues');
 assert.ok(changedGuide.body.includes('at most 123 seconds old'), 'guide freshness follows lesson content');

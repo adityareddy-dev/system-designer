@@ -34,9 +34,12 @@ export function requirements(p, catalog) {
 export function estimates(p) {
   return `<dl class="site-facts">${(p.numbers || []).map(n=>field(n.label,`≈ ${num(n.value)} ${n.unit}. ${n.how}`)).join('')}</dl>`;
 }
-const effectFact = ({op,params:p}) => {
+const effectFact = ({op,params:p}, catalog) => {
   const out = [];
-  if (op==='traffic') out.push(`Traffic reaches ${num(p.factor)} times the scheduled load; rises over ${num(p.rampSec)} seconds, holds for ${num(p.holdSec)} seconds and eases over ${num(p.decaySec)} seconds.`);
+  if (op==='traffic') {
+    const types = p.types?.map(id => catalog.requestById.get(id)?.name || id);
+    out.push(`${types ? 'Traffic for ' + types.join(', ') : 'Traffic'} reaches ${num(p.factor)} times the scheduled load; rises over ${num(p.rampSec)} seconds, holds for ${num(p.holdSec)} seconds and eases over ${num(p.decaySec)} seconds.${types ? ' Other request types keep their scheduled load.' : ''}`);
+  }
   if (op==='attack') out.push(`Extra attack traffic is ${num(p.factorOfPeak)} times the configured peak.`);
   if (op==='fail' && p.errorRate != null) out.push(`Failed calls: ${pct(p.errorRate)}.`);
   if (op==='fail' && p.addLatencyMs != null) out.push(`Added response time: ≈ ${num(p.addLatencyMs)} ms.`);
@@ -79,7 +82,7 @@ export function trafficDay(p,catalog) {
   const events = (p.events || []).map((entry,i)=>{
     const inst = makeInstance(catalog,entry,i,catalog.world.sim.dayMs);
     const time = entry.at || `${Math.floor(entry.atMs/3600000).toString().padStart(2,'0')}:${Math.floor(entry.atMs/60000)%60}`;
-    return `<li><h3>${esc(time)} · ${esc(inst.name)}</h3>${para(entry.text?.description ?? EVENT_STORY[inst.id] ?? inst.def.description)}${para(inst.effects.map(effectFact).filter(Boolean).join(' '))}</li>`;
+    return `<li><h3>${esc(time)} · ${esc(inst.name)}</h3>${para(entry.text?.description ?? EVENT_STORY[inst.id] ?? inst.def.description)}${para(inst.effects.map(effect => effectFact(effect, catalog)).filter(Boolean).join(' '))}</li>`;
   }).join('');
   return `${para((CURVE[p.traffic.curve] || p.traffic.curve) + '. The clock covers 00:00 to 24:00 in the home region. Events add pressure on top of that normal traffic.')}${events ? `<ol>${events}</ol>`:para('This scenario has no scheduled disruptions. Test whether the design meets the steady workload.')}`;
 }
