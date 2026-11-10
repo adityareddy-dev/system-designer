@@ -1,0 +1,3 @@
+# Import inside api.systemdesigner.io, alongside its existing proxy and access log.
+@anonymous_collection path /e /feedback
+log_skip @anonymous_collection

@@ -44,9 +44,10 @@ export async function start(env = process.env) {
     return null;
   }
 
-  const sweep = setInterval(() => { try { db.expireSessions(Date.now()); limiter.sweep(); } catch { /* next round */ } }, 3600_000);
+  const sweep = setInterval(() => { try { db.expireSessions(Date.now()); db.cleanupObservation(Date.now()); limiter.sweep(); } catch { /* next round */ } }, 3600_000);
   sweep.unref();
   db.expireSessions(Date.now());
+  db.cleanupObservation(Date.now());
 
   const on = (x) => (x ? 'on' : 'off');
   log(`listening on ${bound.address}:${bound.port}; google ${on(config.google.clientId)}, github ${on(config.github.enabled)}, fake ${on(config.fake)}, dev ${on(config.dev)}`);

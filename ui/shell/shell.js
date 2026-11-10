@@ -1,7 +1,9 @@
 // App shell: top bar, section navigation, route to view switching, toasts, progress wiring.
+import { metrics } from '../../core/metrics.js';
 import { h, ico, clear, lessonOf } from './dom.js';
 import { setOverlayHost, toast, closeAllModals } from './overlay.js';
 import { transitionScreen } from './motion.js';
+import { completionState } from '../play/completion.js';
 
 const TABS = [
   { id: 'learn', label: 'Learn', icon: 'ui.learn', href: '#/learn' },
@@ -138,7 +140,7 @@ export function mountShell(rootEl, ctx) {
       let mod, error;
       main.setAttribute('aria-busy', 'true');
       try { if (spec) [mod] = await Promise.all([spec.load(), spec.prep ? spec.prep() : null]); }
-      catch (err) { console.error(err); error = err; }
+      catch (err) { metrics.reportError(err, 'shell.js', true); console.error(err); error = err; }
       if (mine !== seq) return;
       const depth = path => (path || '').split('/').filter(Boolean).length;
       await transitionScreen(() => {
@@ -155,7 +157,7 @@ export function mountShell(rootEl, ctx) {
         });
         const page = h('div', { class: 'sh-view' + (document.documentElement.dataset.transitioning ? ' sh-view--native' : '') }); main.append(page);
         try { view = error || !spec ? (page.append(notFound(error ? 'This page could not load. Check your connection and try again.' : undefined)), {}) : spec.make(mod, page, r) || {}; }
-        catch (err) { console.error(err); page.append(notFound('Something went wrong drawing this page.')); view = {}; }
+        catch (err) { metrics.reportError(err, 'shell.js'); console.error(err); page.append(notFound('Something went wrong drawing this page.')); view = {}; }
         finish(opts);
       }, { reduced: !previous || ctx.reducedMotion(), direction: returning || depth(previous) > depth(key) ? 'back' : 'forward' });
     })();
@@ -184,8 +186,8 @@ export function mountShell(rootEl, ctx) {
     if (!result) return;
     if (mode === 'practice' && problemId) {
       const r = ctx.progress.record(problemId, result, hintsUsed || 0);
-      if (result.passed && result.learning && !result.learning.traceChecked) toast({ text: 'Traffic passed. Trace still open.', level: 'info' });
-      else if (result.passed && result.learning?.assisted) toast({ text: 'Traffic passed with assistance.', level: 'info' });
+      const completion = completionState(ctx.content.problemById.get(problemId), result, null, ctx.progress.get(problemId));
+      if (result.passed && result.learning && (!result.learning.traceChecked || result.learning.assisted)) toast({ text: completion.message, level: 'info' });
       else if (r.first && (result.stars || 0) > 0) toast({ text: `Solved with ${result.stars || 0} star${result.stars === 1 ? '' : 's'}. Nicely done.`, level: 'ok', ms: 4200 });
       else if (r.improved && r.previousBest != null && (result.stars || 0) > 0) toast({ text: 'New personal best on this problem.', level: 'ok' });
     }
@@ -206,7 +208,19 @@ export function mountShell(rootEl, ctx) {
     attachAccount,
     // Test and integration hooks: the live play controller of the current view.
     getPlay: () => (view && view.play ? view.play.controller : null),
-    whenPlay: async () => { await pending; return view && view.play ? view.play.ready : null; },
+    whenPlay: async ({ prepareLesson = false } = {}) => {
+      for (;;) {
+        const loading = pending;
+        await loading;
+        if (loading !== pending) continue;
+        if (prepareLesson) view?.preparePlay?.();
+        const play = view?.play;
+        const controller = play ? await play.ready : null;
+        // Navigation may replace a host while its modules or canvas are loading.
+        if (loading !== pending || play !== view?.play) continue;
+        return controller;
+      }
+    },
     hasPlay: () => !!(view && view.play),
     settled: () => pending,
     destroy() {

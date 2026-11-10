@@ -8,9 +8,9 @@ const SL = 1000;
 export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, progress }) {
   host.replaceChildren();
   const rows = problem.numbers || [];
-  const saved = progress?.get(problem.id)?.estimates;
+  const saved = !problem.twistDay && progress?.get(problem.id)?.estimates;
   if (saved) rows.forEach((row, i) => { if (row.ask) guesses[i] = saved[i] ?? null; });
-  const save = () => progress?.saveEstimates(problem.id, rows.map((row, i) => row.ask ? guesses[i] ?? null : null));
+  const save = () => { if (!problem.twistDay) progress?.saveEstimates(problem.id, rows.map((row, i) => row.ask ? guesses[i] ?? null : null)); };
   const list = h('div', { class: 'pl-nlist' });
   if (problem.requirements?.notes?.length) list.append(h('aside', { class: 'pl-number-assumptions' }, h('b', { text: 'Use these assumptions' }), h('ul', {}, problem.requirements.notes.map(text => h('li', { text })))));
   const checks = [];
@@ -26,7 +26,7 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
     const snap = (n) => Math.min(hi, Math.max(lo, integer ? Math.round(n) : n));
     const toPos = (n) => spec.percent ? n : SL * Math.log(n / lo) / Math.log(hi / lo);
     const card = h('div', { class: 'pl-ncard' });
-    card.append(h('div', { class: 'pl-nlabel', text: row.label + (i < 2 && problem.id === 'url-shortener' ? ' (normal peak)' : i < 2 && problem.id === 'concert-ticket-drop' ? ' (event peak)' : '') }));
+    card.append(h('div', { class: 'pl-nlabel', text: row.label + (!problem.twistDay && i < 2 && problem.id === 'url-shortener' ? ' (normal peak)' : !problem.twistDay && i < 2 && problem.id === 'concert-ticket-drop' ? ' (event peak)' : '') }));
     const out = h('div', { class: 'pl-nout' });
     const result = h('div', { class: 'pl-nresult', 'aria-live': 'polite' });
     if (row.ask) {

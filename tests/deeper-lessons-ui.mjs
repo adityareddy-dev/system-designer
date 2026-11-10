@@ -1,11 +1,19 @@
 // Complete the advanced lessons through their visible controls in both layouts and themes.
+import { commitChoicePrediction } from './lesson-prediction.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
 import { lessons } from '../content/lessons/index.js';
 import { transferFor } from '../content/transfers.js';
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const site = await serveGame();
+const base = site.base;
+const waitForLesson = (page, lesson) => page.waitForFunction(title => {
+  const main = document.querySelector('#sh-main');
+  return main && !main.hasAttribute('aria-busy') && document.querySelector('.sh-lp-card')
+    && document.querySelector('.sh-lp-title h1')?.textContent === title;
+}, { polling: 'mutation' }, lesson.title);
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
@@ -17,11 +25,43 @@ try {
     // Existing progress must survive completion of the new tracks.
     localStorage.setItem('staff-progress-sentinel','old progress survives');
   });
+  // Keep interception active for this page's lifetime, including late asset requests.
+  let release, captured;
+  let holdNext = true;
+  const matches = request => new URL(request.url()).pathname.endsWith('/content/data/l/simplest-design.json');
+  const pending = new Promise(resolve => { captured = resolve; });
+  const intercept = request => {
+    if (holdNext && matches(request)) {
+      holdNext = false;
+      release = () => request.continue();
+      captured();
+    } else return request.continue();
+  };
+  page.on('request', intercept);
+  await page.setRequestInterception(true);
+  // Hash navigation retains the previous card while the next lesson is loading.
+  await page.goto(base+'#/learn/lead-interview');
+  await waitForLesson(page, lessons.find(l => l.id === 'lead-interview'));
+  await page.goto(base+'#/learn/simplest-design');
+  await pending;
+  assert(await page.$('.sh-lp-card'), 'the retained card alone cannot signal that navigation finished');
+  assert.equal(await page.$eval('#sh-main', el => el.getAttribute('aria-busy')), 'true');
+  assert.equal(await page.$eval('.sh-lp-title h1', el => el.textContent), lessons.find(l => l.id === 'lead-interview').title);
+  // Readiness follows DOM changes even when a hidden tab has stopped drawing frames.
+  const foreground = await browser.newPage();
+  await page.waitForFunction(() => document.visibilityState === 'hidden', { polling: 50 });
+  const ready = waitForLesson(page, lessons.find(l => l.id === 'simplest-design'));
+  await release();
+  await ready;
+  await foreground.close();
+  await page.bringToFront();
+  page.off('request', intercept);
+  await page.setRequestInterception(false);
   for (const [width,theme] of [[1280,'light'],[1280,'dark'],[390,'light'],[390,'dark']]) {
     await page.setViewport({width,height:900,isMobile:width<500,hasTouch:width<500});
     for (const lesson of lessons.slice(-17)) {
       await page.goto(base+'#/learn/'+lesson.id, {waitUntil:'domcontentloaded'});
-      await page.waitForSelector('.sh-lp-card');
+      await waitForLesson(page, lesson);
       assert.equal(await page.$eval('html',el=>el.dataset.motion),'reduce');
       await page.evaluate(theme => { document.documentElement.dataset.theme=theme; },theme);
       if (process.env.QA_SHOTS && ['consistent-hashing','leader-consensus','metrics-systems','device-sync','lead-interview','running-migrations'].includes(lesson.id)) {
@@ -36,11 +76,13 @@ try {
         if (step.kind === 'figure') await page.waitForSelector('.sh-figure-host:not([aria-busy]) .fg-bench');
         await page.evaluate(() => document.fonts.ready);
         if (step.kind === 'quiz') {
+          await commitChoicePrediction(page);
           await page.evaluate(text => [...document.querySelectorAll('.sh-choice')].find(b => b.textContent.endsWith(text)).click(),step.choices[step.answer]);
           assert.equal(await page.$eval('.sh-quiz-result',el=>el.dataset.ok),'1');
         } else if (step.kind === 'defend') {
           assert(await page.$eval('button[type=submit]',b=>b.disabled));
-          await page.type('textarea','I would state the invariant, estimate the work and test the failure before changing ownership.');
+          await page.focus('textarea');
+          await page.keyboard.sendCharacter('I would state the invariant, estimate the work and test the failure before changing ownership.');
           await page.click('button[type=submit]');
           assert.equal(await page.$eval('.sh-defend-comparison',el=>el.hidden),false);
           await page.click('.sh-defend-point');
@@ -60,9 +102,11 @@ try {
         await page.click('.sh-lp-nav .sh-btn--primary');
       }
       const transfer=transferFor(lesson.id);
+      await commitChoicePrediction(page);
       await page.waitForSelector('.sh-choices');
       await page.evaluate(index=>document.querySelectorAll('.sh-choice')[index].click(),transfer.answer);
-      await page.type('input[type=number]',String(transfer.value));
+      await page.focus('input[type=number]');
+      await page.keyboard.sendCharacter(String(transfer.value));
       await page.keyboard.press('Enter');
       await page.waitForFunction(() => document.querySelector('.sh-lp-nav .sh-btn--primary')?.disabled === false);
       await page.focus('.sh-lp-nav .sh-btn--primary');
@@ -75,4 +119,4 @@ try {
   assert.equal(await page.evaluate(()=>localStorage.getItem('staff-progress-sentinel')),'old progress survives');
   assert.deepEqual(errors,[]);
   console.log('All 17 new lessons completed on desktop and phone in both themes, including defenses and transfers.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

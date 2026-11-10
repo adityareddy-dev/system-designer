@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: the hidden writes",
-      "text": "Suppose logical ingestion is 20 MB/s. Assume measured total device write amplification is 10, including WAL, flushes and compaction in this workload. The device must sustain about 200 MB/s, or 17.28 TB written per day. With three replicas that becomes about 51.84 TB/day across devices, before unrelated work. If each device can safely sustain 300 MB/s for this workload, it has limited space for repair and bursts. These are explicit assumptions, not universal LSM ratios. The sim models store capacities but not SSTables or disk endurance."
+      "text": "Write amplification depends on workload, compaction policy, cache and storage layout. These are explicit measured assumptions, not universal LSM ratios. Each device in this example can safely sustain 300 MB/s, so replication and repair have limited spare room. The traffic engine models store capacity but does not simulate SSTables or disk endurance.",
+      "diagram": {
+        "label": "Count physical writes",
+        "parts": [
+          [
+            "20 MB/s logical",
+            "The application measures incoming logical bytes."
+          ],
+          [
+            "10 times write amplification",
+            "WAL, flushes and compaction together require 200 MB/s, about 17.28 TB/day."
+          ],
+          [
+            "3 replicas",
+            "About 51.84 TB/day across devices. Each needs headroom for bursts and repair."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",

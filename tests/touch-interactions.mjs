@@ -76,6 +76,17 @@ camera.stop();
 camera.update(500);
 assert.deepEqual({ ...camera.center, zoom: camera.zoom }, before);
 assert.equal(camera.moving, false);
+const flingCamera = () => {
+  const camera = createCamera({ position: { set() {} }, scale: { set() {} } });
+  camera.resize(390, 844);
+  camera.fling(1, .5);
+  return camera;
+};
+const delayed = flingCamera(), regular = flingCamera();
+delayed.update(500);
+for (let i = 0; i < 5; i++) regular.update(100);
+assert(Math.abs(delayed.center.x - regular.center.x) < 1e-6, 'a delayed frame preserves the fling distance');
+assert(Math.abs(delayed.center.y - regular.center.y) < 1e-6, 'fling decay is independent of frame cadence');
 const announcementSource = source.slice(source.indexOf('  let announcementTimer'), source.indexOf('  // ---- building actions'));
 const pending = new Map(), announced = { textContent: '' };
 let nextTimer = 0;

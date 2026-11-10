@@ -22,7 +22,24 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: cells and overlap",
-      "text": "Divide 2,000 tenants evenly across 20 cells. A cell owns its ingress, workers and data path, so one cell failure reaches about 100 tenants, or 5% of tenant count, under even placement. It need not represent 5% of requests or revenue. That bound is false if all cells need one shared database to serve requests. Shuffle sharding instead assigns each tenant a small subset of a larger worker pool. Choosing 2 of 10 workers yields 45 possible pairs. Under uniform independent assignment, two tenants have a 1/45 chance of the same pair, but a 17/45 chance of sharing at least one worker. Partial overlap still matters. The sim can model a noisy-neighbour event, but not this assignment distribution."
+      "text": "A cell boundary is real only if its critical serving dependencies respect it. Five percent of tenants need not mean five percent of requests or revenue. Shuffle sharding reduces shared fate but does not eliminate partial overlap. These placement calculations are separate from the traffic engine noisy-neighbour event.",
+      "diagram": {
+        "label": "Isolation depends on placement",
+        "parts": [
+          [
+            "20 independent cells",
+            "2,000 tenants / 20 = 100 per cell. One cell reaches 5% of tenant count."
+          ],
+          [
+            "2 of 10 workers",
+            "45 possible pairs. Two uniform assignments match exactly with probability 1/45."
+          ],
+          [
+            "Partial overlap matters",
+            "17/45 share at least one worker. A shared database can also break the cell boundary."
+          ]
+        ]
+      }
     },
     {
       "kind": "numbers",
@@ -68,7 +85,24 @@ export default {
     {
       "kind": "read",
       "title": "Trace the actual blast radius",
-      "text": "Cells provide a concrete failure boundary only if their critical data, queues and deployment controls respect it. A shared control plane can provision cells without sitting on every request path. Cache keys and authorization must include the tenant; fairness is useless if data leaks. Test a runaway query, full disk, bad deployment and control-plane outage. List which tenants each event can reach, including shared identity, DNS and key services. Larger tenants may need dedicated cells or higher priced quotas. More isolation costs idle headroom, duplicated operations and migration work. Make that cost visible rather than selling unlimited capacity on a shared pool."
+      "text": "A shared control plane can provision cells without sitting on every request. Include tenant identity in cache keys and authorization; fair scheduling cannot prevent a data leak. Larger tenants may need dedicated cells or priced quotas. More isolation costs idle headroom, repeated operations and migration work. Make that cost explicit instead of promising unlimited capacity on a shared pool.",
+      "diagram": {
+        "label": "Follow the failure through shared dependencies",
+        "parts": [
+          [
+            "Tenant cell",
+            "Ingress, workers, queues and critical data share a failure boundary."
+          ],
+          [
+            "Shared identity or keys",
+            "An outage here can reach every cell that needs it on requests."
+          ],
+          [
+            "Prove the boundary",
+            "Test a runaway query, full disk and bad deployment; name affected tenants."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",

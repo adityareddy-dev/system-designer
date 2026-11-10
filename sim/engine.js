@@ -134,53 +134,252 @@ const N_U8 = ['down', 'blockW', 'poison', 'scaleBlocked', 'cbOpen', 'status', 't
 const NL = ['IN', 'RIN', 'INJ', 'OKS', 'FAILR', 'DONE', 'HITS', 'PUa', 'SUCC', 'SOFT', 'LAT', 'TM', 'TV', 'EXTRA', 'PD', 'TMO', 'DD', 'BACK', 'DRAIN', 'RNEXT', 'RPEND', 'WNEXT', 'PQ'];
 const EL = ['W', 'ER', 'BACKE', 'DRAINE'];
 const PERSIST_N = ['unitsCur', 'sPrev', 'rhoPrev', 'rhoQPrev', 'health', 'unhealthySince', 'extraPrev', 'cbOpenUntil', 'cbDown', 'cbLat', 'realInPrev',
-  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'unitsLo', 'unitsHi', 'peakUnits', 'peakInstalledUnits', 'peakCapacity', 'peakRequests'];
+  'wrRatePrev', 'writesSoFar', 'peakUtil', 'overTicks', 'failedSum', 'highSince', 'lowSince', 'status', 'down', 'aliveFactor', 'unitsLo', 'unitsHi', 'peakUnits', 'peakInstalledUnits', 'peakCapacity', 'peakRequests'];
 const PERSIST_NL = ['BACK', 'RPEND', 'RNEXT', 'WNEXT', 'PQ'];
 const PERSIST_EL = ['BACKE'];
 // Every field the engine state ever holds, declared up front so the object keeps one fast shape in V8.
 // Fractional numbers start as -0 so V8 stores them as doubles from the first object on (no shape changes later).
-function blankState() {
-  const s = {
-    catalog: null, world: null, problem: null, regionIds: null, R: 0, T: 0, LN: 0, dt: 10, dayMs: 0, mode: '',
-    attackT: -1, paymentT: -1, webhookT: -1, queueCap: 20,
-    isWrite: null, durableWrite: null, nonIdem: null, readLike: null, cacheable: null, interactive: null, sizeKb: null, respKb: null,
-    rtt: null, laneT: null, laneR: null, active: null, nActive: 0, activeT: null, nActiveT: 0,
-    trafficMul: null, fanTypes: null, noise: null, regShare: null, latTarget: null, mixArr: null, regShareBase: null,
-    curve: null, curveCum: null, peakMinute: 0, peakRps: -0,
-    backupsParams: null, ciCdParams: null, configParams: null, proxyParams: null, storageTbOf: null, addLost: null,
-    activeEffects: null, instances: null, clock: 0, model: null, version: 0, rng: null, acc: -0,
-    srcShare: null, srcAny: null, requiresOk: null, queueNodes: null, retryNodes: null, timeoutNodes: null, webhookNodes: null, cbNodes: null,
-    srcRetries: 0, multiRegionWriters: false, storeOrder: null, frame: null, asPending: null,
-    staleNow: -0, conflictsNow: -0, attackRate: -0, attackMask: 0, attackAppRate: -0, attackApp: -0, usageMul: -0, partition: false, retryAmp: false,
-    shiftShare: -0, shiftRegion: -1, usdTickExtra: -0, forceAttackLanes: false,
-    lostWrites: -0, duplicates: -0, staleReads: -0, readsServed: -0, conflicts: -0, dupQueue: -0, attackDropped: -0, attackOffered: -0,
-    offeredDay: -0, successDay: -0, latOk: -0, latW: -0, writesDay: -0, worstP99: -0,
-    typeOff: null, typeSucc: null, typeLatOk: null, typeLatW: null, typeP99Sum: null, typeWorst: null, typeSlowHop: null,
-    minOff: null, minSucc: null, hourOff: null, hourSucc: null, hourP99: null, hourW: null,
-    complianceChecked: null, interventions: null, result: null, counters: null, firstBreak: null, tickNow: null,
-    laneOff: null, laneSucc: null, laneP99: null, lastStorageGb: null, stateObj: null, frameDirty: false, rttE: null,
-    loc: null, effCap: null,
-    qHist: null, lateCarry: null, lateType: null, lateDay: -0, readBack: -0, readBackEdge: -0, privateReads: -0, typeP99Now: null, typeWNow: null, latWorstT: -1,
+class RuntimeState {
+  constructor() {
+    this.catalog = null;
+    this.world = null;
+    this.problem = null;
+    this.regionIds = null;
+    this.R = 0;
+    this.T = 0;
+    this.LN = 0;
+    this.dt = 10;
+    this.dayMs = 0;
+    this.mode = '';
+    this.attackT = -1;
+    this.paymentT = -1;
+    this.webhookT = -1;
+    this.queueCap = 20;
+    this.isWrite = null;
+    this.durableWrite = null;
+    this.nonIdem = null;
+    this.readLike = null;
+    this.cacheable = null;
+    this.interactive = null;
+    this.sizeKb = null;
+    this.respKb = null;
+    this.rtt = null;
+    this.laneT = null;
+    this.laneR = null;
+    this.active = null;
+    this.nActive = 0;
+    this.activeT = null;
+    this.nActiveT = 0;
+    this.trafficMul = null;
+    this.fanTypes = null;
+    this.noise = null;
+    this.regShare = null;
+    this.latTarget = null;
+    this.mixArr = null;
+    this.regShareBase = null;
+    this.curve = null;
+    this.curveCum = null;
+    this.peakMinute = 0;
+    this.peakRps = -0;
+    this.backupsParams = null;
+    this.ciCdParams = null;
+    this.configParams = null;
+    this.proxyParams = null;
+    this.storageTbOf = null;
+    this.addLost = null;
+    this.activeEffects = null;
+    this.instances = null;
+    this.clock = 0;
+    this.model = null;
+    this.version = 0;
+    this.rng = null;
+    this.acc = -0;
+    this.srcShare = null;
+    this.srcAny = null;
+    this.requiresOk = null;
+    this.queueNodes = null;
+    this.retryNodes = null;
+    this.timeoutNodes = null;
+    this.webhookNodes = null;
+    this.cbNodes = null;
+    this.srcRetries = 0;
+    this.multiRegionWriters = false;
+    this.storeOrder = null;
+    this.frame = null;
+    this.asPending = null;
+    this.staleNow = -0;
+    this.conflictsNow = -0;
+    this.attackRate = -0;
+    this.attackMask = 0;
+    this.attackAppRate = -0;
+    this.attackApp = -0;
+    this.usageMul = -0;
+    this.partition = false;
+    this.retryAmp = false;
+    this.shiftShare = -0;
+    this.shiftRegion = -1;
+    this.usdTickExtra = -0;
+    this.forceAttackLanes = false;
+    this.lostWrites = -0;
+    this.duplicates = -0;
+    this.staleReads = -0;
+    this.readsServed = -0;
+    this.conflicts = -0;
+    this.dupQueue = -0;
+    this.attackDropped = -0;
+    this.attackOffered = -0;
+    this.offeredDay = -0;
+    this.successDay = -0;
+    this.latOk = -0;
+    this.latW = -0;
+    this.writesDay = -0;
+    this.worstP99 = -0;
+    this.typeOff = null;
+    this.typeSucc = null;
+    this.typeLatOk = null;
+    this.typeLatW = null;
+    this.typeP99Sum = null;
+    this.typeWorst = null;
+    this.typeSlowHop = null;
+    this.minOff = null;
+    this.minSucc = null;
+    this.hourOff = null;
+    this.hourSucc = null;
+    this.hourP99 = null;
+    this.hourW = null;
+    this.complianceChecked = null;
+    this.interventions = null;
+    this.result = null;
+    this.counters = null;
+    this.firstBreak = null;
+    this.tickNow = null;
+    this.laneOff = null;
+    this.laneSucc = null;
+    this.laneP99 = null;
+    this.lastStorageGb = null;
+    this.stateObj = null;
+    this.frameDirty = false;
+    this.rttE = null;
+    this.loc = null;
+    this.effCap = null;
+    this.effCapInputs = null;
+    this._blocked = null;
+    this.qHist = null;
+    this.lateCarry = null;
+    this.lateType = null;
+    this.lateDay = -0;
+    this.readBack = -0;
+    this.readBackEdge = -0;
+    this.privateReads = -0;
+    this.typeP99Now = null;
+    this.typeWNow = null;
+    this.latWorstT = -1;
     // per node (N)
-    cap: null, capNom: null, rho: null, sv: null, sPrev: null, rhoPrev: null, rhoQacc: null, rhoQPrev: null, health: null, unhealthySince: null,
-    extraNow: null, extraPrev: null, dNow: null, hop50: null, hop99: null, err: null, errSoft: null, addLat: null, cold: null, hot: null, flush: null,
-    dup: null, lagEv: null, lag: null, cacheLag: null, capFactor: null, aliveFactor: null, fan: null, limitCap: null, connErr: null, nodeCostMul: null, unitsCur: null,
-    cbOpenUntil: null, cbDown: null, cbLat: null, loadEq: null, realIn: null, realInPrev: null, wrRate: null, wrRatePrev: null, writesSoFar: null,
-    peakUtil: null, overTicks: null, failedSum: null, failedNow: null, llLoss: null, highSince: null, lowSince: null,
-    nodeReq: null, nodeKb: null, nodeInKb: null, nodeWKb: null, atkIn: null, BIN: null, qAge: null, qOver: null, lateNow: null, unitsLo: null, unitsHi: null, peakUnits: null, peakInstalledUnits: null, peakCapacity: null, peakRequests: null,
-    down: null, blockW: null, poison: null, scaleBlocked: null, cbOpen: null, status: null, tmoAny: null,
+    this.cap = null;
+    this.capNom = null;
+    this.rho = null;
+    this.sv = null;
+    this.sPrev = null;
+    this.rhoPrev = null;
+    this.rhoQacc = null;
+    this.rhoQPrev = null;
+    this.health = null;
+    this.unhealthySince = null;
+    this.extraNow = null;
+    this.extraPrev = null;
+    this.dNow = null;
+    this.hop50 = null;
+    this.hop99 = null;
+    this.err = null;
+    this.errSoft = null;
+    this.addLat = null;
+    this.cold = null;
+    this.hot = null;
+    this.flush = null;
+    this.dup = null;
+    this.lagEv = null;
+    this.lag = null;
+    this.cacheLag = null;
+    this.capFactor = null;
+    this.aliveFactor = null;
+    this.fan = null;
+    this.limitCap = null;
+    this.connErr = null;
+    this.nodeCostMul = null;
+    this.unitsCur = null;
+    this.cbOpenUntil = null;
+    this.cbDown = null;
+    this.cbLat = null;
+    this.loadEq = null;
+    this.realIn = null;
+    this.realInPrev = null;
+    this.wrRate = null;
+    this.wrRatePrev = null;
+    this.writesSoFar = null;
+    this.peakUtil = null;
+    this.overTicks = null;
+    this.failedSum = null;
+    this.failedNow = null;
+    this.llLoss = null;
+    this.highSince = null;
+    this.lowSince = null;
+    this.nodeReq = null;
+    this.nodeKb = null;
+    this.nodeInKb = null;
+    this.nodeWKb = null;
+    this.atkIn = null;
+    this.BIN = null;
+    this.qAge = null;
+    this.qOver = null;
+    this.lateNow = null;
+    this.unitsLo = null;
+    this.unitsHi = null;
+    this.peakUnits = null;
+    this.peakInstalledUnits = null;
+    this.peakCapacity = null;
+    this.peakRequests = null;
+    this.down = null;
+    this.blockW = null;
+    this.poison = null;
+    this.scaleBlocked = null;
+    this.cbOpen = null;
+    this.status = null;
+    this.tmoAny = null;
     // per node and lane (N x LN)
-    IN: null, RIN: null, INJ: null, OKS: null, FAILR: null, DONE: null, HITS: null, PUa: null, SUCC: null, SOFT: null, LAT: null, TM: null, TV: null,
-    EXTRA: null, PD: null, TMO: null, DD: null, BACK: null, DRAIN: null, RNEXT: null, RPEND: null, WNEXT: null, PQ: null,
+    this.IN = null;
+    this.RIN = null;
+    this.INJ = null;
+    this.OKS = null;
+    this.FAILR = null;
+    this.DONE = null;
+    this.HITS = null;
+    this.PUa = null;
+    this.SUCC = null;
+    this.SOFT = null;
+    this.LAT = null;
+    this.TM = null;
+    this.TV = null;
+    this.EXTRA = null;
+    this.PD = null;
+    this.TMO = null;
+    this.DD = null;
+    this.BACK = null;
+    this.DRAIN = null;
+    this.RNEXT = null;
+    this.RPEND = null;
+    this.WNEXT = null;
+    this.PQ = null;
     // per edge and lane (E x LN)
-    W: null, ER: null, BACKE: null, DRAINE: null,
-  };
-  return s;
+    this.W = null;
+    this.ER = null;
+    this.BACKE = null;
+    this.DRAINE = null;
+  }
 }
 
-// The state is one static literal (fast properties); fields are only ever overwritten, never added.
+// Constructor fields share one runtime shape across simulations and previews.
 function fastState(fields) {
-  const out = blankState();
+  const out = new RuntimeState();
   if (fields) for (const k of Object.keys(fields)) if (k in out) out[k] = fields[k];
   return out;
 }
@@ -202,6 +401,7 @@ function initNodeRuntime(S) {
     S.unitsHi[n.i] = 0;
     S.sPrev[n.i] = 1;
     S.health[n.i] = 1;
+    S.aliveFactor[n.i] = 1;
     S.unhealthySince[n.i] = -1;
     S.highSince[n.i] = -1;
     S.lowSince[n.i] = -1;
@@ -302,6 +502,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
   let counter = 1;
   let dirty = true;
   let phase = 'build';
+  let measuredVersion = -1;
   const listeners = new Map();
   const emit = (name, payload) => { const l = listeners.get(name); if (l) for (const fn of [...l]) fn(payload); };
 
@@ -321,6 +522,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     if (old && phase !== 'build') restorePersist(old);
     prepareModel();
     allocFrame();
+    S.frameDirty = true;
     dirty = false;
   }
 
@@ -420,6 +622,8 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
 
   // ---- run state
   function resetRun() {
+    measuredVersion = -1;
+    queueStreams.length = 0;
     S.rng = mulberry32(hashSeed(`${seed}|${prob.id}`));
     S.clock = 0;
     S.noise.fill(0);
@@ -571,20 +775,21 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
 
   function zeroWork(X) {
     const { N, E, nodes, edges } = X.model;
+    const { IN, RIN, INJ, FAILR, DONE, HITS, PUa, ER, DRAINE } = X;
     for (let u = 0; u < N; u++) {
       const b = u * LN;
       const near = nodes[u].laneNear;
       const a = near ? X.active : X.activeT, na = near ? X.nActive : X.nActiveT;
       for (let k = 0; k < na; k++) {
         const j = b + a[k];
-        X.IN[j] = 0; X.RIN[j] = 0; X.INJ[j] = 0; X.FAILR[j] = 0; X.DONE[j] = 0; X.HITS[j] = 0; X.PUa[j] = 0;
+        IN[j] = 0; RIN[j] = 0; INJ[j] = 0; FAILR[j] = 0; DONE[j] = 0; HITS[j] = 0; PUa[j] = 0;
       }
     }
     for (let e = 0; e < E; e++) {
       const b = e * LN;
       const near = nodes[edges[e].fi].laneNear;
       const a = near ? X.active : X.activeT, na = near ? X.nActive : X.nActiveT;
-      for (let k = 0; k < na; k++) { X.ER[b + a[k]] = 0; X.DRAINE[b + a[k]] = 0; }
+      for (let k = 0; k < na; k++) { ER[b + a[k]] = 0; DRAINE[b + a[k]] = 0; }
     }
     X.wrRate.fill(0);
     X.BIN.fill(0);
@@ -735,7 +940,10 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     }
   }
   const compBuf = new Float64Array(T);
+  const lateByType = new Float64Array(T);
+  const queueStreams = [];
   function queueLateness(X, tn, dt) {
+    queueStreams.length = 0;
     const m = X.model;
     if (!X.queueNodes.length) return 0;
     X.lateType.fill(0);
@@ -751,7 +959,10 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         X.qHist.set(n.id, q);
       }
       const b = u * LN;
-      const streams = n.fanoutQ ? Array.from(n.consumers, ei => queueStream(q, m.edges[ei].id, ei)) : [queueStream(q, null)];
+      const streams = queueStreams;
+      streams.length = 0;
+      if (n.fanoutQ) for (const ei of n.consumers) streams.push(queueStream(q, m.edges[ei].id, ei));
+      else streams.push(queueStream(q, null));
       for (const [key, stream] of q.streams) if (!streams.includes(stream)) q.streams.delete(key);
       const la = n.laneNear ? X.active : X.activeT, ln = n.laneNear ? X.nActive : X.nActiveT;
       let arr = 0;
@@ -787,7 +998,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       q.procAvg = 0.9 * q.procAvg + 0.1 * proc;
       // Each type keeps its own deadline even when slower work shares the queue.
       let lateMsgs = 0, shortest = Infinity;
-      const lateByType = new Float64Array(T);
+      lateByType.fill(0);
       for (const stream of streams) for (let t = 0; t < T; t++) {
         if (!(stream.typeArr[t] > 0)) continue;
         let hist = stream.types.get(t);
@@ -885,7 +1096,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       const q = X.qHist.get(n.id);
       if (!q || n.isDLQ) continue;
       const k = Math.min(DAY_TICKS - 1, q.lastK);
-      const lateByType = new Float64Array(T);
+      lateByType.fill(0);
       for (const stream of q.streams.values()) for (const [t, hist] of stream.types) {
         const limit = queueLimitFor(X.problem.requirements, catalog.requests[t]);
         const Lt = Math.max(1, Math.ceil(limit / X.dt));
@@ -1217,7 +1428,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
         q += mx;
       }
       F.nodeUtil[u] = Math.min(S.rho[u], UTIL_SHOW_MAX);
-      F.nodeStatus[u] = S.status[u];
+      F.nodeStatus[u] = measuredVersion === S.version ? S.status[u] : S.down[u] ? 4 : 0;
       F.nodeQueue[u] = q;
     }
     F.activeEvents = S.instances.filter((i) => i.started && !i.ended).map((i) => i.id);
@@ -1265,6 +1476,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     scheduleRetries(S);
     const dupsNow = account();
     eventStats(dupsNow);
+    measuredVersion = S.version;
     S.frameDirty = true;
     S.clock += tickMs;
     emit('tick', { clockMs: S.clock });
@@ -1350,7 +1562,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     const X = fastState(null);
     for (const k of Object.keys(S)) X[k] = S[k];
     X.model = m;
-    X.laneSucc = new Float64Array(LN); X.laneP99 = new Float64Array(LN); X.rttE = null; X.frame = null; X.stateObj = null;
+    X.laneSucc = new Float64Array(LN); X.laneP99 = new Float64Array(LN); X.effCap = null; X.rttE = null; X.frame = null; X.stateObj = null;
     X.version = S.version;
     X.noise = new Float64Array(T);
     X.trafficMul = new Float64Array(T); X.fanTypes = new Uint8Array(T); X.regShare = new Float64Array(R);
@@ -1517,6 +1729,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     ensureModel();
     const st = S.stateObj || (S.stateObj = { phase, clockMs: 0, clockLabel: '00:00', nodes: [], edges: [], traffic: {}, slo: {}, cost: {}, scoreLive: {}, events: [] });
     const m = S.model;
+    const measured = measuredVersion === S.version;
     if (S.frameDirty) { updateFrame(); S.frameDirty = false; }
     st.phase = phase;
     st.clockMs = S.clock;
@@ -1525,9 +1738,10 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     st.nodes = m.nodes.map((n) => ({
       id: n.id, type: n.el.id,
       incomingRps: Math.round(S.realIn[n.i]),
+      retryRps: phase === 'build' ? 0 : S.RIN.subarray(n.i * S.LN, (n.i + 1) * S.LN).reduce((sum, rate) => sum + rate, 0),
       availableUnits: phase === 'build' || S.clock === 0 ? Math.round(S.unitsCur[n.i]) : Math.max(0, Math.round(S.unitsCur[n.i] * (S.down[n.i] ? 0 : S.aliveFactor[n.i]))),
       util: Math.round(Math.min(S.rho[n.i], UTIL_SHOW_MAX) * 1000) / 1000,
-      status: ['ok', 'warn', 'hot', 'overload', 'down'][S.status[n.i]],
+      status: ['ok', 'warn', 'hot', 'overload', 'down'][measured ? S.status[n.i] : S.down[n.i] ? 4 : 0],
       p99Ms: Math.round(S.hop99[n.i] * 10) / 10,
       failRps: Math.round(S.failedNow[n.i] * 10) / 10,
       queueDepth: S.frame ? Math.round(S.frame.nodeQueue[n.i]) : 0,
@@ -1544,7 +1758,7 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
       for (let t = 0; t < T; t++) rps += S.frame.edgeRps[e.i * T + t];
       return { id: e.id, rps: Math.round(rps * 10) / 10 };
     });
-    const tn = S.tickNow || { offered: 0, success: 0, p99: 0, byType: new Float64Array(T * 3) };
+    const tn = measured && S.tickNow || { offered: 0, success: 0, p99: 0, byType: new Float64Array(T * 3) };
     const byType = {};
     for (let t = 0; t < T; t++) if (tn.byType[t * 3] > 0) byType[catalog.requests[t].id] = { offered: tn.byType[t * 3], success: tn.byType[t * 3 + 1], failed: tn.byType[t * 3 + 2] };
     st.traffic = { offeredRps: tn.offered, successRps: tn.success, failRps: Math.max(0, tn.offered - tn.success), byType };
@@ -1554,7 +1768,9 @@ export function createSim({ catalog, problem, seed = 'practice', mode = 'practic
     st.slo = {
       availability: { target: req.availability, actual: mt.availability },
       // the type furthest from its own target this moment, against that target (a sign-in keeps its longer budget)
-      latency: S.latWorstT >= 0 && phase !== 'build'
+      latency: !measured && phase !== 'build' && S.clock > 0
+        ? { targetMs: interactiveTarget(), p99Ms: null, shareOk: mt.latencyShare, typeId: null }
+        : S.latWorstT >= 0 && phase !== 'build'
         ? { targetMs: S.latTarget[S.latWorstT], p99Ms: Math.round(S.typeP99Now[S.latWorstT]), shareOk: mt.latencyShare, typeId: catalog.requests[S.latWorstT].id }
         : { targetMs: interactiveTarget(), p99Ms: Math.round(tn.p99), shareOk: mt.latencyShare, typeId: null },
       safety: { lostWrites: Math.round(S.lostWrites || 0), duplicates: Math.round(S.duplicates || 0), staleReads: Math.round(S.staleReads || 0), complianceFailed: mt.ledger.complianceFailed, promiseFailures: mt.ledger.promiseFailures },

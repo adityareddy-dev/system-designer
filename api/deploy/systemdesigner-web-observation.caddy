@@ -1,0 +1,25 @@
+# Import this snippet inside the existing systemdesigner.io site block. API.md has installation steps.
+log_append referrer {http.request.header.Referer}
+log {
+    output file /var/log/caddy/systemdesigner-web.log {
+        mode 0600
+        roll_size 20MiB
+        roll_at 00:00
+        roll_keep 100
+        roll_keep_for 336h
+    }
+    format filter {
+        wrap json
+        fields {
+            request>remote_ip delete
+            request>client_ip delete
+            request>remote_port delete
+            request>headers delete
+            request>tls delete
+            resp_headers delete
+            user_id delete
+            request>uri regexp "[?#].*$" ""
+            referrer regexp "^(?:https?://([^/@:?#]+)(?::[0-9]+)?(?:[/?#].*)?|.*)$" "${1}"
+        }
+    }
+}

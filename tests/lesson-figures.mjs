@@ -68,6 +68,18 @@ assert.equal(run('queues-backpressure',action('step','step')).s.queue.length,6);
 assert.equal(run('fanout',action('post')).v.stats.writes,100);
 assert.match(run('realtime-connections',action('beat','disconnect','tick','tick','tick','tick','tick')).v.caption,/presence offline/);
 assert.equal(run('consistency',action('write','read')).s.answer,0);
+const consistency=models.get('consistency');
+let readState=run('consistency',action('read')).s;
+const firstRead=structuredClone(readState.lastRead);
+for(const [a,v]of [['write'],['mode','strong'],['deliver']]){
+ readState=consistency.update(readState,a,v);
+ assert.deepEqual(readState.lastRead,firstRead,'unrelated actions retain the read identity, source and value');
+ assert.match(consistency.view(readState).svg,/data-from-y="210" data-key="answer:1"/,'the response keeps its actual replica origin');
+}
+readState=consistency.update(readState,'read');
+assert.deepEqual(readState.lastRead,{id:2,source:'primary',version:1});
+assert.match(consistency.view(readState).svg,/data-from-y="55" data-key="answer:2"/);
+assert.equal(consistency.update(readState,'read').lastRead.id,3,'even an unchanged value is a new read operation');
 assert.equal(run('idempotency-retries',[['dedupe',true],...action('pay','retry')]).s.charges,1);
 assert.equal(run('rate-limiting',action('send','send','send')).s.rejected,2);
 assert.equal(run('circuit-breakers',action('call','call','call','call')).s.upstream,3);

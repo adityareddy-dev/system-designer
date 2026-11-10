@@ -22,7 +22,25 @@ export default {
     {
       "kind": "read",
       "title": "Worked example: moving 8 TB",
-      "text": "Assume uniformly hashed data of roughly equal record size, no replicas and decimal TB. Modulo placement moves about 7.11 TB; a balanced ring moves about 0.89 TB. At a reserved 100 MB/s, the ring copy alone takes about 8,900 seconds, or 2.5 hours. Modulo needs about 19.8 hours. These are lower bounds: reads, checksums, retries and catching up new writes also use disk and network. Replication changes the bytes and failure headroom. This is a worked example because the sim does not model range movement."
+      "text": "These copy times assume uniform hashes, equal record sizes, decimal TB and no replicas. They are lower bounds. Reads, checksums, retries and new writes share the same disk and network. Reserve bandwidth and failure headroom, then measure the gap between snapshot completion and actual cutover readiness.",
+      "diagram": {
+        "label": "Copy lower bounds",
+        "parts": [
+          [
+            "8 TB / 9",
+            "A balanced ring copies about 0.89 TB. The source keeps its records."
+          ],
+          [
+            "100 MB/s reserved",
+            "0.89 TB takes about 2.5 hours. Modulo copies about 7.11 TB in 19.8 hours."
+          ],
+          [
+            "Still catching up",
+            "Live writes, checksums and retries add work after the snapshot."
+          ]
+        ],
+        "flow": true
+      }
     },
     {
       "kind": "numbers",

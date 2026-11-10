@@ -19,7 +19,9 @@ test('state cookie: wrong state, tampering, expiry or another secret fail', () =
   const [body, sig] = cookieValue.split('.');
   const forged = Buffer.from(JSON.stringify({ s: state, e: NOW + 9e9, r: '#/', o: 'https://evil.example' })).toString('base64url');
   assert.equal(checkState(SECRET, `${forged}.${sig}`, state, NOW), null, 'edited body');
-  assert.equal(checkState(SECRET, `${body}.${sig.slice(0, -2)}AA`, state, NOW), null, 'edited signature');
+  // Always change a character; a fixed suffix can match the random signature.
+  const editedSig = (sig[0] === 'A' ? 'B' : 'A') + sig.slice(1);
+  assert.equal(checkState(SECRET, `${body}.${editedSig}`, state, NOW), null, 'edited signature');
   assert.equal(checkState(SECRET, cookieValue, state, NOW + 601_000), null, 'expired after 10 minutes');
   assert.equal(checkState('z'.repeat(48), cookieValue, state, NOW), null, 'other secret');
   assert.equal(checkState(SECRET, undefined, state, NOW), null, 'no cookie');

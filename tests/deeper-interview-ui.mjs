@@ -2,9 +2,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
 import { problemById } from '../content/problems/index.js';
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage(), errors = [];
@@ -13,11 +15,13 @@ try {
     localStorage.setItem('hotpath.v1.seenIntro', 'true');
     localStorage.setItem('hotpath.v1.settings', JSON.stringify({ soundMuted: true, reducedMotion: 'reduce' }));
   });
-  const click = text => page.evaluate(text => {
-    const button = [...document.querySelectorAll('button')].find(el => el.textContent.trim() === text && el.checkVisibility());
-    if (!button) throw Error('Missing button: ' + text);
-    button.click();
-  }, text);
+  const click = async text => {
+    const button = await page.waitForFunction(text =>
+      [...document.querySelectorAll('button')].find(el => el.textContent.trim() === text && el.checkVisibility() && !el.disabled),
+    { polling: 50 }, text);
+    try { await button.evaluate(el => el.click()); }
+    finally { await button.dispose(); }
+  };
   for (const [index, id] of ['logs-platform', 'tracing-platform', 'tenant-metrics', 'device-notes', 'wearable-health'].entries()) {
     const problem = problemById.get(id);
     await page.setViewport({ width: index % 2 ? 390 : 1366, height: 900, isMobile: index % 2 === 1, hasTouch: index % 2 === 1 });
@@ -62,8 +66,10 @@ try {
       answer.value = 'Use the measured peak and surviving units. Test durable recovery and bound retries before increasing traffic.';
       answer.dispatchEvent(new Event('input'));
       card.querySelector('form').requestSubmit();
-      card.querySelector('input[type=checkbox]').click();
+      const prediction = card.querySelector('.hp-defense-claims select'); prediction.value = 'hold'; prediction.dispatchEvent(new Event('change'));
+      card.querySelector('.hp-defense-claims input[type=checkbox]').click();
     }));
+    assert.deepEqual(errors, [], 'claim replays finish without runtime errors');
     await click('Save interview report');
     const saved = await page.evaluate(id => JSON.parse(localStorage.getItem('hotpath.v1.progress'))[id], id);
     assert.equal(saved.attempts, 0, 'interview leaves ordinary progress alone');
@@ -79,4 +85,4 @@ try {
     console.log('INTERVIEW', id, result.score.total);
   }
   assert.deepEqual(errors, []);
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

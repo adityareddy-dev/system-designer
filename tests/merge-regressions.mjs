@@ -1,7 +1,10 @@
 // Menu anchoring, shrinking selected pools, clock writes and earned score presentation.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
-const base = process.argv[2] || 'http://localhost:8765/';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
+import { commitLessonPrediction } from './lesson-prediction.js';
+const base = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 try {
@@ -13,6 +16,7 @@ try {
   for (const [phone, lesson] of [[false, false], [true, false], [false, true], [true, true]]) {
     await page.setViewport({ width: phone ? 390 : 1366, height: phone ? 844 : 800, isMobile: phone, hasTouch: phone });
     await page.goto(base + (lesson ? '#/learn/load-balancing?step=1' : '#/sandbox'));
+    if (lesson) await commitLessonPrediction(page);
     await page.waitForFunction(() => window.__game?.getState().nodes.some(n => n.id === 'app'));
     await sleep(700);
     if (lesson) {
@@ -105,4 +109,4 @@ try {
     assert.deepEqual(shown, { sweep: false, score: '999', metric: '99.99%', failedWin: false });
   }
   console.log('Full-motion menus, selected shrinking pools, Interview clock writes and score presentation passed.');
-} finally { await browser.close(); }
+} finally { await browser.close(); await site.close(); }

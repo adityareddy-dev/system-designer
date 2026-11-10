@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { createCatalog } from '../sim/catalog.js';
+import { createSim } from '../sim/engine.js';
+import { pathLayout } from '../render/layout.js';
+import { routePoints, crossesRect, routedLut } from '../render/routing.js';
+import { makeLut, lutAt } from '../render/geom.js';
+import { queuePressure } from '../render/pressure.js';
+const catalog = createCatalog(Object.fromEntries(['elements','requests','events','world'].map(k=>[k,JSON.parse(fs.readFileSync(new URL(`../catalog/${k}.json`,import.meta.url)))])));
+const graph={nodes:[['u','web-browser'],['app','vm-fleet'],['db','sql-primary'],['q','queue'],['wk','worker-pool'],['m','metrics']].map(([id,type])=>({id,type,x:0,y:0})),edges:[['u','app'],['app','db'],['app','q'],['q','wk'],['wk','db']].map(([from,to])=>({from,to,kind:'flow'}))};
+const original=JSON.stringify(graph),layout=pathLayout(graph,catalog),get=id=>layout.find(n=>n.id===id);
+assert.equal(JSON.stringify(graph),original);assert.deepEqual(pathLayout(graph,catalog),layout);
+assert(get('u').x<get('app').x&&get('app').x<get('db').x);
+assert(get('q').y>get('db').y&&get('wk').y===get('q').y);
+assert(get('m').y>get('q').y);
+const obstacles=[{x:40,y:-20,width:40,height:40},{x:130,y:0,width:40,height:70}];
+const points=routePoints([0,0],[220,0],obstacles),lut=routedLut(makeLut(),points);
+for(let i=1;i<points.length;i++)for(const r of obstacles)assert(!crossesRect(...points[i-1],...points[i],r));
+for(let s=0;s<=lut.len;s+=1){const p=lutAt(lut,s,{});for(const r of obstacles)assert(!(p.x>r.x&&p.x<r.x+r.width&&p.y>r.y&&p.y<r.y+r.height));}
+const pressure=queuePressure({queueDepth:2e6,oldestJobAgeSec:660,queueLimitSec:600,queueAcceptedRps:1500,queueDrainRps:2000});
+assert.equal(pressure.fill,1);assert.equal(pressure.late,true);assert.equal(pressure.net,-500);assert.match(pressure.text,/500\/s draining/);
+const sim=createSim({catalog,mode:'sandbox',problem:{id:'retry-telemetry',requirements:{peakRps:10000,mix:{read:1}},traffic:{curve:'flat',sources:{'web-browser':1}},events:[]}});
+sim.loadGraph({nodes:[{id:'u',type:'web-browser',knobs:{retries:3}},{id:'app',type:'vm-fleet',units:1},{id:'db',type:'sql-primary'}],edges:[['u','app'],['app','db']]});
+assert(sim.state().nodes.every(n=>n.retryRps===0));sim.start();sim.advance(60000);assert(sim.state().nodes.some(n=>n.retryRps>0));
+const before=JSON.stringify(sim.flows());sim.state();sim.state();assert.equal(JSON.stringify(sim.flows()),before,'telemetry reads do not affect traffic');
+console.log('Path layout, obstacle routing, pressure math and read-only retry telemetry passed.');

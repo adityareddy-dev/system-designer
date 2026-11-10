@@ -2,7 +2,8 @@
 import { h, ico, clear } from './dom.js';
 import { hashSeed, mulberry32 } from '../../sim/rng.js';
 import { toast } from './overlay.js';
-import { workloadTransfer } from '../../content/transfers.js';
+import { drillCase } from '../../content/drills.js';
+import { predictionGate } from './prediction.js';
 
 const ROUND = 10;
 const KEY = 'drill';
@@ -18,12 +19,14 @@ export function buildPool(lessons, rnd = Math.random) {
   const quiz = [], num = [];
   for (const l of lessons || []) {
     if (l.id === 'intro') continue;
-    const test = workloadTransfer(`drill:${l.id}`, l.id, l.title);
-    quiz.push({ kind: 'quiz', lesson: l.title, ...test });
-    quiz[quiz.length - 1].kind = 'quiz';
+    const source = drillCase(l.id);
+    if (!source) continue;
+    const meta = { lessonId: l.id, mechanism: l.id, template: l.id, calculation: source.calculation };
+    const test = { ...source, ...meta, q: `Predict before choosing: ${source.q}` };
+    quiz.push({ ...test, kind: 'quiz', lesson: l.title });
     const correct = `${test.value} ${test.unit}`;
-    num.push({ kind: 'num', lesson: l.title, q: `${test.q} ${test.calculation}`, correct,
-      others: [Math.round(test.value * 0.75), Math.round(test.value * 1.25), test.value * 2].map(n => `${n} ${test.unit}`),
+    num.push({ ...meta, kind: 'num', lesson: l.title, q: `Calculate before choosing: ${source.q}`, correct,
+      others: source.mistakes.map(n => `${n} ${test.unit}`),
       why: `${test.why} The result is ${correct}.` });
   }
   return { quiz, num };
@@ -31,15 +34,18 @@ export function buildPool(lessons, rnd = Math.random) {
 
 // Questions for one round: a mix of both kinds, no repeats.
 export function pickRound(pool, n = ROUND, rnd = Math.random) {
-  const nNum = Math.min(pool.num.length, Math.round(n * 0.3));
-  const items = shuffle(pool.quiz, rnd).slice(0, n - nNum).concat(shuffle(pool.num, rnd).slice(0, nNum));
-  return shuffle(items, rnd).slice(0, n).map((it) => {
+  const seen = new Set();
+  const items = shuffle([...pool.quiz, ...pool.num], rnd).filter(it => {
+    if (seen.has(it.template)) return false;
+    seen.add(it.template); return true;
+  }).slice(0, n);
+  return items.map(it => {
     if (it.kind === 'quiz') {
-      const order = shuffle(it.choices.map((c, i) => i), rnd);
-      return { q: it.q, lesson: it.lesson, why: it.why, choices: order.map((i) => it.choices[i]), answer: order.indexOf(it.answer) };
+      const order = shuffle(it.choices.map((_, i) => i), rnd);
+      return { ...it, choices: order.map(i => it.choices[i]), answer: order.indexOf(it.answer) };
     }
     const choices = shuffle([it.correct, ...it.others], rnd);
-    return { q: it.q, lesson: it.lesson, measures: it.measures || '', why: it.why, choices, answer: choices.indexOf(it.correct) };
+    return { ...it, choices, answer: choices.indexOf(it.correct) };
   });
 }
 
@@ -69,6 +75,7 @@ export function renderDrill(host, ctx) {
   host.append(page);
   let alive = true;
   let keyOff = null;
+  let prediction = null;
 
   function start(daily = false) {
     daily = daily === true;
@@ -89,13 +96,14 @@ export function renderDrill(host, ctx) {
   }
 
   function drawQ(S) {
+    prediction?.destroy();
     clear(page);
     S.answered = false;
     const q = S.qs[S.i];
     const result = h('div', { class: 'sh-quiz-result', role: 'status' });
     const bar = h('div', { class: 'sh-bar', role: 'presentation' }, h('span', { class: 'sh-bar-fill' }));
     bar.firstChild.style.width = (S.i / S.qs.length) * 100 + '%';
-    const choices = h('div', { class: 'sh-choices', role: 'group', 'aria-label': 'Answers' });
+    const choices = h('div', { class: 'sh-choices', role: 'group', 'aria-label': 'Answers', hidden: true });
     const nextBtn = h('button', { type: 'button', class: 'sh-btn sh-btn--primary', hidden: true, onclick: () => next(S) }, S.i + 1 >= S.qs.length ? 'See result' : 'Next', ico('ui.chevron-right', 18));
     const skipBtn = h('button', { type: 'button', class: 'sh-btn sh-btn--ghost', disabled: S.skipLeft < 1 || S.i >= S.qs.length - 1, title: 'Move on without it counting for or against you. One skip per round.', onclick: () => {
       if (S.answered || S.skipLeft < 1) return;
@@ -110,25 +118,27 @@ export function renderDrill(host, ctx) {
       choices.append(b);
       return b;
     });
+    prediction = predictionGate(choices, { prompt: q.calculation || 'What do you expect, and why?', onCommit: value => S.qs[S.i].prediction = value });
     page.append(head(S), bar,
+      S.qs.length < ROUND ? h('p', { class: 'sh-muted', text: `This short set covers ${S.qs.length} distinct lesson mechanisms. Finish more lessons for a longer drill.` }) : null,
       h('section', { class: 'sh-card sh-lp-card', 'aria-live': 'polite' },
         h('p', { class: 'sh-eyebrow', text: q.lesson ? `From the lesson: ${q.lesson}` : 'Drill' }),
         h('p', { class: 'sh-lp-text sh-drill-q', text: q.q }),
         q.measures ? h('p', { class: 'sh-muted', text: `What it measures: ${q.measures}` }) : null,
-        choices, result,
+        prediction.form, choices, result,
         h('div', { class: 'sh-lp-nav' }, skipBtn, nextBtn)));
     keyOff?.();
     const onKey = (e) => {
       if (!alive || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key >= '1' && e.key <= String(buttons.length) && !S.answered) buttons[+e.key - 1].click();
-      else if ((e.key === 'Enter' || e.key === 'ArrowRight') && S.answered && document.activeElement?.tagName !== 'BUTTON') nextBtn.click();
+      if (['TEXTAREA','INPUT'].includes(document.activeElement?.tagName)) return;
+      if ((e.key === 'Enter' || e.key === 'ArrowRight') && S.answered && document.activeElement?.tagName !== 'BUTTON') nextBtn.click();
     };
     document.addEventListener('keydown', onKey);
     keyOff = () => document.removeEventListener('keydown', onKey);
   }
 
   function pick(S, pos, buttons, result, nextBtn, skipBtn) {
-    if (S.answered) return;
+    if (S.answered || !S.qs[S.i].prediction) return;
     S.answered = true;
     const q = S.qs[S.i];
     const right = pos === q.answer;
@@ -138,7 +148,7 @@ export function renderDrill(host, ctx) {
       else if (i === pos) { b.dataset.state = 'wrong'; b.prepend(ico('ui.close', 18)); }
     });
     if (right) { S.right++; S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak); } else S.streak = 0;
-    result.textContent = right ? `Right. ${q.why}` : `Not quite. ${q.why}`;
+    result.textContent = `Your prediction (not graded): ${q.prediction}. ` + (right ? `Your choice is correct. ${q.why}` : `Revisit your choice. ${q.why}`);
     result.dataset.ok = right ? '1' : '0';
     page.querySelector('.sh-drill-streak .sh-progress-num').textContent = String(S.streak);
     skipBtn.hidden = true;
@@ -154,6 +164,7 @@ export function renderDrill(host, ctx) {
   }
 
   function finish(S) {
+    prediction?.destroy();
     keyOff?.(); keyOff = null;
     const prev = saved();
     const days = { ...(prev.days || {}) };
@@ -166,7 +177,7 @@ export function renderDrill(host, ctx) {
     const run = drillStreak(days, today);
     const url = 'https://systemdesigner.io/#/drill';
     const line = S.daily
-      ? `System Designer drill ${today}: ${S.right}/${S.qs.length}, ${run}-day drill streak. A review from my lessons: ${url}`
+      ? `System Designer drill ${today}: ${S.right}/${S.qs.length}, ${run}-day drill streak. Practice across the lesson catalog: ${url}`
       : `System Designer drill: ${S.right}/${S.qs.length}, longest run ${S.bestStreak}. ${url}`;
     const copy = async () => {
       try { await navigator.clipboard.writeText(line); toast({ text: 'Result copied.', level: 'ok' }); } catch { toast({ text: 'Could not copy. Select the line and copy it.', level: 'bad' }); }
@@ -184,5 +195,5 @@ export function renderDrill(host, ctx) {
   }
 
   start(!(saved().days || {})[today]);
-  return { title: 'Drill', destroy() { alive = false; keyOff?.(); } };
+  return { title: 'Drill', destroy() { alive = false; keyOff?.(); prediction?.destroy(); } };
 }

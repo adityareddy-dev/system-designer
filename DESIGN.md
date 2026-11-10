@@ -69,7 +69,7 @@ The problem bank. 82 problems across 15 groups (section 5).
 
 **Problem screen.** The five steps of the core loop. Requirements card always visible (collapsible on phones): users, peak requests per second and mix, latency target (p99), availability target, data safety, budget per month, regions, compliance.
 
-**New twist.** After a day, the debrief offers a replay of the same design on a variant day of the same problem: its events move and one more is added. It is practice only: not saved, not shared.
+**New twist.** After a day, the debrief offers a calibrated quieter workload with a tighter cost ceiling. The original design must change to fit the new budget while preserving the same data and recovery promises. Before repairs on a failed twist, the player commits a changed tradeoff and an experiment that separates two explanations. It is practice only: traffic bests are unchanged, and an independent checked pass adds mastery credit.
 
 **Hints.** Three tiers per problem, revealed one at a time: a nudge, the concept and element to consider, then a near-solution. Hints are free; the debrief and progress record how many were used.
 

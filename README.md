@@ -45,6 +45,14 @@ Opening `index.html` straight from disk will not work, because browsers block mo
 
 Development needs no build. For the live site, `node tools/release.mjs` (esbuild installed anywhere; point `ESBUILD_DIR` at the folder holding `node_modules/esbuild`) writes `dist/`: the modules bundled into a handful of files, one stylesheet, and one file holding every icon. PixiJS loads only when a page with a canvas opens. Publish `dist/`.
 
+The release includes the readable `problems/`, `p/`, `learn/`, `guides/` and `d/` pages, their previews, `assets/site.css`, `sitemap.xml`, `robots.txt`, `llms.txt` and `llms-full.txt`. Publish the whole `dist/` folder so reading links and game links share the same base path.
+
+After editing game content or guide prose in `tools/site-guides.mjs`, run `node tools/gen-site-pages.mjs` and commit the generated pages with the source. This requires only Node and leaves the game unchanged. It refreshes the home fallback, structured data, catalogue and crawler files. Last modification dates are recorded when each page's text changes, so rerunning it preserves dates. `node tools/gen-site-pages.mjs --check` checks deterministic output and drift without writing files.
+
+`node tools/gen-daily-pages.mjs` also generates new daily dates and preview cards, reusing the same renderer for lessons. Pass `--no-images` to update text without a browser, or set `PUPPETEER_CORE` to an existing module and `CHROME` to Chrome's executable. Use `--from YYYY-MM-DD --days N` for a fixed date range, or `DAILY_FROM=YYYY-MM-DD` when running the release. Existing dated challenge links keep their forwarding behavior; problem pages forward only beat links.
+
+`node tests/site-pages.mjs` checks generated content, metadata, structured data, local links and shared fragments. To check a release, run `node tests/site-pages.mjs dist` after the release build. The not-found recovery page is deliberately excluded from the sitemap.
+
 ## Project layout
 
 | Folder | What it holds |
@@ -78,7 +86,7 @@ cd api && node --test test/*.test.js   # sign-in service: Google token checks, G
 
 ## Privacy
 
-Without signing in nothing leaves your browser. Signing in stores your provider id, a display name, your avatar link, progress and scores; nothing is sold and you can delete it anytime. See [privacy.html](privacy.html).
+Automatic usage counts and error reports are disabled on public sites. Feedback is optional and anonymous. Signing in stores your provider id, a display name, your avatar link, progress and scores; nothing is sold and you can delete it anytime. See [privacy.html](privacy.html).
 
 ## License
 

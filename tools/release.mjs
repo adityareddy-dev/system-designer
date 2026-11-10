@@ -5,8 +5,10 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import { releaseDirectory, prepareReleaseDirectory } from './release-output.mjs';
 
 const root = process.cwd();
+const dist = releaseDirectory(root, process.env.RELEASE_DIR || path.join(root, 'dist'));
 
 // Content data first, then the static preview pages (d/<date>/ and p/<problem>/) from that data, so a page never names a
 // problem the game does not play that day. Preview images are drawn again for changed pages when puppeteer-core is there.
@@ -14,15 +16,14 @@ const node = (...a) => execFileSync(process.execPath, a, { cwd: root, stdio: 'in
 node('tools/gen-content.mjs');
 try { node('tools/gen-daily-pages.mjs'); }
 catch { console.warn('gen-daily-pages with images failed; writing the pages without new images'); node('tools/gen-daily-pages.mjs', '--no-images'); }
-const dist = path.join(root, 'dist');
+node('tools/gen-site-pages.mjs');
 const req = createRequire(path.join(process.env.ESBUILD_DIR || root, 'noop.js'));
 const esbuild = req('esbuild');
 
-fs.rmSync(dist, { recursive: true, force: true });
-fs.mkdirSync(dist, { recursive: true });
+prepareReleaseDirectory(root, dist);
 
 const res = await esbuild.build({
-  entryPoints: { main: path.join(root, 'main.js') },
+  entryPoints: { main: path.join(root, 'core/boot.js') },
   bundle: true, splitting: true, format: 'esm', minify: true, target: 'es2022',
   outdir: path.join(dist, 'js'), entryNames: '[name]', chunkNames: '[name]-[hash]',
   metafile: true, legalComments: 'none', logLevel: 'warning',
@@ -45,7 +46,9 @@ copy(path.join(root, 'catalog'), path.join(dist, 'catalog'));
 copy(path.join(root, 'content/data'), path.join(dist, 'content/data'));
 copy(path.join(root, 'assets'), path.join(dist, 'assets'), (f) => /\.(js|css)$/.test(f) || /preview\.html$/.test(f));
 copy(path.join(root, 'assets/fonts.css'), path.join(dist, 'assets/fonts.css'));
-for (const f of ['privacy.html', '404.html', 'd', 'p', 'LICENSE', 'CNAME', '.nojekyll']) if (fs.existsSync(path.join(root, f))) copy(path.join(root, f), path.join(dist, f));
+copy(path.join(root, 'assets/site.css'), path.join(dist, 'assets/site.css'));
+copy(path.join(root, 'assets/palette.css'), path.join(dist, 'assets/palette.css'));
+for (const f of ['privacy.html', '404.html', 'd', 'p', 'problems', 'learn', 'guides', 'sitemap.xml', 'robots.txt', 'llms.txt', 'llms-full.txt', 'LICENSE', 'CNAME', '.nojekyll']) if (fs.existsSync(path.join(root, f))) copy(path.join(root, f), path.join(dist, f));
 
 // All icons in one file (id → svg markup) so the workbench does not fetch them one by one.
 const iconIndex = JSON.parse(fs.readFileSync(path.join(root, 'assets/icons/index.json'), 'utf8'));
@@ -56,8 +59,8 @@ fs.writeFileSync(path.join(dist, 'assets/icons/index.json'), JSON.stringify({ ..
 
 // Page: one stylesheet, the bundle, and preloads for the files the first screen needs.
 const out = res.metafile.outputs;
-const mainOut = Object.keys(out).find((k) => out[k].entryPoint === 'main.js') || Object.keys(out).find((k) => out[k].entryPoint);
-const rel = (k) => path.posix.relative('dist', k);
+const mainOut = Object.keys(out).find((k) => out[k].entryPoint === 'core/boot.js') || Object.keys(out).find((k) => out[k].entryPoint);
+const rel = (k) => path.relative(dist, path.resolve(root, k)).replaceAll(path.sep, '/');
 // Chunks an output needs at start: its static imports, all the way down, minus what `skip` already covers.
 function staticChunks(start, skip = new Set()) {
   const seen = new Set(skip); const list = [];
@@ -92,7 +95,7 @@ html = html.replace(/  <!-- preload:start[\s\S]*?<!-- preload:end -->/, () => [
   '  <link rel="preload" as="fetch" href="content/data/lite.json" crossorigin>',
   head,
 ].join('\n'));
-html = html.replace('<script type="module" src="main.js"></script>', '<script type="module" src="js/main.js"></script>');
+html = html.replace('<script type="module" src="core/boot.js"></script>', '<script type="module" src="js/main.js"></script>');
 fs.writeFileSync(path.join(dist, 'index.html'), html);
 
 // Size report

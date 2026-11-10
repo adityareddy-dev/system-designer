@@ -70,7 +70,24 @@ export default {
     {
       "kind": "read",
       "title": "Retain by value",
-      "text": "Route all spans of a trace to the same tail decision group, bound memory and define the late-span policy. Head sampling protects the collector and network earlier; tail sampling can retain more failures but must first receive the data. A metric exemplar stores a link to a selected trace, not an entire label dimension. Propagate trace context across queues and mark asynchronous links where a parent-child tree is misleading. Retain security events and evidence of rare failures longer than routine debug output, under explicit policy. Record inclusion probabilities when they are known. A complex tail policy may not provide usable unbiased weights, so do not assume a configured baseline percentage corrects every sampled count. Protect the underlying user SLI from bias: count all eligible requests in metrics even if only some traces survive."
+      "text": "Route related spans to one tail decision group, bound its memory and define a late-span policy. Propagate context across queues and use asynchronous links when parent-child nesting misleads. An exemplar links a metric to a selected trace without making trace_id a label. Complex tail sampling may lack usable unbiased weights. A configured baseline percentage cannot automatically correct sampled counts.",
+      "diagram": {
+        "label": "Preserve the denominator",
+        "parts": [
+          [
+            "Count every eligible request",
+            "User SLIs come from complete request counters."
+          ],
+          [
+            "Select detailed traces",
+            "Head sampling decides early; tail sampling waits for outcomes and needs bounded buffers."
+          ],
+          [
+            "Retain by evidence value",
+            "Keep rare failures and security events under explicit policy. Sampling may bias counts."
+          ]
+        ]
+      }
     },
     {
       "kind": "quiz",

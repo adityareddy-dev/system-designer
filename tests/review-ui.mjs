@@ -1,8 +1,11 @@
 // Browser regressions for drill rounds, phone lesson controls, telemetry and restored graph positions.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+const site = await serveGame();
+import { commitLessonPrediction } from './lesson-prediction.js';
 
-const BASE = process.argv[2] || 'http://localhost:8765/';
+const BASE = site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
 const page = await browser.newPage();
@@ -19,6 +22,8 @@ try {
     if (round) await page.evaluate(() => [...document.querySelectorAll('.sh-drill button')].find(b => b.textContent === 'Another round').click());
     await page.evaluate(() => {
       for (let i = 0; i < 10 && document.querySelector('.sh-drill-q'); i++) {
+        const prediction = document.querySelector('.sh-drill textarea'); prediction.value = 'I predict the net rate determines the outcome.'; prediction.dispatchEvent(new Event('input'));
+        [...document.querySelectorAll('button')].find(b => b.textContent === 'Commit prediction and see choices').click();
         document.querySelector('.sh-choice').click();
         document.querySelector('.sh-lp-nav .sh-btn--primary').click();
       }
@@ -38,11 +43,13 @@ try {
       if (round) await page.evaluate(() => [...document.querySelectorAll('.sh-drill button')].find(b => b.textContent === 'Another round').click());
       const counter = await page.$eval('.sh-drill .sh-progress-num', el => el.textContent);
       assert.match(counter, /^1\/[1-9]\d*$/, 'daily and repeat rounds both contain questions');
-      if (completed.length > 1) assert.equal(counter, '1/2');
-      if (completed.length > 1) assert.equal(await page.$eval('.sh-lp-card .sh-eyebrow', el => el.textContent), 'From the lesson: Remembering answers');
+      if (completed.length > 1) assert.equal(counter, '1/1', 'one studied mechanism is never padded with repeated templates or advanced material');
+      assert.match(await page.$eval('.sh-lp-card .sh-eyebrow', el => el.textContent), /^From the lesson:/);
       await page.evaluate(() => {
         for (let i = 0; i < 10 && document.querySelector('.sh-drill-q'); i++) {
-          document.querySelector('.sh-choice').click();
+          const prediction = document.querySelector('.sh-drill textarea'); prediction.value = 'I predict the net rate determines the outcome.'; prediction.dispatchEvent(new Event('input'));
+        [...document.querySelectorAll('button')].find(b => b.textContent === 'Commit prediction and see choices').click();
+        document.querySelector('.sh-choice').click();
           document.querySelector('.sh-lp-nav .sh-btn--primary').click();
         }
       });
@@ -59,9 +66,12 @@ try {
       document.documentElement.dataset.motion = reduce ? 'reduce' : 'full';
       location.hash = '#/learn/caching?step=1';
     }, reduced);
+    await commitLessonPrediction(page);
     await page.waitForSelector('.sh-demo-stage .pl-tb-grab');
     const starter = await page.evaluate(() => window.__game.getState().nodes);
-    assert.equal(new Set(starter.map(n => n.x)).size, 1, 'fresh phone starters flow top to bottom');
+    assert.equal(new Set(starter.map(n => n.y)).size, 1, 'fresh phone starters share a request band');
+    const xOf = type => starter.find(n => n.type === type).x;
+    assert(xOf('mobile-app') < xOf('vm-fleet') && xOf('vm-fleet') < xOf('sql-primary'), 'fresh phone starters flow from clients to stores, left to right');
     await page.waitForFunction(() => !document.querySelector('.sh-lp-card').getAnimations().some(a => a.playState === 'running'));
     const bounds = await page.evaluate(() => {
       const add = document.querySelector('.pl-tb-grab').getBoundingClientRect();
@@ -83,6 +93,9 @@ try {
       await page.evaluate(async motion => {
         document.documentElement.dataset.motion = motion;
         await window.__game.loadLesson('queues-backpressure');
+      }, motion);
+      await commitLessonPrediction(page);
+      await page.evaluate(() => {
         const game = window.__game;
         const state = game.getState();
         const app = state.nodes.find(n => n.type === 'vm-fleet');
@@ -95,7 +108,7 @@ try {
         game.startTraffic();
         game.step(600000);
         game.pause();
-      }, motion);
+      });
       await page.waitForFunction(() => document.querySelector('.pl-hud--queues'));
       await page.waitForFunction(() => !document.querySelector('.sh-lp-card').getAnimations().some(a => a.playState === 'running'));
       await page.$eval('.pl-measurements-toggle', el => el.scrollIntoView({ block: 'center' }));
@@ -187,5 +200,5 @@ try {
   assert.deepEqual(errors, []);
   console.log('Review browser regressions passed.');
 } finally {
-  await browser.close();
+  await browser.close(); await site.close();
 }

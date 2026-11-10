@@ -1,5 +1,6 @@
 // A written correctness checkpoint, separate from the simulated traffic score.
 import { h } from './util.js';
+import { completionState } from './completion.js';
 
 export function checkpointComplete(checkpoint, answer) {
   return !!answer?.text?.trim() && (checkpoint.fields || []).every((field, i) => Number.isInteger(answer.choices?.[i]) && !!field.options[answer.choices[i]]);
@@ -37,11 +38,11 @@ export function renderCheckpointForm(checkpoint, answer = {}, onSubmit, onCancel
   return form;
 }
 
-export function renderCorrectness(checkpoint, savedAnswer) {
+export function renderCorrectness(checkpoint, savedAnswer, completion) {
   if (!checkpoint) return null;
   if (savedAnswer) return h('section', { class: 'pl-sec', 'aria-label': 'Correctness checkpoint' },
     h('h3', { text: 'Correctness checkpoint' }),
-    h('p', { class: 'pl-muted', text: checkpointCorrect(checkpoint, savedAnswer) ? 'Responsibility trace checked. Full mastery needs a later New twist pass without hints.' : 'Failure trace needs revision before correctness mastery can be recorded.' }),
+    h('p', { class: 'pl-muted pl-checkpoint-status', text: (completion || completionState({ correctness: checkpoint }, { passed: true }, savedAnswer)).message }),
     h('p', { class: 'pl-muted', text: checkpoint.limits || 'The traffic score does not verify schema constraints, atomic transactions or business state transitions.' }),
     (checkpoint.fields || []).map((field, i) => h('div', {},
       h('h4', { text: field.label }),
@@ -60,6 +61,7 @@ export function renderCorrectness(checkpoint, savedAnswer) {
   answer.addEventListener('input', () => { reveal.disabled = !answer.value.trim(); });
   return h('section', { class: 'pl-sec', 'aria-label': 'Correctness checkpoint' },
     h('h3', { text: 'Correctness checkpoint' }),
+    completion ? h('p', { class: 'pl-muted pl-checkpoint-status', text: completion.message }) : null,
     h('p', { class: 'pl-muted', text: 'Unscored. The traffic score does not verify these rules. Write your choice, then compare it with the discussion.' }),
     h('label', {}, h('p', { text: checkpoint.prompt }), answer),
     reveal, discussion);

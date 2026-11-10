@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
 import { problemById } from '../content/problems/index.js';
 import { checkFor } from '../ui/play/design-check.js';
 
-const base=process.argv[2] || 'http://localhost:8765/';
+const site=await serveGame();
+const base=site.base;
 const browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH || '/usr/bin/google-chrome',headless:'new',args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try {
   const errors=[];
@@ -88,4 +90,4 @@ try {
   }
   assert.deepEqual(errors,[]);
   console.log('All five Hard problems: clarify, numbers, build, prediction, correctness, full day and editorial on desktop/light and phone/dark passed.');
-} finally {await browser.close();}
+} finally {await browser.close();await site.close();}

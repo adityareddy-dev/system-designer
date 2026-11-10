@@ -70,7 +70,25 @@ export default {
     {
       "kind": "read",
       "title": "Bound the unfinished work",
-      "text": "A broker acknowledgement is not proof that an order shipped. Persist saga state, retry with jitter, and alert on the age of pending work. Consumers need their own deduplication and local atomicity. Give each compensation its own stable key too. At 200 orders/s and a 30-minute downstream outage, about 360,000 orders accumulate. At 2 KB of durable workflow state each, that is about 720 MB before indexes and replicas. If recovery handles 500/s while new arrivals remain 200/s, net drain is 300/s and catch-up takes about 20 minutes. The UI should show received, awaiting payment, confirmed, refund pending and refunded as appropriate. Set a deadline and a support path for states automation cannot settle."
+      "text": "A broker acknowledgement does not prove an order shipped. Persist saga state, use stable operation keys for both effects and compensations, retry with jitter and alert on the age of pending work. Each consumer needs local atomicity and deduplication. Show received, awaiting payment, confirmed, refund pending and refunded states. Set a deadline and a support path for work that automation cannot settle.",
+      "diagram": {
+        "label": "Bound unfinished work",
+        "parts": [
+          [
+            "30-minute outage",
+            "200 orders/s accumulate 360,000 orders. At 2 KB each, that is about 720 MB."
+          ],
+          [
+            "Recover: 300/s net",
+            "500/s processing − 200/s new arrivals = 300/s of backlog drain."
+          ],
+          [
+            "20-minute catch-up",
+            "360,000 / 300 = 1,200 seconds. Set a deadline and a support path for unresolved work."
+          ]
+        ],
+        "flow": true
+      }
     },
     {
       "kind": "quiz",
