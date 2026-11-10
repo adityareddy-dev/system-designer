@@ -9,14 +9,19 @@ function settingsFor(saved) {
   const settings = createSettings({ get: () => value, set: (_, next) => { value = next; } }, { emit() {} });
   return { settings, saved: () => value };
 }
-for (const [saved, expected] of [[null, 'dark'], ['invalid', 'dark'], [42, 'dark'], [{}, 'dark'], [{ theme: 'invalid' }, 'dark'], [{ theme: 'system' }, 'system'], [{ theme: 'system', themeExplicit: false }, 'system'], [{ theme: 'system', themeExplicit: true }, 'system'], [{ theme: 'light' }, 'light'], [{ theme: 'dark' }, 'dark']]) {
+// A legacy saved System has no themeExplicit marker: the old build saved it with every setting, so it means not chosen.
+for (const [saved, expected] of [[null, 'dark'], ['invalid', 'dark'], [42, 'dark'], [{}, 'dark'], [{ theme: 'invalid' }, 'dark'], [{ theme: 'system' }, 'dark'], [{ theme: 'system', soundMuted: true }, 'dark'], [{ theme: 'system', themeExplicit: false }, 'dark'], [{ theme: 'system', themeExplicit: true }, 'system'], [{ theme: 'light' }, 'light'], [{ theme: 'dark' }, 'dark']]) {
   const s = settingsFor(saved);
-  assert.equal(s.settings.get('theme'), expected);
+  assert.equal(s.settings.get('theme'), expected, JSON.stringify(saved));
   s.settings.set('soundMuted', true);
-  assert.equal(settingsFor(s.saved()).settings.get('theme'), expected);
+  assert.equal(settingsFor(s.saved()).settings.get('theme'), expected, JSON.stringify(saved));
   s.settings.set('theme', 'system');
   assert.equal(s.saved().theme, 'system');
-  assert.equal(settingsFor(s.saved()).settings.get('theme'), 'system');
+  assert.equal(s.saved().themeExplicit, true);
+  const reloaded = settingsFor(s.saved());
+  assert.equal(reloaded.settings.get('theme'), 'system');
+  reloaded.settings.set('soundMuted', false);
+  assert.equal(settingsFor(reloaded.saved()).settings.get('theme'), 'system');
 }
 const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox'] });
@@ -28,7 +33,7 @@ try {
   const routes = ['', 'p/url-shortener/', 'problems/', 'learn/consistent-hashing/', 'guides/two-week-system-design-plan/', 'privacy.html', '404.html'];
   for (const device of ['light', 'dark']) {
     await pg.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: device }]);
-    for (const [saved, expected] of [[null, 'dark'], ['{broken', 'dark'], [JSON.stringify({ theme: 'invalid' }), 'dark'], [JSON.stringify({ theme: 'system' }), device], [JSON.stringify({ theme: 'system', themeExplicit: false }), device], [JSON.stringify({ theme: 'system', themeExplicit: true }), device], [JSON.stringify({ theme: 'light' }), 'light'], [JSON.stringify({ theme: 'dark' }), 'dark']]) {
+    for (const [saved, expected] of [[null, 'dark'], ['{broken', 'dark'], [JSON.stringify({ theme: 'invalid' }), 'dark'], [JSON.stringify({ theme: 'system' }), 'dark'], [JSON.stringify({ theme: 'system', soundMuted: true }), 'dark'], [JSON.stringify({ theme: 'system', themeExplicit: false }), 'dark'], [JSON.stringify({ theme: 'system', themeExplicit: true }), device], [JSON.stringify({ theme: 'light' }), 'light'], [JSON.stringify({ theme: 'dark' }), 'dark']]) {
       await pg.goto(site.base + 'privacy.html');
       await pg.evaluate(value => value === null ? localStorage.removeItem('hotpath.v1.settings') : localStorage.setItem('hotpath.v1.settings', value), saved);
       for (const route of routes) {
@@ -39,7 +44,7 @@ try {
       }
     }
   }
-  await pg.evaluate(() => localStorage.setItem('hotpath.v1.settings', JSON.stringify({ theme: 'system' })));
+  await pg.evaluate(() => localStorage.setItem('hotpath.v1.settings', JSON.stringify({ theme: 'system', themeExplicit: true })));
   await pg.goto(site.base + 'p/url-shortener/');
   await pg.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
   await pg.waitForFunction(() => document.documentElement.dataset.theme === 'light');
@@ -51,6 +56,31 @@ try {
   await pg.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
   await pg.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
   assert.equal(await pg.evaluate(() => document.documentElement.dataset.theme), 'light');
+  // A returning player with a legacy System picks System in the game's Settings; the choice follows the device and survives reloads.
+  const ui = await browser.newPage();
+  await ui.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+  await ui.goto(site.base + 'privacy.html');
+  await ui.evaluate(() => localStorage.setItem('hotpath.v1.settings', JSON.stringify({ theme: 'system', soundMuted: true })));
+  const systemRadio = '[role="radiogroup"][aria-label="Theme"] [data-value="system"]';
+  await ui.goto(site.base + '#/settings');
+  await ui.waitForSelector(systemRadio);
+  assert.equal(await ui.evaluate(() => document.documentElement.dataset.theme), 'dark', 'legacy System in the game');
+  assert.equal(await ui.$eval(systemRadio, el => el.getAttribute('aria-checked')), 'false');
+  await ui.$eval(systemRadio, el => el.click());
+  await ui.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+  assert.deepEqual(await ui.evaluate(() => { const s = JSON.parse(localStorage.getItem('hotpath.v1.settings')); return [s.theme, s.themeExplicit, s.soundMuted]; }), ['system', true, true]);
+  for (const device of ['light', 'dark']) {
+    await ui.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: device }]);
+    for (const route of routes) {
+      await ui.goto(site.base + route, { waitUntil: 'load' });
+      assert.equal(await ui.evaluate(() => document.documentElement.dataset.theme), device, 'chosen System ' + device + ' ' + route);
+    }
+    await ui.goto(site.base + '#/settings');
+    await ui.waitForSelector(systemRadio);
+    assert.equal(await ui.$eval(systemRadio, el => el.getAttribute('aria-checked')), 'true');
+    assert.equal(await ui.evaluate(() => document.documentElement.dataset.theme), device, 'chosen System in the game ' + device);
+  }
+  await ui.close();
   await pg.evaluateOnNewDocument(() => {
     Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } });
   });
@@ -58,5 +88,5 @@ try {
     await pg.goto(site.base + route);
     assert.equal(await pg.evaluate(() => document.documentElement.dataset.theme), 'dark', 'blocked storage ' + route);
   }
-  console.log('PASS theme choices, legacy migration, blocked storage and pre-boot themes');
+  console.log('PASS theme choices, legacy System migration, chosen System, blocked storage and pre-boot themes');
 } finally { await browser.close(); await site.close(); }
