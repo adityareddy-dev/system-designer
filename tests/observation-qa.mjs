@@ -107,7 +107,13 @@ try {
     await page.evaluate(() => window.__game.reset()); await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); });
     await page.waitForSelector('.pl-debrief'); assert.equal(await page.$('.pl-debrief .sh-feedback'), null, 'prompt does not repeat on retry');
     await page.evaluate(hash => { location.hash = hash; }, beatHash); await page.waitForSelector('.sh-beat .sh-h1');
-    await page.evaluate(() => { const d = new Date(); location.hash = '#/challenge/' + `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}?play=1`; });
+    await page.evaluate(() => { location.hash = '#/challenge'; });
+    await page.waitForSelector('.sh-challenge-page');
+    await page.evaluate(() => {
+      const play = [...document.querySelectorAll('.sh-quickplay,.sh-playmain')].find(el => el.checkVisibility());
+      if (!play) throw Error('Challenge has no visible play action');
+      play.click();
+    });
     await page.waitForFunction(() => window.__game.getState().mode === 'challenge');
     await page.evaluate(() => window.__game.startTraffic());
     // A lesson takeaway is reached through its ordinary final navigation.
@@ -154,10 +160,20 @@ try {
     await click(page, 'Commit estimates'); await click(page, 'Start drawing');
     await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); }); await page.waitForSelector('.pl-defense-card');
     await page.$$eval('.pl-defense-card', cards => cards.forEach(card => {
-      const answer = card.querySelector('textarea'); answer.value = 'Test the measured limit and keep durable operation ids across retries and recovery.'; answer.dispatchEvent(new Event('input')); card.querySelector('form').requestSubmit(); card.querySelector('.hp-defense-claims input[type=checkbox]').click();
+      const answer = card.querySelector('textarea'); answer.value = 'Test the measured limit and keep durable operation ids across retries and recovery.'; answer.dispatchEvent(new Event('input')); card.querySelector('form').requestSubmit();
+      const position = card.querySelector('.hp-defense-claims select'); position.value = 'fail'; position.dispatchEvent(new Event('change'));
+      card.querySelector('.hp-defense-claims input[type=checkbox]').click();
     }));
     await click(page, 'Save interview report');
-    await page.waitForSelector('.pl-interview-result .sh-feedback'); await click(page, 'Dismiss');
+    await page.waitForSelector('.pl-interview-result .sh-feedback');
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('hotpath.v1.progress'))['chat-app'].interview.latest);
+    assert(saved.defense.every(d => Object.values(d.claims).every(c => c.position === 'fail')), 'counted interviews preserve predictions against claims');
+    const interviewLayout = await page.evaluate(() => {
+      const report = document.querySelector('.pl-interview-result'), form = report.querySelector('.sh-feedback');
+      return form.getBoundingClientRect().top >= report.querySelector('.pl-interview-report').getBoundingClientRect().bottom && document.querySelector('.pl-overlay--debrief').getBoundingClientRect().top >= document.querySelector('.pl-top').getBoundingClientRect().bottom;
+    });
+    assert(interviewLayout, 'feedback follows the interview report and clears the sticky controls');
+    await click(page, 'Dismiss');
     assert.ok(await page.$eval('.pl-interview-result .sh-feedback', el => el.hidden), 'an unsent prompt can be dismissed');
     await wait(1200);
     await page.evaluate(() => { location.hash = '#/settings'; }); await page.waitForSelector('#sh-s-counts');
