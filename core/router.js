@@ -23,6 +23,8 @@ export function createRouter(bus) {
       const h = norm(hash);
       if (location.hash === h) { onHash(); return; }
       location.hash = h;
+      // Keep the route current before a quick browser Back can overtake hashchange.
+      onHash();
     },
     back() { history.back(); },
     replace(hash) {
