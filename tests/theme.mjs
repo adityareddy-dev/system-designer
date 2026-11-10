@@ -38,6 +38,18 @@ try {
       }
     }
   }
+  await pg.evaluate(() => localStorage.setItem('hotpath.v1.settings', JSON.stringify({ theme: 'system', themeExplicit: true })));
+  await pg.goto(site.base + 'p/url-shortener/');
+  await pg.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+  await pg.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+  await pg.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await pg.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  await pg.evaluate(() => localStorage.setItem('hotpath.v1.settings', JSON.stringify({ theme: 'light' })));
+  await pg.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+  await pg.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+  await pg.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await pg.evaluate(() => new Promise(resolve => setTimeout(resolve, 100)));
+  assert.equal(await pg.evaluate(() => document.documentElement.dataset.theme), 'light');
   await pg.evaluateOnNewDocument(() => {
     Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } });
   });
