@@ -26,6 +26,21 @@ assert(contrast(warning, mix(warning, rgb(css['--surface-solid']), warningTint))
 assert(contrast(rgb(css['--accent']), rgb('#FFFFFF')) >= 4.5);
 assert(luminance(rgb(css['--canvas'])) > luminance(rgb(css['--surface-solid'])), 'canvas is lighter than panels');
 assert.equal(css['--accent'], '#244ED8', 'existing accent stays');
+const playCss = fs.readFileSync('ui/play/play.css', 'utf8');
+const lightRule = sel => (playCss.split(':root[data-theme="light"] ' + sel + ' {')[1] || '').split('}')[0];
+const tokenOf = (rule, prop) => rule.split(';').map(d => d.trim()).find(d => d.startsWith(prop + ':'))?.match(/var\((--[\w-]+)\)/)?.[1];
+const offered = tokenOf(lightRule('.pl-tl-offered'), 'fill'), outline = tokenOf(lightRule('.pl-tl-offered'), 'stroke'), served = tokenOf(lightRule('.pl-tl-success'), 'fill');
+assert(offered && outline && served, 'light day chart sets its own offered, outline and served colors');
+assert.equal(tokenOf(lightRule('.pl-key--offered'), 'background'), offered, 'offered legend swatch matches the chart');
+assert(/inset/.test(lightRule('.pl-key--offered')) && lightRule('.pl-key--offered').includes(`var(${outline})`), 'offered legend swatch shows the outline');
+assert(playCss.includes(`.pl-key--ok { background: var(${served}); }`), 'served legend swatch matches the chart');
+for (const surface of ['--bg', '--surface-solid']) {
+  const bg = rgb(css[surface]);
+  assert(contrast(rgb(css[served]), bg) >= 3, 'served band on ' + surface);
+  assert(contrast(rgb(css[outline]), bg) >= 3, 'offered outline on ' + surface);
+}
+assert(contrast(rgb(css[served]), rgb(css[offered])) >= 3, 'served band against offered band');
+assert(contrast(rgb(css[outline]), rgb(css[offered])) >= 3, 'offered outline against its band');
 for (const file of fs.readdirSync('assets/scenes').filter(f => f.endsWith('.svg'))) {
   assert(!/#(?:F5F2E9|FFFEFA|EAE8DF)/i.test(fs.readFileSync('assets/scenes/' + file, 'utf8')), file + ' has no cream');
 }
