@@ -1,4 +1,5 @@
 // Result card: draws a 1200 x 630 PNG with Canvas 2D, and hands it to the share sheet or downloads it.
+import { getPalette } from '../assets/palette.js';
 import { elementById, hexCss, fmtInt, fmtMoney, fmtPct } from './util.js';
 
 const W = 1200, H = 630;
@@ -7,9 +8,10 @@ const BODY = '"Inter", system-ui, sans-serif';
 const MONO = '"JetBrains Mono", ui-monospace, monospace';
 
 function colors(palette) {
+  const fallback = getPalette('light').css;
   const css = palette?.css || {};
   const hx = palette?.hex || {};
-  const pick = (token, key, fb) => css[token] || (hx[key] != null ? hexCss(hx[key]) : fb);
+  const pick = (token, key, fb) => css[token] || (hx[key] != null ? hexCss(hx[key]) : palette?.theme === 'dark' ? fb : fallback[token] || fb);
   const dark = palette?.theme === 'dark';
   return {
     dark,

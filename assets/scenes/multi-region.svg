@@ -1,14 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#F5F2E9"/><title>One region down, traffic moves to the healthy region</title>
-<rect x="16" y="46" width="190" height="158" rx="22" fill="#C7D1D0" stroke="#657A87" stroke-width="2"/>
-<rect x="32" y="66" width="46" height="34" rx="10" fill="#F5F2E9" stroke="#657A87" stroke-width="2"/><rect x="84" y="66" width="46" height="34" rx="10" fill="#F5F2E9" stroke="#657A87" stroke-width="2"/><rect x="136" y="66" width="46" height="34" rx="10" fill="#F5F2E9" stroke="#657A87" stroke-width="2"/>
-<rect x="58" y="120" width="46" height="34" rx="10" fill="#F5F2E9" stroke="#657A87" stroke-width="2"/><rect x="110" y="120" width="46" height="34" rx="10" fill="#F5F2E9" stroke="#657A87" stroke-width="2"/>
-<path d="M44 76L178 184M178 76L44 184" stroke="#B42C37" stroke-width="10" stroke-linecap="round"/>
-<rect x="234" y="49" width="190" height="158" rx="22" fill="#C7D1D0"/><rect x="234" y="46" width="190" height="158" rx="22" fill="#FFFEFA" stroke="#182F40" stroke-width="2"/>
-<rect x="250" y="66" width="46" height="34" rx="10" fill="#FFFEFA" stroke="#182F40" stroke-width="2"/><rect x="260" y="66" width="26" height="3" fill="#006E68"/>
-<rect x="306" y="66" width="46" height="34" rx="10" fill="#FFFEFA" stroke="#182F40" stroke-width="2"/><rect x="316" y="66" width="26" height="3" fill="#865400"/>
-<rect x="362" y="66" width="46" height="34" rx="10" fill="#FFFEFA" stroke="#182F40" stroke-width="2"/><rect x="372" y="66" width="26" height="3" fill="#4051A1"/>
-<line x1="250" y1="190" x2="408" y2="190" stroke="#657A87" stroke-width="2"/>
-<rect x="258" y="164" width="22" height="26" fill="#24643F" stroke="#182F40" stroke-width="2"/><rect x="292" y="148" width="22" height="42" fill="#24643F" stroke="#182F40" stroke-width="2"/><rect x="326" y="132" width="22" height="58" fill="#24643F" stroke="#182F40" stroke-width="2"/><rect x="360" y="114" width="22" height="76" fill="#24643F" stroke="#182F40" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#EDF2F9"/><title>One region down, traffic moves to the healthy region</title>
+<rect x="16" y="46" width="190" height="158" rx="22" fill="#C5D0E1" stroke="#60738D" stroke-width="2"/>
+<rect x="32" y="66" width="46" height="34" rx="10" fill="#EDF2F9" stroke="#60738D" stroke-width="2"/><rect x="84" y="66" width="46" height="34" rx="10" fill="#EDF2F9" stroke="#60738D" stroke-width="2"/><rect x="136" y="66" width="46" height="34" rx="10" fill="#EDF2F9" stroke="#60738D" stroke-width="2"/>
+<rect x="58" y="120" width="46" height="34" rx="10" fill="#EDF2F9" stroke="#60738D" stroke-width="2"/><rect x="110" y="120" width="46" height="34" rx="10" fill="#EDF2F9" stroke="#60738D" stroke-width="2"/>
+<path d="M44 76L178 184M178 76L44 184" stroke="#A92733" stroke-width="10" stroke-linecap="round"/>
+<rect x="234" y="49" width="190" height="158" rx="22" fill="#C5D0E1"/><rect x="234" y="46" width="190" height="158" rx="22" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/>
+<rect x="250" y="66" width="46" height="34" rx="10" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="260" y="66" width="26" height="3" fill="#006E68"/>
+<rect x="306" y="66" width="46" height="34" rx="10" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="316" y="66" width="26" height="3" fill="#865400"/>
+<rect x="362" y="66" width="46" height="34" rx="10" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="372" y="66" width="26" height="3" fill="#4051A1"/>
+<line x1="250" y1="190" x2="408" y2="190" stroke="#60738D" stroke-width="2"/>
+<rect x="258" y="164" width="22" height="26" fill="#24643F" stroke="#1B2B45" stroke-width="2"/><rect x="292" y="148" width="22" height="42" fill="#24643F" stroke="#1B2B45" stroke-width="2"/><rect x="326" y="132" width="22" height="58" fill="#24643F" stroke="#1B2B45" stroke-width="2"/><rect x="360" y="114" width="22" height="76" fill="#24643F" stroke="#1B2B45" stroke-width="2"/>
 <path d="M100 46Q220 4 326 38" fill="none" stroke="#244ED8" stroke-width="9" stroke-linecap="round"/>
 <polygon points="340,43 317,50 327,25" fill="#244ED8" stroke="#244ED8" stroke-width="2" stroke-linejoin="round"/>
 </svg>

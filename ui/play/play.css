@@ -1089,3 +1089,6 @@
   .pl-root[data-mode=lesson] .pl-goal {align-items:flex-start}
   .pl-root[data-mode=lesson] .pl-goal--done {max-height:none;overflow:visible}
 }
+
+/* Light controls keep their outline separate from the panel hairlines. */
+:root[data-theme="light"] .pl-btn:not(.pl-btn--primary):not(.pl-btn--ghost):not(.pl-btn--on) { border-color: var(--border-strong); }

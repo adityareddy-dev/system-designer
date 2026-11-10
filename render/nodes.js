@@ -209,7 +209,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.ageFill=reduced?pressure.fill:(v.ageFill||0)+(pressure.fill-(v.ageFill||0))*(1-Math.exp(-dt/180));
     const fill=v.ageFill, color=pressure.late?P.bad:fill>.7?P.warn:P.cat.messaging;
     const g=v.qbar;g.clear().roundRect(-25,-22,50,42,4).fill({color:P.surfaceSolid}).stroke({width:1.5,color:P.text3});
-    if(fill>.001)g.rect(-21,16-34*fill,42,34*fill).fill({color,alpha:.7});
+    if(fill>.001)g.rect(-21,16-34*fill,42,34*fill).fill({color,alpha:P.dark?.7:.85});
     for(let i=1;i<4;i++)g.moveTo(-24,16-i*8.5).lineTo(-19,16-i*8.5).stroke({width:1,color:P.text3,alpha:.6});
     // The top rule is the actual deadline, not a capacity limit.
     g.moveTo(-28,-18).lineTo(28,-18).stroke({width:2,color:pressure.late?P.bad:P.warn,alpha:1});
@@ -221,7 +221,7 @@ export function createNodeLayer(PIXI, parent, env) {
   function drawRetries(v,P,time,reduced) {
     const rate=v.telemetry?.retryRps||0,g=v.retryG;g.clear();
     if(!v.live||rate<.5)return;
-    g.moveTo(38,6).bezierCurveTo(64,-54,-64,-54,-38,6).stroke({width:2,color:P.bad,alpha:.65});
+    g.moveTo(38,6).bezierCurveTo(64,-54,-64,-54,-38,6).stroke({width:2,color:P.bad,alpha:P.dark?.65:.85});
     g.poly([-38,6,-46,1,-38,-3]).fill({color:P.bad});
     // One marker is a dot-scale group of the engine's retry arrivals.
     const scale=env.dotScale?.()||1,n=Math.min(4,Math.ceil(rate/scale));

@@ -926,3 +926,7 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 .sh-feedback input { accent-color: var(--accent); }
 .sh-feedback .sh-btn-row { margin-top: 12px; }
 .sh-settings-card > [data-feedback-general] { margin-top: 12px; align-self: flex-start; }
+
+/* Light controls keep a clear outline on the pale panels. */
+:root[data-theme="light"] :is(.sh-btn:not(.sh-btn--primary):not(.sh-btn--ghost), .sh-chip:not(.is-on), .sh-switch-track) { border-color: var(--border-strong); }
+:root[data-theme="light"] .sh-switch-track { background: var(--border-strong); }
