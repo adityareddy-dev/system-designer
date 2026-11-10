@@ -8,7 +8,7 @@ import { lessons, lessonById } from '../content/lessons/index.js';
 import { createCatalog } from '../sim/catalog.js';
 import { dailyFor } from '../compete/daily.js';
 import { API_LIVE } from '../account/config.js';
-import { SITE, esc, para, link, relative, json, page, bodyShell, breadcrumb, textOf } from './site-template.mjs';
+import { SITE, esc, para, link, relative, json, page, bodyShell, breadcrumb, textOf, themeHead } from './site-template.mjs';
 import { problemBody, lessonBody, problemCards, listLinks } from './site-content.mjs';
 import { makeGuides } from './site-guides.mjs';
 
@@ -121,15 +121,17 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
     breadcrumb([rootCrumb]),faqData
   ]};
   const headBlock = `  <!-- site:head:start -->\n  <link rel="canonical" href="${SITE}">\n  <link rel="stylesheet" href="assets/site.css">\n  <script type="application/ld+json">${json(homeData)}</script>\n  <!-- site:head:end -->\n`;
-  let home = read('index.html');
+  const earlyTheme = html => html.replace(/<!-- theme:start -->[\s\S]*?<!-- theme:end -->|<script src="assets\/theme.js"><\/script>/, () => themeHead);
+  let home = earlyTheme(read('index.html'));
   home = HOME_HEAD.test(home) ? home.replace(HOME_HEAD,()=>headBlock) : home.replace('  <meta name="theme-color"',headBlock+'  <meta name="theme-color"');
   const homeBlock = `<!-- site:body:start -->\n<div id="app"><div class="site">${bodyShell('index.html',homeOpts)}</div></div>\n  <div id="overlay"></div>\n  <noscript><p class="site site-note">JavaScript is needed to play. Read the <a href="problems/">problems</a>, <a href="learn/">lessons</a> and <a href="guides/">guides</a> without it.</p></noscript>\n<!-- site:body:end -->`;
   home = HOME_BODY.test(home) ? home.replace(HOME_BODY,()=>homeBlock) : home.replace(/  <div id="app">[\s\S]*?<\/noscript>/,()=>homeBlock);
   add('index.html',home);
-  let privacy = read('privacy.html');
+  let privacy = earlyTheme(read('privacy.html'));
   const privacyBlock = `<!-- site:privacy:start --><link rel="canonical" href="${SITE}privacy.html"><script type="application/ld+json">${json({'@context':'https://schema.org',...breadcrumb([rootCrumb,['Privacy','privacy.html']])})}</script><!-- site:privacy:end -->`;
   privacy = /<!-- site:privacy:start -->/.test(privacy) ? privacy.replace(/<!-- site:privacy:start -->[\s\S]*?<!-- site:privacy:end -->/,()=>privacyBlock) : privacy.replace('</head>',privacyBlock+'\n</head>');
   add('privacy.html',privacy);
+  outputs.set('404.html', earlyTheme(read('404.html')));
   outputs.set('assets/site.css',read('assets/palette.css')+'\n'+read('tools/site-styles.css'));
   const publicFiles = Object.keys(manifest).sort();
   outputs.set('sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${publicFiles.map(f=>`  <url><loc>${SITE+f.replace(/index\.html$/,'')}</loc><lastmod>${manifest[f].lastmod}</lastmod></url>`).join('\n')}\n</urlset>\n`);
