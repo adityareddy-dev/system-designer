@@ -454,7 +454,7 @@ export function createNodeLayer(PIXI, parent, env) {
       const preserve=key===this.captionKey;
       this.captionKey = key;
       const previous = list.map(v => [v.renderHalf, v.captionBoxes]);
-      const parts = list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.live&&v.kind==='queue'?Math.max(42*z,26):42*z;v.portHalf=half/z-6;v.renderHalf=half/z;return {x:p.x-half-8,y:p.y-half,width:half*2+16,height:half*2};});
+      const parts = list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.live&&v.kind==='queue'?Math.max(42*z,26):42*z;v.portHalf=half/z-6;v.renderHalf=half/z;return {x:p.x-half-8,y:p.y-half-1,width:half*2+16,height:half*2+2};});
       const screenBox=(v,box)=>{const p=camera.worldToScreen(v.x,v.y);return box?{x:p.x+box.x*z,y:p.y+box.y*z,width:box.width*z,height:box.height*z}:null;};
       const occupied = [...parts];
       if(preserve)for(const v of list)for(const box of [v.nameCaption,v.factCaption])if(box)occupied.push(screenBox(v,box));
