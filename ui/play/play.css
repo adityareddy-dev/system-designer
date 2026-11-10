@@ -816,7 +816,6 @@
  .pl-try>.pl-try-btns {grid-row:4}
  .pl-score-details .pl-score-row {flex-wrap:wrap}
 }
-.pl-root[data-outcome=pass][data-step=debrief] .pl-stage {visibility:visible}
 @media(max-width:719px){.pl-root[data-mode=intro] .pl-caption {max-height:96px;padding:8px 10px;font-size:13px;line-height:1.35;overflow:auto}}
 
 /* Candidate writing and replica evidence share the instrument panel language. */

@@ -116,7 +116,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.chipText = null;
     v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, HALF + 6);
     v.labelT = makeText('', 12, P.text2, false, '500', 72); // narrow lines, so neighbours' names do not touch when zoomed out
-    v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK / v.s); v.labelT.visible = !tiny;
+    v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
     v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
     v.leader = new PIXI.Graphics();
