@@ -12,8 +12,9 @@ function parse(hash) {
 export function createRouter(bus) {
   let cur = parse(location.hash);
   const norm = (h) => (String(h).startsWith('#') ? String(h) : '#' + String(h).replace(/^\/?/, '/'));
-  function onHash() {
-    cur = parse(location.hash);
+  function onHash(event) {
+    // A later navigation may already have changed location while this event waited.
+    cur = parse(event?.newURL ? new URL(event.newURL).hash : location.hash);
     bus.emit('route', cur);
   }
   addEventListener('hashchange', onHash);
