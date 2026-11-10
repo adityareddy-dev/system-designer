@@ -84,7 +84,7 @@ async function boot() {
     root.dataset.motion = reducedMotion() ? 'reduce' : 'full';
     root.dataset.contrast = settings.get('highContrast') ? 'high' : 'normal';
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', t === 'dark' ? '#0A0E18' : '#F3F5FA');
+    if (meta) meta.setAttribute('content', t === 'dark' ? '#0A0E18' : '#EDF2F9');
     if (t !== shownTheme) { shownTheme = t; bus.emit('theme', { theme: t }); }
   }
   function applySound() {

@@ -35,6 +35,7 @@ try {
         await pg.goto(site.base + route, { waitUntil: 'load' });
         assert.equal(await pg.evaluate(() => document.documentElement.dataset.theme), expected, device + ' ' + route + ' ' + saved);
         assert.equal(await pg.evaluate(() => getComputedStyle(document.documentElement).colorScheme), expected);
+        if (!route) assert.equal(await pg.$eval('meta[name="theme-color"]', el => el.content), expected === 'dark' ? '#0A0E18' : '#EDF2F9');
       }
     }
   }

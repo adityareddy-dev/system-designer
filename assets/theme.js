@@ -10,6 +10,8 @@
       }
     } catch (e) { /* Storage can be unavailable. */ }
     document.documentElement.dataset.theme = theme;
+    var bar = document.querySelector('meta[name="theme-color"]');
+    if (bar) bar.content = theme === 'dark' ? '#0A0E18' : '#EDF2F9';
   }
   apply();
   if (typeof matchMedia === 'function') matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', apply);

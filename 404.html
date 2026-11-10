@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
 <head>
+<meta charset="utf-8">
   <!-- theme:start --><script>
 // Applies the saved theme before styles and page content can paint.
 (function () {
@@ -14,20 +15,21 @@
       }
     } catch (e) { /* Storage can be unavailable. */ }
     document.documentElement.dataset.theme = theme;
+    var bar = document.querySelector('meta[name="theme-color"]');
+    if (bar) bar.content = theme === 'dark' ? '#0A0E18' : '#EDF2F9';
   }
   apply();
   if (typeof matchMedia === 'function') matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', apply);
 })();
 </script><!-- theme:end -->
-<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>System Designer</title>
 <meta name="robots" content="noindex">
 <style>
   :root { color-scheme: light; }
   :root[data-theme="dark"] { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: grid; place-content: center; gap: 12px; padding: 24px; text-align: center; font: 500 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: #f3f5fa; color: #1b2433; }
-  a { color: #3a5bd9; font-weight: 600; }
+  body { margin: 0; min-height: 100vh; display: grid; place-content: center; gap: 12px; padding: 24px; text-align: center; font: 500 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: #edf2f9; color: #1b2b45; }
+  a { color: #244ed8; font-weight: 600; }
   :root[data-theme="dark"] body { background: #0e1422; color: #e6ebf5; } :root[data-theme="dark"] a { color: #8fa8ff; }
 </style>
 </head>
