@@ -503,7 +503,8 @@
   .pl-hints { right: 8px; left: 8px; width: auto; bottom: 64px; }
   .pl-issues { left: 8px; right: 8px; width: auto; bottom: 70px; }
   .pl-caption { bottom: 124px; font-size: 14px; }
-  .pl-panel { top: 56px; padding: 16px; max-height: calc(100% - 64px); width: calc(100% - 16px); background: var(--surface-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  /* the card starts under the step picker and tools row, whose height changes with the width */
+  .pl-panel { top: calc(var(--pl-top-end, 56px) + 8px); padding: 16px; max-height: calc(100% - var(--pl-top-end, 56px) - 16px); width: calc(100% - 16px); background: var(--surface-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .pl-panel > .pl-panel-foot { bottom: -16px; margin: 16px -16px -16px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: auto 1fr; gap: 8px; }
   .pl-panel > .pl-panel-foot > .pl-btn--primary { grid-column: 1 / -1; width: 100%; }
   .pl-panel > .pl-panel-foot > .pl-muted { margin: 0; align-self: center; }
