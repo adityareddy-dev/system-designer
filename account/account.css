@@ -98,6 +98,8 @@
 
 /* ---------- leaderboard ---------- */
 .ac-board[hidden] { display: none; }
+/* the card answers to its own width: beside the scenario on a small laptop it is as narrow as on a phone */
+.ac-board { container-type: inline-size; }
 .ac-board-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
 /* the same segmented control as the shell's: a 12px track with 8px buttons */
 .ac-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--text) 6%, transparent); }
@@ -112,19 +114,22 @@
 /* where scroll bars take room (Windows), both lists keep the same gutter so the "you" row stays under its columns */
 .ac-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 420px; overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text) 30%, transparent) transparent; }
 .ac-rows--you { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-strong); max-height: none; }
-/* fixed tracks, so every row and the "you" row under the list share their columns: rank, avatar, name, stars, score, [report], replay mark */
-.ac-row { display: grid; grid-template-columns: 2.2em 26px minmax(0, 1fr) 44px 3.2em 18px; align-items: center; gap: 10px; min-height: 40px; padding: 4px 8px; border-radius: 8px; font-size: 14px; }
-.ac-board[data-member="1"] .ac-row { grid-template-columns: 2.2em 26px minmax(0, 1fr) 44px 3.2em 50px 18px; }
+/* fixed tracks, so every row and the "you" row under the list share their columns: rank, avatar, name, stars, score, [report], replay mark.
+   The "you" and "missed targets" tags get a line of their own under the name, as wide as the rest of the row, so they never run into the stars. */
+.ac-row { display: grid; grid-template-columns: 2em 26px minmax(0, 1fr) 44px 3.2em 18px; grid-template-rows: minmax(26px, auto) auto; align-items: center; align-content: center; column-gap: 8px; row-gap: 0; min-height: 40px; padding: 4px 8px; border-radius: 8px; font-size: 14px; }
+.ac-row > .ac-rank { grid-column: 1; grid-row: 1 / span 2; }
+.ac-row > .ac-avatar { grid-column: 2; grid-row: 1 / span 2; }
+.ac-board[data-member="1"] .ac-row { grid-template-columns: 2em 26px minmax(0, 1fr) 44px 3.2em 48px 18px; }
 .ac-row:nth-child(odd) { background: color-mix(in srgb, var(--text) 3%, transparent); }
 .ac-report { justify-self: end; min-height: 32px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--text-3); font: 400 12px/1 var(--font-ui); cursor: pointer; }
 .ac-report:hover, .ac-report:focus-visible { color: var(--text); text-decoration: underline; }
 .ac-report:disabled { cursor: default; text-decoration: none; color: var(--text-3); }
 .ac-row.is-you { background: var(--accent-soft); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
 .ac-rank { text-align: right; color: var(--text-2); }
-.ac-name { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-width: 0; }
-.ac-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.ac-name { display: contents; }
+.ac-tags { grid-column: 3 / -1; grid-row: 2; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
 /* a long name takes a second line before it is cut */
-.ac-name-text { max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; line-height: 1.25; }
+.ac-name-text { grid-column: 3; grid-row: 1; min-width: 0; max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; line-height: 1.25; }
 .ac-you { flex: none; padding: 0 7px; border-radius: 999px; font-size: 10px; line-height: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
 .ac-you--miss { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
 .ac-row-stars { display: inline-flex; gap: 1px; color: var(--warn); }
@@ -138,11 +143,21 @@
   .ac-signin-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .ac-signin-btn { width: 40px; padding: 0; justify-content: center; border-color: transparent; }
   .ac-pop { right: 16px; left: 16px; width: auto; }
-  /* tighter tracks leave the name about 110px on a 360px phone */
-  .ac-row { grid-template-columns: 1.7em 26px minmax(0, 1fr) 3em 16px; gap: 6px; }
+}
+/* a narrow card (a phone, or the side column below about 1100px): no stars and tighter tracks, so the name keeps 110px or more */
+@container (max-width: 379px) {
+  .ac-row { grid-template-columns: 1.7em 26px minmax(0, 1fr) 3em 16px; column-gap: 6px; }
   .ac-board[data-member="1"] .ac-row { grid-template-columns: 1.7em 26px minmax(0, 1fr) 3em 44px 16px; }
   .ac-report { padding: 0 3px; }
   .ac-row-stars { display: none; }
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 520px) {
+    .ac-row { grid-template-columns: 1.7em 26px minmax(0, 1fr) 3em 16px; column-gap: 6px; }
+    .ac-board[data-member="1"] .ac-row { grid-template-columns: 1.7em 26px minmax(0, 1fr) 3em 44px 16px; }
+    .ac-report { padding: 0 3px; }
+    .ac-row-stars { display: none; }
+  }
 }
 @media (max-width: 380px) {
   .ac-signin-btn, .ac-me-btn { width: 36px; height: 36px; }
