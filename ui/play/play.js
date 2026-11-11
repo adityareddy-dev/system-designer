@@ -428,12 +428,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!stepped || !['running', 'paused'].includes(S.sim?.phase)) return 0;
     // on a phone the event strip is one line under the status bar
     if (isPhone()) { const shown = bannerEl(); return shown && !shown.hidden ? 0 : a.t + 44; }
-    if (!root.classList.contains('pl-slot')) return 0;
-    const width = Math.min(560, parseFloat(root.style.getPropertyValue('--pl-slot-w')) || 0);
+    const docked = root.classList.contains('pl-slot');
+    const width = Math.min(560, docked ? parseFloat(root.style.getPropertyValue('--pl-slot-w')) || 0 : a.w - 32);
     if (!(width > 0)) return 0;
     // a title line and a description of about 110 characters, at the banner's type size; the fit adds its own padding below
     const lines = Math.max(1, Math.ceil(110 / Math.max(20, (width - 74) / 6.6)));
-    return 12 + 41 + lines * 19 + 12 - 20;
+    return (docked ? 12 : 118) + 41 + lines * 19 + 12 - 20;
   }
   function fitView(animate = true, minZoom = null, automatic = false) {
     if (S.connectFrom || (automatic && (S.booted || performance.now() < Math.max(S.editUntil || 0, S.manualViewUntil || 0)))) return;

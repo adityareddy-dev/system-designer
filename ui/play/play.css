@@ -143,6 +143,8 @@
 .pl-right > * { pointer-events: auto; }
 .pl-req { flex: none; max-height: 52%; display: flex; flex-direction: column; overflow: hidden; }
 .pl-req--closed { max-height: none; }
+/* With no part selected the brief has the column to itself: it shows whole instead of cutting its list of numbers short. */
+@media (min-width: 720px) { .pl-right:not(:has(> .pl-inspector:not([hidden]), > .pl-traffic)) > .pl-req:not(.pl-req--closed) { max-height: 100%; } }
 .pl-req-head { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: var(--text); font: 600 14px var(--font-display); text-align: left; cursor: pointer; }
 .pl-req-title { flex: 1; }
 .pl-req-chev { transition: transform var(--dur-2) var(--ease-out); }
@@ -157,6 +159,8 @@
 .pl-req-k { color: var(--text-3); }
 .pl-req-v { color: var(--text); font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
 .pl-req-row > * { min-width: 0; }
+/* a long approximate figure (the speed targets of several request types) wraps instead of running out of the card */
+.pl-req .pl-approx { white-space: normal; }
 .pl-req-notes { margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--text-3); }
 .pl-mix { display: flex; flex-wrap: wrap; gap: 4px; }
 .pl-mix-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-strong); }
@@ -706,6 +710,19 @@
 @media (max-width: 719px) { .pl-trace { top: calc(var(--pl-hud-end, 150px) + 8px); left: 8px; width: calc(100% - 16px); max-height: 30%; } }
 /* The free middle of the top row holds the request trace while drawing and the event banner while a day runs, so neither covers the diagram. */
 .pl-root.pl-slot .pl-trace { top: 15px; left: var(--pl-slot-l); width: min(340px, var(--pl-slot-w)); padding: 12px; }
+/* Small tablets: the steps keep only the current step's name, so the steps and the tools share one row and the panels below start clear of both. */
+@media (min-width: 720px) and (max-width: 899px) {
+  .pl-top { flex-wrap: nowrap; }
+  .pl-step { padding: 0 6px; }
+  .pl-step-l { display: none; }
+  .pl-step--on { padding-right: 12px; }
+  .pl-step--on .pl-step-l { display: inline; }
+  .pl-tools { flex: none; flex-wrap: nowrap; }
+  .pl-trace { left: 190px; width: min(340px, calc(100% - 190px - 356px)); }
+  .pl-root:has(.pl-toolbar--open) .pl-trace { left: 264px; width: min(340px, calc(100% - 264px - 356px)); }
+}
+/* Where the top row has no free middle, the event banner sits under the row of folded panels instead of on top of them. */
+@media (min-width: 720px) { .pl-root[data-step="day"]:not(.pl-slot) .pl-banner { top: 118px; } }
 /* While a day runs on a wide screen, the slow-playback note sits in the status bar under the speed buttons, off the diagram. */
 @media (min-width: 1001px) {
   .pl-root[data-step="day"] .pl-slow { top: auto; bottom: 20px; left: 28px; right: auto; margin: 0; width: auto; max-width: min(640px, 46%); padding: 0; border: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; font-size: 12px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1109,7 +1126,8 @@
 .pl-root[data-step=debrief] .pl-overlay--debrief {top:calc(var(--pl-top-end, 60px) + 8px);padding-top:16px;scroll-padding-block:16px}
 .pl-overlay :is(h2,h3,.pl-defense-card,.pl-defense-field) {scroll-margin-block:16px}
 @media(max-width:719px) {
-  .pl-root[data-mode=lesson] .pl-goal {align-items:flex-start}
+  /* one line sits in the middle of the chip; a longer goal grows downward with the icon on its first line */
+  .pl-root[data-mode=lesson] .pl-goal {align-items:flex-start;padding:11px 10px 6px}
   .pl-root[data-mode=lesson] .pl-goal--done {max-height:none;overflow:visible}
 }
 

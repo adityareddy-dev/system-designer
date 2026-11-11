@@ -249,7 +249,7 @@ await sleep(900);
     return { onTop: g.contains(hit), hit: `${hit?.tagName || 'outside viewport'} ${hit?.className || ''} at ${Math.round(b.x)},${Math.round(b.y)} (${Math.round(b.width)}×${Math.round(b.height)}), scroll ${scrollY}`, res: cv ? cv.width / cv.clientWidth : 0, dpr: devicePixelRatio, overflow: document.documentElement.scrollWidth > innerWidth + 1 };
   });
   check('"Add component" is not covered by the brief', r.onTop, r.hit);
-  check('the phone canvas draws at the screen's own pixel ratio, up to 3', Math.abs(r.res - Math.min(r.dpr, 3)) < 0.01, `${r.res} on a ${r.dpr}x screen`);
+  check('the phone canvas draws at the pixel ratio of its screen, up to 3', Math.abs(r.res - Math.min(r.dpr, 3)) < 0.01, `${r.res} on a ${r.dpr}x screen`);
   check('no sideways scrolling', !r.overflow);
   const n0 = await pev(() => window.__game.getState().nodes.length);
   await phone.tap('.pl-tb-grab');
