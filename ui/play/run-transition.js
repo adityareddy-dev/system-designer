@@ -27,7 +27,16 @@ export function failureEvidence(result, catalog) {
   if (waiting) return { nodeId: waiting.id, heading: 'Where work waited too long', detail: `${name(waiting.id)}: oldest observed wait about ${fmtNum(waiting.maxWaitSec)} seconds against a ${fmtNum(waiting.limitSec)} second deadline; ${fmtNum(waiting.lateMessages)} jobs late.` };
   if (first?.nodeId) {
     const measure = nodes.find(n => n.id === first.nodeId);
-    if (first.kind === 'routing') return { nodeId: first.nodeId, heading: 'Where the route stopped', detail: `${name(first.nodeId)}: requests had no complete delivery route.` };
+    if (first.kind === 'routing') {
+      // Name the request types that were never served: the part shown is only where they first stopped, and its other requests may be fine.
+      const byType = result.slo?.latency?.byType || {};
+      const lost = Object.keys(byType).filter(id => byType[id].servedCount === 0).map(id => catalog?.requestById?.get(id)?.plural || id);
+      const list = lost.length > 1 ? `${lost.slice(0, -1).join(', ')} and ${lost.at(-1)}` : lost[0] || '';
+      const others = Object.values(byType).some(t => t.servedCount > 0);
+      return { nodeId: first.nodeId, heading: 'Where the route stopped', detail: lost.length
+        ? `${list.charAt(0).toUpperCase()}${list.slice(1)} had no complete delivery route, so none were served all day. They first stopped at ${name(first.nodeId)}.${others ? ' Other request types were delivered.' : ''}`
+        : `${name(first.nodeId)}: requests had no complete delivery route.` };
+    }
     if (first.util === null) return { nodeId: first.nodeId, heading: 'The part to inspect', detail: `${name(first.nodeId)}: capacity was unavailable when requests first failed.` };
     const saturated = first.kind === 'capacity' && first.util >= 1 && measure?.failed > 0;
     return { nodeId: first.nodeId, heading: saturated ? 'The part that reached its limit' : 'The part to inspect',
