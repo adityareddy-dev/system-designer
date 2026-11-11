@@ -1,18 +1,16 @@
 # Add a problem
 
-A problem is a JavaScript object with a brief, traffic and a reference design that survives its day. You can add one using the existing engine and catalog.
+Use Node 24. See [CONTRIBUTING.md](../CONTRIBUTING.md) for running the site.
 
-Use Node 24. See [CONTRIBUTING.md](../CONTRIBUTING.md) for how to run the site.
+## Pick your scenario
 
-## Pick the scenario
+Begin by looking through `content/data/lite.json` for problems that already exist. A list of problems is also in section 5 of [DESIGN.md](../DESIGN.md).
 
-Check `content/data/lite.json` for existing problems. [DESIGN.md](../DESIGN.md) section 5 also lists the bank.
-
-Start with an Easy problem and one clear constraint, such as lots of reads and few writes. Choose a group from `content/problems/index.js`, then pick related lesson ids from `content/lessons/` for its `concepts`.
+Start with an Easy problem and only one constraint, such as many reads and few writes. From `content/problems/index.js`, pick a group. Then select the related lesson ids from `content/lessons/` for its `concepts`.
 
 ## Create the file
 
-Create `content/problems/my-problems.js` with this starter. Replace `my-problem` and the scenario text with your own. Its initial reference design needs calibration, covered below.
+Create a new file called `content/problems/my-problems.js` with the starter below, and replace `my-problem` and the text describing your scenario. The initial reference design will need calibration. How to do that follows.
 
 ```js
 // Community problems: one file per contributor or theme, listed in content/problems/index.js.
@@ -101,15 +99,15 @@ For another Easy example, read `restaurant-reservations` in `content/problems/mo
 | `hints` | Exactly 3, from a nudge to a near answer. |
 | `editorial.designs` | At least one reference design, using parts from `catalog/elements.json`. |
 
-Mark rounded real-world figures with "(approx.)". Write scenario assumptions as assumptions, and give a source for claims about real systems.
+Place "(approx.)" after rounded numbers. Identify assumptions for the scenario as assumptions, and give a source for claims about real-world systems.
 
-Keep parts at least 132 px apart horizontally or 112 px vertically so they do not overlap. The starter's `X` array spaces the columns. Request sources are locked on the left at `x: -480`.
+Leave space for at least 132 px between parts horizontally or 112 px vertically so they don't overlap. The `X` array creates the column spacing. Request sources are locked on the left at `x: -480`.
 
-Leave `daily` out. Adding a problem to the daily pool changes future challenge draws. Daily eligibility needs a separate review.
+Leave `daily` out. Adding a problem to the daily pool changes which challenges will be drawn in the future. Daily eligibility needs its own review.
 
 ## Register and measure it
 
-In `content/problems/index.js`, add an import and append it to `files`:
+In `content/problems/index.js`, import your new file and append it to `files`:
 
 ```js
 import myProblems from './my-problems.js';
@@ -117,9 +115,9 @@ import myProblems from './my-problems.js';
 const files = [...mediaSocial, money, /* ... */ deeper, myProblems];
 ```
 
-The group comes from your file's `group.id`. Preserve the existing line endings and check that your diff only shows the import and list change.
+The group comes from `group.id` in your new file. Preserve the existing line endings. The diff for `index.js` should show just the import and list addition.
 
-Run these from the repo folder, using your problem id:
+Run these from the root of the repository with your problem id:
 
 ```sh
 node tests/content-run.mjs my-problem
@@ -129,24 +127,24 @@ node tools/gen-content.mjs
 node tests/content-run.mjs my-problem
 ```
 
-`--resume` only adds a twist for problems that don't have one yet. Without it, `gen-twists` recalculates every problem and changes files you didn't touch.
+`--resume` adds a twist to problems that don't have one yet. Without `--resume`, `gen-twists` recalculates each problem and updates files you did not alter.
 
-The supplied reference can fail before calibration. Calibration runs a full day, sizes the design, sets the budget and records measured expectations. After calibration, the reference must pass and the `issues` list must be empty. Read any remaining failure and correct the problem before continuing.
+The reference from your starter may fail before calibration. Calibration runs a full day, sizes the design, sets the budget and records measured expectations. The reference must pass and there must be no entries in the `issues` list afterward. Read any additional failures and correct the problem before proceeding.
 
-Include your new file and the `index.js` change, along with:
+Add your new file and the `index.js` modification along with:
 
 - `content/problems/calibration.js`
 - `content/problems/twists.js`
 - `content/data/lite.json`
 - `content/data/p/my-problem.json`
 
-Review the generated diff for unrelated changes.
+Review the generated diff for unrelated modifications.
 
 ## Play and check it
 
-Serve the site and open http://localhost:8000/#/practice/my-problem. Read the brief in the game. Try a failing design and check that its debrief explains the failure. Open the editorial and check that the reference is readable.
+Serve the site and open http://localhost:8000/#/practice/my-problem. Read the brief in the game. Attempt a failing design and check that the debrief explains why it failed. Check that the reference is readable by opening the editorial.
 
-Then check the whole bank:
+Next, check the entire bank:
 
 ```sh
 node tests/content-refs.mjs my-problem
@@ -155,21 +153,21 @@ node tests/correctness-checks.mjs
 node tests/promise-sweep.mjs
 ```
 
-## Add the readable page
+## Generate the readable page
 
 ```sh
 node tools/gen-site-pages.mjs
 node tests/site-pages.mjs
 ```
 
-This writes `p/my-problem/index.html` and updates the pages that list problems: `index.html`, `problems/index.html`, the guides, the lesson pages for your `concepts`, related problem pages, `sitemap.xml`, `llms.txt`, `llms-full.txt` and `tools/site-pages-manifest.json`. Include all of them.
+This generates `p/my-problem/index.html` and updates problem listings: `index.html`, `problems/index.html`, the guides, lesson pages for your `concepts`, related problem pages, `sitemap.xml`, `llms.txt`, `llms-full.txt` and `tools/site-pages-manifest.json`. Include all of them.
 
-Don't run `tools/gen-daily-pages.mjs` for this. It adds new daily dates under `d/` that don't belong in your pull request.
+Don't use `tools/gen-daily-pages.mjs` for this. It will generate new dates under `d/` that do not belong in your pull request.
 
-The new page has no `preview.jpg`, so `tests/daily-pages.mjs` reports it. Note that in the pull request so it can be added before publication.
+The generated page has no `preview.jpg`, so `tests/daily-pages.mjs` reports the missing image. Note that in your pull request so it can be added before publication.
 
-Update the problem counts in `README.md` and `DESIGN.md`, and add a row for your problem to its group in `DESIGN.md` section 5.
+Update the problem counts in `README.md` and `DESIGN.md`, and include a row for your problem in its group in `DESIGN.md` section 5.
 
 ## Open the pull request
 
-Keep it to one problem. Give its name and difficulty, and explain the design constraint. Say which checks you ran and call out any missing preview image. If a step in this guide was unclear, include that too so I can fix it.
+One problem per pull request. Give its name and difficulty, and describe the design constraint. Say which checks you ran and where a preview image is missing. If any steps in this guide were confusing, include those too so I can fix them.
