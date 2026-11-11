@@ -17,7 +17,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
   const resetBtn = h('button', { class: 'pl-btn pl-btn--small pl-reset', type: 'button', 'aria-label': 'Back to drawing', title: 'Stop the day and go back to drawing', onClick: () => onReset?.() }, iconEl('ui.restart', 18), h('span', { class: 'pl-reset-l', text: 'Back to drawing' }));
   const speedPill = h('div', { class: 'pl-speed', role: 'radiogroup', 'aria-label': 'Speed' });
   const speedBtns = SPEEDS.map((s) => {
-    const b = h('button', { class: 'pl-speed-b', type: 'button', role: 'radio', 'aria-checked': 'false', 'aria-label': `${s} times speed`, onClick: () => onSpeed?.(s) }, `${s}×`);
+    const b = h('button', { class: 'pl-speed-b', type: 'button', role: 'radio', 'aria-checked': 'false', 'aria-label': `${s} times speed`, onClick: () => { ran = true; onSpeed?.(s); } }, `${s}×`);
     speedPill.append(b);
     return [s, b];
   });
@@ -86,6 +86,8 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
   host.append(banner);
 
   let phase = 'build';
+  // the player has run this day; until then a clock held by the intro keeps the start label instead of "Resume"
+  let ran = false;
   let speed = 1;
   const hist = { succ: [], p99: [], nextAt: 0 };
   let colors = readColors();
@@ -101,6 +103,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
   let hasParts = true;
   let lastIssues = [];
   playBtn.addEventListener('click', () => {
+    if (phase !== 'running') ran = true;
     if (phase === 'build') onStart?.();
     else if (phase === 'running') onPause?.();
     else if (phase === 'paused') onResume?.();
@@ -108,11 +111,12 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
 
   function setPhase(p) {
     phase = p;
+    if (p === 'build') ran = false;
     root.dataset.phase = p;
     const lab = playBtn.querySelector('.pl-play-l');
     const ico = playBtn.querySelector('.pl-ic');
     const set = (id, text, aria) => { ico.innerHTML = iconEl(id, 20).innerHTML; lab.textContent = text; playBtn.setAttribute('aria-label', aria); };
-    if (p === 'build') set('ui.play', sandbox || lesson ? 'Run' : 'Start day', 'Start the traffic day');
+    if (p === 'build' || (p === 'paused' && !ran)) set('ui.play', sandbox || lesson ? 'Run' : 'Start day', 'Start the traffic day');
     else if (p === 'running') set('ui.pause', 'Pause', 'Pause');
     else if (p === 'paused') set('ui.play', 'Resume', 'Resume');
     else set('ui.restart', 'Done', 'Day finished');
@@ -338,6 +342,8 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
   setPhase('build'); setSpeed(1);
   return {
     el: root, setPhase, setSpeed, update, showBanner, hideBanner, setBuild,
+    // keyboard starts and resumes count as the player running the day
+    markRan() { ran = true; if (phase === 'paused') setPhase('paused'); },
     refreshColors() { colors = readColors(); drawn = ''; },
     resetHistory() { hist.succ.length = 0; hist.p99.length = 0; hist.nextAt = 0; drawn = ''; },
   };

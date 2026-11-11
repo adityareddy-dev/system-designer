@@ -43,6 +43,17 @@ await sleep(600);
   check('intro: the load balancer can be placed while reading pauses the day', r.phase === 'paused' && r.after === r.before + 1 && !/only be added/.test(r.toast), JSON.stringify(r));
 }
 {
+  // a first visit has nothing to resume: the clock the intro holds keeps the start label until the player runs the day
+  const label = () => ev(() => ({ phase: window.__game.getState().phase, label: document.querySelector('.pl-play-l')?.textContent }));
+  const held = await label();
+  await page.click('.pl-play');
+  await sleep(150);
+  await page.click('.pl-play');
+  await sleep(150);
+  const ran = await label();
+  check('intro: the held clock says Run, and Resume only after the player has run the day', held.phase === 'paused' && held.label === 'Run' && ran.phase === 'paused' && ran.label === 'Resume', JSON.stringify({ held, ran }));
+}
+{
   await ev(() => window.__game.loadLesson('load-balancing'));
   await sleep(400);
   const r = await ev(async () => {
