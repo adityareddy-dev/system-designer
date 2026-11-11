@@ -5,7 +5,7 @@
 
 .ac-signin-btn {
   display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px 0 10px;
-  border: 1px solid var(--border); border-radius: 12px; background: transparent; color: var(--text-2);
+  border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text-2);
   font: 500 14px/1 var(--font-ui); cursor: pointer;
   transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
 }
@@ -14,10 +14,10 @@
 .ac-signin-ico { display: inline-flex; width: 20px; height: 20px; }
 .ac-signin-ico svg { width: 100%; height: 100%; }
 
-.ac-me-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 12px; background: transparent; cursor: pointer; transition: background var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out); }
+.ac-me-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; cursor: pointer; transition: background var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out); }
 .ac-me-btn:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .ac-me-btn:active { transform: scale(0.94); }
-.ac-signin-btn:focus-visible, .ac-me-btn:focus-visible, .ac-provider:focus-visible, .ac-tab:focus-visible, .ac-x:focus-visible, .ac-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ac-signin-btn:focus-visible, .ac-me-btn:focus-visible, .ac-provider:focus-visible, .ac-tab:focus-visible, .ac-x:focus-visible, .ac-link:focus-visible, .ac-report:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .ac-avatar {
   --ac-size: 32px;
@@ -39,12 +39,14 @@
 .ac-pop, .ac-pop *, .ac-pop *::before, .ac-pop *::after { box-sizing: border-box; }
 :where(.ac-pop) button, :where(.ac-pop) input, :where(.ac-pop) select { font: inherit; color: inherit; }
 :where(.ac-pop) a { color: inherit; text-decoration: none; }
+/* the panels live outside the shell, so its focus ring does not reach their buttons: give them the same one */
+.ac-pop button:focus-visible, .ac-pop a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @keyframes ac-pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
 :root[data-motion="reduce"] .ac-pop { animation: ac-fade 100ms linear both; }
 @keyframes ac-fade { from { opacity: 0; } to { opacity: 1; } }
 .ac-pop-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .ac-pop-title { margin: 0; font: 600 17px/1.25 var(--font-display); overflow-wrap: anywhere; }
-.ac-x { display: inline-grid; place-items: center; width: 32px; height: 32px; flex: none; border: 0; border-radius: 10px; background: transparent; color: var(--text-2); cursor: pointer; }
+.ac-x { display: inline-grid; place-items: center; width: 32px; height: 32px; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); cursor: pointer; }
 .ac-x:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
 .ac-text { margin: 0 0 14px; color: var(--text-2); }
 .ac-fine { margin: 12px 0 0; font-size: 12.5px; color: var(--text-3); }
@@ -74,12 +76,21 @@
 .ac-menu { padding-top: 16px; }
 .ac-me { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .ac-me-text { display: grid; gap: 2px; min-width: 0; flex: 1; }
-.ac-sync { margin: 0 0 12px; padding: 8px 10px; border-radius: 10px; font-size: 13px; color: var(--text-2); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.ac-sync { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px; padding: 8px 10px; border-radius: 8px; font-size: 13px; color: var(--text-2); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.ac-sync .sh-ico { flex: none; margin-top: 1px; color: var(--ok); }
 .ac-sync[data-state="failed"] { background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.ac-sync[data-state="failed"] .sh-ico { color: var(--warn); }
+.ac-sync[data-state="syncing"] .sh-ico { color: var(--text-3); }
 .ac-rename { display: grid; gap: 6px; margin-bottom: 12px; }
 .ac-label { font-size: 13px; font-weight: 500; color: var(--text-2); }
 .ac-rename-row { display: flex; gap: 8px; }
-.ac-input { flex: 1; min-width: 0; }
+.ac-rename-msg { display: flex; align-items: flex-start; gap: 6px; }
+.ac-rename-msg:empty { display: none; }
+.ac-rename-msg .sh-ico { flex: none; margin-top: 2px; }
+.ac-rename-msg[data-state="ok"] { color: var(--ok); }
+.ac-rename-msg[data-state="bad"] { color: var(--bad); }
+/* the field and its Save button share one height and one corner */
+.ac-input { flex: 1; min-width: 0; min-height: 44px; border-radius: 8px; }
 .ac-links { display: flex; flex-wrap: wrap; gap: 16px; margin: 4px 0 14px; font-size: 14px; }
 .ac-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .ac-danger { color: var(--bad); }
@@ -88,24 +99,32 @@
 /* ---------- leaderboard ---------- */
 .ac-board[hidden] { display: none; }
 .ac-board-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.ac-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); }
-.ac-tab { min-height: 32px; padding: 4px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 500 13px/1 var(--font-ui); cursor: pointer; transition: background var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out); }
+/* the same segmented control as the shell's: a 12px track with 8px buttons */
+.ac-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--text) 6%, transparent); }
+.ac-tab { min-height: 36px; padding: 6px 14px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); font: 500 13px/1 var(--font-ui); cursor: pointer; transition: background var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out); }
 .ac-tab[aria-selected="true"] { background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow-1); }
 .ac-select { width: 100%; margin-bottom: 10px; }
 .ac-select[hidden] { display: none; }
 .ac-board-note { padding: 10px 0; font-size: 14px; }
-.ac-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 420px; overflow-y: auto; }
+.ac-board-fail { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 10px; color: var(--warn); }
+.ac-board-fail .ac-board-note { padding: 6px 0; }
+.ac-retry { grid-column: 2; justify-self: start; margin-bottom: 4px; }
+/* where scroll bars take room (Windows), both lists keep the same gutter so the "you" row stays under its columns */
+.ac-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 420px; overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text) 30%, transparent) transparent; }
 .ac-rows--you { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-strong); max-height: none; }
-.ac-row { display: grid; grid-template-columns: 2.2em auto minmax(0, 1fr) auto 3.2em auto 18px; align-items: center; gap: 10px; min-height: 40px; padding: 4px 8px; border-radius: 10px; font-size: 14px; }
+/* fixed tracks, so every row and the "you" row under the list share their columns: rank, avatar, name, stars, score, [report], replay mark */
+.ac-row { display: grid; grid-template-columns: 2.2em 26px minmax(0, 1fr) 44px 3.2em 18px; align-items: center; gap: 10px; min-height: 40px; padding: 4px 8px; border-radius: 8px; font-size: 14px; }
+.ac-board[data-member="1"] .ac-row { grid-template-columns: 2.2em 26px minmax(0, 1fr) 44px 3.2em 50px 18px; }
 .ac-row:nth-child(odd) { background: color-mix(in srgb, var(--text) 3%, transparent); }
-.ac-report { font: inherit; font-size: 12px; color: var(--muted, inherit); opacity: .6; background: none; border: 0; padding: 2px 6px; border-radius: 6px; cursor: pointer; }
-.ac-report:hover, .ac-report:focus-visible { opacity: 1; text-decoration: underline; }
-.ac-report:disabled { cursor: default; text-decoration: none; }
+.ac-report { justify-self: end; min-height: 32px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--text-3); font: 400 12px/1 var(--font-ui); cursor: pointer; }
+.ac-report:hover, .ac-report:focus-visible { color: var(--text); text-decoration: underline; }
+.ac-report:disabled { cursor: default; text-decoration: none; color: var(--text-3); }
 .ac-row.is-you { background: var(--accent-soft); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
 .ac-rank { text-align: right; color: var(--text-2); }
 .ac-name { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-width: 0; }
 .ac-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.ac-name-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a long name takes a second line before it is cut */
+.ac-name-text { max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; line-height: 1.25; }
 .ac-you { flex: none; padding: 0 7px; border-radius: 999px; font-size: 10px; line-height: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
 .ac-you--miss { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
 .ac-row-stars { display: inline-flex; gap: 1px; color: var(--warn); }
@@ -119,7 +138,10 @@
   .ac-signin-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .ac-signin-btn { width: 40px; padding: 0; justify-content: center; border-color: transparent; }
   .ac-pop { right: 16px; left: 16px; width: auto; }
-  .ac-row { grid-template-columns: 2em auto minmax(0, 1fr) 3em auto 16px; gap: 8px; }
+  /* tighter tracks leave the name about 110px on a 360px phone */
+  .ac-row { grid-template-columns: 1.7em 26px minmax(0, 1fr) 3em 16px; gap: 6px; }
+  .ac-board[data-member="1"] .ac-row { grid-template-columns: 1.7em 26px minmax(0, 1fr) 3em 44px 16px; }
+  .ac-report { padding: 0 3px; }
   .ac-row-stars { display: none; }
 }
 @media (max-width: 380px) {
@@ -127,7 +149,7 @@
 }
 @media (pointer: coarse) {
   .ac-signin-btn, .ac-me-btn { min-width: 44px; min-height: 44px; }
-  .ac-tab { min-height: 40px; }
+  .ac-tab { min-height: 44px; }
   .ac-x { width: 44px; height: 44px; }
 }
 :root[data-fx="low"] .ac-pop { box-shadow: var(--shadow-2); }

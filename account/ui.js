@@ -175,16 +175,20 @@ export function createAccountUi(ctx, api) {
     const paintSync = () => {
       const s = api.state();
       syncLine.dataset.state = s.sync;
-      syncLine.textContent = s.sync === 'syncing' ? 'Syncing your progress...' : s.sync === 'failed' ? 'Sync did not go through. It will try again.' : s.syncedAt ? `Progress synced ${ago(s.syncedAt)}.` : 'Progress syncs as you play.';
+      const text = s.sync === 'syncing' ? 'Syncing your progress...' : s.sync === 'failed' ? 'Sync did not go through. It will try again.' : s.syncedAt ? `Progress synced ${ago(s.syncedAt)}.` : 'Progress syncs as you play.';
+      // a mark as well as a tint: a tick when in step, a triangle when a sync failed, a clock while one runs
+      syncLine.replaceChildren(ico(s.sync === 'failed' ? 'ui.warn' : s.sync === 'syncing' ? 'ui.clock' : s.syncedAt ? 'ui.check' : 'ui.info', 16), text);
     };
     paintSync();
     const input = h('input', { class: 'sh-input ac-input', id: 'ac-name', maxlength: 24, autocomplete: 'nickname', value: u.name });
-    const msg = h('span', { class: 'ac-mini', role: 'status' });
+    const msg = h('span', { class: 'ac-mini ac-rename-msg', role: 'status' });
+    // the answer to Save carries a mark and a colour: a tick when the name was kept, a triangle when it was refused
+    const say = (ok, text) => { msg.dataset.state = ok ? 'ok' : 'bad'; msg.replaceChildren(ico(ok ? 'ui.check' : 'ui.warn', 14), text); };
     const form = h('form', { class: 'ac-rename', onsubmit: async (e) => {
       e.preventDefault();
       const v = input.value.trim();
       if (!v || v === api.displayName()) return;
-      try { await api.rename(v); msg.textContent = 'Saved.'; } catch (err2) { msg.textContent = err2?.message || 'Could not save that name.'; }
+      try { await api.rename(v); say(true, 'Saved.'); } catch (err2) { say(false, err2?.message || 'Could not save that name.'); }
     } },
       h('label', { class: 'ac-label', for: 'ac-name', text: 'Name on leaderboards and shared links' }),
       h('div', { class: 'ac-rename-row' }, input, h('button', { type: 'submit', class: 'sh-btn' }, 'Save')), msg);
@@ -292,7 +296,10 @@ export function createAccountUi(ctx, api) {
       try { await api.report(r.uid, 'name'); btn.textContent = 'Reported'; } catch (e) { btn.disabled = false; btn.textContent = 'Retry'; }
     }
 
+    // Every row has the same cells, so the columns line up down the list and in the "you" row under it:
+    // a signed-in player's rows all carry the report cell (empty on their own row), a visitor's rows have none.
     function row(r) {
+      const member = !!api.state().user;
       return h('li', { class: 'ac-row' + (r.you ? ' is-you' : '') },
         h('span', { class: 'ac-rank sh-num', text: String(r.rank) }),
         avatarEl({ name: r.name }, 26),
@@ -300,7 +307,7 @@ export function createAccountUi(ctx, api) {
           (r.you || r.passed === false) ? h('span', { class: 'ac-tags' }, r.you ? h('span', { class: 'ac-you', text: 'you' }) : null, r.passed === false ? h('span', { class: 'ac-you ac-you--miss', title: 'This design missed one or more targets, so it ranks below passing designs', text: 'missed targets' }) : null) : null),
         h('span', { class: 'ac-row-stars' + (r.stars > 0 ? '' : ' is-none'), role: 'img', 'aria-label': `${r.stars} of 3 stars` }, [0, 1, 2].map((i) => ico(i < r.stars ? 'ui.star' : 'ui.star-empty', 14))),
         h('span', { class: 'ac-score sh-num', text: String(r.score) }),
-        (!r.you && r.uid && api.state().user) ? h('button', { type: 'button', class: 'ac-report', title: 'Report this name or score', 'aria-label': `Report ${r.name}`, onclick: (ev) => reportRow(r, ev.currentTarget) }, 'Report') : h('span', { 'aria-hidden': 'true' }),
+        !member ? null : (!r.you && r.uid) ? h('button', { type: 'button', class: 'ac-report', title: 'Report this name or score', 'aria-label': `Report ${r.name}`, onclick: (ev) => reportRow(r, ev.currentTarget) }, 'Report') : h('span', { 'aria-hidden': 'true' }),
         r.passed === false ? h('span', { class: 'ac-ver ac-ver--no', 'aria-hidden': 'true' }) : (r.replayed ?? r.verified) ? h('span', { class: 'ac-ver', title: 'Score replayed on the server with the same traffic', 'aria-label': 'replayed on the server' }, ico('ui.verified', 16)) : h('span', { class: 'ac-ver ac-ver--no', title: 'Not replayed yet', text: '?' }));
     }
 
@@ -315,10 +322,13 @@ export function createAccountUi(ctx, api) {
       let data;
       try { data = await api.leaderboard(tab === 'daily' ? { daily: date } : { problem: pick }); } catch {
         if (mine !== seq || !alive) return;
-        clear(body).append(h('p', { class: 'sh-muted ac-board-note', text: 'The leaderboard could not be reached right now.' }));
+        clear(body).append(h('div', { class: 'ac-board-fail' }, ico('ui.warn', 18),
+          h('p', { class: 'sh-muted ac-board-note', text: 'The leaderboard could not be reached right now.' }),
+          h('button', { type: 'button', class: 'sh-btn ac-retry', onclick: () => load() }, 'Try again')));
         return;
       }
       if (mine !== seq || !alive) return;
+      root.dataset.member = api.state().user ? '1' : '0';
       clear(body);
       const what = tab === 'daily' ? 'this day\'s challenge' : 'this problem in Practice';
       if (!data.top?.length) {
@@ -332,7 +342,7 @@ export function createAccountUi(ctx, api) {
       }
       foot.append(h('p', { class: 'ac-fine', text: `${data.total} player${data.total === 1 ? '' : 's'}. Best score per player. Equal scores rank the earlier one first. The server replays every design with the same traffic, so each score is the design's real score. It cannot tell who drew a design: one copied from a friend's link counts, but the editorial's designs are not listed.` }));
       if (!api.state().user) {
-        foot.append(h('button', { type: 'button', class: 'sh-btn sh-btn--ghost ac-join', onclick: () => { openPop('signin', signInPanel); } }, h('span', { class: 'ac-signin-ico', html: PERSON }), 'Sign in to join'));
+        foot.append(h('button', { type: 'button', class: 'sh-btn ac-join', onclick: () => { openPop('signin', signInPanel); } }, h('span', { class: 'ac-signin-ico', html: PERSON }), 'Sign in to join'));
       }
     }
 
