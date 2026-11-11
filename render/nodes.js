@@ -13,6 +13,30 @@ const nowForStatus = () => performance.now();
 const K = 320, C = 24;              // placement spring (≈ 6 % overshoot, settles in ≈ 300 ms)
 const SHADOW = 114;               // shadow sprite size; its baked box comes out at about 68 units
 const PILE = [[-47, -6], [-47, 6], [-55, 0], [-55, -12], [-55, 12], [-63, -6]];
+// One-word names for the zoomed-out overview. Whole words only: a name is never cut in the middle.
+const SHORT = {
+  'web-browser': 'Web', 'mobile-app': 'Mobile', 'tv-app': 'TV', 'game-client': 'Game', 'iot-device': 'IoT', 'partner-system': 'Partner', 'admin-console': 'Admin',
+  'dns': 'DNS', 'geo-dns': 'GeoDNS', 'cdn': 'CDN', 'origin-shield': 'Shield', 'waf': 'WAF', 'firewall': 'Firewall', 'ddos-shield': 'DDoS',
+  'api-gateway': 'Gateway', 'global-lb': 'Global LB', 'regional-lb': 'Balancer', 'network-lb': 'Network LB', 'service-mesh': 'Mesh', 'private-link': 'VPN',
+  'vm-fleet': 'Servers', 'container-cluster': 'Containers', 'serverless-fn': 'Functions', 'edge-fn': 'Edge', 'gpu-cluster': 'GPU', 'worker-pool': 'Workers',
+  'batch-cluster': 'Batch', 'cron-scheduler': 'Scheduler', 'autoscaler': 'Autoscaler',
+  'sql-primary': 'SQL', 'sql-replica': 'Replica', 'sharded-sql': 'Shards', 'distributed-sql': 'Distributed', 'kv-store': 'Key-value', 'document-db': 'Documents',
+  'wide-column': 'Wide-column', 'graph-db': 'Graph', 'timeseries-db': 'Time-series', 'search-index': 'Search', 'vector-db': 'Vectors', 'cache': 'Cache',
+  'distributed-cache': 'Cache', 'object-storage': 'Objects', 'block-storage': 'Block', 'file-system': 'Files', 'data-warehouse': 'Warehouse', 'data-lake': 'Data lake',
+  'ledger-db': 'Ledger', 'db-proxy': 'Pooler', 'cold-archive': 'Archive',
+  'queue': 'Queue', 'pubsub': 'Pub/sub', 'event-stream': 'Events', 'stream-processor': 'Processor', 'dead-letter-queue': 'Dead-letter', 'outbox': 'Outbox',
+  'workflow-engine': 'Workflow', 'websocket-gateway': 'Live', 'cdc-connector': 'Changes',
+  'identity-provider': 'Identity', 'secrets-manager': 'Secrets', 'kms': 'Key mgmt', 'hsm': 'HSM', 'rate-limiter': 'Limiter', 'circuit-breaker': 'Breaker',
+  'idempotency-store': 'Idempotency', 'feature-flags': 'Flags', 'config-service': 'Config', 'coordination-service': 'Coordinator', 'audit-log': 'Audit',
+  'privacy-vault': 'Vault', 'consent-service': 'Consent',
+  'metrics': 'Metrics', 'logs': 'Logs', 'traces': 'Traces', 'alerting': 'Alerting', 'dashboards': 'Dashboards', 'pager': 'On-call', 'ci-cd': 'CI/CD',
+  'backups': 'Backups', 'disaster-recovery': 'Recovery', 'synthetic-probe': 'Checks',
+  'model-server': 'Model', 'llm-gateway': 'AI gateway', 'semantic-cache': 'Semantic', 'safety-filter': 'Safety', 'feature-store': 'Features',
+  'embedding-service': 'Embeddings', 'recommender': 'Recommender', 'etl-pipeline': 'Pipeline',
+  'payment-processor': 'Payments', 'email-provider': 'Email', 'sms-provider': 'SMS', 'push-service': 'Push', 'maps-api': 'Maps',
+  'video-transcoder': 'Transcoder', 'identity-verification': 'ID check', 'hosted-llm-api': 'Hosted AI', 'third-party-api': 'API',
+};
+const firstWord = label => String(label || '').replace(/\s*\([^)]*\)/g, '').trim().split(/\s+/)[0];
 
 function iconOffset(shape) {
   return shape === 'cylinder' ? 3 : shape === 'shield' ? -3 : 0;
@@ -52,7 +76,7 @@ export function createNodeLayer(PIXI, parent, env) {
   let detailZoom = true;
   let tiny = false;
   const showLabel = (v) => { v.labelT.visible = true; v.labelT.text = compact ? shortName(v) : v.label; };
-  const shortName = v => ({ 'vm-fleet': 'Servers', 'sql-primary': 'SQL', 'sql-replica': 'Replica', 'mobile-app': 'Mobile', 'web-browser': 'Web', 'regional-lb': 'Balancer', 'worker-pool': 'Workers', 'object-storage': 'Objects', 'api-gateway': 'Gateway', 'identity-provider': 'Identity', 'waf': 'Firewall', 'distributed-cache': 'Cache', 'third-party-api': 'API', 'idempotency-store': 'Keys' }[v.type] || v.label?.replace(/\s*\([^)]*\)/g, '').split(' ')[0].slice(0, 9) || v.type);
+  const shortName = v => SHORT[v.type] || firstWord(v.label) || v.type;
   let labelK = 1; // label scale that keeps names readable when zoomed out
   let multiRegion = false;
   let mainRegion = null; // most common region; only nodes elsewhere get a region chip
@@ -428,7 +452,9 @@ export function createNodeLayer(PIXI, parent, env) {
       const z = camera.zoom, P = env.kit().P;
       const free = { x:area?.l||8,y:area?.t||8,width:camera.size.w-(area?.l||8)-(area?.r||8),height:camera.size.h-(area?.t||8)-(area?.b||8) };
       const visible=p=>p.x>=free.x && p.x<=free.x+free.width && p.y>=free.y && p.y<=free.y+free.height;
-      const inside=r=>r.x>=free.x&&r.y>=free.y&&r.x+r.width<=free.x+free.width&&r.y+r.height<=free.y+free.height;
+      // Corner panels (a folded card, a button) cover only their own rectangle, not a whole band of the canvas.
+      const blocks=area?.blocks||[];
+      const inside=r=>r.x>=free.x&&r.y>=free.y&&r.x+r.width<=free.x+free.width&&r.y+r.height<=free.y+free.height&&!blocks.some(b=>intersects(r,b));
       const refreshVisibility=()=>{
         for(const v of list){
           const p=camera.worldToScreen(v.x,v.y);
@@ -454,43 +480,71 @@ export function createNodeLayer(PIXI, parent, env) {
       const preserve=key===this.captionKey;
       this.captionKey = key;
       const previous = list.map(v => [v.renderHalf, v.captionBoxes]);
-      const parts = list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.live&&v.kind==='queue'?Math.max(42*z,26):42*z;v.portHalf=half/z-6;v.renderHalf=half/z;return {x:p.x-half-8,y:p.y-half-1,width:half*2+16,height:half*2+2};});
+      // A zoomed-out overview keeps less air around each part and name, so a name still fits under its own part.
+      const tight=z<.5, nameGap=tight?(z<.3?2:3):5, namePad=tight?2:6;
+      const parts = list.map(v=>{const p=camera.worldToScreen(v.x,v.y),live=v.live&&v.kind==='queue',half=live?Math.max(42*z,26):42*z;v.portHalf=half/z-6;v.renderHalf=half/z;const body=tight&&!live?38*z:half,side=tight?4:8;v.bodyHalf=body;return {x:p.x-body-side,y:p.y-body-1,width:body*2+side*2,height:body*2+2};});
+      // A caption that had to move away from its part is tied back to it: a short line between the two facing edges.
+      // A name that still sits under its own part needs none.
+      const lead=(v,box,p,z,P)=>{
+        const half=v.renderHalf*z, near=(value,low,high)=>Math.max(low,Math.min(high,value));
+        const bx=near(p.x,box.x,box.x+box.width), by=near(p.y,box.y,box.y+box.height);
+        const ax=near(bx,p.x-half,p.x+half), ay=near(by,p.y-half,p.y+half);
+        if(Math.hypot(bx-ax,by-ay)<14)return;
+        v.leader.moveTo((ax-p.x)/z,(ay-p.y)/z).lineTo((bx-p.x)/z,(by-p.y)/z).stroke({width:1/z,color:P.edgeIdle,alpha:.7});
+      };
       const screenBox=(v,box)=>{const p=camera.worldToScreen(v.x,v.y);return box?{x:p.x+box.x*z,y:p.y+box.y*z,width:box.width*z,height:box.height*z}:null;};
-      const occupied = [...parts];
+      // The wide readings keep the fuller clearance around every part, so wires still find a way past them; only names pack tighter.
+      const roomyParts = tight ? list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.renderHalf*z;return {x:p.x-half-8,y:p.y-half-1,width:half*2+16,height:half*2+2};}) : parts;
+      const occupied = [...roomyParts];
       if(preserve)for(const v of list)for(const box of [v.nameCaption,v.factCaption])if(box)occupied.push(screenBox(v,box));
       const ordered = [...list].sort((a,b)=>a.y-b.y||a.x-b.x);
       const clear=r=>!occupied.some(o=>intersects(r,o));
-      const choose=(base,p,maxMove=Infinity)=>{
+      const choose=(base,p,maxMove=Infinity,ok=null,lane=0)=>{
           // Reserve a local world-space slot for offscreen captions so panning can reveal them without rerouting.
           if(!visible(p))return clear(base)?base:null;
           const close=r=>Math.abs(r.x-base.x)+Math.abs(r.y-base.y)<=maxMove;
           for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160]){
             const r={...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy};
-            if(inside(r)&&clear(r)&&close(r))return r;
+            if(inside(r)&&clear(r)&&close(r)&&(!ok||ok(r)))return r;
           }
           // A crowded overview can leave a gap between the regular search lanes.
           // Test the exact edges of the occupied boxes before leaving the free canvas.
-          const xs=[free.x,free.x+free.width-base.width,...occupied.flatMap(r=>[r.x-base.width-2,r.x+r.width+2,r.x-base.width,r.x+r.width])];
-          const ys=[free.y,free.y+free.height-base.height,...occupied.flatMap(r=>[r.y-base.height-2,r.y+r.height+2,r.y-base.height,r.y+r.height])];
+          const xs=[free.x,free.x+free.width-base.width,...occupied.flatMap(r=>[r.x-base.width-2,r.x+r.width+2,r.x-base.width,r.x+r.width,...(lane?[r.x-base.width-lane,r.x+r.width+lane]:[])])];
+          const ys=[free.y,free.y+free.height-base.height,...occupied.flatMap(r=>[r.y-base.height-2,r.y+r.height+2,r.y-base.height,r.y+r.height,...(lane?[r.y-base.height-lane,r.y+r.height+lane]:[])])];
           let best=null,distance=Infinity;
-          for(const x of xs)for(const y of ys){const r={...base,x,y},d=Math.abs(x-base.x)+Math.abs(y-base.y);if(d<distance&&inside(r)&&clear(r)&&close(r)){best=r;distance=d;}}
+          for(const x of xs)for(const y of ys){const r={...base,x,y},d=Math.abs(x-base.x)+Math.abs(y-base.y);if(d<distance&&inside(r)&&clear(r)&&close(r)&&(!ok||ok(r))){best=r;distance=d;}}
           return best;
       };
-      // Reserve the larger telemetry lanes first. Small names can fit around them.
+      // Reserve the larger telemetry lanes first. Small names can fit around them, but the place right under a part
+      // stays with its name: readings go above, beside or below that.
+      const nameSlot=v=>{const p=camera.worldToScreen(v.x,v.y),width=Math.max(40,v.labelT.width*z+8);return {x:p.x-width/2,y:p.y+v.bodyHalf+nameGap,width,height:v.labelT.height*z+namePad};};
+      const held=preserve?[]:list.filter(v=>visible(camera.worldToScreen(v.x,v.y))).map(nameSlot), heldAt=occupied.length;
+      occupied.push(...held);
       const factsById=new Map();
       for(const v of ordered.filter(v=>v.evidenceT.visible).sort((a,b)=>Number(b.evidenceT.text.startsWith('First limit'))-Number(a.evidenceT.text.startsWith('First limit')))){
         const p=camera.worldToScreen(v.x,v.y);
         const height = v.kind === 'queue' ? 112 : 76;
         const reserved=preserve&&v.factCaption;
-        const facts=reserved?screenBox(v,reserved):choose({x:p.x-57,y:p.y-v.renderHalf*z-height-8,width:114,height},p);
+        const half=v.renderHalf*z, above={x:p.x-57,y:p.y-half-height-8,width:114,height};
+        // When the lane above is taken, the readings hug a corner of the part, clear of the ports on its left and right faces.
+        const corners=[[-half-124,-14-height],[half+10,-14-height],[-half-124,14],[half+10,14]].map(([dx,dy])=>({...above,x:p.x+dx,y:p.y+dy}));
+        // A corner slot must also leave the lanes beside neighbouring parts open, or their wires could not get past it.
+        const own=list.indexOf(v), LANE=16, roomy=r=>!roomyParts.some((o,i)=>i!==own&&intersects(r,{x:o.x-LANE,y:o.y-LANE,width:o.width+LANE*2,height:o.height+LANE*2}));
+        const beside=visible(p)?[above,...corners].find((r,i)=>inside(r)&&clear(r)&&(!i||roomy(r))):null;
+        // Zoomed far out, the readings box is large beside the parts: it stays near its own part or waits for a closer view.
+        // The first limit of the day is always shown.
+        const first=v.evidenceT.text.startsWith('First limit');
+        const facts=reserved?screenBox(v,reserved):beside||choose(above,p,z<.35&&!first?96:Infinity,roomy,LANE+1);
         factsById.set(v.id,facts);if(facts&&!reserved)occupied.push(facts);
       }
+      occupied.splice(heldAt,held.length);
+      for (let i=0;i<parts.length;i++) occupied[i]=parts[i];
       for (const v of ordered) {
-        const p = camera.worldToScreen(v.x,v.y), width = Math.max(40,v.labelT.width*z+8), height = v.labelT.height*z+6;
-        const preferred={x:p.x-width/2,y:p.y+v.renderHalf*z+5,width,height};
+        const p = camera.worldToScreen(v.x,v.y), width = Math.max(40,v.labelT.width*z+8), height = v.labelT.height*z+namePad;
+        const preferred={x:p.x-width/2,y:p.y+v.bodyHalf+nameGap,width,height};
         // A dense overview keeps captions near their parts. Branch focus restores any omitted names.
         const reserved=preserve&&v.nameCaption;
-        const name=reserved?screenBox(v,reserved):choose(preferred,p,z<.35?72:Infinity); if(name&&!reserved)occupied.push(name);
+        const name=reserved?screenBox(v,reserved):choose(preferred,p,z<.24?30:z<.35?72:Infinity); if(name&&!reserved)occupied.push(name);
         v.labelT.renderable=!!name;
         v.labelBg.clear();
         v.evidenceBg.clear();
@@ -500,7 +554,7 @@ export function createNodeLayer(PIXI, parent, env) {
           const labelX=(name.x+width/2-p.x)/z,labelY=(name.y-p.y)/z;
           v.labelT.position.set(labelX,labelY);
           v.labelBg.roundRect((name.x-p.x)/z,labelY,width/z,height/z,3/z).fill({color:P.canvas,alpha:.97});
-          if(Math.abs(labelX*z)>8||Math.abs(name.y-preferred.y)>8)v.leader.moveTo(0,0).lineTo(labelX,labelY).stroke({width:1/z,color:P.edgeIdle,alpha:.6});
+          lead(v,name,p,z,P);
           boxes.push(name);
         }
         const facts=factsById.get(v.id);
@@ -508,6 +562,7 @@ export function createNodeLayer(PIXI, parent, env) {
         if(facts){
           v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x)/z,(facts.y-p.y)/z);
           v.evidenceBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.canvas,alpha:.97});
+          lead(v,{x:facts.x,y:facts.y,width:Math.min(114,v.evidenceT.width*z+4),height:Math.min(facts.height,v.evidenceT.height*z+2)},p,z,P);
           boxes.push(facts);
         }
         v.captionBoxes=boxes.map(r=>({x:v.x+(r.x-p.x)/z-4/z,y:v.y+(r.y-p.y)/z-4/z,width:(r.width+8)/z,height:(r.height+8)/z}));

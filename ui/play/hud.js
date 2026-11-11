@@ -83,6 +83,8 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
 
   // event banner (lives in the stage, not the strip)
   const banner = h('div', { class: 'pl-banner', role: 'status', 'aria-live': 'polite', hidden: '' });
+  // On a phone the banner is one line; a tap opens the whole description and a second tap folds it again.
+  banner.addEventListener('click', () => banner.classList.toggle('pl-banner--open'));
   host.append(banner);
 
   let phase = 'build';

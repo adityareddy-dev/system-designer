@@ -12,6 +12,7 @@ import { makeLut, edgeCurve, lutAt, HALF, niceCeil } from './geom.js';
 import { createGrid } from './grid.js';
 import { inkPath, crossesRect, intersects } from './routing.js';
 import { pathsThrough } from './diagram.js';
+import { createQualityGovernor } from './quality.js';
 
 export { DND_TYPE, DND_PREFIX };
 export { regionLayout } from './diagram.js';
@@ -24,7 +25,18 @@ const QUALITY = {
   medium: { cap: 120, glow: true, res: 1.5 },
   low: { cap: 80, glow: false, res: 1 },
 };
-const LEVELS = ['low', 'medium', 'high'];
+// Touch screens are dense. The canvas draws at up to three device pixels per CSS pixel while its backing store stays
+// within what a phone fills comfortably; slow frames still step the quality down.
+const TOUCH_PIXELS = 5e6;
+const NO_WEBGL = 'The game needs WebGL to draw the diagram: try another browser, or turn on hardware acceleration in this browser\'s settings and reload.';
+function webglAvailable() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return !!gl;
+  } catch { return false; }
+}
 const MAX_DOTS_PER_SEC = 12;      // busiest edge, DESIGN.md 9.5
 const SEVERITY_DEFAULT = 2;
 
@@ -78,8 +90,13 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   let qualitySetting = QUALITY[quality] || quality === 'auto' ? quality : 'auto';
   // Start sharp on every screen (phones included); the auto-quality loop steps down only if frames run slow.
   let level = qualitySetting === 'auto' ? 'high' : qualitySetting;
-  const resFor = lv => Math.min(dpr, coarse ? 1.5 : 2, QUALITY[lv].res);
-  const bakeRes = Math.min(dpr, 2);
+  let viewW = Math.max(1, hostEl.clientWidth), viewH = Math.max(1, hostEl.clientHeight);
+  const resFor = lv => {
+    if (!coarse) return Math.min(dpr, 2, QUALITY[lv].res);
+    if (lv !== 'high') return Math.min(dpr, QUALITY[lv].res);
+    return Math.min(dpr, 3, Math.max(1.5, Math.floor(Math.sqrt(TOUCH_PIXELS / (viewW * viewH)) * 4) / 4));
+  };
+  const bakeRes = Math.min(dpr, coarse ? 3 : 2);
 
   let P = resolvePalette(palette, theme);
   let kit = null;
@@ -105,13 +122,19 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   };
   kit = await createKit(PIXI, P, { categories: cat.categories, requests: cat.requests }, bakeRes, onIcon);
 
-  const w0 = Math.max(1, hostEl.clientWidth), h0 = Math.max(1, hostEl.clientHeight);
+  const w0 = viewW = Math.max(1, hostEl.clientWidth), h0 = viewH = Math.max(1, hostEl.clientHeight);
   const app = new PIXI.Application();
-  await app.init({
-    width: w0, height: h0, antialias: dpr < 2 && quality !== 'low', background: P.canvas, resolution: resFor(level), autoDensity: true,
-    autoStart: false, sharedTicker: false, preference: 'webgl', powerPreference: 'high-performance', hello: false,
-    eventFeatures: { move: false, globalMove: false, click: false, wheel: false },
-  });
+  try {
+    await app.init({
+      width: w0, height: h0, antialias: dpr < 2 && quality !== 'low', background: P.canvas, resolution: resFor(level), autoDensity: true,
+      autoStart: false, sharedTicker: false, preference: 'webgl', powerPreference: 'high-performance', hello: false,
+      eventFeatures: { move: false, globalMove: false, click: false, wheel: false },
+    });
+  } catch (error) {
+    try { kit.destroy(); } catch { /* nothing was drawn yet */ }
+    // Without WebGL the library reports its own missing fallback; say what the player can do instead.
+    throw webglAvailable() ? error : new Error(NO_WEBGL);
+  }
   app.stage.eventMode = 'none';
   const canvas = app.canvas;
   Object.assign(canvas.style, { display: 'block', width: '100%', height: '100%', touchAction: 'none', userSelect: 'none', webkitUserSelect: 'none', outline: 'none' });
@@ -368,7 +391,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const frameFns = new Set();
   let raf = 0, last = performance.now();
   const renderSamples = new Float32Array(120); let rsi = 0, rsn = 0;
-  const dtSamples = []; let qualityCheckAt = 0, qualityChangedAt = performance.now();
+  const governor = createQualityGovernor({ level, now: performance.now() });
   let lastTextRes = 0;
   let destroyed = false;
   let themeToken = 0;
@@ -557,7 +580,6 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   function setLevel(lv) {
     if (!QUALITY[lv] || lv === level) return;
     level = lv;
-    qualityChangedAt = performance.now();
     const { w, h } = camera.size;
     app.renderer.resize(w, h, resFor(level));
     lastTextRes = 0;
@@ -566,20 +588,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
 
   function autoQuality(dt, now) {
     if (qualitySetting !== 'auto') return;
-    dtSamples.push(now, dt);
-    while (dtSamples.length && now - dtSamples[0] > 10000) dtSamples.splice(0, 2);
-    if (now < qualityCheckAt) return;
-    qualityCheckAt = now + 500;
-    let s2 = 0, n2 = 0, s4 = 0, n4 = 0;
-    for (let i = 0; i < dtSamples.length; i += 2) {
-      const age = now - dtSamples[i];
-      if (age <= 4000) { s4 += dtSamples[i + 1]; n4++; }
-      if (age <= 2000) { s2 += dtSamples[i + 1]; n2++; }
-    }
-    const i = LEVELS.indexOf(level);
-    // step down after 2 s of slow frames; step back up after 4 s of comfortably fast ones (when load falls again)
-    if (n2 >= 8 && s2 / n2 > 20 && now - qualityChangedAt > 2000 && i > 0) setLevel(LEVELS[i - 1]);
-    else if (n4 > 120 && s4 / n4 < 15 && now - qualityChangedAt > 6000 && i < LEVELS.length - 1) setLevel(LEVELS[i + 1]);
+    const next = governor.sample(now, dt);
+    if (next) setLevel(next);
   }
 
   function cull() {
@@ -695,7 +705,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const ms = performance.now() - t0;
     renderSamples[rsi] = ms; rsi = (rsi + 1) % renderSamples.length; rsn = Math.min(rsn + 1, renderSamples.length);
     lastRenderMs = ms;
-    autoQuality(dt, now);
+    autoQuality(wallDt, now);
   }
   let lastRenderMs = 0;
   const IDLE_AFTER_MS = 1500;
@@ -709,7 +719,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const w = Math.max(1, hostEl.clientWidth), h = Math.max(1, hostEl.clientHeight);
     const { w: cw, h: ch } = camera.size;
     if (w === cw && h === ch) return;
+    viewW = w; viewH = h;
+    governor.settle(performance.now());
     app.renderer.resize(w, h, resFor(level));
+    lastTextRes = 0;
     camera.resize(w, h);
     input.refreshRect();
     updateGrid();
@@ -719,6 +732,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   globalThis.addEventListener?.('keydown', wake);
   globalThis.document?.addEventListener?.('visibilitychange', wake);
   canvas.addEventListener('webglcontextrestored', wake);
+  // A tab coming back, or a restored drawing surface, starts with slow frames that say nothing about the device.
+  const calm = () => governor.settle(performance.now(), 2000);
+  globalThis.document?.addEventListener?.('visibilitychange', calm);
+  canvas.addEventListener('webglcontextrestored', calm);
 
   globalThis.document?.fonts?.ready?.then(() => { if (!destroyed) nodes.refreshLabels(); });
 
@@ -816,6 +833,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     },
     setTheme(palette2, theme2) {
       const token = ++themeToken;
+      governor.settle(performance.now());
       const nextP = resolvePalette(palette2, theme2);
       return createKit(PIXI, nextP, { categories: cat.categories, requests: cat.requests }, bakeRes, onIcon).then(nextKit => {
         if (destroyed || token !== themeToken) { nextKit.destroy(); return; }
@@ -846,7 +864,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       for (const v of edges.list) { edges.setLoad(v, v.rps, 0, 0); v.dirty = true; }
     },
     setQuality(q) {
-      if (q === 'auto') { qualitySetting = 'auto'; return; }
+      if (q === 'auto') { qualitySetting = 'auto'; governor.reset(level, performance.now()); return; }
       if (!QUALITY[q]) return;
       qualitySetting = q;
       setLevel(q);
@@ -870,6 +888,19 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
       camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, opts);
       nodes.setLabelScale(camera.zoom);
+    },
+    // World bounds of the diagram with the room its names need, or null when it is empty.
+    bounds(nodeIds) { return nodes.bounds(nodeIds && graph ? { ...graph, nodes: graph.nodes.filter(n => nodeIds.includes(n.id)) } : graph); },
+    // Glide just far enough that a world point sits inside the free part of the canvas (insets are panels, in screen px).
+    reveal(x, y, insets = {}, margin = {}) {
+      const p = camera.worldToScreen(x, y), { w, h } = camera.size;
+      const l = (insets.l || 0) + (margin.l ?? 60), r = w - (insets.r || 0) - (margin.r ?? 60);
+      const t = (insets.t || 0) + (margin.t ?? 60), b = h - (insets.b || 0) - (margin.b ?? 60);
+      const dx = r > l ? (p.x < l ? l - p.x : p.x > r ? r - p.x : 0) : (l + r) / 2 - p.x;
+      const dy = b > t ? (p.y < t ? t - p.y : p.y > b ? b - p.y : 0) : (t + b) / 2 - p.y;
+      if (!dx && !dy) return false;
+      camera.glideBy(dx, dy);
+      return true;
     },
     zoomBy(factor, cx, cy) { wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
     panBy(dx, dy) { wake(); camera.panBy(dx, dy); },
@@ -902,7 +933,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         for (let j=i+1; j<labels.length; j++) if (intersects(labels[i],labels[j])) labelOverlaps++;
         for (const p of parts) if (intersects(labels[i],p)) labelPartOverlaps++;
         const l=labels[i], owner=parts.find(p=>p.id===l.id), x=owner.x+owner.width/2, y=owner.y+owner.height/2;
-        if(x>=area.l&&x<=right&&y>=area.t&&y<=bottom&&(l.x<area.l||l.y<area.t||l.x+l.width>right||l.y+l.height>bottom))labelPanelOverlaps++;
+        if(x>=area.l&&x<=right&&y>=area.t&&y<=bottom&&(l.x<area.l||l.y<area.t||l.x+l.width>right||l.y+l.height>bottom||(area.blocks||[]).some(b=>intersects(l,b))))labelPanelOverlaps++;
       }
       for (const w of wires) {
         const hits = r => w.points.slice(1).some((p,i) => crossesRect(w.points[i].x,w.points[i].y,p.x,p.y,r));
@@ -983,6 +1014,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       globalThis.removeEventListener?.('keydown', wake);
       globalThis.document?.removeEventListener?.('visibilitychange', wake);
       canvas.removeEventListener('webglcontextrestored', wake);
+      globalThis.document?.removeEventListener?.('visibilitychange', calm);
+      canvas.removeEventListener('webglcontextrestored', calm);
       input.destroy();
       frameFns.clear();
       ghostClear();
