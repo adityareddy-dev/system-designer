@@ -441,16 +441,22 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const phone = isPhone();
     // clear space kept above the first row and below the last name
     const pad = phone ? 10 : 20, low = phone ? 24 : 30;
-    // a big build zooms out far enough to sit between the panels instead of running underneath them
-    // on a phone a very wide design opens at a size where names still fit under their parts; Fit all shows the whole of it
-    const zoom = phone ? { minZ: minZoom ?? 0.24, maxZ: 0.9, reserveY: 0 } : { minZ: minZoom ?? 0, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
     // names sit under the parts and are about 80 px wide, so the sides keep room for half a name and the bottom for a name line
     const side = phone ? 40 : Math.max(pad, 46);
     const room = a.room ? a.room() : a;
     let insets = { l: a.l + side, t: room.t + pad, r: a.r + side, b: room.b + low };
+    // a big build zooms out far enough to sit between the panels instead of running underneath them
+    const zoom = phone ? { minZ: minZoom ?? 0, maxZ: 0.9, reserveY: 0 } : { minZ: minZoom ?? 0, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
     S.viewManual = false;
     try {
-      const box = a.blocks?.length ? scene.bounds() : null;
+      const bounds = phone || a.blocks?.length ? scene.bounds?.() : null;
+      // On a phone a design far too wide for the screen opens at a size where names still fit under their parts, and
+      // pans; Fit all shows the whole of it.
+      if (phone && bounds && minZoom == null) {
+        const natural = Math.min((a.w - insets.l - insets.r) / (bounds.maxX - bounds.minX), (a.h - insets.t - insets.b) / (bounds.maxY - bounds.minY));
+        if (natural < 0.21) zoom.minZ = 0.25;
+      }
+      const box = a.blocks?.length ? bounds : null;
       if (box) insets = fitInsets(box, { w: a.w, h: a.h }, insets, a.blocks, zoom.maxZ, { x: side, y: pad });
       scene.fit(insets, animate, zoom);
     } catch { try { scene.fit(); } catch { /* optional */ } }
