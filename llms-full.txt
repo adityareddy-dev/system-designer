@@ -833,574 +833,574 @@ Keep the workload fixed when comparing designs. Change one policy at a time and 
 https://systemdesigner.io/p/url-shortener/
 Easy; Core building blocks.
 People paste a long web address and get back a short one. Millions of other people then tap that short link, so reading is almost everything. Keep every tap fast, and never lose a link.
-Audience: 50 million people a month; normal peak ≈ 5000 requests/s; budget ≈ $12000/month.
+Audience: 50 million people a month; normal peak ≈ 5,000 requests/s; budget ≈ $12,000/month.
 Concepts: Remembering answers, Numbers you can do in your head, Consistent hashing and moving data, The simplest thing that works, How to lead a design interview.
 
 ### Rate limiter for a public API
 https://systemdesigner.io/p/rate-limiter-service/
 Medium; Core building blocks.
 Developers call your public API from scripts and apps. A few misbehaving or malicious clients can crowd out everyone else. Build limits that are fair, fast and cheap, and that survive a retry storm.
-Audience: 2 million developers; normal peak ≈ 20000 requests/s; budget ≈ $89000/month.
+Audience: 2 million developers; normal peak ≈ 20,000 requests/s; budget ≈ $89,000/month.
 Concepts: Saying "slow down" politely, When one item is popular, Many customers on one system, Agreeing on one leader.
 
 ### Search autocomplete
 https://systemdesigner.io/p/search-autocomplete/
 Medium; Core building blocks.
 As people type, they expect suggestions after every letter, in the blink of an eye. Most people type the same popular beginnings. When news breaks, one phrase suddenly dominates.
-Audience: 200 million people a month; normal peak ≈ 60000 requests/s; budget ≈ $92000/month.
+Audience: 200 million people a month; normal peak ≈ 60,000 requests/s; budget ≈ $92,000/month.
 Concepts: Remembering answers, Search is a copy.
 
 ### Notification service
 https://systemdesigner.io/p/notification-service/
 Medium; Core building blocks.
 Every other team asks you to send messages: order shipped, new login, a sale starting. You send them by push, email and text through outside providers who have their own limits. Send each message once, and never block the team that asked.
-Audience: 30 million people a month; normal peak ≈ 8000 requests/s; budget ≈ $120000/month.
+Audience: 30 million people a month; normal peak ≈ 8,000 requests/s; budget ≈ $120,000/month.
 Concepts: Waiting instead of breaking, Exactly once, on purpose, Work across services, SLOs and error budgets, Designs that other teams must live with.
 
 ### Login and single sign-on
 https://systemdesigner.io/p/login-sso/
 Medium; Core building blocks.
 Employees and customers sign in to many apps through one account. Most of the day is quiet, then 9 am arrives and everyone signs in at once. Attackers also hammer the login with stolen passwords. Let real people in quickly and keep the rest out.
-Audience: 8 million people a month (approx.); normal peak ≈ 6000 requests/s; budget ≈ $63000/month.
+Audience: 8 million people a month (approx.); normal peak ≈ 6,000 requests/s; budget ≈ $63,000/month.
 Concepts: Saying "slow down" politely, Proof built in.
 
 ### Scheduled job service
 https://systemdesigner.io/p/job-scheduler/
 Hard; Core building blocks.
 Customers register jobs: "call my web address every night at 02:00" or "every hour on the hour". Aim to fire within 5 seconds; work still waiting after 60 seconds counts as failed. Retry safely after a crash. One external effect requires the customer endpoint to honor a stable job occurrence key. Half the world picks the top of the hour, so a huge crowd of jobs comes due in the same second.
-Audience: 300,000 customers and 40 million jobs (approx.); normal peak ≈ 1200 requests/s; budget ≈ $7700/month.
+Audience: 300,000 customers and 40 million jobs (approx.); normal peak ≈ 1,200 requests/s; budget ≈ $7,700/month.
 Concepts: Waiting instead of breaking, Exactly once, on purpose, Agreeing on one leader, Work across services, Ordering and time.
 
 ### Object storage service
 https://systemdesigner.io/p/object-storage/
 Hard; Core building blocks.
 Customers store billions of files, from tiny pictures to huge videos, and fetch them by name. The service must never lose a file, scale without a limit and stay cheap. Most files are written once and rarely read again.
-Audience: 5 million developers and apps (approx.); normal peak ≈ 12000 requests/s; budget ≈ $170000/month.
+Audience: 5 million developers and apps (approx.); normal peak ≈ 12,000 requests/s; budget ≈ $170,000/month.
 Concepts: Hot, warm, cold and archive, Splitting data, Consistent hashing and moving data, Copies and quorums, Inside a storage engine.
 
 ### Photo sharing
 https://systemdesigner.io/p/photo-sharing/
 Easy; Media and streaming.
 You are building a photo app. People post pictures and everyone else scrolls through them. Almost all the traffic is people looking at photos, and the photos take up far more room than anything else you store.
-Audience: 30 million people a month; normal peak ≈ 6000 requests/s; budget ≈ $24000/month.
+Audience: 30 million people a month; normal peak ≈ 6,000 requests/s; budget ≈ $24,000/month.
 Concepts: Copies near users, Hot, warm, cold and archive.
 
 ### Podcast hosting
 https://systemdesigner.io/p/podcast-hosting/
 Easy; Media and streaming.
 You host shows for creators. Listeners press play and download big audio files, and creators upload a new episode now and then. The audio is the bill: every episode downloaded costs bandwidth.
-Audience: 200 thousand listeners a month; normal peak ≈ 40 requests/s; budget ≈ $7700/month.
+Audience: 200 thousand listeners a month; normal peak ≈ 40 requests/s; budget ≈ $7,700/month.
 Concepts: Copies near users, Where the money goes.
 
 ### News site
 https://systemdesigner.io/p/news-site/
 Easy; Media and streaming.
 You run a news site. Millions read the same few stories, and when something big happens almost everyone opens the same page in the same minute. Editors publish all day, and readers expect fresh headlines.
-Audience: 20 million readers a month; normal peak ≈ 8000 requests/s; budget ≈ $44000/month.
+Audience: 20 million readers a month; normal peak ≈ 8,000 requests/s; budget ≈ $44,000/month.
 Concepts: Remembering answers, Copies near users.
 
 ### Music streaming
 https://systemdesigner.io/p/music-streaming/
 Medium; Media and streaming.
 People search for songs, build playlists and press play. The audio is the heavy part, and a hit song is played by millions at once. Playback must not stutter, even when part of your system fails.
-Audience: 1.5 million listeners a month; normal peak ≈ 500 requests/s; budget ≈ $46000/month.
+Audience: 1.5 million listeners a month; normal peak ≈ 500 requests/s; budget ≈ $46,000/month.
 Concepts: Copies near users, Remembering answers, Search is a copy.
 
 ### Video streaming
 https://systemdesigner.io/p/video-on-demand/
 Medium; Media and streaming.
 You run a movie and series service for a growing audience. Each viewer pulls a few seconds of video at a time for two hours straight. Bandwidth is the largest cost by far, and everyone wants to start watching in the evening.
-Audience: 400 thousand subscribers; normal peak ≈ 600 requests/s; budget ≈ $108000/month.
+Audience: 400 thousand subscribers; normal peak ≈ 600 requests/s; budget ≈ $108,000/month.
 Concepts: Copies near users, Where the money goes, Hot, warm, cold and archive.
 
 ### Short-video feed
 https://systemdesigner.io/p/short-video-feed/
 Medium; Media and streaming.
 People swipe through an endless feed of clips of 10 to 30 seconds. The next clip must already be on the phone before the swipe. One clip can suddenly get millions of views, and every view is a signal that picks what to show next.
-Audience: 2 million people a month; normal peak ≈ 1500 requests/s; budget ≈ $170000/month.
+Audience: 2 million people a month; normal peak ≈ 1,500 requests/s; budget ≈ $170,000/month.
 Concepts: Copies near users, Remembering answers, When one item is popular.
 
 ### Video upload pipeline
 https://systemdesigner.io/p/video-upload-pipeline/
 Hard; Media and streaming.
 Creators upload videos that must be converted into several qualities before anyone can watch. Conversion is slow, costs real money per video, and the converter sometimes fails on a broken file. Nothing a creator uploads can be lost.
-Audience: 8 million viewers a month, 15 thousand uploads a day; normal peak ≈ 150 requests/s; budget ≈ $740000/month.
+Audience: 8 million viewers a month, 15 thousand uploads a day; normal peak ≈ 150 requests/s; budget ≈ $740,000/month.
 Concepts: Waiting instead of breaking, Exactly once, on purpose.
 
 ### Live streaming
 https://systemdesigner.io/p/live-streaming/
 Hard; Media and streaming.
 Streamers broadcast live and thousands watch together, with a chat on the side. Everyone wants the same piece of video at the same second, so nothing can be saved for later. When a big streamer goes live, the whole audience arrives at once.
-Audience: 1 million viewers a month, thousands live at once; normal peak ≈ 3200 requests/s; budget ≈ $270000/month.
+Audience: 1 million viewers a month, thousands live at once; normal peak ≈ 3,200 requests/s; budget ≈ $270,000/month.
 Concepts: Copies near users, Live sockets and presence, One post, millions of feeds.
 
 ### Comments and likes
 https://systemdesigner.io/p/comments-and-likes/
 Easy; Social and messaging.
 Under every post sits a like counter and a comment list. Millions tap the heart on the same famous post at the same moment. Showing the exact number is not essential, but showing the person their own like is.
-Audience: 10 million people a month; normal peak ≈ 30000 requests/s; budget ≈ $94000/month.
+Audience: 10 million people a month; normal peak ≈ 30,000 requests/s; budget ≈ $94,000/month.
 Concepts: When one item is popular, Remembering answers.
 
 ### One-to-one chat
 https://systemdesigner.io/p/chat-app/
 Medium; Social and messaging.
 People send short messages to each other from their phones. A message must arrive once, in order, even when the phone is on a bad connection and sends it again. If the other person is offline, the message waits and a notification goes out.
-Audience: 10 million people a month; normal peak ≈ 20000 requests/s; budget ≈ $60000/month.
+Audience: 10 million people a month; normal peak ≈ 20,000 requests/s; budget ≈ $60,000/month.
 Concepts: Live sockets and presence, Exactly once, on purpose, Ordering and time, What consistent really means, Syncing across devices.
 
 ### Disappearing stories
 https://systemdesigner.io/p/stories/
 Medium; Social and messaging.
 People post photos and short clips that vanish after 24 hours. Followers tap through a tray of stories every day, and the poster sees who looked. Deleting on time matters: storage must not grow forever.
-Audience: 5 million people a month; normal peak ≈ 3000 requests/s; budget ≈ $78000/month.
+Audience: 5 million people a month; normal peak ≈ 3,000 requests/s; budget ≈ $78,000/month.
 Concepts: Hot, warm, cold and archive, Copies near users.
 
 ### Social feed
 https://systemdesigner.io/p/social-feed/
 Hard; Social and messaging.
 Every person opens the app and sees a feed of posts from the people they follow. Most people have a few hundred followers, but a few have millions, and when they post, millions of feeds must change. The feed must be fast and your own post must show up at once.
-Audience: 50 million people a month; normal peak ≈ 60000 requests/s; budget ≈ $170000/month.
+Audience: 50 million people a month; normal peak ≈ 60,000 requests/s; budget ≈ $170,000/month.
 Concepts: One post, millions of feeds, Remembering answers, When one item is popular.
 
 ### Group chat and presence
 https://systemdesigner.io/p/group-chat-presence/
 Hard; Social and messaging.
 Teams talk in channels with many people. Everyone sees messages in the same order, sees who is online and who is typing, and gets notified when mentioned. At nine every morning thousands of workplaces start at once, and one announcement can reach a channel of tens of thousands.
-Audience: 3 million people a month; normal peak ≈ 25000 requests/s; budget ≈ $74000/month.
+Audience: 3 million people a month; normal peak ≈ 25,000 requests/s; budget ≈ $74,000/month.
 Concepts: Live sockets and presence, One post, millions of feeds, Which copy is the truth.
 
 ### Invoicing and billing
 https://systemdesigner.io/p/invoicing-billing/
 Easy; Finance and payments.
 Small businesses create invoices, email them to customers and take card payments online. On the last working day of the month everyone sends and chases invoices at once. Nobody may get the same invoice email twice, and no invoice may vanish.
-Audience: 300,000 small businesses and their customers; normal peak ≈ 800 requests/s; budget ≈ $5500/month.
+Audience: 300,000 small businesses and their customers; normal peak ≈ 800 requests/s; budget ≈ $5,500/month.
 Concepts: Waiting instead of breaking, Exactly once, on purpose.
 
 ### Payroll run
 https://systemdesigner.io/p/payroll-run/
 Easy; Finance and payments.
 On pay day your system tells the payment rail to move salaries for two million employees, then publishes a payslip for each one. Employees open the app at breakfast to see if they were paid. Paying anyone twice is the one thing you must never do.
-Audience: 2 million employees at 40,000 companies; normal peak ≈ 2400 requests/s; budget ≈ $8600/month.
+Audience: 2 million employees at 40,000 companies; normal peak ≈ 2,400 requests/s; budget ≈ $8,600/month.
 Concepts: Exactly once, on purpose, Waiting instead of breaking.
 
 ### Checkout payments
 https://systemdesigner.io/p/payments-checkout/
 Medium; Finance and payments.
 Online shops send you their customers at the moment they pay. You call a card processor, record the order and answer in a couple of seconds. When the processor is slow or down, shoppers refresh and tap Pay again.
-Audience: 8 million shoppers a month; normal peak ≈ 2000 requests/s; budget ≈ $5200/month.
+Audience: 8 million shoppers a month; normal peak ≈ 2,000 requests/s; budget ≈ $5,200/month.
 Concepts: Exactly once, on purpose, Timeouts and failing fast, Work across services, What consistent really means.
 
 ### Peer-to-peer wallet
 https://systemdesigner.io/p/digital-wallet/
 Medium; Finance and payments.
 People split dinner by sending each other money from their phones. A transfer takes money from one balance and adds it to another, and the sender must see the new balance right away. A flaky mobile connection often makes the app send the same transfer twice.
-Audience: 600,000 active people a month; normal peak ≈ 2500 requests/s; budget ≈ $9800/month.
+Audience: 600,000 active people a month; normal peak ≈ 2,500 requests/s; budget ≈ $9,800/month.
 Concepts: Which copy is the truth, Exactly once, on purpose, Proof built in.
 
 ### Insurance claims
 https://systemdesigner.io/p/insurance-claims/
 Medium; Finance and payments.
 After a hailstorm, thousands of drivers file claims online, each with a handful of photos. The storm offer ends at 5 pm, so everyone files at the last minute. Every claim must be saved safely, and every customer gets a confirmation email.
-Audience: 3 million policyholders; normal peak ≈ 400 requests/s; budget ≈ $14000/month.
+Audience: 3 million policyholders; normal peak ≈ 400 requests/s; budget ≈ $14,000/month.
 Concepts: Waiting instead of breaking, Proof built in.
 
 ### Buy now, pay later
 https://systemdesigner.io/p/bnpl-credit/
 Medium; Finance and payments.
 At checkout a shopper picks "pay in four". You score the shopper in a few seconds, then charge the first quarter on their card. The card network sometimes asks you to slow down, and when apps retry, the retries make it worse.
-Audience: 2 million shoppers a month; normal peak ≈ 3000 requests/s; budget ≈ $8700/month.
+Audience: 2 million shoppers a month; normal peak ≈ 3,000 requests/s; budget ≈ $8,700/month.
 Concepts: Timeouts and failing fast, Waiting instead of breaking, Exactly once, on purpose.
 
 ### Bank ledger
 https://systemdesigner.io/p/bank-ledger/
 Hard; Finance and payments.
 You run the system of record for a regional bank: every deposit, withdrawal and card settlement is a posting that must be exact and permanent. Customers in two continents read balances all day, and regulators can ask for proof at any time. A bad day for you is a loss of even one posting.
-Audience: 400,000 customers; normal peak ≈ 6000 requests/s; budget ≈ $33000/month.
+Audience: 400,000 customers; normal peak ≈ 6,000 requests/s; budget ≈ $33,000/month.
 Concepts: Which copy is the truth, Proof built in, Surviving a region, Copies and quorums, What consistent really means, Inside a storage engine.
 
 ### Stock order matching
 https://systemdesigner.io/p/stock-order-matching/
 Hard; Finance and payments.
 Brokers and traders send buy and sell orders, and you pair them fairly: the earliest order at the best price goes first. At the market open a rush of orders arrives in seconds. Every accepted order must be in one agreed sequence, and no trade may be lost or invented.
-Audience: 300,000 active traders and 300 broker systems; normal peak ≈ 10000 requests/s; budget ≈ $35000/month.
+Audience: 300,000 active traders and 300 broker systems; normal peak ≈ 10,000 requests/s; budget ≈ $35,000/month.
 Concepts: Which copy is the truth, Waiting instead of breaking.
 
 ### Real-time fraud detection
 https://systemdesigner.io/p/fraud-detection/
 Hard; Finance and payments.
 Every card payment asks your system "is this fraud?" and wants the answer within about 150 milliseconds. Each check looks up the cardholder's recent habits and runs a model. The holiday shopping rush doubles the volume, and a bad model update can start declining honest customers.
-Audience: 20 million cardholders; normal peak ≈ 5000 requests/s; budget ≈ $22000/month.
+Audience: 20 million cardholders; normal peak ≈ 5,000 requests/s; budget ≈ $22,000/month.
 Concepts: GPUs, tokens and fallbacks, Timeouts and failing fast.
 
 ### Crypto exchange
 https://systemdesigner.io/p/crypto-exchange/
 Hard; Finance and payments.
 People trade coins, check prices and withdraw funds around the clock from every continent. A sudden price crash makes everyone log in and trade at once, attackers flood you hoping to knock the site over, and a leaked key could empty a wallet. Balances must never be wrong.
-Audience: 3 million traders, 300,000 active in a month; normal peak ≈ 6000 requests/s; budget ≈ $32000/month.
+Audience: 3 million traders, 300,000 active in a month; normal peak ≈ 6,000 requests/s; budget ≈ $32,000/month.
 Concepts: Saying "slow down" politely, Which copy is the truth, Proof built in.
 
 ### Clinic appointment booking
 https://systemdesigner.io/p/appointment-booking/
 Easy; Healthcare.
 A group of 60 clinics lets patients find a free slot, book it and get a text reminder. Slots open at 8 am, and the phone lines used to melt. Two people must never get the same slot, and reminders must go out even when the text-message company has a bad hour.
-Audience: 300 thousand patients a month (approx.); normal peak ≈ 300 requests/s; budget ≈ $7600/month.
+Audience: 300 thousand patients a month (approx.); normal peak ≈ 300 requests/s; budget ≈ $7,600/month.
 Concepts: Which copy is the truth, Waiting instead of breaking.
 
 ### Lab results portal
 https://systemdesigner.io/p/lab-results/
 Easy; Healthcare.
 Labs send results to a portal, patients get a notice that a result is ready and open it. When the notice goes to thousands of people at the same minute, they all open the portal at once. Nobody should get the same notice twice.
-Audience: 1.2 million patients a month (approx.); normal peak ≈ 700 requests/s; budget ≈ $12000/month.
+Audience: 1.2 million patients a month (approx.); normal peak ≈ 700 requests/s; budget ≈ $12,000/month.
 Concepts: Remembering answers, Waiting instead of breaking, Exactly once, on purpose, Privacy by design, Work across services.
 
 ### Patient health records
 https://systemdesigner.io/p/health-records/
 Medium; Healthcare.
 A hospital network keeps patient charts, orders, notes and scanned documents for 40 hospitals. Doctors need a chart in under a second, no saved note may be lost when a server or a building fails (in a whole-region disaster, at most the last minute of edits may need re-entering from the ward), and an auditor can walk in any day and ask you to prove who looked at what.
-Audience: 25,000 staff, 3 million patients (approx.); normal peak ≈ 3000 requests/s; budget ≈ $52000/month.
+Audience: 25,000 staff, 3 million patients (approx.); normal peak ≈ 3,000 requests/s; budget ≈ $52,000/month.
 Concepts: Proof built in, Surviving a region, Privacy by design, Changing a running system, Designs that other teams must live with.
 
 ### Telehealth video visits
 https://systemdesigner.io/p/telehealth-video/
 Medium; Healthcare.
 Patients join a video visit with a doctor from their phone. Most calls go straight between the two people, but the platform runs the waiting room, chat, sign-in, the join link and a relay for the calls that cannot connect directly. A bad minute here means a patient staring at a spinner.
-Audience: 800,000 visits a month (approx.); normal peak ≈ 3000 requests/s; budget ≈ $24000/month.
+Audience: 800,000 visits a month (approx.); normal peak ≈ 3,000 requests/s; budget ≈ $24,000/month.
 Concepts: Live sockets and presence, Surviving a region.
 
 ### Pharmacy stock and refills
 https://systemdesigner.io/p/pharmacy-stock/
 Medium; Healthcare.
 A pharmacy chain with 4,000 stores tracks how many boxes of each medicine every store has, takes refill requests, and shows patients which nearby store has their medicine today. If the system says a store has a box that is gone, a patient makes a wasted trip.
-Audience: 9 million patients, 4,000 stores (approx.); normal peak ≈ 2500 requests/s; budget ≈ $130000/month.
+Audience: 9 million patients, 4,000 stores (approx.); normal peak ≈ 2,500 requests/s; budget ≈ $130,000/month.
 Concepts: Copies are a little behind, Search is a copy.
 
 ### Vaccine sign-up surge
 https://systemdesigner.io/p/vaccine-signup-surge/
 Hard; Healthcare.
 A county opens 80,000 vaccine appointments at 8 am. Within seconds, thousands of people reload and bots try to grab slots. The site must stay up, never sell the same slot twice, and be fair to people on a phone with a poor signal.
-Audience: 4 million residents; 600,000 try on launch day (approx.); normal peak ≈ 300 requests/s; budget ≈ $58000/month.
+Audience: 4 million residents; 600,000 try on launch day (approx.); normal peak ≈ 300 requests/s; budget ≈ $58,000/month.
 Concepts: Saying "slow down" politely, Waiting instead of breaking.
 
 ### Health readings from a wearable
 https://systemdesigner.io/p/wearable-health/
 Hard; Healthcare.
 A wearable records health readings even when its phone or cloud service is unavailable. Keep raw readings on the device when possible and upload only consented summaries in sparse batches. The system must not lose locally saved readings during a supported outage, and deleting an account must have a verifiable end-to-end workflow.
-Audience: 100,000 wearables with sparse opt-in uploads (approx.); normal peak ≈ 500 requests/s; budget ≈ $2100/month.
+Audience: 100,000 wearables with sparse opt-in uploads (approx.); normal peak ≈ 500 requests/s; budget ≈ $2,100/month.
 Concepts: Privacy by design, Syncing across devices, Inside a storage engine, Ordering and time, SLOs and error budgets.
 
 ### Benefits application portal
 https://systemdesigner.io/p/benefits-portal/
 Easy; Government and education.
 People apply for food, health or housing help on a state site. Forms are long, people save drafts and upload documents, and a caseworker team reviews each one. The last week of the month is busy, and an auditor checks the privacy and access controls once a year.
-Audience: 1.5 million applicants a year (approx.); normal peak ≈ 300 requests/s; budget ≈ $8500/month.
+Audience: 1.5 million applicants a year (approx.); normal peak ≈ 300 requests/s; budget ≈ $8,500/month.
 Concepts: Waiting instead of breaking, Proof built in.
 
 ### Course enrollment day
 https://systemdesigner.io/p/course-enrollment-day/
 Medium; Government and education.
 Registration opens at 9 am for 40,000 students, and a handful of popular courses have only 30 seats each. Everyone clicks "enroll" at the same moment, and when the page is slow they click again. A seat must go to exactly one student.
-Audience: 40,000 students, 12 courses each (approx.); normal peak ≈ 4000 requests/s; budget ≈ $38000/month.
+Audience: 40,000 students, 12 courses each (approx.); normal peak ≈ 4,000 requests/s; budget ≈ $38,000/month.
 Concepts: When one item is popular, Saying "slow down" politely.
 
 ### Online exam
 https://systemdesigner.io/p/online-exam/
 Medium; Government and education.
 A national board runs a two-hour online exam for 200,000 students in three regions at the same time. Answers save automatically every half minute, a live heartbeat shows the student is still there, and proctoring marks suspicious events. Every saved answer matters. A minute of outage at the wrong time is a national story.
-Audience: 200,000 students at the same time (approx.); normal peak ≈ 25000 requests/s; budget ≈ $49000/month.
+Audience: 200,000 students at the same time (approx.); normal peak ≈ 25,000 requests/s; budget ≈ $49,000/month.
 Concepts: Live sockets and presence, Surviving a region.
 
 ### Tax filing deadline
 https://systemdesigner.io/p/tax-deadline-surge/
 Hard; Government and education.
 A national tax site lets 30 million people file online. Most wait until deadline day, and traffic climbs all evening to a final-hour rush. People upload forms, check what they owe and pay. A mistake in a payment or a leak of tax data is a national story.
-Audience: 30 million filers over the season (approx.); normal peak ≈ 8000 requests/s; budget ≈ $260000/month.
+Audience: 30 million filers over the season (approx.); normal peak ≈ 8,000 requests/s; budget ≈ $260,000/month.
 Concepts: Waiting instead of breaking, Adding servers, and why it is late, Proof built in.
 
 ### Package tracking
 https://systemdesigner.io/p/package-tracking/
 Easy; Mobility and logistics.
 You run the tracking page for a parcel company. People refresh it again and again while they wait for a delivery, and depots send a scan every time a parcel moves. Keep the page fast, lose at most the last minute of scans in a failure (scanners keep a copy and can resend), and make sure a broken text-message service cannot slow anything down.
-Audience: 20 million people a month (approx.); normal peak ≈ 3000 requests/s; budget ≈ $16000/month.
+Audience: 20 million people a month (approx.); normal peak ≈ 3,000 requests/s; budget ≈ $16,000/month.
 Concepts: Remembering answers, Waiting instead of breaking.
 
 ### Fleet telemetry
 https://systemdesigner.io/p/fleet-telemetry/
 Medium; Mobility and logistics.
 A freight company has 150,000 trucks that each send a batch of sensor readings every 30 seconds. Dispatchers watch live maps and analysts run reports. You must take in every batch, keep a month of detail cheaply, and survive the moments when thousands of trucks come back online at once.
-Audience: 150,000 trucks and 3,000 dispatchers and analysts (approx.); normal peak ≈ 6000 requests/s; budget ≈ $9700/month.
+Audience: 150,000 trucks and 3,000 dispatchers and analysts (approx.); normal peak ≈ 6,000 requests/s; budget ≈ $9,700/month.
 Concepts: Waiting instead of breaking, Hot, warm, cold and archive, Seeing problems early, How metrics systems work, Inside a storage engine.
 
 ### Food delivery
 https://systemdesigner.io/p/food-delivery/
 Medium; Mobility and logistics.
 You run food delivery in a few big cities. People browse menus, pay for an order, and watch a courier move on a map. Dinner time is brutal, and the payment company sometimes slows down. Nobody may be charged twice, and no paid order may vanish.
-Audience: 8 million people a month (approx.); normal peak ≈ 5000 requests/s; budget ≈ $15000/month.
+Audience: 8 million people a month (approx.); normal peak ≈ 5,000 requests/s; budget ≈ $15,000/month.
 Concepts: Live sockets and presence, Exactly once, on purpose, Timeouts and failing fast.
 
 ### Ride-hailing dispatch
 https://systemdesigner.io/p/ride-hailing-dispatch/
 Hard; Mobility and logistics.
 You run dispatch for a big metro area. About 100,000 drivers send a position every 4 seconds, and riders ask for cars near them. When a stadium empties, thousands of riders ask for a car from the same few blocks at the same moment. Match riders to drivers fast, and never charge a trip twice.
-Audience: 15 million riders and 600,000 drivers a month, 100,000 drivers online at peak (approx.); normal peak ≈ 30000 requests/s; budget ≈ $40000/month.
+Audience: 15 million riders and 600,000 drivers a month, 100,000 drivers online at peak (approx.); normal peak ≈ 30,000 requests/s; budget ≈ $40,000/month.
 Concepts: Live sockets and presence, When one item is popular, Splitting data.
 
 ### Maps and routing
 https://systemdesigner.io/p/maps-routing/
 Hard; Mobility and logistics.
 You run a maps app with places, routes and live traffic. Map pictures never change much, but route lookups, place search and traffic from moving phones do. Soon a whole new continent will start using it. Keep maps fast everywhere without paying to serve the same picture twice.
-Audience: 20 million people a month (approx.); normal peak ≈ 12000 requests/s; budget ≈ $41000/month.
+Audience: 20 million people a month (approx.); normal peak ≈ 12,000 requests/s; budget ≈ $41,000/month.
 Concepts: Copies near users, Remembering answers, Surviving a region.
 
 ### Restaurant reservations
 https://systemdesigner.io/p/restaurant-reservations/
 Easy; Travel and events.
 Diners look up restaurants, check which tables are free tonight and book one. Looking is easy to speed up. Booking is not: two people must never get the same table. Friday at 5 pm is the busy moment.
-Audience: 6 million diners a month (approx.); normal peak ≈ 1500 requests/s; budget ≈ $2500/month.
+Audience: 6 million diners a month (approx.); normal peak ≈ 1,500 requests/s; budget ≈ $2,500/month.
 Concepts: Which copy is the truth, Remembering answers.
 
 ### Hotel booking
 https://systemdesigner.io/p/hotel-booking/
 Medium; Travel and events.
 You run a hotel booking site. People search for rooms, open hotel pages and book. Search can be a little behind, but you must never sell the last room twice. Bots copy your prices all day, and sometimes the payment company slows down.
-Audience: 30 million people a month (approx.); normal peak ≈ 8000 requests/s; budget ≈ $12000/month.
+Audience: 30 million people a month (approx.); normal peak ≈ 8,000 requests/s; budget ≈ $12,000/month.
 Concepts: Search is a copy, Which copy is the truth, Saying "slow down" politely.
 
 ### Airline booking
 https://systemdesigner.io/p/airline-booking/
 Hard; Travel and events.
 You run the booking system for an airline. Fare searches are heavy, seats are limited, and every flight needs the right number of tickets, no more and no fewer. You depend on a partner system for fares from other airlines, and it has strict limits. A fare sale and a slow partner will both happen on the same day.
-Audience: 20 million visitors a month (approx.); normal peak ≈ 6000 requests/s; budget ≈ $53000/month.
+Audience: 20 million visitors a month (approx.); normal peak ≈ 6,000 requests/s; budget ≈ $53,000/month.
 Concepts: Which copy is the truth, Timeouts and failing fast, Proof built in.
 
 ### Concert ticket drop
 https://systemdesigner.io/p/concert-ticket-drop/
 Hard; Travel and events.
 Tickets for a huge tour go on sale at 10:00 sharp. Hundreds of thousands of fans arrive in the same minute, bots arrive earlier, and everyone refreshes when the page stalls. There are 40,000 seats. Sell each one once, charge each buyer once, and keep the site standing.
-Audience: 2 million fans on the day (approx.); normal peak ≈ 600 requests/s; budget ≈ $16000/month.
+Audience: 2 million fans on the day (approx.); normal peak ≈ 600 requests/s; budget ≈ $16,000/month.
 Concepts: Waiting instead of breaking, Saying "slow down" politely, Exactly once, on purpose, Agreeing on one leader, What consistent really means.
 
 ### EV charging network
 https://systemdesigner.io/p/ev-charging-network/
 Easy; IoT and devices.
 Thousands of chargers report their status every few seconds and send a record when a session ends. Drivers open an app to find a free charger. A session record must never be lost or counted twice, because it becomes a bill.
-Audience: 2 million drivers a month (approx.); normal peak ≈ 1800 requests/s; budget ≈ $4500/month.
+Audience: 2 million drivers a month (approx.); normal peak ≈ 1,800 requests/s; budget ≈ $4,500/month.
 Concepts: Exactly once, on purpose, Waiting instead of breaking.
 
 ### Smart home
 https://systemdesigner.io/p/smart-home-hub/
 Medium; IoT and devices.
 One million homes have a hub that keeps a live connection to your cloud. The hub reports its devices every few minutes, and the phone app sends commands like "lock the door". Commands must feel instant and must not be repeated. Once in a while a power cut ends and every hub reconnects together.
-Audience: 1 million homes and 2.5 million app users (approx.); normal peak ≈ 5000 requests/s; budget ≈ $20000/month.
+Audience: 1 million homes and 2.5 million app users (approx.); normal peak ≈ 5,000 requests/s; budget ≈ $20,000/month.
 Concepts: Live sockets and presence, Surviving a region, Waiting instead of breaking, Syncing across devices, Privacy by design.
 
 ### Smart power grid
 https://systemdesigner.io/p/smart-power-grid/
 Medium; IoT and devices.
 A power company has 5 million smart meters. Each reports usage every 15 minutes, and they all try on the quarter hour. Customers see their usage, billing needs exact totals for seven years, and a regulator checks that records are kept safely. Control commands to home batteries and thermostats must never run twice.
-Audience: 5 million meters, 3 million customers who look at usage (approx.); normal peak ≈ 7000 requests/s; budget ≈ $18000/month.
+Audience: 5 million meters, 3 million customers who look at usage (approx.); normal peak ≈ 7,000 requests/s; budget ≈ $18,000/month.
 Concepts: Hot, warm, cold and archive, Waiting instead of breaking, Proof built in.
 
 ### Factory sensors
 https://systemdesigner.io/p/industrial-sensors/
 Medium; IoT and devices.
 A factory has thousands of machines, each sending readings many times a second. Engineers open charts of the last hour and last month, and an alarm must fire within seconds when a reading goes out of range. The data grows without end.
-Audience: 10,000 sensors and 300 engineers (approx.); normal peak ≈ 3000 requests/s; budget ≈ $9000/month.
+Audience: 10,000 sensors and 300 engineers (approx.); normal peak ≈ 3,000 requests/s; budget ≈ $9,000/month.
 Concepts: Hot, warm, cold and archive, Seeing problems early, Inside a storage engine, Ordering and time, How metrics systems work.
 
 ### Firmware rollout
 https://systemdesigner.io/p/firmware-rollout/
 Hard; IoT and devices.
 A new firmware goes out to a million smart devices at 03:00 when they are idle. Every device asks "is there an update?", then downloads the same file in pieces, then reports back. If they all wake together, they can flatten your service, and a device that fails to update must not be left broken.
-Audience: 1 million devices (approx.); normal peak ≈ 600 requests/s; budget ≈ $4900/month.
+Audience: 1 million devices (approx.); normal peak ≈ 600 requests/s; budget ≈ $4,900/month.
 Concepts: Copies near users, Saying "slow down" politely.
 
 ### Semantic search
 https://systemdesigner.io/p/semantic-search/
 Easy; AI, ads and search.
 A help center lets people type a question in plain words and finds the right articles even when the words differ. Each question is turned into a list of numbers (a vector) and matched to similar articles. Many people ask the same few questions.
-Audience: 3 million people a month (approx.); normal peak ≈ 400 requests/s; budget ≈ $2800/month.
+Audience: 3 million people a month (approx.); normal peak ≈ 400 requests/s; budget ≈ $2,800/month.
 Concepts: GPUs, tokens and fallbacks, Search is a copy.
 
 ### Recommendations
 https://systemdesigner.io/p/recommendations/
 Medium; AI, ads and search.
 Every page shows a row of things the visitor might like. A ranking model builds each row, but the model is slow and costly. The row must appear instantly, even when the model is having a bad day.
-Audience: 20 million people a month; normal peak ≈ 15000 requests/s; budget ≈ $19000/month.
+Audience: 20 million people a month; normal peak ≈ 15,000 requests/s; budget ≈ $19,000/month.
 Concepts: Remembering answers, GPUs, tokens and fallbacks.
 
 ### Ad serving
 https://systemdesigner.io/p/ad-serving/
 Hard; AI, ads and search.
 Each page view asks you to pick the best ad in about a quarter of a second: check who is allowed to see what, score the candidates with a model, run a quick auction and answer. Every impression and click must be counted exactly because money depends on it.
-Audience: 60 million people a month; normal peak ≈ 50000 requests/s; budget ≈ $140000/month.
+Audience: 60 million people a month; normal peak ≈ 50,000 requests/s; budget ≈ $140,000/month.
 Concepts: Remembering answers, Where the money goes, GPUs, tokens and fallbacks.
 
 ### AI chatbot serving
 https://systemdesigner.io/p/ai-chatbot-serving/
 Hard; AI, ads and search.
 Millions of people ask your assistant questions. Each reply takes a GPU several seconds, and GPUs are expensive and sometimes simply unavailable. Keep replies flowing, protect your wallet from abuse, and have a plan for when the GPUs run out.
-Audience: 8 million people a month; normal peak ≈ 800 requests/s; budget ≈ $130000/month.
+Audience: 8 million people a month; normal peak ≈ 800 requests/s; budget ≈ $130,000/month.
 Concepts: GPUs, tokens and fallbacks, Where the money goes, Saying "slow down" politely.
 
 ### Leaderboards
 https://systemdesigner.io/p/leaderboards/
 Easy; Games.
 Players send their score at the end of every match and open the top-100 table all day. Everyone looks at the same top 100, which makes that one answer extremely popular. A tournament final will make it much worse.
-Audience: 8 million players a month; normal peak ≈ 6000 requests/s; budget ≈ $20000/month.
+Audience: 8 million players a month; normal peak ≈ 6,000 requests/s; budget ≈ $20,000/month.
 Concepts: When one item is popular, Remembering answers.
 
 ### Multiplayer matchmaking
 https://systemdesigner.io/p/matchmaking/
 Medium; Games.
 Players press Play and wait. You must put them in a match with others nearby, with similar skill, in a few seconds. Players in a far-away region will have a bad time, so you must keep each region close.
-Audience: 3 million players online at peak; normal peak ≈ 12000 requests/s; budget ≈ $32000/month.
+Audience: 3 million players online at peak; normal peak ≈ 12,000 requests/s; budget ≈ $32,000/month.
 Concepts: Waiting instead of breaking, Surviving a region.
 
 ### Patch day downloads
 https://systemdesigner.io/p/game-patch-day/
 Medium; Games.
 A popular game ships a 5 GB update at 10 am. Millions of players press Update within the same hour. The files are identical for everyone, so the work is moving huge amounts of data without a huge bill, while players still log in and play.
-Audience: 12 million players a month (approx.); normal peak ≈ 120 requests/s; budget ≈ $34000/month.
+Audience: 12 million players a month (approx.); normal peak ≈ 120 requests/s; budget ≈ $34,000/month.
 Concepts: Copies near users, Where the money goes.
 
 ### Battle royale launch
 https://systemdesigner.io/p/battle-royale/
 Hard; Games.
 On launch night millions of players queue for matches of 100. Each match streams positions many times a second, the lobby shows the live player count, and one patch notes page is opened by everyone. Connections must stay open, a match server dying must preserve acknowledged progress within the stated recovery point, and a few hot items, like the daily reward, are hit by everybody.
-Audience: 5 million players a month (approx.); normal peak ≈ 15000 requests/s; budget ≈ $16000/month.
+Audience: 5 million players a month (approx.); normal peak ≈ 15,000 requests/s; budget ≈ $16,000/month.
 Concepts: Live sockets and presence, When one item is popular.
 
 ### Calendar and invites
 https://systemdesigner.io/p/calendar-invites/
 Easy; Productivity.
 People view their week, create meetings and invite others. Each invite sends an email or phone alert. Monday at 9 am everyone opens the calendar at once. A repeated send must never produce two invites, and a slow email partner must not slow the calendar.
-Audience: 10 million people a month (approx.); normal peak ≈ 1200 requests/s; budget ≈ $7100/month.
+Audience: 10 million people a month (approx.); normal peak ≈ 1,200 requests/s; budget ≈ $7,100/month.
 Concepts: Waiting instead of breaking, Exactly once, on purpose.
 
 ### File sync
 https://systemdesigner.io/p/file-sync/
 Medium; Productivity.
 A folder on your laptop mirrors to the cloud and to your other devices. Small changes must arrive quickly, big files must upload reliably, and a shared folder with thousands of people must not melt the metadata service.
-Audience: 3 million people a month; normal peak ≈ 4000 requests/s; budget ≈ $54000/month.
+Audience: 3 million people a month; normal peak ≈ 4,000 requests/s; budget ≈ $54,000/month.
 Concepts: Hot, warm, cold and archive, Which copy is the truth, Syncing across devices, Privacy by design, Consistent hashing and moving data.
 
 ### Collaborative documents
 https://systemdesigner.io/p/collaborative-docs/
 Hard; Productivity.
 Many people edit the same document at the same moment and everyone must see a consistent result in a fraction of a second. Edits must never be lost, even if a server crashes in the middle of typing or two people type in the same place.
-Audience: 15 million people a month; normal peak ≈ 40000 requests/s; budget ≈ $83000/month.
+Audience: 15 million people a month; normal peak ≈ 40,000 requests/s; budget ≈ $83,000/month.
 Concepts: Live sockets and presence, Which copy is the truth, Agreeing on one leader, Ordering and time, Syncing across devices.
 
 ### Email service
 https://systemdesigner.io/p/email-service/
 Hard; Productivity.
 Mail arrives from the whole internet, including a lot of spam, and must land in the right inbox. People open, search, send and attach. Never lose a message, and keep search fast even over years of mail.
-Audience: 2 million people; normal peak ≈ 9000 requests/s; budget ≈ $30000/month.
+Audience: 2 million people; normal peak ≈ 9,000 requests/s; budget ≈ $30,000/month.
 Concepts: Search is a copy, Hot, warm, cold and archive, Waiting instead of breaking, Designs that other teams must live with, Inside a storage engine.
 
 ### Notes that sync across your devices
 https://systemdesigner.io/p/device-notes/
 Hard; Productivity.
 Build a notebook that works on a phone and laptop, including a month offline. Edits should reach connected foreground devices in under a second, concurrent work must not disappear, and the server should not need plaintext notes. Push wakes devices; durable sync must work when push does not.
-Audience: 1 million people with about 3 devices each (approx.); normal peak ≈ 3000 requests/s; budget ≈ $4400/month.
+Audience: 1 million people with about 3 devices each (approx.); normal peak ≈ 3,000 requests/s; budget ≈ $4,400/month.
 Concepts: Syncing across devices, Ordering and time, Privacy by design, What consistent really means, Work across services.
 
 ### Shopping cart
 https://systemdesigner.io/p/shopping-cart/
 Easy; Commerce and retail.
 Shoppers browse products, drop things in a cart and come back later from another phone. Browsing is most of the traffic and can be a little old. The cart itself must always show what the shopper just added.
-Audience: 10 million shoppers a month (approx.); normal peak ≈ 3000 requests/s; budget ≈ $4200/month.
+Audience: 10 million shoppers a month (approx.); normal peak ≈ 3,000 requests/s; budget ≈ $4,200/month.
 Concepts: Remembering answers, Which copy is the truth.
 
 ### Flash sale inventory
 https://systemdesigner.io/p/flash-sale-inventory/
 Medium; Commerce and retail.
 At noon a hot item goes on sale with only a few thousand units. A huge crowd arrives in the same minute and everyone taps Buy. Stock must never go below zero, nobody should be charged for an item that is gone, and the site must not fall over.
-Audience: 4 million shoppers on the day (approx.); normal peak ≈ 2500 requests/s; budget ≈ $13000/month.
+Audience: 4 million shoppers on the day (approx.); normal peak ≈ 2,500 requests/s; budget ≈ $13,000/month.
 Concepts: When one item is popular, Waiting instead of breaking.
 
 ### Black Friday marketplace
 https://systemdesigner.io/p/black-friday-marketplace/
 Hard; Commerce and retail.
 Once a year a marketplace puts thousands of deals live at the same minute. Millions browse and search, a few doorbuster items get hammered, and a smaller crowd checks out. A payment must never be taken twice, and the day must survive the card processor having a bad hour.
-Audience: 30 million shoppers on the day (approx.); normal peak ≈ 20000 requests/s; budget ≈ $44000/month.
+Audience: 30 million shoppers on the day (approx.); normal peak ≈ 20,000 requests/s; budget ≈ $44,000/month.
 Concepts: Remembering answers, When one item is popular, Exactly once, on purpose, Many customers on one system, Work across services, Changing a running system.
 
 ### One-time code by text
 https://systemdesigner.io/p/otp-sms-delivery/
 Easy; Telecom and messaging.
 Apps ask you to send a six-digit code to a phone. The code must arrive in seconds, a person must never get it twice, and nobody may use your system to spam a number. Texts go through a carrier partner with a hard speed limit and a real price per message.
-Audience: 3 million people a month (approx.); normal peak ≈ 40 requests/s; budget ≈ $94000/month.
+Audience: 3 million people a month (approx.); normal peak ≈ 40 requests/s; budget ≈ $94,000/month.
 Concepts: Exactly once, on purpose, Saying "slow down" politely.
 
 ### Voice and video call setup
 https://systemdesigner.io/p/call-routing/
 Medium; Telecom and messaging.
 People tap a name and expect the other phone to ring in a second or two. Your job is the setup: find where the person is, ring their devices and connect the two sides. Everyone calls at the same moments, like evenings and holidays.
-Audience: 40 million people a month (approx.); normal peak ≈ 15000 requests/s; budget ≈ $29000/month.
+Audience: 40 million people a month (approx.); normal peak ≈ 15,000 requests/s; budget ≈ $29,000/month.
 Concepts: Live sockets and presence, Surviving a region.
 
 ### Bulk text campaigns
 https://systemdesigner.io/p/bulk-sms-campaigns/
 Hard; Telecom and messaging.
 Businesses send a coupon or an alert to hundreds of thousands of phones at once. Carriers accept texts only at a fixed speed, every text costs real money, and a person who replied STOP must never be texted again. Delivery receipts come back by the thousand and must be counted.
-Audience: 60 thousand businesses (approx.); normal peak ≈ 30 requests/s; budget ≈ $140000/month.
+Audience: 60 thousand businesses (approx.); normal peak ≈ 30 requests/s; budget ≈ $140,000/month.
 Concepts: Waiting instead of breaking, Saying "slow down" politely, Exactly once, on purpose.
 
 ### Status page
 https://systemdesigner.io/p/status-page/
 Easy; Developer platforms.
 When a big service has a problem, millions of people open its status page to see what is happening. The page must stay up exactly when everything else is down, and it must not share a home with the thing it reports on. A few staff update it by hand.
-Audience: 5 million visitors in a bad week (approx.); normal peak ≈ 800 requests/s; budget ≈ $3500/month.
+Audience: 5 million visitors in a bad week (approx.); normal peak ≈ 800 requests/s; budget ≈ $3,500/month.
 Concepts: Surviving a region, Copies near users, SLOs and error budgets, The simplest thing that works.
 
 ### CI/CD build system
 https://systemdesigner.io/p/ci-cd-pipeline/
 Medium; Developer platforms.
 Every time a developer saves code to the shared repository, you build and test it. Thousands of developers do this all day, and release day brings a rush. Builds must start quickly, but idle build machines cost real money.
-Audience: 40,000 developers; normal peak ≈ 300 requests/s; budget ≈ $106000/month.
+Audience: 40,000 developers; normal peak ≈ 300 requests/s; budget ≈ $106,000/month.
 Concepts: Waiting instead of breaking, Where the money goes, Adding servers, and why it is late, Changing a running system, Designs that other teams must live with.
 
 ### Feature flag service
 https://systemdesigner.io/p/feature-flag-service/
 Medium; Developer platforms.
 Companies turn features on and off for groups of users without redeploying. Millions of apps ask "is this on for me?", and the answer must be instant. A wrong flag value can take down an entire customer, so changes must roll out safely and be reversible in seconds.
-Audience: 2,000 customer companies, 5 million app instances; normal peak ≈ 25000 requests/s; budget ≈ $54000/month.
+Audience: 2,000 customer companies, 5 million app instances; normal peak ≈ 25,000 requests/s; budget ≈ $54,000/month.
 Concepts: Live sockets and presence, Copies near users, What consistent really means, Changing a running system.
 
 ### Clickstream analytics
 https://systemdesigner.io/p/clickstream-analytics/
 Medium; Developer platforms.
 Every tap and page view on a busy site sends a tiny event to you. Hundreds of millions pile up each day. Analysts open dashboards to ask what happened this hour. Never drop an event, and keep the storage bill under control as the pile grows.
-Audience: Events from 30 million visitors a month (approx.); normal peak ≈ 8000 requests/s; budget ≈ $72000/month.
+Audience: Events from 30 million visitors a month (approx.); normal peak ≈ 8,000 requests/s; budget ≈ $72,000/month.
 Concepts: Waiting instead of breaking, Hot, warm, cold and archive.
 
 ### Metrics platform
 https://systemdesigner.io/p/observability-platform/
 Hard; Developer platforms.
 Thousands of services send a stream of measurements: CPU, errors, latency. You store them, draw the dashboards and fire the alerts. The platform watching everyone else must never go down first, and one customer creating millions of new series can ruin the bill.
-Audience: 2,000 services and their on-call teams; normal peak ≈ 14000 requests/s; budget ≈ $77000/month.
+Audience: 2,000 services and their on-call teams; normal peak ≈ 14,000 requests/s; budget ≈ $77,000/month.
 Concepts: Splitting data, Seeing problems early, Surviving a region, How metrics systems work, Many customers on one system, Logs and traces, SLOs and error budgets.
 
 ### Logs platform
 https://systemdesigner.io/p/logs-platform/
 Hard; Developer platforms.
 Build a shared log service for 2,000 teams. Collectors send compressed chunks, and on-call engineers find logs by tenant, service and time before filtering their words. A wide search or a runaway label must not stop other teams from investigating an outage.
-Audience: 2,000 tenant teams (approx.); normal peak ≈ 100 requests/s; budget ≈ $8800/month.
+Audience: 2,000 tenant teams (approx.); normal peak ≈ 100 requests/s; budget ≈ $8,800/month.
 Concepts: Logs and traces, Consistent hashing and moving data, Inside a storage engine, Many customers on one system, SLOs and error budgets.
 
 ### Tracing platform
 https://systemdesigner.io/p/tracing-platform/
 Hard; Developer platforms.
 Store distributed traces for 500 teams and make an exemplar link open the useful trace during an incident. Decide what to sample before storage, handle late spans, and keep query traffic from overwhelming ingestion. Keeping all errors is a policy goal with a failure boundary, not a magic property of sampling.
-Audience: 500 teams and their services (approx.); normal peak ≈ 100 requests/s; budget ≈ $2400/month.
+Audience: 500 teams and their services (approx.); normal peak ≈ 100 requests/s; budget ≈ $2,400/month.
 Concepts: Logs and traces, Ordering and time, Consistent hashing and moving data, Inside a storage engine, SLOs and error budgets.
 
 ### Metrics for many customers
 https://systemdesigner.io/p/tenant-metrics/
 Hard; Developer platforms.
 Build one metrics platform for 5,000 customers. A tenant can create millions of series or run a costly month-long query by mistake. Your design must preserve useful ingestion and query service for the other tenants, and show the offending customer a clear limit rather than an unexplained gap.
-Audience: 5,000 tenant organizations (approx.); normal peak ≈ 8000 requests/s; budget ≈ $19000/month.
+Audience: 5,000 tenant organizations (approx.); normal peak ≈ 8,000 requests/s; budget ≈ $19,000/month.
 Concepts: How metrics systems work, Many customers on one system, Copies and quorums, Consistent hashing and moving data, SLOs and error budgets.
 
 ## Lesson catalogue

@@ -3,9 +3,15 @@ import { getPalette } from '../assets/palette.js';
 import { elementById, hexCss, fmtInt, fmtMoney, fmtPct } from './util.js';
 
 const W = 1200, H = 630;
-const DISPLAY = '"Sora", "Inter", system-ui, sans-serif';
-const BODY = '"Inter", system-ui, sans-serif';
-const MONO = '"JetBrains Mono", ui-monospace, monospace';
+// The site's own faces (assets/fonts.css): Atkinson Hyperlegible in 400 and 700, IBM Plex Mono in 400.
+const DISPLAY = '"Atkinson Hyperlegible", Arial, sans-serif';
+const BODY = DISPLAY;
+const MONO = '"IBM Plex Mono", ui-monospace, monospace';
+// Text keeps to x 76..1124 inside the panel. The architecture drawing gets the right half, above the four results.
+const L = 76, R = W - 76;
+const FRAME = { x: 560, y: 72, w: 564, h: 272 };
+// The size to ask the canvas for: the frame's shape at twice its pixels, so the drawing stays sharp when it is fitted in.
+export const THUMB = { width: FRAME.w * 2, height: FRAME.h * 2 };
 
 function colors(palette) {
   const fallback = getPalette('light').css;
@@ -17,8 +23,10 @@ function colors(palette) {
     dark,
     bg: pick('--bg', 'bg', dark ? '#0A0E18' : '#F3F5FA'),
     bg2: pick('--bg-2', 'bg2', dark ? '#111827' : '#E8ECF5'),
+    canvas: pick('--canvas', 'canvas', dark ? '#0C111D' : '#F6F8FC'),
     solid: pick('--surface-solid', 'surfaceSolid', dark ? '#151B2C' : '#FFFFFF'),
     border: pick('--border-strong', 'border', dark ? 'rgba(226,232,240,0.16)' : 'rgba(15,23,42,0.16)'),
+    line: pick('--border', 'border', dark ? 'rgba(226,232,240,0.12)' : 'rgba(15,23,42,0.12)'),
     dot: pick('--grid-dot', 'gridDot', dark ? 'rgba(226,232,240,0.07)' : 'rgba(30,41,59,0.10)'),
     text: pick('--text', 'text', dark ? '#E7ECF6' : '#0E1525'),
     text2: pick('--text-2', 'text2', dark ? '#B4BDD0' : '#3A4458'),
@@ -103,7 +111,8 @@ function glyph(ctx, kind, cx, cy, r, c) {
   const col = kind === 'ok' ? c.ok : kind === 'warn' ? c.warn : c.bad;
   ctx.save();
   ctx.fillStyle = col;
-  ctx.strokeStyle = '#fff';
+  // the mark inside: white on the deep light-theme colours, the panel colour on the pale dark-theme ones
+  ctx.strokeStyle = c.dark ? c.solid : '#fff';
   ctx.lineWidth = 2.6;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -169,15 +178,15 @@ function drawMiniGraph(ctx, graph, catalog, c, x, y, w, h) {
   if (!nodes.length) return;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const n of nodes) { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y); }
-  const pad = 28;
+  const pad = 44;
   const sx = (w - pad * 2) / Math.max(1, x1 - x0);
   const sy = (h - pad * 2) / Math.max(1, y1 - y0);
   const s = Math.min(sx, sy, 0.9);
   const ox = x + w / 2 - ((x0 + x1) / 2) * s;
   const oy = y + h / 2 - ((y0 + y1) / 2) * s;
   const pos = new Map(nodes.map((n) => [n.id, [ox + n.x * s, oy + n.y * s, n]]));
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = c.dark ? 'rgba(226,232,240,0.30)' : 'rgba(30,41,59,0.28)';
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = c.dark ? 'rgba(226,232,240,0.38)' : 'rgba(30,41,59,0.36)';
   for (const e of graph.edges || []) {
     const a = pos.get(e.from), b = pos.get(e.to);
     if (!a || !b) continue;
@@ -185,7 +194,7 @@ function drawMiniGraph(ctx, graph, catalog, c, x, y, w, h) {
     ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
   }
   ctx.setLineDash([]);
-  const r = Math.max(9, Math.min(16, 30 * s + 6));
+  const r = Math.max(10, Math.min(22, 40 * s + 4));
   for (const [px, py, n] of pos.values()) {
     const cat = elementById(catalog, n.type)?.category || 'compute';
     ctx.fillStyle = c.solid;
@@ -200,7 +209,7 @@ function drawMiniGraph(ctx, graph, catalog, c, x, y, w, h) {
 
 async function ensureFonts() {
   if (typeof document === 'undefined' || !document.fonts?.load) return;
-  const loads = ['700 40px Sora', '600 20px Sora', '500 16px Inter', '600 14px Inter', '500 14px "JetBrains Mono"'].map((f) => document.fonts.load(f).catch(() => {}));
+  const loads = ['700 40px "Atkinson Hyperlegible"', '400 16px "Atkinson Hyperlegible"', '400 14px "IBM Plex Mono"'].map((f) => document.fonts.load(f).catch(() => {}));
   await Promise.race([Promise.all(loads), new Promise((r) => setTimeout(r, 1200))]);
 }
 
@@ -235,25 +244,40 @@ export async function renderCard({ result, problem, catalog, palette, thumbCanva
   const mode = result.mode || 'practice';
   const kicker = (mode === 'challenge' ? 'DAILY CHALLENGE' : mode === 'beat' ? 'BEAT MY DESIGN' : 'PRACTICE') + (date ? '  ·  ' + date : '');
 
-  // Header
-  ctx.fillStyle = c.accent; ctx.font = `600 15px ${BODY}`;
-  ctx.fillText('SYSTEM DESIGNER   ' + kicker, 76, 92);
-  ctx.fillStyle = c.text; ctx.font = `700 42px ${DISPLAY}`;
-  const titleLines = wrap(ctx, problem?.title || result.problemId || 'System design', 820, 2);
-  titleLines.forEach((t, i) => ctx.fillText(t, 76, 142 + i * 48));
-  const ty = 142 + (titleLines.length - 1) * 48 + 34;
-  ctx.fillStyle = c.text2; ctx.font = `500 18px ${BODY}`;
+  // Header: the column to the left of the drawing. A long title gets smaller before it wraps.
+  const colW = FRAME.x - 32 - L;
+  const kickerText = 'SYSTEM DESIGNER   ' + kicker;
+  let ks = 15;
+  ctx.font = `700 ${ks}px ${BODY}`;
+  while (ks > 12 && ctx.measureText(kickerText).width > colW) { ks -= 0.5; ctx.font = `700 ${ks}px ${BODY}`; }
+  ctx.fillStyle = c.accent;
+  ctx.fillText(kickerText, L, 92);
+  const title = problem?.title || result.problemId || 'System design';
+  let ts = 42;
+  ctx.font = `700 ${ts}px ${DISPLAY}`;
+  while (ts > 30 && ctx.measureText(title).width > colW) { ts -= 2; ctx.font = `700 ${ts}px ${DISPLAY}`; }
+  ctx.fillStyle = c.text;
+  const titleLines = wrap(ctx, title, colW, 2);
+  const tl = Math.round(ts * 1.18);
+  titleLines.forEach((t, i) => ctx.fillText(t, L, 100 + ts + i * tl));
+  let hy = 100 + ts + (titleLines.length - 1) * tl;
   const sub = [problem?.difficulty, problem?.like].filter(Boolean).join('  ·  ');
-  ctx.fillText(fit(ctx, sub, 820), 76, ty);
-  if (name) {
-    ctx.textAlign = 'right'; ctx.fillStyle = c.text2; ctx.font = `600 18px ${BODY}`;
-    ctx.fillText(fit(ctx, name, 240), W - 76, 92);
-    ctx.textAlign = 'left';
+  if (sub) {
+    ctx.fillStyle = c.text2; ctx.font = `400 17px ${BODY}`;
+    const subLines = wrapLines(ctx, sub, colW, 2);
+    subLines.forEach((t, i) => ctx.fillText(t, L, hy + 30 + i * 23));
+    hy += 30 + (subLines.length - 1) * 23;
   }
 
-  // Score dial
-  const dcx = 196, dcy = 360, dr = 98;
-  ctx.lineWidth = 18; ctx.lineCap = 'round';
+  // Score dial: as large as the room under the header allows, with the stars and the verdict beside it
+  const floor = FRAME.y + FRAME.h + 22;
+  const top = hy + 20;
+  const dr = Math.max(56, Math.min(96, (floor - top - 18) / 1.707));
+  const k = dr / 98;
+  const dlw = Math.round(18 * k);
+  const dcx = L + dlw / 2 + dr;
+  const dcy = top + Math.max(0, (floor - top - (dr * 1.707 + dlw)) / 2) + dlw / 2 + dr;
+  ctx.lineWidth = dlw; ctx.lineCap = 'round';
   ctx.strokeStyle = c.dark ? 'rgba(226,232,240,0.10)' : 'rgba(15,23,42,0.08)';
   ctx.beginPath(); ctx.arc(dcx, dcy, dr, Math.PI * 0.75, Math.PI * 2.25); ctx.stroke();
   const frac = Math.max(0, Math.min(1, (score.total || 0) / 1000));
@@ -262,63 +286,73 @@ export async function renderCard({ result, problem, catalog, palette, thumbCanva
   ctx.strokeStyle = grad;
   if (frac > 0) { ctx.beginPath(); ctx.arc(dcx, dcy, dr, Math.PI * 0.75, Math.PI * (0.75 + 1.5 * frac)); ctx.stroke(); }
   ctx.textAlign = 'center';
-  ctx.fillStyle = c.text; ctx.font = `700 64px ${DISPLAY}`;
-  ctx.fillText(fmtInt(score.total), dcx, dcy + 16);
-  ctx.fillStyle = c.text3; ctx.font = `500 16px ${BODY}`;
-  ctx.fillText('out of 1,000', dcx, dcy + 44);
-  for (let i = 0; i < 3; i++) star(ctx, dcx + (i - 1) * 54, 492, 20, i < (result.stars || 0), c);
-  ctx.fillStyle = result.passed ? c.ok : c.warn; ctx.font = `600 16px ${BODY}`;
-  ctx.fillText(result.passed ? 'Held the day' : 'Did not hold', dcx, 538);
+  ctx.fillStyle = c.text; ctx.font = `700 ${Math.round(58 * k)}px ${DISPLAY}`;
+  ctx.fillText(fmtInt(score.total), dcx, dcy + 14 * k);
+  ctx.fillStyle = c.text3; ctx.font = `400 ${Math.max(13, Math.round(16 * k))}px ${BODY}`;
+  ctx.fillText('out of 1,000', dcx, dcy + 14 * k + Math.max(22, 28 * k));
+  const sx = (dcx + dr + dlw / 2 + L + colW) / 2;
+  const sy = dcy - dr * 0.146;
+  for (let i = 0; i < 3; i++) star(ctx, sx + (i - 1) * 54, sy - 18, 20, i < (result.stars || 0), c);
+  ctx.fillStyle = result.passed ? c.ok : c.warn; ctx.font = `700 17px ${BODY}`;
+  ctx.fillText(result.passed ? 'Held the day' : 'Did not hold', sx, sy + 36);
   ctx.textAlign = 'left';
 
-  // SLO chips 2 x 2
-  const chips = chipData(result, problem);
-  const cx0 = 350, cy0 = 216, cw = 200, ch = 136, gap = 14;
-  chips.forEach((chip, i) => {
-    const x = cx0 + (i % 2) * (cw + gap), y = cy0 + Math.floor(i / 2) * (ch + gap);
-    ctx.fillStyle = c.dark ? 'rgba(226,232,240,0.05)' : 'rgba(15,23,42,0.035)';
-    rrect(ctx, x, y, cw, ch, 16); ctx.fill();
-    ctx.strokeStyle = c.border; ctx.lineWidth = 1; rrect(ctx, x, y, cw, ch, 16); ctx.stroke();
-    glyph(ctx, chip.state, x + 24, y + 28, 11, c);
-    ctx.fillStyle = c.text3; ctx.font = `600 13px ${BODY}`;
-    ctx.fillText(chip.label.toUpperCase(), x + 44, y + 33);
-    ctx.fillStyle = c.text; ctx.font = `700 22px ${DISPLAY}`;
-    ctx.fillText(fit(ctx, chip.value, cw - 28), x + 18, y + 72);
-    ctx.fillStyle = c.text2; ctx.font = `500 12.5px ${BODY}`;
-    wrapLines(ctx, chip.sub, cw - 28, 2).forEach((ln, k) => ctx.fillText(ln, x + 18, y + 94 + k * 15));
-    ctx.fillStyle = c.text3; ctx.font = `500 13px ${MONO}`;
-    ctx.fillText(`${fmtInt(chip.pts)} / ${chip.max} pts`, x + 18, y + 126);
-  });
-
-  // Architecture thumbnail
-  const tx = 790, ty0 = 216, tw = 334, th = 270;
+  // Architecture drawing: the canvas's own colour edge to edge, so the picture has no band around it
+  const { x: tx, y: ty0, w: tw, h: th } = FRAME;
   ctx.save();
-  rrect(ctx, tx, ty0, tw, th, 18);
-  ctx.fillStyle = c.dark ? 'rgba(226,232,240,0.04)' : 'rgba(15,23,42,0.03)'; ctx.fill();
+  rrect(ctx, tx, ty0, tw, th, 16);
+  ctx.fillStyle = c.canvas; ctx.fill();
   ctx.clip();
   const tc = thumbCanvas;
   if (tc && tc.width && tc.height) {
-    const s = Math.min((tw - 16) / tc.width, (th - 16) / tc.height);
+    const s = Math.min(tw / tc.width, th / tc.height);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(tc, tx + (tw - tc.width * s) / 2, ty0 + (th - tc.height * s) / 2, tc.width * s, tc.height * s);
   } else {
     drawMiniGraph(ctx, result.graph, catalog, c, tx, ty0, tw, th);
   }
   ctx.restore();
-  ctx.strokeStyle = c.border; ctx.lineWidth = 1; rrect(ctx, tx, ty0, tw, th, 18); ctx.stroke();
-  ctx.fillStyle = c.text3; ctx.font = `600 13px ${BODY}`;
-  ctx.fillText(`ARCHITECTURE  ·  ${(result.graph?.nodes || []).length} elements`, tx + 2, ty0 + th + 24);
+  ctx.strokeStyle = c.line; ctx.lineWidth = 1.5; rrect(ctx, tx, ty0, tw, th, 16); ctx.stroke();
+  ctx.fillStyle = c.text3; ctx.font = `700 13px ${BODY}`;
+  const caption = `ARCHITECTURE  ·  ${(result.graph?.nodes || []).length} elements`;
+  ctx.fillText(caption, tx + 2, ty0 + th + 22);
+  if (name) {
+    const used = ctx.measureText(caption).width;
+    ctx.textAlign = 'right'; ctx.fillStyle = c.text2; ctx.font = `700 16px ${BODY}`;
+    ctx.fillText(fit(ctx, name, tw - used - 40), R - 2, ty0 + th + 22);
+    ctx.textAlign = 'left';
+  }
+
+  // The four results in one row
+  const chips = chipData(result, problem);
+  const cy0 = 378, ch = 134, gap = 16, cw = (R - L - gap * 3) / 4;
+  chips.forEach((chip, i) => {
+    const x = L + i * (cw + gap), y = cy0;
+    ctx.fillStyle = c.dark ? 'rgba(226,232,240,0.05)' : 'rgba(15,23,42,0.035)';
+    rrect(ctx, x, y, cw, ch, 16); ctx.fill();
+    ctx.strokeStyle = c.line; ctx.lineWidth = 1.5; rrect(ctx, x, y, cw, ch, 16); ctx.stroke();
+    glyph(ctx, chip.state, x + 27, y + 27, 11, c);
+    ctx.fillStyle = c.text3; ctx.font = `700 13px ${BODY}`;
+    ctx.fillText(chip.label.toUpperCase(), x + 46, y + 32);
+    ctx.fillStyle = c.text; ctx.font = `700 23px ${DISPLAY}`;
+    ctx.fillText(fit(ctx, chip.value, cw - 36), x + 18, y + 65);
+    ctx.fillStyle = c.text2; ctx.font = `400 13px ${BODY}`;
+    wrapLines(ctx, chip.sub, cw - 36, 2).forEach((ln, j) => ctx.fillText(ln, x + 18, y + 85 + j * 16));
+    ctx.fillStyle = c.text3; ctx.font = `400 13px ${MONO}`;
+    ctx.fillText(`${fmtInt(chip.pts)} / ${chip.max} pts`, x + 18, y + ch - 12);
+  });
 
   // Footer
   ctx.fillStyle = c.text; ctx.font = `700 24px ${DISPLAY}`;
-  ctx.fillText(`Can you beat ${fmtInt(score.total)}?`, 350, 546);
-  ctx.fillStyle = c.text2; ctx.font = `500 15px ${MONO}`;
+  ctx.fillText(`Can you beat ${fmtInt(score.total)}?`, L, 546);
+  ctx.fillStyle = c.text2; ctx.font = `400 15px ${MONO}`;
   let site = '', shortPath = '';
   try { const u = new URL(url); site = u.host; const m = /\/d\/(\d{4}-\d{2}-\d{2})\//.exec(u.pathname); if (m) shortPath = '/d/' + m[1]; } catch { site = ''; }
   // a daily result prints a short address anyone can type to play the same day; the design itself rides in the link
   const shown = shortPath ? `${site}${shortPath}  ·  play the same day` : url ? `${site || 'systemdesigner.io'}  ·  design link in the message` : 'Free and open source';
-  ctx.fillText(fit(ctx, shown, 470), 350, 574);
-  ctx.textAlign = 'right'; ctx.fillStyle = c.text3; ctx.font = `500 13px ${BODY}`;
-  ctx.fillText('Numbers are approximate, from a simulation.', W - 76, 574);
+  ctx.fillText(fit(ctx, shown, 640), L, 574);
+  ctx.textAlign = 'right'; ctx.fillStyle = c.text3; ctx.font = `400 13px ${BODY}`;
+  ctx.fillText('Numbers are approximate, from a simulation.', R, 574);
   ctx.textAlign = 'left';
 
   return new Promise((resolve, reject) => {

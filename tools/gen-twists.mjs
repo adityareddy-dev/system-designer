@@ -66,7 +66,7 @@ for (const p of problems) {
     result = run(prob, graph);
     if (!result.passed || result.score.total !== 1000 || unchanged.some(r => r.slo.cost.perMonth <= budget)) continue;
     found = { ...spec, requirements: { peakRps: requirements.peakRps, budgetPerMonth: budget },
-      brief: `Demand has settled at about ${requirements.peakRps} requests/s. The new monthly ceiling is $${budget}. The original burst reserve now competes with the operating budget. Decide which reserve to keep, then test its failure headroom. All data and recovery promises still apply.`,
+      brief: `Demand has settled at about ${requirements.peakRps.toLocaleString('en-US')} requests/s. The new monthly ceiling is $${budget.toLocaleString('en-US')}. The original burst reserve now competes with the operating budget. Decide which reserve to keep, then test its failure headroom. All data and recovery promises still apply.`,
       design: { name: 'Smaller workload, measured reserve', graph, why: 'Reduce the paid floor for the quieter workload, preserving the required copies and recovery settings. This design was checked through the full event day.', expect: { score: 1000, passed: true, costPerMonth: Math.round(cost) } } };
     break search;
     }

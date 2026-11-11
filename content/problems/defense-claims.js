@@ -49,7 +49,7 @@ export function checkClaim(claim, { problem, graph, result, catalog }) {
   const active = id => result.nodes?.some(n => n.id === id && n.peakRequests > 0);
   let node = candidate.nodes.find(n => n.id === claim.nodeId);
   let applied = false;
-  const steps = [`Start with your ${graph.nodes.length} parts and this problem's stated workload. Baseline: ${(result.slo.availability.actual * 100).toFixed(2)}% served, ≈ $${Math.round(result.slo.cost.perMonth)}/month.`];
+  const steps = [`Start with your ${graph.nodes.length} parts and this problem's stated workload. Baseline: ${(result.slo.availability.actual * 100).toFixed(2)}% served, ≈ $${Math.round(result.slo.cost.perMonth).toLocaleString('en-US')}/month.`];
   let events = [...problem.events], requirements = { ...problem.requirements };
   const addEvent = (id, params = {}) => { events.push({ id, at: '12:00', params }); };
   if (claim.kind === 'replica' && node) {
@@ -155,7 +155,7 @@ export function checkClaim(claim, { problem, graph, result, catalog }) {
   }
   const first = checked.firstFailure;
   const latency = slo.availability.actual > 0 ? `worst p99 about ${Math.round(slo.latency.worstP99Ms)} ms for completed requests` : 'p99 unmeasured: no requests completed';
-  steps.push(`Replay the full day: ${(slo.availability.actual * 100).toFixed(2)}% served against ${(slo.availability.target * 100).toFixed(2)}%; ${latency}; ≈ $${Math.round(slo.cost.perMonth)}/month. Service ${service ? 'held' : 'broke'}; data checks ${checked.checks.safety ? 'held' : 'broke'}.`);
+  steps.push(`Replay the full day: ${(slo.availability.actual * 100).toFixed(2)}% served against ${(slo.availability.target * 100).toFixed(2)}%; ${latency}; ≈ $${Math.round(slo.cost.perMonth).toLocaleString('en-US')}/month. Service ${service ? 'held' : 'broke'}; data checks ${checked.checks.safety ? 'held' : 'broke'}.`);
   if (first) steps.push(`First material failure at ${Math.floor(first.atMs / 60000)} minutes: ${first.kind} at ${label(first.nodeId)}.`);
   const matched = applied ? held === (position === 'hold') : null;
   const outcome = !applied ? 'untested' : held ? 'held' : 'failed';

@@ -4,6 +4,7 @@ import { mountFeedback } from '../shell/feedback.js';
 import { twistProblem } from '../../content/problems/twist.js';
 import { createInterview, renderInterviewPrep, renderInterviewResult } from './interview.js';
 import { pathLayout } from '../../render/layout.js';
+import { fitInsets } from '../../render/fit.js';
 import { renderDesignCheck } from './design-check.js';
 import { createSim } from '../../sim/engine.js';
 import { createScene } from '../../render/scene.js';
@@ -345,13 +346,16 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const r = stage.getBoundingClientRect();
     const box = (el) => (el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null);
     let l = 0, t = 0, rr = 0, b = 0;
+    // a small panel in a corner (a folded card, the Add component button) covers only itself, not a band of the canvas
+    const blocks = [];
+    const corner = (x) => blocks.push({ x: x.left - r.left, y: x.top - r.top, width: x.width, height: x.height });
     const hb = box(hud.el), tb = box(top);
     if (isPhone()) {
       if (hb) t = Math.max(t, hb.bottom - r.top);
       const traceBox = box(root.querySelector('.pl-trace'));
       if (traceBox) t = Math.max(t, traceBox.bottom - r.top);
       if (tb) t = Math.max(t, tb.bottom - r.top);
-      for (const el of [caption, goalChip]) { const overlay = box(el); if (overlay && overlay.top < r.top + r.height / 2) t = Math.max(t, overlay.bottom - r.top + 4); }
+      for (const el of [caption, goalChip, bannerEl()]) { const overlay = box(el); if (overlay && overlay.top < r.top + r.height / 2) t = Math.max(t, overlay.bottom - r.top + 4); }
       b = 72;
       // an open parts drawer, and the Add component button riding on its edge, are not free canvas either
       const tbBox = box(toolbar.el);
@@ -366,29 +370,96 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (goalBox) t = Math.max(t, goalBox.bottom - r.top + 8);
       const lb = box(toolbar.el);
       // a folded parts list that is only a button (small tablets) takes a corner of the top, not the whole left side
-      if (lb && lb.width && lb.height < r.height * 0.3) t = Math.max(t, lb.bottom - r.top + 4);
+      if (lb && lb.width && lb.height < r.height * 0.3) corner(lb);
       else if (lb && lb.width) l = Math.max(l, lb.right - r.left);
       if (isLesson) { const cb = box(caption); if (cb) b = Math.max(b, r.bottom - cb.top + 12); }
       const rightKids = [...right.children].map(box).filter(Boolean);
       // a short stack of panels (a folded traffic panel) only takes the top corner; a tall one takes the whole right side
       const rightLow = rightKids.length ? Math.max(...rightKids.map((x) => x.bottom)) - r.top : 0;
-      if (rightKids.length && rightLow < r.height * 0.3) t = Math.max(t, rightLow + 8);
-      else if (rightKids.length) rr = Math.max(rr, r.right - Math.min(...rightKids.map((x) => x.left)));
+      if (rightKids.length && rightLow < r.height * 0.3) {
+        const left = Math.min(...rightKids.map((x) => x.left)), topEdge = Math.min(...rightKids.map((x) => x.top));
+        corner({ left, top: topEdge, width: r.right - left, height: rightLow + r.top - topEdge });
+      } else if (rightKids.length) rr = Math.max(rr, r.right - Math.min(...rightKids.map((x) => x.left)));
     }
-    const area = { l, t, r: rr, b, w: r.width, h: r.height };
-    scene.setCaptionArea?.({ l: l + 8, t: t + 8, r: rr + 8, b: b + 8 });
+    const area = { l, t, r: rr, b, w: r.width, h: r.height, blocks };
+    // Extra room a fit keeps free beyond the panels (worked out only when a fit asks for it).
+    area.room = () => {
+      // where a day can start at any moment (the sandbox), the status bar's running height is kept free from the start
+      const grow = !stepped && !isLesson ? hudGrowth() : 0, phone = isPhone();
+      // while a day runs, the event banner drops into the top row: the diagram starts below where it will sit
+      return { t: Math.max(t, bannerReserve(area)) + (phone ? grow : 0), b: b + (phone ? 0 : grow) };
+    };
+    scene.setCaptionArea?.({ l: l + 8, t: t + 8, r: rr + 8, b: b + 8, ...(blocks.length ? { blocks: blocks.map((k) => ({ x: k.x - 8, y: k.y - 8, width: k.width + 16, height: k.height + 16 })) } : {}) });
     return area;
+  }
+  // The layout of the panels changed with the step (the parts list folds, the status bar grows): the diagram follows,
+  // unless the player has taken the view over by panning or zooming.
+  function refitForStep() {
+    if (!stepped || S.destroyed || S.viewManual || !graph().nodes.length) return;
+    try { syncHud(); } catch { /* not laid out yet */ }
+    fitView(true);
+  }
+  const bannerEl = () => root.querySelector('.pl-banner');
+  // How much taller the status bar becomes once a day runs: measured in place, between two frames.
+  function hudGrowth() {
+    if (S.sim?.phase !== 'build') return 0;
+    try {
+      const el = hud.el, was = el.dataset.phase, before = el.offsetHeight;
+      el.dataset.phase = 'running';
+      const after = el.offsetHeight;
+      el.dataset.phase = was;
+      // the meters gain a history line with the first measurements
+      return after > before ? after - before + 28 : 0;
+    } catch { return 0; }
+  }
+  // Whether a part, or the name under it, now sits under a panel.
+  function diagramCovered() {
+    try {
+      const a = freeArea(), o = scene.worldToScreen(0, 0), half = 36 * (scene.worldToScreen(1, 0).x - o.x);
+      const room = a.room();
+      return graph().nodes.some((n) => {
+        const p = scene.worldToScreen(n.x, n.y);
+        return p.x - half < a.l + 4 || p.x + half > a.w - a.r - 4 || p.y - half < room.t + 2 || p.y + half + 22 > a.h - room.b - 8
+          || a.blocks.some((k) => p.x + half > k.x && p.x - half < k.x + k.width && p.y + half > k.y && p.y - half < k.y + k.height);
+      });
+    } catch { return false; }
+  }
+  function bannerReserve(a) {
+    if (!stepped || !['running', 'paused'].includes(S.sim?.phase)) return 0;
+    // on a phone the event strip is one line under the status bar
+    if (isPhone()) { const shown = bannerEl(); return shown && !shown.hidden ? 0 : a.t + 44; }
+    const docked = root.classList.contains('pl-slot');
+    const width = Math.min(560, docked ? parseFloat(root.style.getPropertyValue('--pl-slot-w')) || 0 : a.w - 32);
+    if (!(width > 0)) return 0;
+    // a title line and a description of about 110 characters, at the banner's type size; the fit adds its own padding below
+    const lines = Math.max(1, Math.ceil(110 / Math.max(20, (width - 74) / 6.6)));
+    return (docked ? 12 : 118) + 41 + lines * 19 + 12 - 20;
   }
   function fitView(animate = true, minZoom = null, automatic = false) {
     if (S.connectFrom || (automatic && (S.booted || performance.now() < Math.max(S.editUntil || 0, S.manualViewUntil || 0)))) return;
     const a = freeArea();
-    const pad = isPhone() ? 20 : 36;
+    const phone = isPhone();
+    // clear space kept above the first row and below the last name
+    const pad = phone ? 10 : 20, low = phone ? 24 : 30;
+    // names sit under the parts and are about 80 px wide, so the sides keep room for half a name and the bottom for a name line
+    const side = phone ? 40 : Math.max(pad, 46);
+    const room = a.room ? a.room() : a;
+    let insets = { l: a.l + side, t: room.t + pad, r: a.r + side, b: room.b + low };
     // a big build zooms out far enough to sit between the panels instead of running underneath them
-    const zoom = isPhone() ? { minZ: minZoom ?? 0, maxZ: 0.9, reserveY: 0 } : { minZ: minZoom ?? 0, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
-    // names sit under the parts and are about 80 px wide, so the sides keep room for half a name (never under 12 px) and the bottom for a name line
-    const side = Math.max(pad, 46);
-
-    try { scene.fit({ l: a.l + side, t: a.t + pad, r: a.r + side, b: a.b + pad + 22 }, animate, zoom); } catch { try { scene.fit(); } catch { /* optional */ } }
+    const zoom = phone ? { minZ: minZoom ?? 0, maxZ: 0.9, reserveY: 0 } : { minZ: minZoom ?? 0, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
+    S.viewManual = false;
+    try {
+      const bounds = phone || a.blocks?.length ? scene.bounds?.() : null;
+      // On a phone a design far too wide for the screen opens at a size where names still fit under their parts, and
+      // pans; Fit all shows the whole of it.
+      if (phone && bounds && minZoom == null) {
+        const natural = Math.min((a.w - insets.l - insets.r) / (bounds.maxX - bounds.minX), (a.h - insets.t - insets.b) / (bounds.maxY - bounds.minY));
+        if (natural < 0.21) zoom.minZ = 0.25;
+      }
+      const box = a.blocks?.length ? bounds : null;
+      if (box) insets = fitInsets(box, { w: a.w, h: a.h }, insets, a.blocks, zoom.maxZ, { x: side, y: pad });
+      scene.fit(insets, animate, zoom);
+    } catch { try { scene.fit(); } catch { /* optional */ } }
   }
   function fitEntry() {
     syncHud();
@@ -437,9 +508,20 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       const sp = scene.worldToScreen ? scene.worldToScreen(x, y) : null;
       if (!sp) return;
       const a = freeArea();
+      const under = (k) => sp.x > k.x - 30 && sp.x < k.x + k.width + 30 && sp.y > k.y - 30 && sp.y < k.y + k.height + 30;
+      if (!isPhone()) {
+        // the part steps out from under the panel that covers it; the rest of the view keeps its place and its zoom
+        const cover = a.blocks.find(under);
+        const insets = { l: a.l, t: a.t, r: a.r, b: a.b };
+        if (cover) { if (cover.x + cover.width / 2 > a.w / 2) insets.r = Math.max(insets.r, a.w - cover.x); else insets.l = Math.max(insets.l, cover.x + cover.width); }
+        // room for the part, its connect handle and its name at the current zoom
+        const zoom = scene.worldToScreen(1, 0).x - scene.worldToScreen(0, 0).x, edge = 74 * zoom + 14;
+        later(() => { if (!S.destroyed && !S.connectFrom) { try { scene.reveal(x, y, insets, { l: edge, r: edge, t: 36 * zoom + 44, b: 36 * zoom + 56 }); } catch { /* optional */ } } }, 60);
+        return;
+      }
       if (sp.x < a.l + 30 || sp.x > a.w - a.r - 30 || sp.y < a.t + 30 || sp.y > a.h - a.b - 30) later(() => {
         if (S.destroyed || S.connectFrom || performance.now() < (S.editUntil || 0)) return;
-        if (isPhone() && S.selected) {
+        if (S.selected) {
           const area = freeArea();
           scene.fit({ l: 38, r: 38, t: area.t + 26, b: area.b + 26 }, true, { focusId: S.selected, maxZ: .9 });
         } else fitView(true);
@@ -470,7 +552,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       else if (wiring) pos = makeRoomOnEdge(edgeId);
       else edgeId = null;
       const want = { x: snap(pos ? pos.x : x), y: snap(pos ? pos.y : y) };
-      const at = opt.autoPlace && !edgeId ? freeSpot(want.x, want.y, null) : want;
+      const covers = !edgeId && graph().nodes.some((n) => Math.abs(n.x - want.x) < 40 && Math.abs(n.y - want.y) < 40);
+      const at = (opt.autoPlace && !edgeId) || covers ? freeSpot(want.x, want.y, null) : want;
       const id = S.sim.addNode(type, at.x, at.y, {});
       if (edgeId) spliceInto(id, type, edgeId);
       toolbar.clearTransient();
@@ -666,6 +749,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     for (const [key,value] of Object.entries({ x:p.x,y:p.y,width:q.x-p.x,height:q.y-p.y })) rect.setAttribute(key,value);
   }
   offs.push(scene.on('view', updateCameraMap));
+  offs.push(scene.on('view:manual', () => { S.viewManual = true; }));
   function showFocusMap(id, refresh = false) {
     const zoomed = refresh && root.querySelector('.pl-focus-map .pl-btn')?.dataset.zoomed;
     root.querySelector('.pl-focus-map')?.remove();
@@ -1183,6 +1267,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       top.classList.remove('pl-top--tools-open');
       hints.open();
     } }, 'Hints'));
+    // the phone's top row has no room for the editorial button, so the editorial opens from this list there
+    if (stepped && !interview) options.append(h('button', { class: 'pl-btn pl-btn--small pl-opt--phone', type: 'button', onClick: () => {
+      inspection.open = false;
+      top.classList.remove('pl-top--tools-open');
+      openEditorial();
+    } }, 'Editorial'));
     const toggle = (label, action) => {
       let on = false;
       const button = h('button', { class: 'pl-btn pl-btn--small', type: 'button', 'aria-pressed': 'false', onClick: () => {
@@ -1351,6 +1441,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     closeHints();
     snd('start');
     bus.emit('play:start', { mode, problemId: S.problem.id, seed: S.seed });
+    refitForStep();
     return getState();
   }
   function pause() { if (S.sim.phase === 'running') { S.sim.pause(); hud.setPhase('paused'); hud.setSpeed(0); updateEditable(); } }
@@ -1386,6 +1477,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (stepped) { S.step = 'draw'; root.dataset.step = 'draw'; stepsBar.set('draw', { clarify: true, numbers: true, draw: true, debrief: !!S.result }); }
     updateEditable();
     refreshChecks();
+    refitForStep();
   }
   function reset() { if (resetToDraw() !== false && stepped) go('draw'); }
 
@@ -1519,7 +1611,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     // the fuller dialog: card preview, name field, link and share buttons
     if (c?.ui?.openShareDialog) {
       try {
-        const thumb = await scene.snapshot({ width: 560, height: 280, graph: r.graph });
+        const thumb = await scene.snapshot({ ...c.card.THUMB, graph: r.graph });
         const isDaily = S.seed.startsWith('daily-');
         const shareMode = mode === 'beat' ? (isDaily ? 'challenge' : 'practice') : mode;
         const d = isDaily ? S.seed.slice(6) : new Date().toISOString().slice(0, 10);
@@ -1552,7 +1644,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
           try {
             status.textContent = 'Drawing the card…';
             const url = await makeUrl();
-            const thumb = await scene.snapshot({ width: 560, height: 280, graph: r.graph });
+            const thumb = await scene.snapshot({ ...c.card.THUMB, graph: r.graph });
             const blob = await c.card.renderCard({ result: r, problem: S.problem, catalog, palette: ctx.palette(), thumbCanvas: thumb, date: dateStr, url, name });
             const how = await c.card.shareCard(blob, { title: `${S.problem.title}: ${Math.round(r.score.total)} points`, text: `I scored ${Math.round(r.score.total)} on ${S.problem.title}. Can you beat it?`, url });
             status.textContent = how === 'shared' ? 'Shared.' : 'Card saved to your downloads.';
@@ -1759,7 +1851,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!slowNote.hidden !== slowOn) {
       const on = slowOn;
       slowNote.hidden = !on;
-      if (on) slowNote.textContent = `Running slower than ${effectiveSpeed()}x on this device: the day is still correct, it just plays back slower.`;
+      // the phone shows the short form beside the clock, wider screens the whole sentence
+      if (on) slowNote.replaceChildren(h('span', { class: 'pl-slow-long', text: `Running slower than ${effectiveSpeed()}x on this device: the day is still correct, it just plays back slower.` }), h('span', { class: 'pl-slow-short', 'aria-hidden': 'true', text: `Slower than ${effectiveSpeed()}x on this device` }));
     }
     const dropped = perf.droppedTicks - (S.dropSeen || 0);
     S.dropSeen = perf.droppedTicks;
@@ -1956,6 +2049,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const coachBlocks = [root.querySelector('.pl-trace'), goalChip].filter(el => el && !el.hidden && el.offsetParent);
     const coachTop = Math.max(r.bottom, ...coachBlocks.map(el => el.getBoundingClientRect().bottom));
     root.style.setProperty('--pl-coach-top', Math.ceil(coachTop - rr.top + 8) + 'px');
+    const toolsBox = tools.getBoundingClientRect();
+    const slotL = Math.max(tb.left, ...[...top.children].filter((el) => el !== tools && !el.hidden && el.offsetParent).map((el) => el.getBoundingClientRect().right)) + 12;
+    const slotW = toolsBox.left - 12 - slotL;
+    const slot = !isPhone() && !isLesson && toolsBox.width > 0 && slotW >= 300;
+    root.classList.toggle('pl-slot', slot);
+    if (slot) { root.style.setProperty('--pl-slot-l', Math.round(slotL - rr.left) + 'px'); root.style.setProperty('--pl-slot-w', Math.floor(slotW) + 'px'); }
     syncFocusMap();
     freeArea();
   };
@@ -2005,6 +2104,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         syncHud();
         if (resized) refreshChecks();
         refitSoon(resized);
+        if (!resized && stepped && S.booted && !S.viewManual && S.step === 'day' && diagramCovered()) fitView(true);
       });
     });
     hudObs.observe(hud.el); hudObs.observe(root); hudObs.observe(top);

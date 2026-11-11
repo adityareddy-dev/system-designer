@@ -44,6 +44,13 @@ export function createCamera(world) {
     worldToScreen(x, y) { return { x: (x - cx) * z + w / 2, y: (y - cy) * z + h / 2 }; },
     stop() { vx = vy = 0; zoomTarget = null; tween = null; },
     panBy(dx, dy) { tween = null; cx -= dx / z; cy -= dy / z; apply(); },
+    // Eased pan by a screen distance (a part stepping out from under a panel). Instant under reduced motion.
+    glideBy(dx, dy) {
+      vx = vy = 0; zoomTarget = null;
+      const to = { x: cx - dx / z, y: cy - dy / z, z };
+      if (reduced) { cx = to.x; cy = to.y; tween = null; apply(); return; }
+      tween = { from: { x: cx, y: cy, z }, to, t: 0, dur: 260 };
+    },
     fling(nvx, nvy) {
       if (reduced) return;
       const sp = Math.hypot(nvx, nvy);

@@ -26,16 +26,29 @@
 <title>System Designer</title>
 <meta name="robots" content="noindex">
 <style>
-  :root { color-scheme: light; }
-  :root[data-theme="dark"] { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: grid; place-content: center; gap: 12px; padding: 24px; text-align: center; font: 500 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: #edf2f9; color: #1b2b45; }
-  a { color: #244ed8; font-weight: 600; }
-  :root[data-theme="dark"] body { background: #0e1422; color: #e6ebf5; } :root[data-theme="dark"] a { color: #8fa8ff; }
+  :root { color-scheme: light; --bg: #EDF2F9; --text: #1B2B45; --text-2: #3D506E; --accent: #244ED8; --accent-2: #006E68; --on-accent: #FFFFFF; --border: #C5D0E1; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg: #101B24; --text: #EAF0EC; --text-2: #CFDBDF; --accent: #A7BAFF; --accent-2: #73D4BD; --on-accent: #10213C; --border: #3C5260; }
+  @font-face { font-family: 'Atkinson Hyperlegible'; font-weight: 400; font-display: swap; src: url('/assets/fonts/atkinson-400.woff2') format('woff2'); }
+  @font-face { font-family: 'Atkinson Hyperlegible'; font-weight: 700; font-display: swap; src: url('/assets/fonts/atkinson-700.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Mono'; font-weight: 400; font-display: swap; src: url('/assets/fonts/plex-mono-400.woff2') format('woff2'); }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-content: center; justify-items: center; padding: 24px; text-align: center; font: 400 18px/1.55 "Atkinson Hyperlegible", Arial, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+  .nf-mark { display: block; margin-bottom: 20px; }
+  .nf-kicker { margin: 0 0 8px; font: 400 13px/1.5 "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .04em; color: var(--accent-2); }
+  h1 { margin: 0 0 12px; font-size: clamp(30px, 6vw, 44px); line-height: 1.1; letter-spacing: -.025em; text-wrap: balance; }
+  p { margin: 0; color: var(--text-2); max-width: 34ch; text-wrap: pretty; }
+  .nf-action { margin-top: 28px; }
+  #home { display: inline-flex; align-items: center; min-height: 48px; padding: 10px 22px; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-weight: 700; text-decoration: none; }
+  #home:hover { text-decoration: underline; text-underline-offset: .2em; }
+  #home:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
 </style>
 </head>
 <body>
+<svg class="nf-mark" viewBox="0 0 32 32" width="48" height="48" aria-hidden="true"><defs><linearGradient id="nf-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/></linearGradient></defs><rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="url(#nf-g)"/><path d="M8 21c4 0 4-10 8-10s4 10 8 10" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><circle cx="8" cy="21" r="2.4" fill="#fff"/><circle cx="16" cy="11" r="2.4" fill="#fff"/><circle cx="24" cy="21" r="2.4" fill="#fff"/></svg>
+<p class="nf-kicker">404 / No route to this page</p>
 <h1>That page is not here</h1>
-<p><a id="home" href="/">Open System Designer</a></p>
+<p>The link may be old, or the address has a typo. The game and every lesson are one step away.</p>
+<p class="nf-action"><a id="home" href="/">Open System Designer</a></p>
 <script>
 // A daily link for a date without its own page (d/YYYY-MM-DD/) still opens that day, with a design kept in the fragment.
 (function () {

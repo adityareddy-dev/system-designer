@@ -85,7 +85,7 @@ export function workloadTransfer(key, concept, context) {
     calculation = 'What percent busy is each surviving replica?'; value = 100; unit = '%';
   } else {
     const units = 4 + seed % 25, price = 17 + (seed >>> 12) % 110;
-    q = `${context}: ${units} units cost $${price} each per month. A measured trial can remove ${units - 2} while meeting peak and failure targets. Which decision is supported?`;
+    q = `${context}: ${units} units cost $${Number(price).toLocaleString('en-US')} each per month. A measured trial can remove ${units - 2} while meeting peak and failure targets. Which decision is supported?`;
     choices = ['Keep the original count because it is under budget', 'Compare the measured saving with a stated burst or recovery requirement', 'Remove the spare units without testing scale-up time']; answer = 1;
     why = 'A passing trial supports a smaller design for that workload. Retain extra capacity only for a concrete requirement you can test.';
     calculation = 'How many dollars per month would the smaller pool save?'; value = (units - 2) * price; unit = 'dollars/month';

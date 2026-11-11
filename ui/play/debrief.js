@@ -263,7 +263,7 @@ function versusCard(result, opp, handlers) {
   const f = {
     served: (v) => (v == null ? '–' : `≈ ${(v * 100).toFixed(2)}%`),
     p99: (v) => (v == null ? '–' : `≈ ${Math.round(v)} ms`),
-    cost: (v) => (v == null ? '–' : `≈ $${Math.round(v).toLocaleString()}`),
+    cost: (v) => (v == null ? '–' : `≈ $${Math.round(v).toLocaleString('en-US')}`),
   };
   const better = (k, a, b) => (a == null || b == null || a === b ? '' : ((k === 'p99' || k === 'cost') ? a < b : a > b) ? ' pl-vs--win' : '');
   const row = (label, k, fmt) => h('tr', {}, h('th', { scope: 'row', text: label }),

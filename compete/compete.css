@@ -1,15 +1,14 @@
 /* Styles for the daily panel, share dialog and beat landing. Prefix .cp- only. */
 .cp-daily, .cp-beat { display: grid; gap: 16px; max-width: 720px; padding: 20px 16px; color: var(--text); }
-.cp-kicker { font: 600 12px/1 var(--font-body, Inter, system-ui, sans-serif); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
-.cp-title { margin: 0; font: 700 clamp(22px, 4vw, 32px)/1.2 var(--font-display, Sora, Inter, system-ui, sans-serif); color: var(--text); overflow-wrap: anywhere; }
+.cp-kicker { font: 700 12px/1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.cp-title { margin: 0; font: 700 clamp(22px, 4vw, 32px)/1.2 var(--font-display); color: var(--text); overflow-wrap: anywhere; }
 .cp-sub, .cp-muted { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.5; }
 .cp-facts { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 14px; line-height: 1.6; }
 .cp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-.cp-stat { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--r-md, 14px); background: var(--surface); border: 1px solid var(--border); color: var(--accent); }
-.cp-stat-v { font: 700 20px/1.1 var(--font-display, Sora, Inter, system-ui, sans-serif); color: var(--text); }
+.cp-stat { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--accent); }
+.cp-stat-v { font: 700 20px/1.1 var(--font-display); color: var(--text); }
 .cp-stat-l { margin-top: 2px; font-size: 12px; color: var(--text-3); }
 .cp-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.cp-actions .hp-btn { display: inline-flex; align-items: center; gap: 8px; }
 .cp-check { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-2); cursor: pointer; }
 .cp-check input { width: 18px; height: 18px; accent-color: var(--accent); }
 
@@ -21,21 +20,63 @@
 .cp-day--current { box-shadow: 0 0 0 2px var(--accent); }
 .cp-day:focus-visible { outline: 2px solid var(--accent); }
 
-.cp-backdrop { position: fixed; inset: 0; z-index: var(--z-modal, 40); display: grid; place-items: center; padding: 16px; background: rgba(8, 12, 22, 0.5); backdrop-filter: blur(6px); }
-.cp-dialog { position: relative; display: grid; gap: 12px; width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: 20px 16px; border-radius: var(--r-xl, 20px); background: var(--surface-solid); border: 1px solid var(--border); box-shadow: var(--shadow-lg, 0 24px 60px rgba(8,12,22,0.35)); }
-.cp-close { position: absolute; top: 10px; right: 10px; }
-.cp-preview { aspect-ratio: 1200 / 630; border-radius: var(--r-md, 14px); background: var(--bg-2); overflow: hidden; border: 1px solid var(--border); }
-.cp-preview { position: relative; }
-.cp-preview-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 14px; }
+/* Buttons and fields: the same measures as the workbench and the shell (8px corners, 44px tall, strong outline). */
+.cp-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px;
+  border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-solid); color: var(--text);
+  font: 700 14px/1.2 var(--font-ui); text-decoration: none; white-space: nowrap; cursor: pointer;
+  transition: transform var(--dur-1) var(--ease-out), background var(--dur-1), border-color var(--dur-1), color var(--dur-1);
+}
+.cp-btn svg { flex: none; }
+.cp-btn:hover { border-color: var(--accent); }
+.cp-btn:active { transform: scale(0.97); }
+.cp-btn:disabled { opacity: 0.5; cursor: default; transform: none; border-color: var(--border-strong); }
+.cp-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.cp-btn--primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--text)); }
+.cp-btn--primary:disabled { background: var(--accent); border-color: var(--accent); }
+.cp-icon-btn { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); cursor: pointer; transition: background var(--dur-1), color var(--dur-1); }
+.cp-icon-btn:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.cp-input { width: 100%; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-solid); color: var(--text); font: 400 15px/1.2 var(--font-ui); }
+.cp-input::placeholder { color: var(--text-3); opacity: 1; }
+.cp-btn:focus-visible, .cp-icon-btn:focus-visible, .cp-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+
+/* Share dialog. It sits above the workbench's step bar and an open hint panel, and below toasts. */
+.cp-backdrop { position: fixed; inset: 0; z-index: calc(var(--z-modal, 40) + 6); display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--bg) 55%, rgba(8, 12, 24, 0.55)); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: cp-fade var(--dur-2, 200ms) linear both; }
+.cp-dialog { display: grid; gap: 16px; width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 24px; border-radius: 12px; background: var(--surface-solid); border: 1px solid var(--border-strong); box-shadow: var(--shadow-3); color: var(--text); font: 400 15px/1.45 var(--font-ui); animation: cp-in var(--dur-3, 320ms) var(--ease-out, ease-out) both; }
+.cp-dialog > * { min-width: 0; }
+.cp-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -6px -8px -4px 0; }
+.cp-dialog-title { margin: 0; font: 700 20px/1.2 var(--font-display); color: var(--text); }
+.cp-preview { position: relative; aspect-ratio: 1200 / 630; border-radius: 8px; background: var(--bg-2); overflow: hidden; border: 1px solid var(--border); }
+.cp-preview-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; color: var(--text-2); font-size: 14px; text-align: center; }
 .cp-preview-wait[hidden], .cp-preview-img[hidden] { display: none; }
 .cp-preview-img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .cp-field { display: grid; gap: 6px; }
-.cp-field-l { font-size: 12px; color: var(--text-3); }
+.cp-field-l { font-size: 13px; line-height: 1.3; color: var(--text-2); }
+.cp-linkblock { display: grid; gap: 8px; }
 .cp-linkrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-.cp-link { font-family: var(--font-mono, "JetBrains Mono", ui-monospace, monospace); font-size: 12px; text-overflow: ellipsis; }
-.cp-linkrow .hp-btn { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.cp-link { font-family: var(--font-mono); font-size: 13px; color: var(--text-2); text-overflow: ellipsis; }
+.cp-copy { min-width: 128px; }
+.cp-copy.is-done { border-color: var(--ok); color: var(--ok); }
+.cp-meta { margin: 0; min-height: 1.5em; color: var(--text-2); font-size: 13px; line-height: 1.5; }
+.cp-meta[data-state="bad"] { color: var(--bad); }
+@keyframes cp-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cp-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+:root[data-motion="reduce"] .cp-backdrop, :root[data-motion="reduce"] .cp-dialog { animation: none; }
+:root[data-motion="reduce"] .cp-btn { transition: none; }
 
+/* wider only where it still clears the workbench's toasts, which sit in the bottom left corner */
+@media (min-width: 1400px) {
+  .cp-dialog { width: 640px; }
+}
+@media (pointer: coarse) {
+  .cp-icon-btn { width: 44px; height: 44px; }
+  /* 16px text keeps a phone browser from zooming the page when a field takes focus */
+  .cp-input, .cp-link { font-size: 16px; }
+}
 @media (max-width: 480px) {
+  .cp-dialog { gap: 14px; padding: 16px; }
+  .cp-dialog-head { margin: -4px -6px -4px 0; }
   .cp-linkrow { grid-template-columns: minmax(0, 1fr); }
-  .cp-actions .hp-btn { flex: 1 1 100%; justify-content: center; }
+  .cp-meta { min-height: 3em; }
+  .cp-actions .cp-btn { flex: 1 1 100%; }
 }

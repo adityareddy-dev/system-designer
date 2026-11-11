@@ -11,7 +11,7 @@ function h(tag, cls, text, attrs) {
   if (attrs) for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   return el;
 }
-function btn(label, iconId, cls = 'hp-btn') {
+function btn(label, iconId, cls = 'cp-btn') {
   const b = h('button', cls);
   b.type = 'button';
   if (iconId) b.insertAdjacentHTML('beforeend', icon(iconId, { size: 18 }));
@@ -69,7 +69,7 @@ export function createCompeteUi(ctx, api) {
     root.append(stats);
 
     const act = h('div', 'cp-actions');
-    const play = btn(best ? 'Try again' : 'Play today', 'ui.play', 'hp-btn hp-btn--primary');
+    const play = btn(best ? 'Try again' : 'Play today', 'ui.play', 'cp-btn cp-btn--primary');
     play.addEventListener('click', () => onPlay?.(d));
     act.append(play);
     root.append(act);
@@ -97,15 +97,17 @@ export function createCompeteUi(ctx, api) {
   // Share dialog: card preview, link, copy, share/download. result is DebriefData.
   function openShareDialog(host, { result, problem, graph, thumbCanvas, mode = result?.mode || 'practice', seed = result?.seed, date, onClose } = {}) {
     const back = h('div', 'cp-backdrop');
-    const dlg = h('div', 'cp-dialog hp-glass');
+    const dlg = h('div', 'cp-dialog');
     dlg.setAttribute('role', 'dialog');
     dlg.setAttribute('aria-modal', 'true');
     dlg.setAttribute('aria-label', 'Share your design');
     back.append(dlg);
-    const title = h('h2', 'cp-title', 'Challenge a friend');
-    const close = h('button', 'hp-icon-btn cp-close', null, { 'aria-label': 'Close' });
+    const head = h('div', 'cp-dialog-head');
+    const title = h('h2', 'cp-dialog-title', 'Challenge a friend');
+    const close = h('button', 'cp-icon-btn cp-close', null, { 'aria-label': 'Close' });
     close.type = 'button';
     close.insertAdjacentHTML('beforeend', icon('ui.close', { size: 20 }));
+    head.append(title, close);
     const preview = h('div', 'cp-preview');
     const img = h('img', 'cp-preview-img', null, { alt: `Result card: ${problem?.title || ''}, score ${fmtInt(result?.score?.total)} out of 1,000` });
     const wait = h('div', 'cp-preview-wait', 'Preparing your card');
@@ -115,43 +117,63 @@ export function createCompeteUi(ctx, api) {
     preview.append(img, wait);
     const nameRow = h('label', 'cp-field');
     nameRow.append(h('span', 'cp-field-l', 'Your name on the card (optional)'));
-    const name = h('input', 'hp-input', null, { maxlength: '24', autocomplete: 'nickname', placeholder: 'Your name' });
+    const name = h('input', 'cp-input', null, { maxlength: '24', autocomplete: 'nickname', placeholder: 'Your name' });
     name.value = ctx.account?.displayName?.() || ctx.settings?.get?.('playerName') || '';
     nameRow.append(name);
+    const linkBlock = h('div', 'cp-linkblock');
     const linkRow = h('div', 'cp-linkrow');
-    const link = h('input', 'hp-input cp-link', null, { readonly: '', 'aria-label': 'Design link' });
-    const copy = btn('Copy link', 'ui.copy');
+    const link = h('input', 'cp-input cp-link', null, { readonly: '', 'aria-label': 'Design link' });
+    const copy = btn('Copy link', 'ui.copy', 'cp-btn cp-copy');
     linkRow.append(link, copy);
-    const meta = h('p', 'cp-muted');
+    // the line keeps its height while the link is being made, so the dialog does not jump when it arrives
+    const meta = h('p', 'cp-meta');
+    linkBlock.append(linkRow, meta);
     const act = h('div', 'cp-actions');
-    const shareBtn = btn('Share image', 'ui.share', 'hp-btn hp-btn--primary');
-    const dl = btn('Download image', 'ui.download', 'hp-btn hp-btn--ghost');
+    const shareBtn = btn('Share image', 'ui.share', 'cp-btn cp-btn--primary');
+    const dl = btn('Download image', 'ui.download');
     act.append(shareBtn, dl);
-    dlg.append(title, close, preview, nameRow, linkRow, meta, act);
+    copy.disabled = shareBtn.disabled = dl.disabled = true;
+    dlg.append(head, preview, nameRow, linkBlock, act);
     host.append(back);
 
-    let blob = null, url = '', objUrl = '', alive = true, timer = 0, run = 0;
+    let blob = null, url = '', objUrl = '', alive = true, timer = 0, run = 0, copyTimer = 0;
     const build = async () => {
       const mine = ++run;
       const nm = cleanName(name.value);
       try {
         const payload = await api.share.encodeShare({ mode, problemId: problem.id, seed, graph: graph || result.graph, score: api.share.scoreOf(result), name: nm });
         const u = api.share.shareUrl(payload, seed, problem.id);
-        if (alive && mine === run) { url = u; link.value = u; meta.textContent = `Link is ${fmtInt(u.length)} characters. Everything is in the link, nothing is uploaded.`; }
+        if (alive && mine === run) {
+          url = u; link.value = u; copy.disabled = false;
+          delete meta.dataset.state;
+          meta.textContent = `Link is ${fmtInt(u.length)} characters. Everything is in the link, nothing is uploaded.`;
+        }
         const b = await api.card.renderCard({ result: { ...result, mode }, problem, catalog: ctx.catalog, palette: ctx.palette(), thumbCanvas, date, url: u, name: nm });
         if (!alive || mine !== run) return;
         blob = b;
+        shareBtn.disabled = dl.disabled = false;
         if (objUrl) URL.revokeObjectURL(objUrl);
         objUrl = URL.createObjectURL(b);
         img.src = objUrl;
       } catch (err) {
+        if (!alive || mine !== run) return;
+        meta.dataset.state = 'bad';
         meta.textContent = 'Could not make the link: ' + (err?.message || 'unknown problem');
+        if (!blob) wait.textContent = 'No card to show.';
       }
     };
     const onName = () => { clearTimeout(timer); timer = setTimeout(build, 350); };
     name.addEventListener('input', onName);
     name.addEventListener('change', () => ctx.settings?.set?.('playerName', cleanName(name.value)));
 
+    // the button itself answers a copy: a tick and "Copied" for a moment, next to the toast
+    const copyIcon = copy.querySelector('svg'), copyLabel = copy.querySelector('span');
+    const showCopied = (on) => {
+      copy.classList.toggle('is-done', on);
+      if (copyLabel) copyLabel.textContent = on ? 'Copied' : 'Copy link';
+      const svg = copy.querySelector('svg');
+      if (svg && copyIcon) svg.outerHTML = on ? icon('ui.check', { size: 18 }) : copyIcon.outerHTML;
+    };
     copy.addEventListener('click', async () => {
       if (!url) return;
       let copied = false;
@@ -160,6 +182,7 @@ export function createCompeteUi(ctx, api) {
       if (copied) {
         toast('Link copied', 'ok');
         metrics.once('result_shared', problem.id);
+        if (alive) { showCopied(true); clearTimeout(copyTimer); copyTimer = setTimeout(() => { if (alive) showCopied(false); }, 1800); }
       } else toast('Could not copy the link. Copy the selected link manually.', 'warn');
     });
     shareBtn.addEventListener('click', async () => {
@@ -173,7 +196,7 @@ export function createCompeteUi(ctx, api) {
     const prevFocus = document.activeElement;
     const closeDlg = () => {
       if (!alive) return;
-      alive = false; clearTimeout(timer);
+      alive = false; clearTimeout(timer); clearTimeout(copyTimer);
       if (objUrl) URL.revokeObjectURL(objUrl);
       document.removeEventListener('keydown', onKey, true);
       back.remove();
@@ -209,7 +232,7 @@ export function createCompeteUi(ctx, api) {
     } catch (err) {
       const msg = err instanceof ShareError ? err.message : 'This link could not be opened.';
       root.append(h('h2', 'cp-title', 'This link did not open'), h('p', 'cp-muted', msg));
-      const go = h('a', 'hp-btn hp-btn--primary', 'Browse practice problems');
+      const go = h('a', 'cp-btn cp-btn--primary', 'Browse practice problems');
       go.href = '#/practice';
       root.append(go);
       return { data: null, destroy() { host.replaceChildren(); } };
@@ -217,7 +240,7 @@ export function createCompeteUi(ctx, api) {
     const base = problemLookup(ctx, data.problemId);
     if (!base) {
       root.append(h('h2', 'cp-title', 'Problem not found'), h('p', 'cp-muted', `This link is for "${data.problemId}", which this version of the game does not have.`));
-      const go = h('a', 'hp-btn hp-btn--primary', 'Browse practice problems');
+      const go = h('a', 'cp-btn cp-btn--primary', 'Browse practice problems');
       go.href = '#/practice';
       root.append(go);
       return { data, destroy() { host.replaceChildren(); } };
@@ -238,7 +261,7 @@ export function createCompeteUi(ctx, api) {
     ghostWrap.append(ghost, h('span', null, 'Show their design as a faint ghost while I build'));
     ghost.addEventListener('change', () => onGhost?.(ghost.checked));
     const act = h('div', 'cp-actions');
-    const play = btn('Play this scenario', 'ui.play', 'hp-btn hp-btn--primary');
+    const play = btn('Play this scenario', 'ui.play', 'cp-btn cp-btn--primary');
     play.addEventListener('click', () => onPlay?.({ shareData: data, problem, overlay: { graph: data.graph, target: data.score, name: who, show: ghost.checked } }));
     act.append(play);
     root.append(ghostWrap, act);
