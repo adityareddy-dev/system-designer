@@ -964,3 +964,9 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 /* Light controls keep a clear outline on the pale panels. */
 :root[data-theme="light"] :is(.sh-btn:not(.sh-btn--primary):not(.sh-btn--ghost), .sh-chip:not(.is-on), .sh-switch-track) { border-color: var(--border-strong); }
 :root[data-theme="light"] .sh-switch-track { background: var(--border-strong); }
+
+.sh-feedback fieldset.sh-feedback-more { margin-top: 16px; }
+.sh-feedback-more label, .sh-feedback-personal label { display: grid; gap: 6px; margin-top: 8px; }
+.sh-feedback-more .sh-input { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; font: inherit; }
+.sh-feedback-more label.sh-feedback-consent { display: flex; align-items: flex-start; gap: 8px; }
+.sh-feedback-consent input { flex: none; margin-top: 5px; }

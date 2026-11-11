@@ -7,7 +7,7 @@ import { createGunzip } from 'node:zlib';
 import { createInterface } from 'node:readline';
 import { dayOf } from './observation-store.js';
 
-const args = process.argv.slice(2), mode = ['feedback', 'web'].includes(args[0]) ? args.shift() : 'counts';
+const args = process.argv.slice(2), mode = ['feedback', 'quotes', 'web'].includes(args[0]) ? args.shift() : 'counts';
 const days = Number(args.shift() ?? 7);
 const print = s => process.stdout.write(String(s).replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ') + '\n');
 const section = title => { print(''); print(title); };
@@ -52,11 +52,16 @@ function database() {
   const db = new DatabaseSync(file, { readOnly: true });
   const query = sql => db.prepare(sql).all(since, until);
   try {
+    if (mode === 'quotes') {
+      const rows = query('SELECT id,day,rating,page,version,comment,helped,"use",country,role,name,title,email,consent_version,consent_text FROM quotes WHERE day BETWEEN ? AND ? ORDER BY day,id');
+      for (const row of rows) process.stdout.write(JSON.stringify(row) + '\n');
+      return;
+    }
     if (mode === 'feedback') {
       section(`Feedback, ${since} to ${until}`);
       const rows = query('SELECT * FROM feedback WHERE day BETWEEN ? AND ? ORDER BY day DESC, rowid DESC');
       if (!rows.length) print('None');
-      for (const r of rows) print(`${r.day}  ${r.rating}/5  ${r.page}  v${r.version}  ${r.comment}`);
+      for (const r of rows) print(`${r.day}  ${r.rating}/5  ${r.page}  v${r.version}  ${r.comment}  helped=${r.helped} use=${r.use} country=${r.country} role=${r.role}`);
       return;
     }
     print(`Anonymous counts, ${since} to ${until} (UTC)`);
@@ -79,6 +84,6 @@ function database() {
 }
 
 try {
-  if (args.length || !Number.isInteger(days) || days < 1 || days > 731) throw new Error('Usage: node api/stats.js [feedback|web] [days from 1 to 731]');
+  if (args.length || !Number.isInteger(days) || days < 1 || days > 731) throw new Error('Usage: node api/stats.js [feedback|quotes|web] [days from 1 to 731]');
   if (mode === 'web') await web(); else database();
 } catch (e) { process.stderr.write(`stats: ${e.message}\n`); process.exitCode = 1; }

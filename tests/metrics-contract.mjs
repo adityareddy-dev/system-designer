@@ -28,3 +28,25 @@ for (const hostname of ['systemdesigner.io', 'www.systemdesigner.io', 'preview.e
   assert.deepEqual(sent, [], hostname + ' keeps automatic collection disabled');
 }
 console.log('Public collection stays disabled with default or saved opt-in settings.');
+
+// Voluntary feedback keeps the complete chosen payload and never attaches cookies or a referrer.
+for (const setting of [true, false]) {
+  const requests = [];
+  const context = {
+    location: { protocol: 'https:', hostname: 'systemdesigner.io', search: '' },
+    navigator: { onLine: true }, URLSearchParams, AbortSignal,
+    fetch: async (url, options) => { requests.push({ url, options }); return { ok: true }; },
+  };
+  vm.runInNewContext(source, context);
+  context.setting = setting;
+  vm.runInNewContext('metrics.bind({ settings: { get: () => setting }, bus: { on() {} } });', context);
+  const payload = { rating: 5, comment: 'Useful\nnext line', page: 'general', version: '2026.11.11', about: { helped: 'yes', country: 'IN' }, quote: { consent: true, consentVersion: '2026.11.11', name: 'Test', title: 'Engineer' } };
+  context.payload = payload;
+  assert.equal(await vm.runInNewContext('metrics.feedback(payload)', context), true);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, 'https://api.systemdesigner.io/feedback');
+  assert.equal(requests[0].options.credentials, 'omit');
+  assert.equal(requests[0].options.referrerPolicy, 'no-referrer');
+  assert.deepEqual(JSON.parse(requests[0].options.body), payload);
+}
+console.log('Voluntary feedback preserves answers and consent with cookies and referrers omitted, including with counts off.');

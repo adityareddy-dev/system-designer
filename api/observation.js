@@ -3,6 +3,11 @@ import { randomBytes, createHmac } from 'node:crypto';
 import { HttpError, readJson } from './http.js';
 import { dayOf } from './observation-store.js';
 import { errorFiles } from './error-files.js';
+import { countryCodes } from '../core/countries.js';
+import { CONSENT_VERSION, CONSENT_TEXT, feedbackChoices } from '../core/feedback-contract.js';
+
+// Largest full valid payload: every string code unit (including keys) as a JSON \u escape.
+export const FEEDBACK_BODY_LIMIT = 6618;
 
 const problemEvents = new Set(['first_problem_started', 'first_problem_passed', 'problem_passed', 'daily_challenge_played', 'interview_finished', 'result_shared', 'beat_link_opened']);
 const names = new Set(['app_opened', 'intro_finished', 'lesson_finished', 'error', ...problemEvents]);
@@ -47,14 +52,37 @@ export function createObservation({ db, game, now, random = randomBytes }) {
       visitors.add(hash);
     },
     async feedback(req) {
-      const f = await readJson(req, 4096);
-      if (!fields(f, ['rating', 'comment', 'page', 'version']) || !Number.isInteger(f.rating) || f.rating < 1 || f.rating > 5 ||
+      const f = await readJson(req, FEEDBACK_BODY_LIMIT);
+      if (!fields(f, ['rating', 'comment', 'page', 'version', 'about', 'quote']) || !Number.isInteger(f.rating) || f.rating < 1 || f.rating > 5 ||
         typeof f.comment !== 'string' || f.comment.length > 500 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(f.comment) ||
         typeof f.version !== 'string' || !/^[0-9]{1,4}(?:\.[0-9]{1,4}){0,7}$/.test(f.version)) bad();
-      const [kind, id, extra] = String(f.page).split(':');
+      if (typeof f.page !== 'string') bad();
+      const [kind, id, extra] = f.page.split(':');
       if (extra !== undefined || !(f.page === 'general' || kind === 'problem' && game.problemIds.has(id) || kind === 'lesson' && game.lessonIds.has(id))) bad();
-      // Deliberately no session, address, user agent, timestamp or generated identifier.
-      db.addFeedback({ ...f, comment: f.comment.trim() }, dayOf(now()));
+      if (f.about !== undefined) {
+        if (!fields(f.about, ['helped', 'use', 'country', 'role'])) bad();
+        for (const [key, value] of Object.entries(f.about)) {
+          if (key === 'country' ? !countryCodes.has(value) : !feedbackChoices[key].some(([choice]) => choice === value)) bad();
+        }
+      }
+      if (f.quote !== undefined) {
+        const q = f.quote;
+        if (!fields(q, ['consent', 'consentVersion', 'name', 'title', 'email']) || q.consent !== true ||
+          q.consentVersion !== CONSENT_VERSION || !f.comment.trim()) bad();
+        for (const [key, max] of [['name', 60], ['title', 80]]) {
+          if (typeof q[key] !== 'string' || /[\u0000-\u001f\u007f-\u009f]/.test(q[key])) bad();
+          q[key] = q[key].trim();
+          if (!q[key] || q[key].length > max) bad();
+        }
+        if (q.email !== undefined) {
+          if (typeof q.email !== 'string') bad();
+          q.email = q.email.trim().toLowerCase();
+          if (q.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(q.email)) bad();
+        }
+        q.consentText = CONSENT_TEXT;
+      }
+      // No session, address, user agent or exact timestamp. Preserve the comment exactly.
+      db.addFeedback(f, dayOf(now()));
     },
   };
 }
