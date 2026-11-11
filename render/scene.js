@@ -966,7 +966,32 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
           const c = env.element(n.type)?.category || 'compute';
           return ['el.' + n.type, P.cat[c] ?? P.text3];
         }));
-        const pos = new Map(gn.map(n => [n.ref ?? n.id, n]));
+        // A thumbnail is read at a fraction of the canvas size, so it is drawn as a schematic: the same parts in the same
+        // order, moved closer together along each axis until the closest neighbours are about a part apart, then fitted
+        // to the picture. Parts come out as large as the layout allows and the wires between them stay visible.
+        const N = HALF * 2;
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, nearX = Infinity, nearY = Infinity;
+        for (let i = 0; i < gn.length; i++) {
+          const a = gn[i];
+          x0 = Math.min(x0, a.x); x1 = Math.max(x1, a.x); y0 = Math.min(y0, a.y); y1 = Math.max(y1, a.y);
+          for (let j = i + 1; j < gn.length; j++) {
+            const dx = Math.abs(a.x - gn[j].x), dy = Math.abs(a.y - gn[j].y);
+            if (dx >= dy) nearX = Math.min(nearX, dx); else nearY = Math.min(nearY, dy);
+          }
+        }
+        const spanX = x1 - x0, spanY = y1 - y0;
+        const pad = Math.min(width, height) * 0.055;
+        const availW = width - pad * 2, availH = height - pad * 2;
+        // the closest the centres may come: room for a wire sideways, a clear gap up and down
+        const tightX = nearX === Infinity ? 1 : Math.min(1, (N * 1.7) / nearX);
+        const tightY = nearY === Infinity ? 1 : Math.min(1, (N * 1.2) / nearY);
+        // a design of two or three parts stops growing once a part is three tenths of the picture's height
+        const sc = Math.min(availW / (spanX * tightX + N), availH / (spanY * tightY + N), (height * 0.3) / N);
+        // the looser axis opens up into the room that is left, to at most three parts between neighbours
+        const mx = spanX ? Math.max(tightX, Math.min((availW / sc - N) / spanX, nearX === Infinity ? 1 : (N * 3) / nearX)) : 1;
+        const my = spanY ? Math.max(tightY, Math.min((availH / sc - N) / spanY, nearY === Infinity ? 1 : (N * 3) / nearY)) : 1;
+        const midX = (x0 + x1) / 2, midY = (y0 + y1) / 2;
+        const pos = new Map(gn.map(n => [n.ref ?? n.id, { x: (n.x - midX) * mx, y: (n.y - midY) * my }]));
         const eg = new PIXI.Graphics();
         const lut = makeLut();
         const dashed = [];
@@ -978,22 +1003,21 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
           if (!Array.isArray(e) && !edgeCarries(e.kind || 'flow')) { dashed.push([lut.p0x, lut.p0y, lut.c1x, lut.c1y, lut.c2x, lut.c2y, lut.p3x, lut.p3y]); continue; }
           eg.moveTo(lut.p0x, lut.p0y).bezierCurveTo(lut.c1x, lut.c1y, lut.c2x, lut.c2y, lut.p3x, lut.p3y);
         }
-        eg.stroke({ width: 3, color: P.edgeFlow, cap: 'round' });
+        // wires keep one thickness in the finished picture, whatever the design's size
+        const wire = height / (124 * sc);
+        eg.stroke({ width: wire, color: P.edgeFlow, cap: 'round' });
         for (const d of dashed) eg.moveTo(d[0], d[1]).bezierCurveTo(d[2], d[3], d[4], d[5], d[6], d[7]);
-        if (dashed.length) eg.stroke({ width: 1.6, color: P.cat.ops, alpha: 0.5 });
+        if (dashed.length) eg.stroke({ width: wire * 0.6, color: P.cat.ops, alpha: 0.7, cap: 'round' });
         inner.addChild(eg);
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const n of gn) {
           const m = makeMini(PIXI, kit, env, n.type);
-          m.position.set(n.x, n.y);
+          const p = pos.get(n.ref ?? n.id);
+          m.position.set(p.x, p.y);
+          m.__icon.width = m.__icon.height = 38;
           inner.addChild(m);
-          minX = Math.min(minX, n.x - HALF); maxX = Math.max(maxX, n.x + HALF);
-          minY = Math.min(minY, n.y - HALF); maxY = Math.max(maxY, n.y + HALF);
         }
-        const pad = Math.min(width, height) * 0.08;
-        const sc = Math.min((width - pad * 2) / (maxX - minX), (height - pad * 2) / (maxY - minY), 1.6);
         inner.scale.set(sc);
-        inner.position.set(width / 2 - ((minX + maxX) / 2) * sc, height / 2 - ((minY + maxY) / 2) * sc);
+        inner.position.set(width / 2, height / 2);
       }
       if (destroyed || app.renderer.context.isLost) {
         root.destroy({ children: true });

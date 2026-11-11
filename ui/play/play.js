@@ -1605,7 +1605,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     // the fuller dialog: card preview, name field, link and share buttons
     if (c?.ui?.openShareDialog) {
       try {
-        const thumb = await scene.snapshot({ width: 560, height: 280, graph: r.graph });
+        const thumb = await scene.snapshot({ ...c.card.THUMB, graph: r.graph });
         const isDaily = S.seed.startsWith('daily-');
         const shareMode = mode === 'beat' ? (isDaily ? 'challenge' : 'practice') : mode;
         const d = isDaily ? S.seed.slice(6) : new Date().toISOString().slice(0, 10);
@@ -1638,7 +1638,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
           try {
             status.textContent = 'Drawing the card…';
             const url = await makeUrl();
-            const thumb = await scene.snapshot({ width: 560, height: 280, graph: r.graph });
+            const thumb = await scene.snapshot({ ...c.card.THUMB, graph: r.graph });
             const blob = await c.card.renderCard({ result: r, problem: S.problem, catalog, palette: ctx.palette(), thumbCanvas: thumb, date: dateStr, url, name });
             const how = await c.card.shareCard(blob, { title: `${S.problem.title}: ${Math.round(r.score.total)} points`, text: `I scored ${Math.round(r.score.total)} on ${S.problem.title}. Can you beat it?`, url });
             status.textContent = how === 'shared' ? 'Shared.' : 'Card saved to your downloads.';
