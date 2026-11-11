@@ -308,6 +308,8 @@
 /* ---------- challenge ---------- */
 .sh-date-nav { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 18px; padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-strong); }
 .sh-date-label { padding: 0 12px; font-weight: 600; font-size: 14px; }
+/* the longest date ("Today, Wednesday, November 11") stays on one line down to a 360 px phone */
+@media (max-width: 400px) { .sh-date-nav { max-width: 100%; } .sh-date-label { padding: 0 4px; font-size: 13px; white-space: nowrap; } }
 .sh-streak { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 8px; padding: 10px 18px; border-radius: var(--radius-3); background: color-mix(in srgb, var(--hot) 12%, var(--surface-strong)); border: 1px solid color-mix(in srgb, var(--hot) 30%, var(--border)); color: var(--hot); }
 .sh-streak-num { font-family: var(--font-display); font-weight: 700; font-size: 28px; line-height: 1; color: var(--text); }
 .sh-streak-label { grid-column: 1 / -1; font-size: 12px; color: var(--text-2); }
