@@ -84,6 +84,10 @@ cd api && node --test test/*.test.js   # sign-in service: Google token checks, G
 
 `tests/account-qa.mjs` signs in with the test provider in headless Chrome, syncs progress between two devices, posts a daily result to the leaderboard, and checks that the game is unchanged when the service is unreachable or off. `tests/ui-checks.mjs` checks the play screen in headless Chrome: building during the intro, lesson goals, keyboard placement and connection, the phone layout, the debrief and sound levels. `tests/browser-qa.mjs` drives the game in headless Chrome through `window.__game` (load any problem, lesson or the sandbox, place and connect parts, start the day, step time) and reads `window.__perf` (rolling frame, simulation and render times).
 
+## Contributing
+
+I welcome new problems and clearer lesson wording. Start with [CONTRIBUTING.md](CONTRIBUTING.md), or go straight to [adding a problem](docs/ADD_A_PROBLEM.md).
+
 ## Privacy
 
 The game's own usage counts and error reports are disabled on public sites. The hosted site is served through Cloudflare, which counts page visits with its Web Analytics script, without cookies. Feedback is optional and anonymous. Signing in stores your provider id, a display name, your avatar link, progress and scores; nothing is sold and you can delete it anytime. See [privacy.html](privacy.html).

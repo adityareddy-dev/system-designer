@@ -1,0 +1,44 @@
+name: Problem idea
+description: Suggest a new practice problem. You can also write it yourself, see docs/ADD_A_PROBLEM.md.
+labels: [enhancement]
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Title
+      placeholder: Parking garage availability
+    validations:
+      required: true
+  - type: dropdown
+    id: group
+    attributes:
+      label: Industry
+      options: [core, media, social, fintech, health, civic, mobility, travel, iot, ai, games, productivity, commerce, telecom, devtools]
+    validations:
+      required: true
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Difficulty
+      options: [Easy, Medium, Hard]
+    validations:
+      required: true
+  - type: textarea
+    id: tension
+    attributes:
+      label: The one tension
+      description: What makes this hard to design? For example, many reads and few writes, or every unit of stock counted once.
+    validations:
+      required: true
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Rough numbers
+      description: Peak requests per second, the read and write split, and anything that must never be lost. Rounded is fine.
+  - type: dropdown
+    id: who
+    attributes:
+      label: Who writes it
+      options: [I will write it, I would like someone else to]
+    validations:
+      required: true

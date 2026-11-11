@@ -1,0 +1,30 @@
+name: Lesson or problem wording
+description: Point out wording that is confusing or inaccurate.
+labels: [documentation]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: The lesson or problem, and the step if it is a lesson.
+      placeholder: Lesson "Remembering answers", step 1
+    validations:
+      required: true
+  - type: textarea
+    id: text
+    attributes:
+      label: The sentence as it is now
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What is wrong with it
+      description: Explain where you got stuck or what needs correcting.
+    validations:
+      required: true
+  - type: textarea
+    id: better
+    attributes:
+      label: A better version
+      description: Add a suggestion if you have one.
