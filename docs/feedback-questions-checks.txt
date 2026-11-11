@@ -1,0 +1,52 @@
+Feedback questions — validation and review record
+By Adi : 2026-11-11 (America/Chicago)
+Branch: game/feedback-questions
+Base: 79b2d0b
+Publish date in this change: 2026-11-11
+
+Commands used:
+  node --test api/test/observe.test.js api/test/stats.test.js
+  node --test api/test/observe.test.js
+  npm --prefix api test
+  node tests/metrics-contract.mjs
+  node tools/gen-site-pages.mjs
+  node tests/site-pages.mjs
+  CHROME_PATH=/usr/bin/google-chrome SD_QA_SHOTS=/tmp/feedback-questions-shots node tests/observation-qa.mjs
+  bash /home/sdloop/sd-loop/tests.sh /home/sdloop/sd-loop/launch-f
+  sh -n api/deploy/install.sh
+  git diff --check
+
+The launch runner includes every existing tests/*.mjs check except its established
+calibrate, diagnose, show, why-all and account-qa exclusions. It also runs
+sim/selftest.mjs and API tests. The extended observation browser check is included
+by that runner's existing test discovery. Account behavior remains outside this
+change; account server tests run with the API suite.
+
+Review pass findings resolved:
+- Deployment must copy the shared country and consent modules used by the API.
+- Comment storage must retain whitespace and supported line breaks exactly.
+- Quote email help must be associated with its input for screen readers.
+- Quote name and role must reject whitespace-only values in native validation.
+- Request size must cover UTF-8 and JSON escapes, including escaped object keys:
+  measured 2,958 bytes in UTF-8 and 6,618 with all string code units escaped.
+- Browser selectors must target feedback controls within the debrief, which also
+  contains other forms. Keyboard and submit assertions now use that scope.
+
+Checks passed : by Adi : 2026-11-11 03:24:34 CST
+- npm --prefix api test: 87 tests passed, zero failures or skips.
+- Full launch runner: 137 checks passed, zero failures, skips or retries.
+  This includes the extended observation browser check and the API suite.
+- Feedback browser checks: 390px and 1280px, light and dark themes passed.
+  Quote toggling, blank/cleared answers, exact payloads, retry, local marker
+  lifecycle, keyboard isolation, accessible labels, disabled controls, counts-off
+  submission and reachable debrief actions all passed.
+- Screenshots reviewed at phone and desktop sizes in both themes.
+- Site generation and metadata checks, metrics contract, install script syntax
+  and git diff --check passed.
+Review pass complete : by Adi : 2026-11-11 03:24:34 CST
+Remaining gap: none within this local implementation and validation job.
+No push or publication is part of this job. No case summary pages changed.
+All submitted feedback in automated checks is synthetic test data, not evidence
+of real use. Quote export records are separate JSONL source records; retain filed
+exports unchanged. Removed quotes expire from retained nightly backups within
+seven rotations (seven days), rather than immediately from every copy.

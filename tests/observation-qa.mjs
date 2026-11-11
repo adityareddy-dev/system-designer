@@ -1,6 +1,8 @@
 // Browser privacy gates, game milestones and accessible feedback across sizes and themes.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import { serveGame } from './browser-server.js';
+import { CONSENT_VERSION, CONSENT_TEXT } from '../core/feedback-contract.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,7 +11,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const site = await serveGame();
+const base = site.base;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sd-browser-'));
 const dbPath = path.join(dir, 'qa.db');
 const api = await start({ NODE_ENV: 'test', DEV: '1', PORT: '8794', DB_PATH: dbPath });
@@ -36,9 +39,13 @@ try {
   }
   for (const width of [1280, 390]) for (const theme of ['light', 'dark']) {
     const page = await browser.newPage(), events = [], feedback = [], errors = [];
+    let failFirstFeedback = true;
     await page.setViewport({ width, height: width === 390 ? 844 : 900, isMobile: width === 390, hasTouch: width === 390 });
     await page.setRequestInterception(true);
-    page.on('request', r => r.continue(r.url().startsWith('http://127.0.0.1:8794/') ? { headers: { ...r.headers(), 'x-forwarded-for': `192.0.2.${width === 390 ? 20 : 10}${theme === 'dark' ? 1 : 0}` } } : {}));
+    page.on('request', r => {
+      if (r.url().endsWith('/feedback') && r.method() === 'POST' && failFirstFeedback) { failFirstFeedback = false; r.respond({ status: 503, headers: { 'Access-Control-Allow-Origin': new URL(base).origin }, body: '{}' }); return; }
+      r.continue(r.url().startsWith('http://127.0.0.1:8794/') ? { headers: { ...r.headers(), 'x-forwarded-for': `192.0.2.${width === 390 ? 20 : 10}${theme === 'dark' ? 1 : 0}` } } : {});
+    });
     page.on('pageerror', e => errors.push(e.message));
     page.on('request', async r => { if (r.url().endsWith('/e') && r.method() === 'POST') events.push(...JSON.parse(r.postData() || await r.fetchPostData()).events); if (r.url().endsWith('/feedback') && r.method() === 'POST') feedback.push(JSON.parse(r.postData() || await r.fetchPostData())); });
     await page.evaluateOnNewDocument(theme => {
@@ -64,11 +71,51 @@ try {
     }
     if (process.env.SD_QA_SHOTS) await page.screenshot({ path: path.join(process.env.SD_QA_SHOTS, `settings-${width}-${theme}.png`) });
     await click(page, 'Send feedback'); await page.waitForSelector('.sh-feedback');
+    assert.equal(await page.$('.sh-feedback-more'), null);
+    assert.equal(await page.evaluate(() => localStorage.getItem('hotpath.v1.feedback.more.asked')), null);
     await page.focus('.sh-feedback button[type=button]'); await page.keyboard.press('Enter');
     assert.ok(await page.$eval('[data-feedback-general]', el => document.activeElement === el), 'dismiss restores keyboard focus to Send feedback');
     await page.keyboard.press('Enter'); await page.waitForSelector('.sh-feedback:not([hidden])');
-    await page.click('.sh-feedback input[value="4"]'); await page.type('.sh-feedback textarea', 'General feedback'); await click(page, 'Send');
+    assert.equal(await page.evaluate(() => localStorage.getItem('hotpath.v1.feedback.more.asked')), null, 'opening and dismissing does not consume extra questions');
+    await page.click('.sh-feedback input[value="4"]');
+    await page.waitForSelector('.sh-feedback-more');
+    assert.equal(await page.evaluate(() => localStorage.getItem('hotpath.v1.feedback.more.asked')), 'true');
+    assert.deepEqual(await page.$$eval('.sh-feedback select', els => els.map(el => el.value)), ['', '', '', '']);
+    assert.equal(await page.$('.sh-feedback input[type=email]'), null);
+    assert.ok(await page.$eval('[name=quote]', el => !el.checked && el.disabled));
+    assert.equal(await page.$eval('[name=country] option', el => el.textContent), 'Prefer not to say');
+    for (const [key, value] of [['helped','yes'], ['use','interview'], ['country','IN'], ['role','engineer']]) {
+      await page.select(`[name=${key}]`, value); await page.select(`[name=${key}]`, '');
+    }
+    await page.type('.sh-feedback textarea', 'General feedback');
+    await page.click('[name=quote]');
+    assert.ok(await page.$eval('.sh-feedback-more', (el, text) => el.textContent.includes(text), CONSENT_TEXT));
+    assert.match(await page.$eval('.sh-feedback', el => el.textContent), /We'll keep your comment/);
+    assert.ok(await page.$eval('[name=name]', el => el.required && el.maxLength === 60 && el.labels.length));
+    assert.ok(await page.$eval('[name=title]', el => el.required && el.maxLength === 80 && el.placeholder === 'e.g. backend engineer'));
+    assert.ok(await page.$eval('[name=email]', el => !el.required && el.maxLength === 254 && el.type === 'email'));
+    await click(page, 'Send'); assert.equal(feedback.length, 0, 'blank attribution blocks only the checked quote');
+    await page.type('[name=name]', 'Private Person'); await page.type('[name=title]', 'Private Role'); await page.type('[name=email]', 'private@example.org');
+    await page.click('[name=quote]');
+    assert.equal(await page.$('.sh-feedback-personal'), null);
+    await page.click('[name=quote]');
+    assert.deepEqual(await page.$$eval('.sh-feedback-personal input', els => els.map(el => el.value)), ['', '', '']);
+    await page.$eval('.sh-feedback textarea', el => { el.value = '  '; el.dispatchEvent(new Event('input')); });
+    assert.ok(await page.$eval('[name=quote]', el => !el.checked && el.disabled));
+    assert.equal(await page.$('[name=email]'), null);
+    await page.$eval('.sh-feedback textarea', el => { el.value = 'General feedback'; el.dispatchEvent(new Event('input')); });
+    await page.click('[name=quote]');
+    await page.type('[name=name]', 'Test Person'); await page.type('[name=title]', 'Backend engineer'); await page.type('[name=email]', 'test@example.org');
+    for (const [key, value] of [['helped','yes'], ['use','interview'], ['country','IN'], ['role','engineer']]) await page.select(`[name=${key}]`, value);
+    await click(page, 'Send');
+    await page.waitForFunction(() => document.querySelector('.sh-feedback [role=status]')?.textContent.includes('Could not send'));
+    assert.deepEqual(feedback[0].about, { helped: 'yes', use: 'interview', country: 'IN', role: 'engineer' });
+    assert.deepEqual(feedback[0].quote, { consent: true, consentVersion: CONSENT_VERSION, name: 'Test Person', title: 'Backend engineer', email: 'test@example.org' });
+    assert.equal(await page.$eval('[name=name]', el => el.value), 'Test Person');
+    await click(page, 'Send');
     await page.waitForFunction(() => document.querySelector('.sh-feedback [role=status]')?.textContent.includes('Thanks'));
+    assert.deepEqual(feedback[1], feedback[0], 'retry preserves the whole response');
+    assert.ok(await page.$$eval('.sh-feedback input,.sh-feedback select,.sh-feedback textarea,.sh-feedback button', els => els.every(el => el.disabled)));
     await page.evaluate(() => window.__game.loadLesson('intro'));
     await page.evaluate(() => {
       const g = window.__game; g.setKnob('app', 'units', 3); g.setKnob('app', 'autoscale', { on: true, min: 3, max: 12 });
@@ -103,17 +150,43 @@ try {
     });
     await page.waitForSelector('.pl-debrief .sh-feedback');
     assert.equal(await page.$$eval('.pl-debrief .sh-feedback', els => els.length), 1);
+    await page.click('.pl-debrief .sh-feedback input[value="5"]');
+    assert.equal(await page.$('.pl-debrief .sh-feedback-more'), null, 'later page omits extras even after consent');
+    // Clearing local data restores eligibility; expand the real debrief for its tallest layout.
+    await page.evaluate(async () => {
+      localStorage.clear();
+      const { mountFeedback } = await import('./ui/shell/feedback.js');
+      const { createStore } = await import('./core/store.js');
+      const old = document.querySelector('.pl-debrief .sh-feedback'), host = old.parentElement;
+      old.remove(); mountFeedback(host, { store: createStore() }, 'problem:url-shortener', {}, false);
+    });
+    await page.click('.pl-debrief .sh-feedback input[value="5"]');
+    await page.type('.pl-debrief .sh-feedback textarea', 'Problem feedback');
+    await page.click('.pl-debrief [name=quote]');
     const layout = await page.evaluate(() => {
       const form = document.querySelector('.pl-debrief .sh-feedback').getBoundingClientRect(), actions = document.querySelector('.pl-debrief > .pl-actions').getBoundingClientRect();
       const report = document.querySelector('.pl-debrief').getBoundingClientRect();
       return { after: form.top >= actions.bottom, contained: form.left >= report.left && form.right <= innerWidth, score: !!document.querySelector('.pl-score-row, .pl-verdict-sec') };
     });
     assert.ok(layout.after && layout.contained && layout.score, JSON.stringify(layout));
+    assert.ok(await page.evaluate(() => {
+      const button = document.querySelector('.pl-debrief > .pl-actions button'); button.scrollIntoView({ block: 'center' });
+      const b = button.getBoundingClientRect(), hit = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2);
+      return b.top >= 0 && b.bottom <= innerHeight && button.contains(hit);
+    }), 'debrief actions remain reachable and unobscured with the full quote form');
     await page.waitForFunction(() => !document.querySelector('.sh-toast'), { timeout: 10000 });
     await page.$eval('.pl-debrief .sh-feedback', e => e.scrollIntoView({ block: 'center' }));
     if (process.env.SD_QA_SHOTS) await page.screenshot({ path: path.join(process.env.SD_QA_SHOTS, `feedback-${width}-${theme}.png`) });
-    await page.focus('.pl-debrief .sh-feedback input[value="5"]'); await page.keyboard.press('Space'); await page.keyboard.press('Tab'); await page.keyboard.type('Problem feedback'); await page.keyboard.press('Tab'); await page.keyboard.press('Enter');
+    await page.click('.pl-debrief [name=quote]');
+    await page.focus('.pl-debrief .sh-feedback input[value="5"]'); await page.keyboard.press('Space');
+    await page.keyboard.press('Tab');
+    assert.ok(await page.$eval('.pl-debrief .sh-feedback textarea', el => document.activeElement === el), await page.evaluate(() => document.activeElement.outerHTML));
+    await page.keyboard.press('Tab');
+    assert.ok(await page.$eval('.pl-debrief [name=helped]', el => document.activeElement === el));
+    await page.select('.pl-debrief [name=helped]', 'a-bit'); await page.select('.pl-debrief [name=helped]', '');
+    await page.focus('.pl-debrief .sh-feedback button[type=submit]'); await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.querySelector('.pl-debrief .sh-feedback [role=status]')?.textContent.includes('Thanks'));
+    assert.equal(feedback.at(-1).quote, undefined); assert.equal(feedback.at(-1).about, undefined, 'cleared optional answers are omitted');
     await click(page, 'Share'); await page.waitForSelector('.cp-dialog');
     await page.waitForFunction(() => document.querySelector('.cp-dialog input[readonly]')?.value.includes('#/beat/'));
     const beatHash = await page.$eval('.cp-link', el => new URL(el.value).hash);
@@ -157,6 +230,7 @@ try {
       await wait(100);
     }
     await page.waitForSelector('.sh-lp-done .sh-feedback');
+    assert.equal(await page.$('.sh-lp-done .sh-feedback-more'), null);
     await page.click('.sh-lp-done .sh-feedback input[value="4"]'); await page.type('.sh-lp-done .sh-feedback textarea', 'Lesson feedback'); await click(page, 'Send');
     await page.waitForFunction(() => document.querySelector('.sh-lp-done .sh-feedback [role=status]')?.textContent.includes('Thanks'));
     await click(page, 'Dismiss');
@@ -206,8 +280,44 @@ try {
     assert.ok(events.some(e => e.name === 'problem_passed'));
     assert.ok(events.some(e => e.name === 'result_shared'));
     const before = events.length;
+    await click(page, 'Send feedback');
+    await page.focus('.sh-feedback input[value="3"]'); await page.keyboard.press('Space');
+    assert.ok(await page.$eval('.sh-feedback input[value="3"]', el => el.checked), 'keyboard selects the feedback rating with counts off');
+    assert.equal(await page.$('.sh-feedback-more'), null, 'general forms share the once-only marker');
+    assert.equal(await page.$('.sh-feedback input[type=email]'), null);
+    await click(page, 'Send');
+    await page.waitForFunction(() => document.querySelector('.sh-feedback [role=status]')?.textContent.includes('Thanks')).catch(async error => {
+      console.error('Feedback with counts off:', feedback, await page.$eval('.sh-feedback', el => ({ valid: el.checkValidity(), status: el.querySelector('[role=status]').textContent, rating: el.querySelector('[name=rating]:checked')?.value }))); throw error;
+    });
+    assert.equal(feedback.at(-1).quote, undefined, 'ordinary feedback works with automatic counts off');
     await page.evaluate(() => { dispatchEvent(new ErrorEvent('error', { error: new TypeError('private answer https://example.org/a?secret'), filename: 'https://systemdesigner.io/main.js' })); });
     await wait(1200); assert.equal(events.length, before, 'turning counts off suppresses error reports too');
+    // Hidden construction consumes nothing; a revealed-but-skipped block is still once-only.
+    const lifecycle = await page.evaluate(async () => {
+      const { mountFeedback } = await import('./ui/shell/feedback.js');
+      const { createStore } = await import('./core/store.js');
+      localStorage.clear(); const ctx = { store: createStore() };
+      const host = document.createElement('div'); host.hidden = true; document.body.append(host);
+      mountFeedback(host, ctx, 'general', {}, true);
+      const choose = () => { const el = host.querySelector('[name=rating]'); el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); };
+      choose(); const hiddenAsked = ctx.store.get('feedback.more.asked', false);
+      host.hidden = false; choose();
+      const visibleAsked = ctx.store.get('feedback.more.asked', false);
+      let escapedKeys = 0; host.addEventListener('keydown', () => escapedKeys++);
+      host.querySelector('textarea').dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      const labels = [...host.querySelectorAll('input,textarea,select')].every(el => el.labels?.length || el.getAttribute('aria-label'));
+      const legends = [...host.querySelectorAll('legend')].map(el => el.textContent);
+      host.querySelector('button[type=button]').click(); host.replaceChildren();
+      mountFeedback(host, ctx, 'lesson:caching', {}, false); choose();
+      const skippedOnPage = !host.querySelector('.sh-feedback-more'); host.replaceChildren();
+      mountFeedback(host, ctx, 'general', {}, true); choose();
+      const skippedOnGeneral = !host.querySelector('.sh-feedback-more'); host.remove();
+      return { hiddenAsked, visibleAsked, escapedKeys, labels, legends, skippedOnPage, skippedOnGeneral };
+    });
+    assert.equal(lifecycle.hiddenAsked, false); assert.equal(lifecycle.visibleAsked, true);
+    assert.equal(lifecycle.escapedKeys, 0); assert.equal(lifecycle.labels, true);
+    for (const legend of ['Did it help?', 'What did you use it for?', 'Country', 'Your role', 'Can I quote you?']) assert.ok(lifecycle.legends.includes(legend));
+    assert.equal(lifecycle.skippedOnPage, true); assert.equal(lifecycle.skippedOnGeneral, true);
     assert.deepEqual(errors, []); await page.close(); console.log(`Checked ${width}px ${theme}: intro, lesson, problem, share, beat, daily, interview and feedback.`);
   }
 
@@ -242,7 +352,8 @@ try {
   assert.deepEqual(unavailableErrors, []); await unavailable.close();
   const db = new DatabaseSync(dbPath, { readOnly: true });
   assert.ok(db.prepare('SELECT sum(count) AS n FROM event_counts').get().n > 0);
-  assert.equal(db.prepare('SELECT count(*) AS n FROM feedback').get().n, 12); db.close();
+  assert.equal(db.prepare('SELECT count(*) AS n FROM feedback').get().n, 16);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM quotes').get().n, 4, 'local data clearing leaves separate quotes intact'); db.close();
   for (const mode of [[], ['feedback']]) {
     const r = spawnSync(process.execPath, [fileURLToPath(new URL('../api/stats.js', import.meta.url)), ...mode, '1'], { env: { ...process.env, DB_PATH: dbPath }, encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
@@ -250,4 +361,4 @@ try {
     console.log(r.stdout.trim());
   }
   console.log('Anonymous browser collection and feedback checks passed in both themes at phone and desktop sizes.');
-} finally { await browser.close(); await api.stop(); fs.rmSync(dir, { recursive: true, force: true }); }
+} finally { await browser.close(); await api.stop(); await site.close(); fs.rmSync(dir, { recursive: true, force: true }); }
