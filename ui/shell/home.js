@@ -170,7 +170,9 @@ export function renderHome(host, ctx) {
     h('div', { class: 'sh-chip-wrap' }, groups.map((g) => h('a', { class: 'sh-chip', href: `#/practice?g=${g.id}` }, ico(GROUP_ICON[g.id] || 'ui.grid', 16), g.title)))) : null;
 
   const foot = h('footer', { class: 'sh-footer' },
-    h('span', { text: 'System Designer is free and open source (MIT). Numbers shown are approximations for learning.' }),
+    h('span', null, 'System Designer is free and open source (MIT). ',
+      h('a', { href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, 'Source on GitHub'),
+      '. Numbers shown are approximations for learning.'),
     h('span', null, 'Made by Aditya Reddy. Company names appear only as plain comparisons.'));
 
   host.append(h('div', { class: 'sh-page sh-home-page' }, hero, cards, nextTracks(), extras, conceptStrip, strip, foot));

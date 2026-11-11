@@ -11,6 +11,7 @@ export const num = value => Number(value).toLocaleString('en-US', { maximumFract
 export const pct = value => num(value * 100) + '%';
 export const para = text => `<p>${esc(text)}</p>`;
 export const list = rows => `<ul>${rows.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`;
+export const REPO = 'https://github.com/adityareddy-dev/system-designer';
 export const link = (href, text) => `<a href="${esc(href)}">${esc(text)}</a>`;
 export const relative = (page, target) => {
   const [file, hash] = target.split('#');
@@ -24,7 +25,7 @@ export function navigation(file) {
 }
 export function bodyShell(file, {title, description, kicker = 'Build the system. Survive the day.', crumbs, body, action = '', image = ''}) {
   const trail = `<nav class="site-crumbs" aria-label="Breadcrumb">${crumbs.map(([name, target],i)=>i===crumbs.length-1 ? `<span aria-current="page">${esc(name)}</span>` : link(relative(file,target),name)).join('<span aria-hidden="true"> / </span>')}</nav>`;
-  return `${navigation(file)}<main id="content" class="site-main" tabindex="-1">${trail}<div class="site-hero"><div><p class="site-kicker">${esc(kicker)}</p><h1>${esc(title)}</h1><p class="site-lead">${esc(description)}</p>${action}</div>${image}</div>${body}</main><footer class="site-footer"><p>System Designer · Free system design practice in your browser.</p><nav aria-label="Footer">${link(relative(file,'problems/index.html'),'All problems')} ${link(relative(file,'learn/index.html'),'All lessons')} ${link(relative(file,'guides/index.html'),'Guides')} ${link(relative(file,'privacy.html'),'Privacy')}</nav></footer>`;
+  return `${navigation(file)}<main id="content" class="site-main" tabindex="-1">${trail}<div class="site-hero"><div><p class="site-kicker">${esc(kicker)}</p><h1>${esc(title)}</h1><p class="site-lead">${esc(description)}</p>${action}</div>${image}</div>${body}</main><footer class="site-footer"><p>System Designer · Free system design practice in your browser. Open source under the MIT License.</p><nav aria-label="Footer">${link(relative(file,'problems/index.html'),'All problems')} ${link(relative(file,'learn/index.html'),'All lessons')} ${link(relative(file,'guides/index.html'),'Guides')} ${link(relative(file,'privacy.html'),'Privacy')} ${link(REPO,'Source on GitHub')}</nav></footer>`;
 }
 export function page(file, opts) {
   const url = new URL(file.replace(/index\.html$/, ''), SITE).href;
