@@ -11,7 +11,7 @@ The service is a small Node 24 program in `api/`: `node:http`, `node:sqlite` and
 
 ## Anonymous counts and feedback
 
-These work independently of account sign-in. Automatic usage counts and error reports are local-test-only. Public sites send neither, even with an older saved enabled setting. The live game supports optional feedback; production page counts come from the filtered web log described below. Neither needs an account/config.js change.
+These work independently of account sign-in. Automatic usage counts and error reports are local-test-only. Public sites send neither, even with an older saved enabled setting. The live game supports optional feedback. Production page visits are counted by Cloudflare Web Analytics, not by this service (see Production setup below). Neither needs an account/config.js change.
 
 For local testing, open localhost with `?measure=8794` (a local API port). Only local origins on 8765 or 8777 are accepted with `NODE_ENV=test DEV=1`. Preview sites send no automatic events. After its first paint, the local test game uses `navigator.sendBeacon` in batches of at most 20 events, after one second or when the page is hidden. Failed batches are dropped. Nothing runs in the simulation loop.
 
@@ -20,7 +20,7 @@ Local automatic events and errors are also suppressed by Do Not Track, Global Pr
 | Route | Body and limits |
 |---|---|
 | `POST /e` | `{ events: [{ name, id?, screen, referrer? }] }`, at most 20 events and 8 KB. 30 requests per minute per address, plus the existing global route limit. Known fields only. `screen` is `phone` or `desktop`; `referrer` is a host or empty string, only on `app_opened`. Replies `202 { ok: true }`. |
-| `POST /feedback` | `{ rating, comment, page, version }`, at most 4 KB, 5 requests per 10 minutes per address. Rating is an integer from 1 to 5; comment is at most 500 characters. Page is `general`, `problem:<known id>` or `lesson:<known id>`. Version comes from `core/version.js`, such as `2026.11.7`; bump it when publishing a changed game. Replies `202 { ok: true }`. |
+| `POST /feedback` | `{ rating, comment, page, version }`, at most 4 KB, 5 requests per 10 minutes per address. Rating is an integer from 1 to 5; comment is at most 500 characters. Page is `general`, `problem:<known id>` or `lesson:<known id>`. Version comes from `core/version.js`, such as `2026.11.10`; bump it when publishing a changed game. Replies `202 { ok: true }`. |
 
 Event names: `app_opened`, `intro_finished`, `lesson_finished`, `first_problem_started`, `first_problem_passed`, `problem_passed`, `daily_challenge_played`, `interview_finished`, `result_shared`, `beat_link_opened`, `error`. Problem events require a known problem id; lesson completion requires a known lesson id. Intro completion has no id. App opens, intro and lesson completions, shares and beat opens are counted once per page view and applicable id; first start and first pass occur once per page view. Every passed traffic day counts, including retries. Daily played means starting its traffic day. An interview finishes when its completed report is saved. A result is shared when its link is copied or its image shared or saved. A beat open means its payload decoded successfully. These are totals, not a history of individual players; the funnel cannot say that the same person reached each step.
 
@@ -39,24 +39,23 @@ sudo -u sdapi env DB_PATH=/var/lib/systemdesigner-api/systemdesigner.db node api
 sudo env WEB_LOG_PATH=/var/log/caddy/systemdesigner-web.log node api/stats.js web 14
 ```
 
-`days` defaults to 7 and includes today, in UTC (1 to 731 accepted). The first report prints estimated visitors and events per day, the open/start/pass funnel, top passed problems, finished lessons, referrers and error categories. Feedback prints recent ratings and comments. Web mode streams the current Caddy JSON log and rotated `.log`/`.gz` files, counts page GETs including failed loads, skips assets, and prints dates, paths and referring hosts. Web counts include bots and reloads and must not be added to visitor counts. Broken or partial JSON lines are skipped and counted.
+`days` defaults to 7 and includes today, in UTC (1 to 731 accepted). The first report prints estimated visitors and events per day, the open/start/pass funnel, top passed problems, finished lessons, referrers and error categories. Feedback prints recent ratings and comments. Web mode needs the optional page log, which the live site does not write. It streams the current Caddy JSON log and rotated `.log`/`.gz` files, counts page GETs including failed loads, skips assets, and prints dates, paths and referring hosts. Web counts include bots and reloads and must not be added to visitor counts. Broken or partial JSON lines are skipped and counted.
 
-### Enable production feedback and the page log
+### Production setup
 
-Nothing in this change applies server configuration. From the updated checkout on the server, the owner must:
+The live server, checked on November 10, 2026, runs Caddy 2.6.2 and serves game version `2026.11.10`:
 
-1. Run `sh api/deploy/install.sh` as root to copy the updated API, migrate its database on startup and restart the service. Keep the existing backup timer enabled. No provider credentials are needed for feedback. Make the existing `api.systemdesigner.io` proxy live if it is still staged, following the DNS and Caddy steps below; sign-in providers can stay off.
-2. Copy the two new snippets:
+- The `systemdesigner.io` site block has no `log` directive, so no page log is written. Page visits are counted only by Cloudflare Web Analytics. `node api/stats.js web` has no live log to read.
+- The `api.systemdesigner.io` access log, `/var/log/caddy/systemdesigner-api.log`, deletes `request>remote_ip`, `request>remote_port` and `request>headers`, and the GitHub `code` and `state` query values. Caddy 2.6.2 has no `log_skip`, so `/e` and `/feedback` requests still appear in that log, without addresses, ports or request headers.
+- Feedback is live through the API service. Usage counts and error reports stay off on public sites.
 
-   ```sh
-   install -m 644 api/deploy/systemdesigner-web-observation.caddy /etc/caddy/systemdesigner-web-observation.caddy
-   install -m 644 api/deploy/systemdesigner-api-anonymous.caddy /etc/caddy/systemdesigner-api-anonymous.caddy
-   ```
+To update the live service and game:
 
-3. Inside the existing `systemdesigner.io` site block, add `import /etc/caddy/systemdesigner-web-observation.caddy`. Keep its current root and serving directives. Inside the existing `api.systemdesigner.io` site block add `import /etc/caddy/systemdesigner-api-anonymous.caddy`. This second import is required: it excludes `/e` and `/feedback` from the existing API access log, so collection IPs, user agents and requests are not written there. Do not add a second site block for either hostname or turn on a second unfiltered logger.
-4. Ensure `/var/log/caddy` is writable by the Caddy user. Use a Caddy version supporting `log_skip`, `log_append`, and daily `roll_at` rotation (current Caddy 2.11). The new web log deletes client and remote IPs, port, headers, TLS details and user id; strips query strings; and reduces referrers to hosts. It rolls daily at midnight or at 20 MiB, with a maximum age of 14 days and 100 files. See the [Caddy log documentation](https://caddyserver.com/docs/caddyfile/directives/log).
-5. Run `caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy`. For later changes to the same log output options, Caddy requires a restart. Check the new web log with a page request containing a test query and referrer: there should be no query, address, cookie, browser string or full referrer. Check that a test POST to `/e` does not appear in any API access log. Logs must not be copied to longer-lived backups.
-6. Publish the static site from this branch (or use the optional release script). Play on the live site and confirm that no automatic `/e` requests are sent, including with an older enabled usage-count setting. Submit feedback, then check `node api/stats.js feedback 1` with `DB_PATH` set. Check `node api/stats.js web 1` with `WEB_LOG_PATH` set for the page request. Live play produces no automatic event counts or error reports. Check `systemctl status systemdesigner-api-backup.timer` and run `systemctl start systemdesigner-api-backup.service` once to verify backup cleanup.
+1. Run `sh api/deploy/install.sh` as root to copy the updated API, migrate its database on startup and restart the service. Keep the existing backup timer enabled.
+2. Bump `APP_VERSION` in `core/version.js` for a changed game, then publish the static site (or use the optional release script).
+3. Play on the live site and confirm that no automatic `/e` requests are sent, including with an older enabled usage-count setting. Submit feedback, then check `node api/stats.js feedback 1` with `DB_PATH` set and confirm the new version. Check `systemctl status systemdesigner-api-backup.timer` and run `systemctl start systemdesigner-api-backup.service` once to verify backup cleanup.
+
+The optional page log is not installed. `api/deploy/systemdesigner-web-observation.caddy` writes a filtered page log for `systemdesigner.io` that `node api/stats.js web` reads. `api/deploy/systemdesigner-api-anonymous.caddy` keeps `/e` and `/feedback` out of the API access log. Both need a Caddy version with `log_skip`, `log_append` and daily `roll_at` rotation, which 2.6.2 lacks. After a Caddy upgrade, copy them to `/etc/caddy/`, import the first inside the `systemdesigner.io` block and the second inside the `api.systemdesigner.io` block, and run `caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy`. Do not add a second site block for either hostname. Check the page log with a request that carries a test query and referrer: it should hold no query, address, cookie, browser string or full referrer. See the [Caddy log documentation](https://caddyserver.com/docs/caddyfile/directives/log).
 
 For local end-to-end checks, serve this worktree on 8777, run `NODE_ENV=test DEV=1 PORT=8794 DB_PATH=<temporary file> node api/server.js`, and open `http://localhost:8777/?measure=8794`. Check `node api/stats.js 1` with that temporary `DB_PATH` for local events and error reports. Those counts do not describe production players. No scratch database belongs in the checkout. `tests/observation-qa.mjs` starts its own temporary API, drives both screen sizes and themes, and stops it on completion.
 

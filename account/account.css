@@ -57,6 +57,8 @@
 .ac-providers { display: grid; gap: 10px; justify-items: stretch; }
 .ac-gis { display: flex; justify-content: center; min-height: 44px; align-items: center; }
 .ac-gis-wait { font-size: 13px; color: var(--text-3); }
+/* Google's button page is light; a dark iframe would get an opaque white backdrop around it */
+.ac-gis iframe { color-scheme: light; }
 .ac-provider {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 8px 16px;
   border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-solid); color: var(--text);

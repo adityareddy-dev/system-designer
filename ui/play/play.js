@@ -1851,9 +1851,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (k === '/') { ev.preventDefault(); toolbar.focusSearch(); }
     else if (k === 'f' || k === 'F') fitAll();
     else if (k === 'Delete' || k === 'Backspace') { if (S.selected) { ev.preventDefault(); removeNode(S.selected); } }
-    else if (k === 'Enter') { if (S.sim.phase === 'build' && t === document.body) { ev.preventDefault(); startFromUi(); } }
-    else if (k === ' ') { ev.preventDefault(); if (S.sim.phase === 'running') pause(); else if (S.sim.phase === 'paused') resume(); }
-    else if (k >= '1' && k <= '7') setSpeed(world.sim.speeds[+k - 1]);
+    else if (k === 'Enter') { if (S.sim.phase === 'build' && t === document.body) { ev.preventDefault(); hud.markRan(); startFromUi(); } }
+    else if (k === ' ') { ev.preventDefault(); if (S.sim.phase === 'running') pause(); else if (S.sim.phase === 'paused') { hud.markRan(); resume(); } }
+    else if (k >= '1' && k <= '7') { hud.markRan(); setSpeed(world.sim.speeds[+k - 1]); }
     else if (k === 'h' || k === 'H') { if (stepped && !interview) hints.toggle(); }
     else if (k === 'm' || k === 'M') { try { ctx.settings.set('soundMuted', !ctx.settings.get('soundMuted')); } catch { /* optional */ } }
   }
