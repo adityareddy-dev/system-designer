@@ -22,7 +22,7 @@ export function gateTransfer(root, problem, result, catalog) {
     children.forEach(el => el.hidden = false);
     form.replaceChildren(h('h3', { text: 'Your transfer experiment' }), ...answers.map(text => h('p', { text })), h('small', { text: 'Your prediction is saved for comparison. The next run supplies evidence; the writing is not graded by keywords.' }));
   } }, h('h2', { tabindex: '-1', text: 'The twist found a limit' }), h('p', { text: problem.brief }),
-    h('p', { text: `Measured: ${(result.slo.availability.actual * 100).toFixed(2)}% served, p99 about ${Math.round(result.slo.latency.worstP99Ms)} ms, $${Math.round(result.slo.cost.perMonth)}/month against $${result.slo.cost.budget}. Commit your reasoning before repair guidance.` }), fields,
+    h('p', { text: `Measured: ${(result.slo.availability.actual * 100).toFixed(2)}% served, p99 about ${Math.round(result.slo.latency.worstP99Ms)} ms, $${Math.round(result.slo.cost.perMonth).toLocaleString('en-US')}/month against $${Number(result.slo.cost.budget).toLocaleString('en-US')}. Commit your reasoning before repair guidance.` }), fields,
     h('button', { class: 'pl-btn pl-btn--primary', type: 'submit', text: 'Commit experiment and inspect the report' }));
   root.prepend(form);
   if (queueEvidence) form.querySelector('h2').after(h('p', { class: 'pl-transfer-evidence', text: 'Waiting evidence: ' + queueEvidence }));
