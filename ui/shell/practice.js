@@ -73,7 +73,9 @@ export function renderPractice(host, ctx, route) {
     if (st.set && !SETS.find((x) => x.id === st.set).test(p)) return false;
     if (st.q) {
       const hay = [p.title, p.like, p.id.replace(/-/g, ' '), groupTitle(groupOf.get(p.id)), ...(p.concepts || []).flatMap((c) => [c, conceptName(c)])].join(' ').toLowerCase();
-      if (!st.q.toLowerCase().split(/\s+/).filter(Boolean).every((w) => hay.includes(w))) return false;
+      // "cache" finds caching and "retry" finds retries: a word also matches without its ending
+      const stem = (w) => { const t = w.replace(/(ies|ing|es|e|y|s)$/, ''); return t.length >= 4 ? t : w; };
+      if (!st.q.toLowerCase().split(/\s+/).filter(Boolean).every((w) => hay.includes(w) || hay.includes(stem(w)))) return false;
     }
     return true;
   }

@@ -130,7 +130,7 @@ export function renderChallenge(host, ctx, route0) {
     const solvedAny = items0(hist).length > 0;
     const hardNudge = problem.difficulty === 'Hard' && !solvedAny
       ? h('p', { class: 'sh-nudge' }, 'New here? ', h('a', { href: '#/learn/intro' }, 'Try the 3-minute lesson first'), ' (today is a Hard day).') : null;
-    const diffRow = h('div', { class: 'sh-diff-row' }, diffBadge(problem.difficulty), h('span', { class: 'sh-muted', text: `${problem.difficulty} day` }));
+    const diffRow = h('div', { class: 'sh-diff-row' }, h('span', { class: 'sh-muted', text: isToday ? "Today's difficulty" : "This day's difficulty" }), diffBadge(problem.difficulty));
     const quickPlay = h('a', { class: 'sh-btn sh-btn--primary sh-btn--lg sh-quickplay', href: playHref, 'data-quick': '1' }, ico('ui.play', 20), playLabel);
 
     const scenario = h('section', { class: 'sh-card sh-scenario' },
@@ -338,7 +338,7 @@ export function renderBeat(host, ctx, route0) {
       h('div', { class: 'sh-metrics' },
         metric('Requests served', s.availability != null ? `≈ ${(s.availability * 100).toFixed(2)}%` : null),
         metric('Slowest 1 in 100', s.p99 != null ? `≈ ${Math.round(s.p99)} ms` : null),
-        metric('Cost per month', s.cost != null ? `≈ $${Math.round(s.cost).toLocaleString()}` : null)),
+        metric('Cost per month', s.cost != null ? `≈ $${Math.round(s.cost).toLocaleString('en-US')}` : null)),
       h('label', { class: 'sh-row', for: 'sh-ghost' },
         h('span', { class: 'sh-row-text' }, h('span', { class: 'sh-row-title', text: 'Show their design as a faint ghost' }), h('span', { class: 'sh-row-desc', text: s.graph ? 'A peek at how they built it. Off by default so you can try your own idea first.' : 'Their design is not included in this link.' })),
         h('span', { class: 'sh-switch' }, ghostBox, h('span', { class: 'sh-switch-track', 'aria-hidden': 'true' }, h('span', { class: 'sh-switch-thumb' })))),
