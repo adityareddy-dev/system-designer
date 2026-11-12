@@ -100,6 +100,12 @@
 .sh-chip.is-on { background: var(--yellow); border-color: var(--ink); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); }
 .sh-chip.is-on::before { background: var(--ink); }
 .sh-chip-count { color: var(--text-3); }
+/* r2-shell: square chips and progress pills on Home, Practice and Drill */
+.sh-shell .sh-chip, .sh-shell .sh-progress-pill { border-radius: var(--radius-1); box-shadow: 2px 2px 0 var(--ink); }
+.sh-shell .sh-chip.is-on { box-shadow: 2px 2px 0 var(--ink); }
+.sh-shell .sh-progress-pill { color: var(--ink); background: var(--card); }
+.sh-practice-page .sh-bar, .sh-drill .sh-bar { border-radius: var(--radius-1); }
+.sh-drill .sh-quiz-result:empty { display: none; }
 .sh-badge, .pl-badge, .pl-chip, .sh-tag { padding: 5px 10px; }
 .sh-badge--ok, .pl-badge--ok, .pl-chip--ok { background: var(--mint); color: var(--ink); border-color: var(--ink); }
 .sh-badge--warn, .pl-badge--near, .pl-chip--warn { background: var(--yellow); color: var(--ink); border-color: var(--ink); }
@@ -201,7 +207,7 @@
 .sh-bench-head { display: flex; justify-content: space-between; align-items: center; gap: 12px 16px; flex-wrap: wrap; padding-bottom: 16px; border-bottom: var(--line); }
 .sh-bench-title { font: 700 13px/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
 .sh-bench-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.sh-bench-chip { min-height: 44px; padding: 9px 14px; border: 2px solid var(--ink); border-radius: 999px; background: var(--card); color: var(--ink); font: 700 13px/1 var(--font-mono); cursor: pointer; transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease; }
+.sh-bench-chip { min-height: 44px; padding: 9px 14px; border: 2px solid var(--ink); border-radius: var(--radius-1); background: var(--card); color: var(--ink); font: 700 13px/1 var(--font-mono); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease; }
 .sh-bench-chip:hover { background: var(--yellow); }
 .sh-bench-chip.is-on { background: var(--mint); box-shadow: 2px 2px 0 var(--ink); }
 .sh-bench-chip:active { transform: translate(2px, 2px); box-shadow: none; }
