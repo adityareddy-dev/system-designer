@@ -133,10 +133,10 @@ export function createNodeLayer(PIXI, parent, env) {
     v.statusG = new PIXI.Graphics(kit.glyphs.status[0]); v.statusG.position.set(-HALF + 7, -HALF + 7); v.statusG.visible = false;
     v.valid = new PIXI.Graphics(kit.glyphs.valid.warn); v.valid.position.set(HALF - 7, -HALF + 7); v.valid.visible = false;
     v.lock = new PIXI.Graphics(kit.glyphs.lock); v.lock.position.set(-HALF + 8, HALF - 8); v.lock.visible = false;
-    v.chip = new PIXI.Container(); v.chip.position.set(HALF - 6, HALF - 6); v.chip.visible = false;
+    v.chip = new PIXI.Container(); v.chip.position.set(HALF - 6, -HALF + 6); v.chip.visible = false;
     v.chipBg = new PIXI.Graphics(); v.chip.addChild(v.chipBg);
     v.chipText = null;
-    v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, HALF + 6);
+    v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, -HALF + 14);
     v.labelT = makeText('', 12, P.ink, false, '600', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
