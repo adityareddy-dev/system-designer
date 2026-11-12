@@ -36,16 +36,16 @@ for (const kind of ['shared-load', 'cached-reads', 'draining-queue']) {
   let art = '', notes = '';
   if (kind === 'shared-load') {
     art = '<path d="M116 136h46V56h70m-70 80h70m-70 0v80h70"/>';
-    notes = '<text x="24" y="26">01 / Share the burst</text><text x="335" y="70">1/3</text><text x="335" y="150">1/3</text><text x="335" y="230">1/3</text>';
+    notes = '<text x="335" y="70">1/3</text><text x="335" y="150">1/3</text><text x="335" y="230">1/3</text>';
     art = `<g fill="none" stroke="#141414" stroke-width="2.5">${art}</g>` + module(36,100,'regional-lb','One address',colors[0]) + [20,100,180].map(y=>module(232,y,'vm-fleet','',colors[1],.65)).join('');
   } else if (kind === 'cached-reads') {
     art = '<g fill="none" stroke="#141414" stroke-width="2.5"><path d="M110 136h70m80 0h70"/><path d="M220 100V66H70v34" stroke="#0F6B49"/></g>'+module(30,100,'vm-fleet','App',colors[1],.7)+module(180,100,'cache','Reuse the answer',colors[2],.8)+module(330,100,'sql-primary','Fewer reads',colors[2],.25);
-    notes='<text x="24" y="26">02 / Remember repeated reads</text><text x="145" y="55">Hit: return early</text><text x="280" y="125">Miss</text>';
+    notes='<text x="145" y="55">Hit: return early</text><text x="280" y="125">Miss</text>';
   } else {
     art='<path d="M110 136h70m80 0h70" fill="none" stroke="#141414" stroke-width="2.5"/>'+module(30,100,'queue','Waiting work',colors[0],.8)+module(180,100,'worker-pool','Workers',colors[1],.65)+module(330,100,'sql-primary','Saved',colors[2],.4);
-    notes='<text x="24" y="26">03 / Give work time to finish</text><text x="24" y="66">Arrive: 600/s</text><text x="230" y="66">Finish: 800/s</text><text x="110" y="250">Backlog shrinks by 200/s</text>';
+    notes='<text x="24" y="66">Arrive: 600/s</text><text x="230" y="66">Finish: 800/s</text><text x="110" y="250">Backlog shrinks by 200/s</text>';
   }
-  fs.writeFileSync(`assets/scenes/${kind}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 280"><rect width="440" height="280" rx="12" fill="#FFF4E0"/><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle r="1" fill="#141414" opacity=".2"/></pattern><rect width="440" height="280" fill="url(#grid)"/>${art}<g font-family="var(--font-mono, 'Space Mono', monospace)" font-size="12" fill="#141414">${notes}</g></svg>`);
+  fs.writeFileSync(`assets/scenes/${kind}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 280"><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle r="1" fill="#141414" opacity=".2"/></pattern><rect width="440" height="280" fill="url(#grid)"/>${art}<g font-family="var(--font-mono, 'Space Mono', monospace)" font-size="12" fill="#141414">${notes}</g></svg>`);
 }
 console.log('Signal bench symbols and three scenes drawn.');
 

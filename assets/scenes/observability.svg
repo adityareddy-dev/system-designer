@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#FFF4E0"/><title>p99 spikes past the threshold, the bell rings, rollback points back</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><title>p99 spikes past the threshold, the bell rings, rollback points back</title>
 <rect x="19" y="19" width="408" height="154" rx="6" fill="#141414"/><rect x="16" y="16" width="408" height="154" rx="6" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/>
-<rect x="32" y="32" width="290" height="122" rx="6" fill="#FFF4E0" stroke="#141414" stroke-width="2.5"/>
+<rect x="32" y="32" width="290" height="122" rx="6" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/>
 <line x1="44" y1="104" x2="312" y2="104" stroke="#D9CFBB" stroke-width="2"/><line x1="44" y1="138" x2="312" y2="138" stroke="#D9CFBB" stroke-width="2"/>
 <line x1="38" y1="76" x2="316" y2="76" stroke="#B3261E" stroke-width="3" stroke-dasharray="9 6"/>
 <polyline points="40,128 80,122 110,130 150,120 180,125 196,120 222,40 240,118 280,124 312,119" fill="none" stroke="#2D5BFF" stroke-width="4" stroke-linejoin="miter" stroke-linecap="butt"/>
