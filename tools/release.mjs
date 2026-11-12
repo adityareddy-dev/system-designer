@@ -30,7 +30,7 @@ const res = await esbuild.build({
 });
 
 // Styles in one file, in the order index.html loads them.
-const css = ['assets/palette.css', 'ui/shell/shell.css', 'ui/play/play.css', 'compete/compete.css', 'account/account.css']
+const css = ['assets/palette.css', 'ui/shell/shell.css', 'ui/play/play.css', 'compete/compete.css', 'account/account.css', 'ui/shell/layout.css']
   .map((f) => fs.readFileSync(path.join(root, f), 'utf8')).join('\n');
 fs.writeFileSync(path.join(dist, 'app.css'), (await esbuild.transform(css, { loader: 'css', minify: true })).code);
 
@@ -88,7 +88,7 @@ function readIndexScript(map) {
 }
 
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-html = html.replace(/  <link rel="stylesheet" href="assets\/palette\.css">[\s\S]*?<link rel="stylesheet" href="account\/account\.css">/, '  <link rel="stylesheet" href="app.css">');
+html = html.replace(/  <link rel="stylesheet" href="assets\/palette\.css">[\s\S]*?<link rel="stylesheet" href="ui\/shell\/layout\.css">/, '  <link rel="stylesheet" href="app.css">');
 html = html.replace(/  <!-- preload:start[\s\S]*?<!-- preload:end -->/, () => [
   ...first.map((k) => `  <link rel="modulepreload" href="${rel(k)}">`),
   ...['elements', 'requests', 'events', 'world'].map((n) => `  <link rel="preload" as="fetch" href="catalog/${n}.json" crossorigin>`),

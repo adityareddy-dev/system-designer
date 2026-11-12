@@ -4,6 +4,7 @@ import { h, ico, clear, lessonOf } from './dom.js';
 import { setOverlayHost, toast, closeAllModals } from './overlay.js';
 import { transitionScreen } from './motion.js';
 import { completionState } from '../play/completion.js';
+import { isPlayRoute } from '../../account/config.js';
 
 const TABS = [
   { id: 'learn', label: 'Learn', icon: 'ui.learn', href: '#/learn' },
@@ -132,7 +133,16 @@ export function mountShell(rootEl, ctx) {
       return;
     }
     const route = routes[r.parts[0] || ''];
-    const spec = route?.(r);
+    let spec = route?.(r);
+    // On the hosted site a play page needs a signed-in player: wait for the account check, then show the real page or the sign-in page.
+    if (spec && ctx.gate?.required && isPlayRoute(r.parts)) {
+      const real = spec;
+      spec = {
+        load: () => Promise.all([real.load(), import('../../account/gate.js')]),
+        prep: async () => { await ctx.accountReady; if (ctx.account?.isSignedIn()) await real.prep?.(); },
+        make: ([m, g], host, rr) => (ctx.account?.isSignedIn() ? real.make(m, host, rr) : g.renderGate(host, ctx, rr)),
+      };
+    }
     const previous = viewId;
     const trailIndex = routeTrail.lastIndexOf(key);
     const returning = trailIndex >= 0 && trailIndex < routeTrail.length - 1;
@@ -178,6 +188,14 @@ export function mountShell(rootEl, ctx) {
   const offs = [];
   offs.push(bus.on('route', (r) => show(r)));
   offs.push(bus.on('settings', refreshButtons));
+  // Signing in on a sign-in page opens the page that was asked for; signing out of a play page goes back to the sign-in page.
+  offs.push(bus.on('account', (st) => {
+    if (!ctx.gate?.required) return;
+    const r = router.current();
+    if (!isPlayRoute(r.parts)) return;
+    const signedIn = !!st?.user;
+    if ((signedIn && view?.gate) || (!signedIn && view && !view.gate && viewId !== null)) show(r, { force: true, focus: false });
+  }));
   offs.push(bus.on('toast', (t) => toast(t)));
   offs.push(bus.on('lesson:done', ({ lessonId }) => { if (lessonId) ctx.progress.lessonDone(lessonId); }));
   offs.push(bus.on('play:day-end', (e) => onDayEnd(e)));
@@ -198,7 +216,7 @@ export function mountShell(rootEl, ctx) {
 
   // Start. First visit goes to the intro unless the integrator turned that off.
   const first = router.current();
-  if (ctx.autoIntro !== false && (!first.parts || !first.parts.length) && ctx.store.get('seenIntro', false) !== true && lessonOf(ctx, 'intro')) {
+  if (ctx.autoIntro !== false && !ctx.gate?.required && (!first.parts || !first.parts.length) && ctx.store.get('seenIntro', false) !== true && lessonOf(ctx, 'intro')) {
     router.replace('#/intro');
   }
   show(router.current());

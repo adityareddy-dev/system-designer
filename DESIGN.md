@@ -4,7 +4,7 @@
 
 System Designer is a free, open-source browser game where you design real systems, from a URL shortener to a bank ledger to a concert ticket drop, then fast-forward through a traffic day full of viral spikes, outages and retry storms. Every request flows through your design as light you can watch, and a plain-words debrief shows what held, what broke, what it cost per month, and why.
 
-Static site at https://systemdesigner.io (GitHub Pages, custom domain). No sign-up needed: progress lives in your browser and friends compete through links. An optional sign-in with Google or GitHub (a small service at https://api.systemdesigner.io, see API.md) keeps progress on every device and adds leaderboards; when that service is unreachable the game works exactly the same without it.
+Static site at https://systemdesigner.io (GitHub Pages, custom domain). The hosted site needs a free sign-in with Google or GitHub (a small service at https://api.systemdesigner.io, see API.md) before any play; the readable pages stay public. Progress is kept on every device and leaderboards are added. Copies run anywhere else (forks, localhost, file serves) play with no account: that is the open source promise. `?preview=hosted` shows the hosted behaviour on any address with a stand-in sign-in.
 
 The name matches its home, https://systemdesigner.io (Adi bought the domain on Nov 3, 2026). The *hot path*, the route most requests take through a system, is literal in the game: the busiest edges glow.
 

@@ -22,7 +22,7 @@ h1{position:absolute;left:72px;top:236px;width:1056px;font-size:80px;line-height
 <div class="kick">${lesson ? 'Learn system design' : pr ? 'Practice problem' : `Daily challenge · ${esc(pretty(r.date))}`}</div>
 <h1>${esc(r.title)}</h1>
 <div class="meta">${esc([r.difficulty || r.track, r.like || (lesson ? r.minutes + ' minutes' : '')].filter(Boolean).join('  ·  '))}</div>
-<div class="foot"><span>${lesson ? 'One idea. Try it. See why it works.' : 'Build it. Survive the day. Beat my design.'}</span><span class="pill">Free, no sign-up</span></div>
+<div class="foot"><span>${lesson ? 'One idea. Try it. See why it works.' : 'Build it. Survive the day. Beat my design.'}</span><span class="pill">Free account</span></div>
 </body></html>`;
 }
 

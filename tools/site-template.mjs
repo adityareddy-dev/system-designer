@@ -21,7 +21,7 @@ export const json = obj => JSON.stringify(obj).replace(/</g, '\\u003c');
 export const breadcrumb = crumbs => ({ '@type':'BreadcrumbList', itemListElement: crumbs.map(([name, href], i)=>({ '@type':'ListItem', position:i+1, name:clean(name), item:new URL(href, SITE).href })) });
 export function navigation(file) {
   const a = (target, label) => link(relative(file, target), label);
-  return `<a class="site-skip" href="#content">Skip to content</a><header class="site-header"><a class="site-brand" href="${relative(file, 'index.html')}"><span class="site-mark" aria-hidden="true">S</span>System Designer</a><nav aria-label="Main navigation">${a('problems/index.html','Problems')}${a('learn/index.html','Learn')}${a('guides/index.html','Guides')}${a('index.html#/','Open game')}</nav></header>`;
+  return `<a class="site-skip" href="#content">Skip to content</a><header class="site-header"><a class="site-brand" href="${relative(file, 'index.html')}"><span class="site-mark" aria-hidden="true">S</span>System Designer</a><nav aria-label="Main navigation">${a('problems/index.html','Problems')}${a('learn/index.html','Learn')}${a('guides/index.html','Guides')}${a('index.html#/','Open game').replace('<a ','<a class="site-nav-cta" ')}</nav></header>`;
 }
 export function bodyShell(file, {title, description, kicker = 'Build the system. Survive the day.', crumbs, body, action = '', image = ''}) {
   const trail = `<nav class="site-crumbs" aria-label="Breadcrumb">${crumbs.map(([name, target],i)=>i===crumbs.length-1 ? `<span aria-current="page">${esc(name)}</span>` : link(relative(file,target),name)).join('<span aria-hidden="true"> / </span>')}</nav>`;

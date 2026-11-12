@@ -290,3 +290,26 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; margin: 0; }
   .site-facts dt { border-bottom: 0; padding-bottom: 0; }
   .site-facts dd { padding-top: 2px; }
 }
+
+/* Same family as the game: a solid top bar, pill links, a real primary button, the same type for eyebrows. */
+.site-header { max-width: none; margin: 0; padding: 0 24px; height: 56px; background: var(--surface-solid); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+.site-header nav { gap: 4px; align-items: center; }
+.site-header nav a { padding: 8px 14px; border-radius: 8px; color: var(--text-2); text-decoration: none; font-weight: 500; font-size: 16px; }
+.site-header nav a:hover { background: color-mix(in srgb, var(--text) 7%, transparent); color: var(--text); }
+.site-header nav a.site-nav-cta { background: var(--accent); color: var(--on-accent); font-weight: 700; margin-left: 8px; }
+.site-header nav a.site-nav-cta:hover { background: color-mix(in srgb, var(--accent) 88%, var(--text)); color: var(--on-accent); }
+.site a.site-brand { font-size: 17px; letter-spacing: -0.01em; }
+.site-mark { width: 28px; height: 28px; }
+.site-kicker { color: var(--accent); font: 600 13px/1.5 var(--font-ui); letter-spacing: .06em; text-transform: uppercase; }
+.site .site-button { color: var(--on-accent); }
+.site-footer { max-width: none; padding: 28px 24px 40px; color: var(--text-2); }
+.site-footer > * { max-width: 1160px; margin-inline: auto; }
+.site-main, .site-footer > * { max-width: min(1160px, 100%); }
+@media (min-width: 1700px) { .site { font-size: 19px; } .site-main, .site-footer > * { max-width: 1480px; } .site-prose { max-width: 80ch; } .site-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (min-width: 2300px) { .site { font-size: 21px; } .site-main, .site-footer > * { max-width: 1900px; } .site-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+@media (max-width: 640px) {
+  .site-header { height: auto; min-height: 56px; flex-direction: row; align-items: center; flex-wrap: wrap; padding: 8px 12px; gap: 4px 8px; }
+  .site-header nav { gap: 2px; }
+  .site-header nav a { padding: 10px 10px; font-size: 15px; }
+  .site-header nav a.site-nav-cta { margin-left: 2px; }
+}

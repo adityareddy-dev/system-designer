@@ -36,9 +36,9 @@ function heroArt(ctx) {
     });
   }
   const el = h('div', { class: 'sh-hero-art', 'aria-label': 'Try a capacity experiment' });
-  el.innerHTML = `<svg viewBox="0 0 540 270" role="presentation" focusable="false"><g fill="none" stroke="var(--border)" stroke-width="1"><path d="M4 14h532M4 250h532M4 8v12m532-12v12M4 244v12m532-12v12"/></g><g fill="var(--text-2)" font-family="monospace" font-size="10"><text x="20" y="84">01 / arrive</text><text x="158" y="84">02 / route</text><text x="310" y="264">03 / share the work</text><text x="450" y="84">04 / reuse</text></g>${edgeSvg}${nodeSvg}${dots}</svg>`;
+  el.innerHTML = `<svg viewBox="0 0 540 270" role="presentation" focusable="false"><g fill="none" stroke="var(--border)" stroke-width="1"><path d="M4 14h532M4 250h532M4 8v12m532-12v12M4 244v12m532-12v12"/></g><g fill="var(--text-2)" font-family="var(--font-ui)" font-size="12.5" font-weight="600"><text x="20" y="84">Users</text><text x="160" y="84">Load balancer</text><text x="310" y="264">3 app servers</text><text x="450" y="84">Cache</text></g>${edgeSvg}${nodeSvg}${dots}</svg>`;
   const out = h('p', { class: 'sh-hero-evidence', role: 'status' });
-  const controls = h('div', { class: 'sh-hero-controls', role: 'group', 'aria-label': 'Experiment workload' });
+  const controls = h('div', { class: 'sh-hero-controls', role: 'group', 'aria-labelledby': 'sh-hero-try' });
   const phases = [
     { label: 'Steady load', rate: '1,800/s', busy: 60, text: 'Three replicas share 1,800 requests/s. Each has 40% spare.', state: 'steady' },
     { label: 'Double traffic', rate: '3,600/s', busy: 120, text: 'First limit: compute. Each replica gets 1,200/s but can serve about 1,000/s. About 600/s are rejected.', state: 'overload' },
@@ -54,7 +54,7 @@ function heroArt(ctx) {
     [...controls.children].forEach((b,i) => b.setAttribute('aria-pressed', String(phases[i] === phase)));
   }
   phases.forEach(phase => controls.append(h('button', { type: 'button', class: 'sh-btn', onclick: () => show(phase), text: phase.label })));
-  el.append(controls, out, h('small', { class: 'sh-muted', text: 'Approx. capacity illustration. Travel time is schematic.' })); show(phases[0]);
+  el.append(h('p', { class: 'sh-hero-try', id: 'sh-hero-try', text: 'Try it: pick a situation and watch the servers.' }), controls, out, h('small', { class: 'sh-muted', text: 'A simplified picture. Real numbers in the game are rounded estimates.' })); show(phases[0]);
   return el;
 }
 
@@ -106,17 +106,21 @@ export function renderHome(host, ctx) {
   cta.push(h('a', { class: 'sh-btn sh-btn--lg' + (lessonOf(ctx, 'intro') ? '' : ' sh-btn--primary'), href: '#/practice' }, 'Browse problems'));
 
   const progressLine = h('p', { class: 'sh-fine', 'aria-live': 'polite' });
+  const gated = !!ctx.gate?.required;
   const paintAccount = () => { progressLine.textContent = ctx.account?.isSignedIn()
     ? 'Signed in. Your progress follows you across devices.'
-    : 'No sign-up. Your progress stays in this browser.'; };
+    : gated ? 'Sign-in takes one click. Progress you made before signing in is kept.' : 'No sign-up. Your progress stays in this browser.'; };
   paintAccount();
   const offAccount = ctx.bus.on('account', paintAccount);
   const hero = h('section', { class: 'sh-hero' },
     h('div', { class: 'sh-hero-copy' },
-      h('p', { class: 'sh-eyebrow', text: 'An engineer’s pocket signal bench' }),
+      h('p', { class: 'sh-eyebrow', text: 'Free system design practice' }),
       h('h1', { class: 'sh-display', text: 'Build the system. Survive the day.' }),
-      h('p', { class: 'sh-lead', text: 'Design real systems, from a link shortener to a bank ledger, then watch a full day of traffic flow through your design. See what held, what broke, what it cost, and why.' }),
+      h('p', { class: 'sh-lead', text: 'System Designer is a browser game for learning system design. Draw an architecture for a real problem, from a link shortener to a bank ledger, then watch a full day of traffic, spikes and outages hit it. A plain-words debrief shows what held, what broke and why.' }),
       h('div', { class: 'sh-cta-row' }, cta),
+      h('ul', { class: 'sh-hero-facts', 'aria-label': 'About the game' },
+        h('li', null, ico('ui.check', 18), h('span', null, h('b', { text: 'Free. ' }), gated ? 'Sign in with a free Google or GitHub account.' : 'No account needed. Progress stays in this browser.')),
+        h('li', null, ico('ui.check', 18), h('span', null, h('b', { text: 'Open source (MIT). ' }), gated ? 'Rather run it yourself? ' : 'Read or fork it: ', h('a', { href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, gated ? 'Get the code' : 'github.com/adityareddy-dev/system-designer'), gated ? ', no account needed.' : '.'))),
       progressLine),
     heroArt(ctx));
 

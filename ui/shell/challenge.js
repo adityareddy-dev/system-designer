@@ -168,9 +168,9 @@ export function renderChallenge(host, ctx, route0) {
       const checking = ctx.account?.state?.().status === 'checking';
       offline.hidden = available;
       offline.replaceChildren(h('h2', { class: 'sh-h2', text: checking ? 'Checking online competition' : 'Playing offline' }),
-        h('p', { class: 'sh-muted', text: checking ? 'Checking whether sign-in and leaderboards are available.' : 'Sign-in and leaderboards are unavailable. Your scores and streak stay in this browser. You can still play the daily challenge and share a link with a friend.' }));
-      accountInfo.replaceChildren(h('strong', { text: available && ctx.account?.isSignedIn?.() ? 'You are signed in. ' : 'No account needed. ' }),
-        available ? (ctx.account?.isSignedIn?.() ? 'Your score and streak follow you to every device. See the leaderboard above.' : 'Your score stays in this browser. Sign in through the leaderboard above to sync progress and join.') : 'Your score and streak stay in this browser.');
+        h('p', { class: 'sh-muted', text: checking ? 'Checking whether sign-in and leaderboards are available.' : (ctx.gate?.required ? 'Sign-in and leaderboards are not reachable right now. Try again in a moment.' : 'Sign-in and leaderboards are unavailable. Your scores and streak stay in this browser. You can still play the daily challenge and share a link with a friend.') }));
+      accountInfo.replaceChildren(h('strong', { text: available && ctx.account?.isSignedIn?.() ? 'You are signed in. ' : ctx.gate?.required ? 'Free account. ' : 'No account needed. ' }),
+        available ? (ctx.account?.isSignedIn?.() ? 'Your score and streak follow you to every device. See the leaderboard above.' : (ctx.gate?.required ? 'Your score and streak follow your account to every device.' : 'Your score stays in this browser. Sign in through the leaderboard above to sync progress and join.')) : 'Your score and streak stay in this browser.');
     };
     const mountBoard = () => {
       if (board || !ctx.account?.leaderboardCard) return;

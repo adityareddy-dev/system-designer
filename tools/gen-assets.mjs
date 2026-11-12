@@ -158,7 +158,7 @@ ${node(120, 480, 26, '#94A3B8')}${node(430, 380, 30, '#2DD4BF')}${node(700, 440,
 <circle cx="205" cy="468" r="6" fill="#4FA8E8"/><rect x="319" y="396" width="12" height="12" rx="2" fill="#F2B33D"/><path d="M560 430l7 12h-14z" fill="#E59AC6"/><path d="M806 342l8 -8 8 8-8 8z" fill="#4FA8E8"/><circle cx="1050" cy="338" r="6" fill="#2FD1A0"/>
 <text x="80" y="170" font-family="Sora, Inter, system-ui, sans-serif" font-weight="700" font-size="104" fill="#E9EDF5">System Designer</text>
 <text x="84" y="232" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="36" fill="#B7C0D1">Build the system. Survive the day. See why it held.</text>
-<text x="84" y="288" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="24" fill="#8590A6">Free system design practice in your browser. No sign-up.</text>
+<text x="84" y="288" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="24" fill="#8590A6">Free system design practice in your browser. Open source.</text>
 <g font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600">
 <rect x="84" y="560" width="148" height="40" rx="20" fill="#8B85FF" fill-opacity=".18"/><text x="158" y="587" text-anchor="middle" fill="#B9B5FF">Learn</text>
 <rect x="246" y="560" width="148" height="40" rx="20" fill="#2DD4BF" fill-opacity=".16"/><text x="320" y="587" text-anchor="middle" fill="#7EE8D8">Practice</text>

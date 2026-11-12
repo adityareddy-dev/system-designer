@@ -1,6 +1,6 @@
 # System Designer sign-in service
 
-Optional accounts for System Designer, served at **https://api.systemdesigner.io**. Playing never needs it: without the service (or when it is down) the game works exactly as before and shows no sign-in button.
+Optional accounts for System Designer, served at **https://api.systemdesigner.io**. The hosted site needs it to play. Copies that do not run on systemdesigner.io never need it: without the service the game works with no account and shows no sign-in button.
 
 Signing in with Google or GitHub:
 - saves progress across devices (local and server progress are merged: union of solved problems and finished lessons, best score per problem, union of played days for the streak),

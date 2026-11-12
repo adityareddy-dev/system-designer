@@ -11,6 +11,7 @@ import { createAudio } from './assets/sound.js';
 import { getPalette } from './assets/palette.js';
 import { createCompete } from './compete/index.js';
 import { metrics } from './core/metrics.js';
+import { accountRequired } from './account/config.js';
 
 const root = document.documentElement;
 const media = (q) => { try { return globalThis.matchMedia ? matchMedia(q) : null; } catch { return null; } };
@@ -75,6 +76,10 @@ async function boot() {
   metrics.bind(ctx);
   // Optional sign-in: loaded after the first screen; when it cannot start, the game simply has no account features.
   ctx.account = null;
+  // The hosted site (or ?preview=hosted) asks for a free account before any play; every other copy plays with no account.
+  ctx.gate = { required: accountRequired() };
+  let accountDone;
+  ctx.accountReady = new Promise((r) => { accountDone = r; });
 
   // Theme, motion and contrast live on <html> so every stylesheet can follow them.
   let shownTheme = null;
@@ -108,7 +113,8 @@ async function boot() {
   const appEl = document.getElementById('app');
   appEl.innerHTML = '';
   const shell = mountShell(appEl, ctx);
-  const startAccount = () => import('./account/index.js').then((m) => { ctx.account = m.createAccount(ctx); shell.attachAccount?.(); }).catch(err => { metrics.reportError(err, 'index.js', true); ctx.account = null; });
+  const startAccount = () => import('./account/index.js').then((m) => { ctx.account = m.createAccount(ctx); shell.attachAccount?.(); return ctx.account.ready; }).catch(err => { metrics.reportError(err, 'index.js', true); ctx.account = null; }).finally(() => accountDone());
+  if (ctx.gate.required) startAccount();
 
   // ---- window.__game: drives the mounted play controller (CONTRACT 13.1)
   const nextRoute = (hash) => new Promise((resolve) => {
@@ -188,7 +194,7 @@ async function boot() {
     await Promise.race([shell.whenPlay().catch(() => null), new Promise((r) => setTimeout(r, 20000))]);
   } else idle(loadPerf);
   root.dataset.ready = '1';
-  idle(startAccount);
+  if (!ctx.gate.required) idle(startAccount);
 }
 
 boot().catch((err) => {
