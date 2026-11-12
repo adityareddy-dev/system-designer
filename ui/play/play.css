@@ -805,7 +805,7 @@
  .pl-root[data-mode=lesson] .pl-left {width:auto}
  .pl-root[data-mode=lesson] .pl-goal {max-width:none;width:auto;font-size:12px;line-height:1.3;padding:8px;max-height:64px;overflow:auto}
  .pl-left {height:40%;max-height:340px}
- .pl-right {bottom:116px;max-height:40%;left:0;right:0} /* r2-play: panels stop above the Add component button */
+ .pl-right {bottom:72px;max-height:40%;left:0;right:0} /* r2-play: panels stop above the Add component button */
  .pl-inspector,.pl-req,.pl-traffic {border-radius:12px 12px 0 0}
  .pl-score-details .pl-slo-grid {grid-template-columns:1fr;padding:12px}
  .pl-overlay {padding-top:72px}
@@ -906,7 +906,7 @@
  .pl-root[data-interview=true] .pl-tool--fit {display:none}
  .pl-root:has(.pl-overview:not([hidden])) .pl-toolbar:not(.pl-toolbar--open) .pl-tb-grab {top:-112px;bottom:auto;height:44px}
  .pl-root:has(.pl-overview:not([hidden])) .pl-overview {bottom:8px}
- .pl-root:has(.pl-overview:not([hidden])) .pl-right {bottom:172px}
+ .pl-root:has(.pl-overview:not([hidden])) .pl-right {bottom:108px}
 }
 
 .pl-reflection-form {display:grid;gap:12px;padding:16px}.pl-reflection-form label {display:grid;gap:6px}.pl-check-passed {border-left:3px solid var(--ok);padding-left:12px}

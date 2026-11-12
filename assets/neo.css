@@ -381,7 +381,7 @@
 
 /* ================= debrief and editorial: the same cards, and the width of the screen ================= */
 .pl-debrief.pl-debrief :is(.pl-run-evidence, .pl-story, .pl-reflection, .pl-score-details, .pl-defense-card, .pl-sec > .pl-versus, .pl-try) {
-  border: 2px solid var(--ink); border-radius: var(--radius-3); background: var(--card); box-shadow: inset 0 8px 0 var(--band, transparent), var(--hard);
+  border: 2px solid var(--ink); border-radius: var(--radius-3); background: var(--card); box-shadow: var(--hard), inset 0 8px 0 var(--band, transparent);
 }
 .pl-debrief .pl-run-evidence { --band: var(--tomato); }
 .pl-debrief .pl-run-evidence[data-outcome=pass] { --band: var(--mint); }
