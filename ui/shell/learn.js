@@ -45,7 +45,7 @@ export function renderLearn(host, ctx) {
     const count = `${t.items.filter(l => ctx.progress.isLessonDone(l.id)).length}/${t.items.length} explored`;
     const section = h('section', { class: 'sh-track sh-chapter', 'aria-labelledby': 'sh-track-' + ti, dataset: { chapter: String(ti + 1) } });
     const button = h('button', { class: 'sh-chapter-toggle', type: 'button', 'aria-expanded': String(ti === 0), 'aria-controls': 'sh-track-list-' + ti },
-      h('span', { class: 'sh-chapter-copy' }, h('span', { class: 'sh-chapter-index', text: `Field notes / ${String(ti + 1).padStart(2, '0')}` }),
+      h('span', { class: 'sh-chapter-copy' },
         h('h2', { id: 'sh-track-' + ti, text: t.name }), h('span', { class: 'sh-track-progress', text: count }),
         h('span', { class: 'sh-chapter-action' }, ti === 0 ? 'Close track' : 'Open track', ico('ui.chevron-down', 20))),
       h('span', { class: 'sh-chapter-art', 'aria-hidden': 'true', html: sceneMarkup(TRACK_SCENE[ti]) }));
