@@ -380,11 +380,13 @@
 }
 
 /* ================= debrief and editorial: the same cards, and the width of the screen ================= */
-.pl-debrief :is(.pl-run-evidence, .pl-story, .pl-reflection, .pl-score-details, .pl-defense-card, .pl-sec > .pl-versus, .pl-try) {
-  border-width: 2px 2px 2px 8px; border-style: solid; border-top-color: var(--ink); border-right-color: var(--ink); border-bottom-color: var(--ink);
-  border-radius: var(--radius-3); background: var(--card); box-shadow: var(--hard);
+.pl-debrief.pl-debrief :is(.pl-run-evidence, .pl-story, .pl-reflection, .pl-score-details, .pl-defense-card, .pl-sec > .pl-versus, .pl-try) {
+  border: 2px solid var(--ink); border-radius: var(--radius-3); background: var(--card); box-shadow: inset 0 8px 0 var(--band, transparent), var(--hard);
 }
-.pl-debrief .pl-run-evidence { border-left-color: var(--tomato); }
+.pl-debrief .pl-run-evidence { --band: var(--tomato); }
+.pl-debrief .pl-run-evidence[data-outcome=pass] { --band: var(--mint); }
+.pl-debrief .pl-story { --band: var(--yellow); padding-top: 24px; }
+.pl-debrief .pl-run-evidence { padding-top: 26px; }
 .pl-debrief :is(p, li, .pl-lead) { max-width: 80ch; }
 .pl-debrief .pl-footnote, .pl-debrief .pl-muted { font-size: max(14px, 1em); }
 @media (min-width: 1700px) {

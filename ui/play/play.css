@@ -209,9 +209,9 @@
 .pl-clock-t { font-size: 22px; line-height: 1; }
 .pl-clock-bar { height: 4px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .pl-clock-bar i { display: block; height: 100%; width: 0; background: var(--accent); }
-.pl-speed { display: inline-flex; padding: 2px; gap: 2px; border-radius: 999px; background: var(--border); }
-.pl-speed-b { min-width: 40px; min-height: 36px; padding: 0 8px; border: 0; border-radius: 999px; background: transparent; color: var(--text-2); font: 600 12.5px var(--font-mono); cursor: pointer; }
-.pl-speed-b--on { background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow-1); }
+.pl-speed { display: inline-flex; padding: 0; gap: 0; border-radius: var(--radius-1); background: var(--card); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); overflow: hidden; } /* r2-play */
+.pl-speed-b { min-width: 40px; min-height: 36px; padding: 0 8px; border: 0; border-radius: 0; background: transparent; color: var(--ink); font: 700 12.5px var(--font-mono); cursor: pointer; }
+.pl-speed-b--on { background: var(--yellow); color: var(--ink); box-shadow: none; }
 .pl-hud-mid { display: grid; gap: 8px; min-width: 0; }
 .pl-meters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .pl-meter { min-width: 0; }
@@ -386,6 +386,7 @@
 .pl-tl-bad-bg { fill: color-mix(in srgb, var(--bad) 18%, transparent); }
 .pl-tl-bad-fg { fill: var(--bad); }
 .pl-tl-mark { position: absolute; top: 0; transform: translateX(-50%); width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--warn); background: var(--surface-solid); color: var(--warn); cursor: pointer; padding: 0; }
+.pl-tl-mark::before { content: ""; position: absolute; inset: -9px; } /* r2-play: 44px hit area */
 .pl-tl-mark:hover { background: var(--accent-soft); }
 .pl-tl-key { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-3); margin-top: 6px; }
 .pl-key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; margin-right: 6px; }
@@ -484,7 +485,7 @@
   .pl-left:has(.pl-toolbar--open) { transform: none; }
   .pl-toolbar { border-radius: var(--radius-4) var(--radius-4) 0 0; position: relative; overflow: visible; }
   .pl-tb-grab--pulse { animation: pl-pulse 1.2s var(--ease-in-out) infinite; }
-  .pl-tb-grab { display: inline-flex; position: absolute; top: -56px; left: 12px; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--surface-solid); font: 600 14px var(--font-ui); box-shadow: var(--shadow-2); cursor: pointer; pointer-events: auto; }
+  .pl-tb-grab { display: inline-flex; position: absolute; top: -56px; left: 12px; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: var(--radius-1); border: 2px solid var(--ink); background: var(--tomato); color: var(--ink); font: 700 14px var(--font-ui); box-shadow: 3px 3px 0 var(--ink); cursor: pointer; pointer-events: auto; }
   .pl-has-selection .pl-tb-grab { display: none; }
   .pl-tb-body, .pl-tb-head, .pl-cattabs { overflow-x: hidden; }
   .pl-cattabs { display: flex; overflow-x: auto; }
@@ -665,7 +666,7 @@
 @media (min-width: 720px) and (max-width: 899px) {
   .pl-toolbar:not(.pl-toolbar--open) { height: auto; width: max-content; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; overflow: visible; }
   .pl-toolbar:not(.pl-toolbar--open) > :not(.pl-tb-grab) { display: none; }
-  .pl-tb-grab { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--surface-solid); font: 600 14px var(--font-ui); box-shadow: var(--shadow-2); cursor: pointer; flex: none; }
+  .pl-tb-grab { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: var(--radius-1); border: 2px solid var(--ink); background: var(--tomato); color: var(--ink); font: 700 14px var(--font-ui); box-shadow: 3px 3px 0 var(--ink); cursor: pointer; flex: none; }
   .pl-toolbar--open .pl-tb-grab { margin: 8px 10px 0; align-self: flex-start; }
   .pl-tb-grab--pulse { animation: pl-pulse 1.2s var(--ease-in-out) infinite; }
   .pl-left { bottom: auto; max-height: calc(100% - 64px - var(--pl-hud-h, 126px) - 24px); display: flex; }
@@ -773,7 +774,7 @@
 .pl-root {font-size:16px}
 .pl-toolbar,.pl-inspector,.pl-req,.pl-hud,.pl-panel,.pl-traffic,.pl-steps,.pl-tools,.pl-goal {background:var(--surface-solid);backdrop-filter:none;box-shadow:none;border-radius:12px}
 .pl-btn,.pl-tab {border-radius:8px;min-height:44px}
-.pl-btn--primary,.pl-tab--on,.pl-tb-grab {color:var(--on-accent)}
+.pl-btn--primary,.pl-tab--on {color:var(--on-accent)}
 .pl-tb-item .pl-ic {color:var(--cat-compute)}
 .pl-tb-item {min-height:44px}
 .pl-m-l {white-space:normal;overflow:visible;text-overflow:clip;line-height:1.2}
@@ -804,7 +805,7 @@
  .pl-root[data-mode=lesson] .pl-left {width:auto}
  .pl-root[data-mode=lesson] .pl-goal {max-width:none;width:auto;font-size:12px;line-height:1.3;padding:8px;max-height:64px;overflow:auto}
  .pl-left {height:40%;max-height:340px}
- .pl-right {bottom:56px;max-height:40%;left:0;right:0}
+ .pl-right {bottom:116px;max-height:40%;left:0;right:0} /* r2-play: panels stop above the Add component button */
  .pl-inspector,.pl-req,.pl-traffic {border-radius:12px 12px 0 0}
  .pl-score-details .pl-slo-grid {grid-template-columns:1fr;padding:12px}
  .pl-overlay {padding-top:72px}
@@ -905,7 +906,7 @@
  .pl-root[data-interview=true] .pl-tool--fit {display:none}
  .pl-root:has(.pl-overview:not([hidden])) .pl-toolbar:not(.pl-toolbar--open) .pl-tb-grab {top:-112px;bottom:auto;height:44px}
  .pl-root:has(.pl-overview:not([hidden])) .pl-overview {bottom:8px}
- .pl-root:has(.pl-overview:not([hidden])) .pl-right {bottom:108px}
+ .pl-root:has(.pl-overview:not([hidden])) .pl-right {bottom:172px}
 }
 
 .pl-reflection-form {display:grid;gap:12px;padding:16px}.pl-reflection-form label {display:grid;gap:6px}.pl-check-passed {border-left:3px solid var(--ok);padding-left:12px}

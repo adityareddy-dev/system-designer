@@ -589,6 +589,8 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 /* round 4: on a phone workbench the notes are small pills, so they cover as little of the diagram and the debrief as they can */
 @media (max-width: 719px) {
   [data-immersive="1"] > .sh-toasts { width: auto; max-width: calc(100vw - 32px); justify-items: center; }
+  /* r2-play: on a phone workbench the notes ride over the header bar, where they cover no canvas control */
+  [data-immersive="1"] > .sh-toasts, [data-immersive="1"][data-nav="1"] > .sh-toasts { top: 8px; bottom: auto; }
   [data-immersive="1"] .sh-toast { padding: 6px 12px; font-size: 13px; border-radius: 14px; }
 }
 /* Signal bench: solid paper, calibrated instruments and restrained elevation. */
