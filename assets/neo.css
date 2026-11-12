@@ -127,6 +127,13 @@
 .sh-seg-btn[aria-checked="true"] { background: var(--yellow); color: var(--ink); box-shadow: none; }
 /* r2-challenge */
 .sh-challenge-page .sh-scenario { border-top-color: var(--ink); }
+/* wide screens: the scene sits beside the brief so "Play today's challenge" stays on the first screen */
+@media (min-width: 1200px) {
+  .sh-challenge-page .sh-scenario { display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 30%); column-gap: 28px; align-content: start; }
+  .sh-challenge-page .sh-scenario > * { grid-column: 1; }
+  .sh-challenge-page .sh-scenario > .sh-bench-scene { grid-column: 2; grid-row: 1 / span 4; align-self: start; margin: 0; max-height: 220px; }
+  .sh-challenge-page .sh-scenario > .sh-bench-scene svg { width: 100%; height: auto; max-height: 220px; }
+}
 .sh-date-nav { gap: 0; padding: 0; border: var(--line); border-radius: var(--radius-1); background: var(--card); box-shadow: var(--hard); overflow: hidden; }
 .sh-date-nav .sh-icon-btn { width: 44px; height: 44px; border-radius: 0; color: var(--text); }
 .sh-date-nav .sh-icon-btn:first-child { border-right: var(--line); }
