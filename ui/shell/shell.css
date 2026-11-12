@@ -772,6 +772,9 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 .sh-learn-page>.sh-page-head {padding:20px 0 16px;align-items:end}
 .sh-learn-page .sh-h1,.sh-practice-page>.sh-page-head .sh-h1 {font-size:clamp(40px,4.5vw,62px);line-height:1.02;letter-spacing:-1.8px;max-width:12ch;text-wrap:balance}
 .sh-learn-page .sh-lead {max-width:58ch}
+/* r2-challenge */
+.sh-challenge-page>.sh-page-head .sh-h1 {font-size:clamp(40px,4.5vw,62px);line-height:1.02;letter-spacing:-1.8px;text-wrap:balance}
+@media(max-width:1020px) {.sh-challenge-page>.sh-page-head .sh-h1 {font-size:46px}}
 .sh-chapter {margin:0;padding:32px 0;border-bottom:1px solid var(--border)}
 .sh-chapter-toggle {width:100%;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:48px;border:0;background:none;color:var(--text);text-align:left;padding:0;cursor:pointer}
 .sh-chapter-copy {display:flex;flex-direction:column;align-items:start;gap:16px}

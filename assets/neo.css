@@ -112,6 +112,19 @@
 .sh-seg-btn { min-height: 44px; border: 0; border-right: var(--line); border-radius: 0; font-weight: 700; background: transparent; }
 .sh-seg-btn:last-child { border-right: 0; }
 .sh-seg-btn[aria-checked="true"] { background: var(--yellow); color: var(--ink); box-shadow: none; }
+/* r2-challenge */
+.sh-challenge-page .sh-scenario { border-top-color: var(--ink); }
+.sh-date-nav { gap: 0; padding: 0; border: var(--line); border-radius: var(--radius-1); background: var(--card); box-shadow: var(--hard); overflow: hidden; }
+.sh-date-nav .sh-icon-btn { width: 44px; height: 44px; border-radius: 0; color: var(--text); }
+.sh-date-nav .sh-icon-btn:first-child { border-right: var(--line); }
+.sh-date-nav .sh-icon-btn:last-child { border-left: var(--line); }
+.sh-date-nav a.sh-icon-btn:hover { background: var(--yellow); color: var(--ink); }
+.sh-date-nav .sh-date-label { padding: 0 18px; font-weight: 700; }
+.ac-tabs { gap: 0; padding: 0; border: var(--line); border-radius: var(--radius-1); background: var(--card); overflow: hidden; }
+.ac-tab { min-height: 44px; border-radius: 0; border-right: var(--line); font-weight: 700; color: var(--text); }
+.ac-tab:last-child { border-right: 0; }
+.ac-tab:hover { background: color-mix(in srgb, var(--yellow) 35%, transparent); }
+.ac-tab[aria-selected="true"] { background: var(--yellow); color: var(--ink); box-shadow: none; }
 .sh-switch-track { border: var(--line); background: var(--card); }
 .sh-switch-input:checked + .sh-switch-track { background: var(--mint); }
 .sh-switch-thumb { background: var(--ink); }
