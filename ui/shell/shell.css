@@ -904,8 +904,7 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 .sh-feedback .sh-btn-row { margin-top: 12px; }
 /* The privacy link reads as a link and keeps its distance from Send feedback; phones stack the two. */
 .sh-privacy-actions { align-items: center; column-gap: 24px; row-gap: 12px; }
-.sh-privacy-actions a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-.sh-privacy-actions a:hover { text-decoration-thickness: 2px; }
+.sh-privacy-actions a.sh-btn { display: inline-flex; align-items: center; text-decoration: none; }
 @media (max-width: 720px) { .sh-privacy-actions { flex-direction: column; align-items: flex-start; } }
 
 /* Light controls keep a clear outline on the pale panels. */

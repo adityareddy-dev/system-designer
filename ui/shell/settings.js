@@ -156,7 +156,7 @@ export function renderSettings(hostEl, ctx) {
       ? toggleRow('Anonymous usage counts', 'Helps us see what gets played and where the game breaks. No cookies or player ids. Browser privacy signals turn this off too.', settings.get('anonymousCounts'), v => set('anonymousCounts', v), 'sh-s-counts')
       : h('p', { class: 'sh-muted', text: 'Automatic usage counts and error reports are disabled.' }),
     h('div', { class: 'sh-btn-row sh-privacy-actions' },
-      h('a', { href: new URL('./privacy.html', document.baseURI).href, text: 'Read the privacy page' }),
+      h('a', { class: 'sh-btn', href: new URL('./privacy.html', document.baseURI).href, text: 'Read the privacy page' }),
       h('button', { type: 'button', class: 'sh-btn', 'data-feedback-general': '', text: 'Send feedback', onclick: event => {
         feedbackHost.replaceChildren(); mountFeedback(feedbackHost, ctx, 'general', null, true, event.currentTarget); feedbackHost.querySelector('input')?.focus();
       } })), feedbackHost);
