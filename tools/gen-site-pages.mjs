@@ -52,8 +52,7 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
       kicker:`${p.difficulty} · ${groups.find(g=>g.id===p.group).title}`,
       crumbs:[rootCrumb,['Problems','problems/index.html'],[p.title,file]],
       preview:`p/${p.id}/preview.jpg`,script:beatScript,
-      action:action(file,'practice/'+p.id,'Play this problem'),
-      body:problemBody(p,catalog,problems,lessonById,file),
+      body:problemBody(p,catalog,problems,lessonById,file,action(file,'practice/'+p.id,'Play this problem')),
       data:[{'@type':'LearningResource',learningResourceType:'Practice problem',educationalLevel:p.difficulty,description,teaches:p.concepts.map(id=>lessonById.get(id)?.title || id),about:groups.find(g=>g.id===p.group).title,isPartOf:{'@type':'WebApplication',name:'System Designer',url:SITE}}]
     }));
   }
@@ -93,7 +92,7 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
   for (const g of guides) add(g.file,page(g.file,{
     title:g.title,description:g.description,article:true,kicker:'A System Designer guide',
     crumbs:[rootCrumb,['Guides',gIndex],[g.title,g.file]],
-    body:`<div class="site-prose"><p class="site-byline">By System Designer · <time datetime="2026-11-07">7 November 2026</time></p>${g.body}<h2>Keep practising</h2>${listLinks(guides.filter(q=>q!==g).slice(0,3).map(q=>[relative(g.file,q.file),q.title]))}</div>`,
+    body:`<div class="site-prose site-cols"><p class="site-byline">By System Designer · <time datetime="2026-11-07">7 November 2026</time></p>${g.body}<h2>Keep practising</h2>${listLinks(guides.filter(q=>q!==g).slice(0,3).map(q=>[relative(g.file,q.file),q.title]))}</div>`,
     data:[{'@type':'Article',headline:g.title,description:g.description,author:{'@type':'Organization',name:'System Designer',url:SITE},publisher:{'@type':'Organization',name:'System Designer',url:SITE},image:SITE+'assets/social-preview.png',datePublished:'2026-11-07',dateModified:'__SITE_LASTMOD__',mainEntityOfPage:new URL(g.file.replace(/index.html$/,''),SITE).href}]
   }));
   const dates = [...new Set([...dailyDates,...(exists('d')?fs.readdirSync(path.join(root,'d')).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&exists(`d/${d}/index.html`)):[])])].sort();
