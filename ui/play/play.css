@@ -906,7 +906,7 @@
  .pl-root[data-interview=true] .pl-tool--fit {display:none}
  .pl-root:has(.pl-overview:not([hidden])) .pl-toolbar:not(.pl-toolbar--open) .pl-tb-grab {top:-112px;bottom:auto;height:44px}
  .pl-root:has(.pl-overview:not([hidden])) .pl-overview {bottom:8px}
- .pl-root:has(.pl-overview:not([hidden])) .pl-right {bottom:108px}
+ .pl-root:has(.pl-overview:not([hidden])) .pl-right {bottom:112px}
 }
 
 .pl-reflection-form {display:grid;gap:12px;padding:16px}.pl-reflection-form label {display:grid;gap:6px}.pl-check-passed {border-left:3px solid var(--ok);padding-left:12px}
