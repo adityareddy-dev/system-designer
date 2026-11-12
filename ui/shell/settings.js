@@ -166,8 +166,8 @@ export function renderSettings(hostEl, ctx) {
     const u = given !== undefined ? given : ctx.account?.user?.();
     emailCard.hidden = !u || !ctx.account?.emailBlock;
     if (emailCard.hidden) return;
-    emailCard.replaceChildren(h('h2', { class: 'sh-card-title', text: 'Email and surveys' }),
-      h('p', { class: 'sh-muted', text: 'We store your email address with your account so we can reach you about it. We send short surveys and product updates only if you turn them on here. You can turn them off at any time.' }),
+    emailCard.replaceChildren(h('h2', { class: 'sh-card-title', text: 'Email' }),
+      h('p', { class: 'sh-muted', text: 'We send occasional surveys and product updates.' }),
       ctx.account.emailBlock(u));
   };
   paintEmail();

@@ -8,7 +8,7 @@ const SECRET = 'q'.repeat(48);
 
 test('state cookie: genuine, matching and unexpired passes', () => {
   const { state, cookieValue } = makeState(SECRET, { ret: '#/challenge', origin: SITE }, NOW);
-  assert.deepEqual(checkState(SECRET, cookieValue, state, NOW + 1000), { ret: '#/challenge', origin: SITE, survey: null });
+  assert.deepEqual(checkState(SECRET, cookieValue, state, NOW + 1000), { ret: '#/challenge', origin: SITE });
 });
 
 test('state cookie: wrong state, tampering, expiry or another secret fail', () => {
@@ -200,9 +200,7 @@ test('GitHub sign-in works when the emails call fails, and keeps the stored emai
   } finally { emailsReply = keep; }
 });
 
-test('survey choice rides in the signed state cookie and is applied in the callback', async () => {
-  assert.deepEqual(checkState(SECRET, ...(() => { const m = makeState(SECRET, { ret: '#/', origin: SITE, survey: true }, NOW); return [m.cookieValue, m.state, NOW]; })()), { ret: '#/', origin: SITE, survey: true });
-  assert.equal(checkState(SECRET, ...(() => { const m = makeState(SECRET, { ret: '#/', origin: SITE, survey: false }, NOW); return [m.cookieValue, m.state, NOW]; })()).survey, false);
+test('new GitHub accounts are subscribed, a later sign-in leaves the choice alone and the old survey parameter is ignored', async () => {
   const run = async (ip, query) => {
     const c = client(app.base, { ip });
     const s = await c.req('GET', '/auth/github/start' + query);
@@ -210,17 +208,12 @@ test('survey choice rides in the signed state cookie and is applied in the callb
     await c.req('GET', `/auth/github/callback?code=good-code&state=${state}`);
     return c;
   };
-  const on = await run('10.0.2.1', '?survey=1');
-  const me = (await on.req('GET', '/me')).json.user;
-  assert.equal(me.surveyOptIn, true);
+  const first = await run('10.0.2.1', '?survey=0');
+  const me = (await first.req('GET', '/me')).json.user;
+  assert.equal(me.surveyOptIn, true, 'survey=0 from an old client is ignored');
   assert.equal(me.email, 'octo@example.com');
   assert.equal(app.db.user(app.db.raw.prepare('SELECT user_id AS u FROM identities WHERE provider = ?').get('github').u).surveyOptInAt, NOW);
-  // a later sign-in with no choice leaves it on, survey=0 turns it off
-  const same = await run('10.0.2.2', '');
-  assert.equal((await same.req('GET', '/me')).json.user.surveyOptIn, true, 'no choice leaves it alone');
-  const off = await run('10.0.2.3', '?survey=0');
-  assert.equal((await off.req('GET', '/me')).json.user.surveyOptIn, false);
-  // anything else is no choice
-  const odd = await run('10.0.2.4', '?survey=yes');
-  assert.equal((await odd.req('GET', '/me')).json.user.surveyOptIn, false);
+  assert.equal((await first.req('PATCH', '/me', { body: { surveyOptIn: false } })).json.user.surveyOptIn, false);
+  const same = await run('10.0.2.2', '?survey=1');
+  assert.equal((await same.req('GET', '/me')).json.user.surveyOptIn, false, 'signing in again does not turn it back on');
 });

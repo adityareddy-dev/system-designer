@@ -329,9 +329,7 @@
 .ac-check:checked { background: var(--mint); }
 .ac-check:checked::after { content: ""; width: 12px; height: 7px; border-left: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: rotate(-45deg) translate(1px, -1px); }
 .ac-check:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
-.ac-stored { margin-top: 20px; padding: 14px 16px; border: 2px dashed var(--ink); border-radius: var(--radius-1); background: var(--paper); }
-.ac-stored strong { display: block; font: 700 13px/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
-.ac-stored .ac-fine { margin: 0; padding: 0; border: 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+.ac-agree { margin: 14px 0 0; color: var(--text-2); }
 .ac-fine, .ac-mini { font-size: max(14px, 1em); }
 .ac-link { color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; display: inline; padding-block: 12px; }
 .ac-email { margin: 14px 0 4px; display: grid; gap: 6px; }

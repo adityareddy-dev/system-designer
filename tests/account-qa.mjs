@@ -170,17 +170,17 @@ try {
   const panel = await p1.evaluate(() => ({ text: document.querySelector('.ac-pop')?.innerText || '', gis: !!document.querySelector('.ac-gis'), github: [...document.querySelectorAll('.ac-provider')].some((a) => /GitHub/.test(a.textContent)), test: [...document.querySelectorAll('.ac-provider')].some((a) => /test player/.test(a.textContent)), privacy: !!document.querySelector('.ac-pop a[href="privacy.html"]') }));
   check('panel hides Google and GitHub when they are not set up, shows the test provider', !panel.gis && !panel.github && panel.test && panel.privacy, panel);
   await shot(p1, '03-sign-in-panel');
-  // the panel says plainly that the email is stored, and the survey box starts unticked
-  check('sign-in panel says the email address is stored and the survey box starts unticked', /store your email address/i.test(panel.text) && /surveys and product updates/i.test(panel.text) && (await p1.evaluate(() => document.querySelector('.ac-pop .ac-check')?.checked === false)), panel.text.slice(0, 200));
-  await p1.evaluate(() => document.querySelector('.ac-pop .ac-check').click());
+  // the panel has no survey box and no storage copy, only a short agreement line
+  check('sign-in panel has no survey checkbox, no storage copy and one privacy line', (await p1.evaluate(() => !document.querySelector('.ac-pop .ac-check') && !document.querySelector('.ac-pop .ac-stored'))) && !/we store|never sold|nothing is sold|no ads|surveys/i.test(panel.text) && /By continuing you agree to the Privacy policy\./.test(panel.text), panel.text.slice(0, 300));
   await p1.evaluate(() => [...document.querySelectorAll('.ac-provider')].find((b) => /test player/.test(b.textContent)).click());
   await p1.waitForSelector('.ac-me-btn', { visible: true, timeout: 8000 }).catch(() => {});
   check('fake-provider sign-in shows the profile button', await visible(p1, '.ac-me-btn'));
   const me1 = await api(p1, 'GET', '/me');
-  check('the survey choice made at sign-in is saved with the account', me1.json?.user?.surveyOptIn === true, me1.json);
+  check('a new account is subscribed to surveys and product updates', me1.json?.user?.surveyOptIn === true, me1.json);
   // the account menu shows the email state and lets the player turn surveys off
   await p1.click('.ac-me-btn');
   await p1.waitForSelector('.ac-pop .ac-email .ac-check', { visible: true, timeout: 4000 }).catch(() => {});
+  check('the account menu toggle is on and labelled plainly', await p1.evaluate(() => document.querySelector('.ac-pop .ac-email .ac-check').checked && /Email me surveys and product updates/.test(document.querySelector('.ac-pop .ac-email').innerText)));
   await p1.evaluate(() => document.querySelector('.ac-pop .ac-email .ac-check').click());
   await sleep(800);
   const meOff = await api(p1, 'GET', '/me');
