@@ -11,6 +11,9 @@
   if (bar) bar.content = '#FFF4E0';
 })();
 </script><!-- theme:end -->
+  <!-- While the game loads, show only the header, not the plain reading version of the page. It comes back after 6 seconds if the game never starts. -->
+  <script>document.documentElement.classList.add('sd-booting');setTimeout(function(){document.documentElement.classList.remove('sd-booting')},6000)</script>
+  <style>.sd-booting #app .site-main,.sd-booting #app .site-footer{opacity:0}</style>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>System Designer</title>
   <meta name="description" content="A free browser game for practising system design: build a real architecture, survive a traffic day of spikes and outages, and see in plain words why it held.">
