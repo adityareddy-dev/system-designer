@@ -67,9 +67,10 @@
 @media (min-width: 2200px) and (min-height: 1250px) { .sh-learn-page, .sh-practice-page { zoom: 1.3; } }
 @media (min-width: 2200px) and (min-height: 1600px) { .sh-learn-page, .sh-practice-page { zoom: 1.6; } }
 @media (min-width: 2200px) and (min-height: 1950px) { .sh-learn-page, .sh-practice-page { zoom: 1.9; } }
-@media (min-width: 2200px) and (min-height: 1250px) { .sh-home-page { zoom: 1.15; } }
-@media (min-width: 2200px) and (min-height: 1600px) { .sh-home-page { zoom: 1.4; } }
-@media (min-width: 2200px) and (min-height: 1950px) { .sh-home-page { zoom: 1.7; } }
+/* the hero sizes itself to the screen height (see "home hero" below), so only what follows it is scaled up */
+@media (min-width: 2200px) and (min-height: 1250px) { .sh-home-page > :not(.sh-hero) { zoom: 1.15; } }
+@media (min-width: 2200px) and (min-height: 1600px) { .sh-home-page > :not(.sh-hero) { zoom: 1.4; } }
+@media (min-width: 2200px) and (min-height: 1950px) { .sh-home-page > :not(.sh-hero) { zoom: 1.7; } }
 
 .sh-lp-card:not(.sh-lp-card--demo) { border: var(--line); border-top: var(--line); border-radius: var(--radius-3); background: var(--card); box-shadow: var(--hard); padding: 24px; }
 .sh-lp-card--illustrated { padding: 24px; }
@@ -446,4 +447,38 @@
   .pl-hud:not([data-phase="build"]) { padding-block: 4px; }
   .pl-hud:not([data-phase="build"]) .pl-hud-ctl { row-gap: 2px; }
   .sh-problem-bar { min-height: 40px; height: 46px; }
+}
+
+/* ================= home hero: fits the first screen, below the header =================
+   --u is one unit of hero size: it follows the width on tall windows and the height on wide ones, so the text column and the
+   "Try it" card scale together and are never cut. The page's top bar grows on big screens (header.css), so its height is counted too. */
+.sh-view--still, .sh-view--still > .sh-page > * { animation: none; }
+:root { --bar-z: 1; }
+@media (min-width: 2200px) and (min-height: 1250px) { :root { --bar-z: 1.2; } }
+@media (min-width: 2200px) and (min-height: 1600px) { :root { --bar-z: 1.45; } }
+@media (min-width: 2200px) and (min-height: 1950px) { :root { --bar-z: 1.7; } }
+@media (min-width: 861px) {
+  .sh-home-page .sh-hero {
+    --u: min(1vw, 1.7vh);
+    --pad: clamp(20px, 4.2dvh, 72px);
+    --hero-h: max(calc(100dvh - var(--sh-bar-h, 64px) * var(--bar-z)), 560px);
+    box-sizing: border-box; height: var(--hero-h); padding: var(--pad) 0;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: clamp(32px, calc(var(--u) * 4.5), 140px);
+  }
+  .sh-home-page .sh-display { font-size: clamp(44px, calc(var(--u) * 5.8), 150px); margin: calc(var(--u) * 1.1) 0 calc(var(--u) * 1.3); }
+  .sh-home-page .sh-hero .sh-eyebrow { font-size: clamp(13px, calc(var(--u) * .9), 20px); }
+  .sh-home-page .sh-lead { font-size: clamp(19px, calc(var(--u) * 1.5), 34px); margin-bottom: calc(var(--u) * 1.7); }
+  .sh-home-page .sh-gate-note { font-size: clamp(15px, calc(var(--u) * .85), 19px); }
+  .sh-home-page .sh-oss { margin-top: calc(var(--u) * 2); }
+  .sh-home-page .sh-oss p { font-size: clamp(17px, calc(var(--u) * .95), 21px); }
+  .sh-home-page .sh-hero .sh-bench {
+    display: flex; flex-direction: column; align-self: center; min-height: 0; padding: clamp(18px, calc(var(--u) * 1.6), 44px);
+    max-height: calc(var(--hero-h) - 2 * var(--pad)); box-shadow: clamp(8px, calc(var(--u) * .4), 12px) clamp(8px, calc(var(--u) * .4), 12px) 0 var(--ink);
+  }
+  .sh-home-page .sh-hero .sh-bench > * { flex: none; }
+  .sh-home-page .sh-hero .sh-bench-readout { margin: calc(var(--u) * 1) 0 6px; }
+  .sh-home-page .sh-hero .sh-bench-readout strong { font-size: clamp(44px, calc(var(--u) * 4.6), 104px); }
+  .sh-home-page .sh-hero .sh-bench-caption { font-size: clamp(17px, calc(var(--u) * .95), 22px); min-height: 2.9em; }
+  .sh-home-page .sh-hero .sh-bench-svg { flex: 1 1 auto; min-height: 0; display: flex; }
+  .sh-home-page .sh-hero .sh-bench-svg svg { width: 100%; height: 100%; max-height: none; min-height: 0; margin: 0; }
 }

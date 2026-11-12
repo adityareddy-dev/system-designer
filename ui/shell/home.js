@@ -3,62 +3,35 @@ import { h, ico, problemOf, lessonOf, groupIdOf, diffBadge, DIFF_ORDER, GROUP_IC
 import { iconInner, hasIcon } from '../../assets/icons/index.js';
 import { conceptStats, weakestConcept, totalResults } from './concepts.js';
 import { nextTracks } from './next-tracks.js';
+import { ARROW, PHASES, barWidth, barFill, heroHtml } from './hero-markup.js';
 
-const ARROW = '<svg class="sh-arr" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path d="M2 9h13M10 4l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>';
 const arrow = () => { const s = document.createElement('span'); s.className = 'sh-arr-wrap'; s.innerHTML = ARROW; return s.firstChild; };
 
 // The bench: a load balancer sharing steady traffic across three replicas. Three buttons change the picture.
-const BENCH_W = 280; // width of a full load bar
-function heroArt(ctx) {
-  const motion = !ctx.reducedMotion();
-  const replica = (i, y) => `<g data-replica="${i}"><rect x="266" y="${y + 4}" width="320" height="82" rx="8" fill="#141414"/><rect class="sh-rep-box" x="260" y="${y}" width="320" height="82" rx="8" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/>
-    <text class="sh-svg-label" x="280" y="${y + 34}">Replica ${i + 1}</text><text class="sh-svg-small" x="560" y="${y + 34}" text-anchor="end" data-spare="${i}">40% spare</text>
-    <rect x="280" y="${y + 48}" width="${BENCH_W}" height="16" fill="#FFF4E0" stroke="#141414" stroke-width="2"/><rect class="sh-rep-bar" data-bar="${i}" x="280" y="${y + 48}" width="168" height="16" fill="#2D5BFF"/>
-    <path class="sh-rep-x" data-x="${i}" d="M296 ${y + 22}l16 16m0-16l-16 16" stroke="#B3261E" stroke-width="3" fill="none" opacity="0"/></g>`;
-  const link = (d) => `<path class="sh-flow${motion ? ' is-moving' : ''}" d="${d}" fill="none" stroke="#141414" stroke-width="2.5"/>`;
-  const el = h('figure', { class: 'sh-bench', 'aria-label': 'Try a capacity experiment' });
-  const readout = h('div', { class: 'sh-bench-readout' }, h('strong', { class: 'sh-bench-rate', text: '1,800/s' }), h('span', { text: 'requests per second arriving' }));
-  const caption = h('figcaption', { class: 'sh-bench-caption', role: 'status' });
-  const chips = h('div', { class: 'sh-bench-chips', role: 'group', 'aria-label': 'Pick a situation' });
-  const svg = h('div', { class: 'sh-bench-svg' });
-  svg.innerHTML = `<svg viewBox="0 0 600 400" role="img" aria-labelledby="sh-bench-t sh-bench-d" focusable="false">
-    <title id="sh-bench-t">A load balancer splitting traffic across three replicas</title>
-    <desc id="sh-bench-d">Users send requests to a load balancer, which splits them across three replicas. Each replica shows how full it is.</desc>
-    <text class="sh-svg-mono" x="2" y="176">Users</text>
-    <path d="M2 190H54" stroke="#141414" stroke-width="2.5"/><path d="M62 190l-9-5v10z" fill="#141414"/>
-    <rect x="70" y="158" width="120" height="86" rx="8" fill="#141414"/><rect x="64" y="152" width="120" height="86" rx="8" fill="#FFC93C" stroke="#141414" stroke-width="2.5"/>
-    <text class="sh-svg-label" x="124" y="190" text-anchor="middle">Load</text><text class="sh-svg-label" x="124" y="214" text-anchor="middle">balancer</text>
-    ${link('M190 195C222 195 222 61 252 61')}${link('M190 195H252')}${link('M190 195C222 195 222 329 252 329')}
-    <path d="M260 61l-9-5v10z" fill="#141414"/><path d="M260 195l-9-5v10z" fill="#141414"/><path d="M260 329l-9-5v10z" fill="#141414"/>
-    ${replica(0, 20)}${replica(1, 154)}${replica(2, 288)}</svg>`;
-  el.append(
-    h('div', { class: 'sh-bench-head' }, h('span', { class: 'sh-bench-title', text: 'Try it' }), chips),
-    readout, caption, svg,
-    h('p', { class: 'sh-bench-foot', text: 'A simplified picture. Real numbers in the game are rounded estimates.' }));
-  const phases = [
-    { label: 'Steady load', rate: '1,800/s', bars: [60, 60, 60], spare: ['40% spare', '40% spare', '40% spare'], text: 'Three replicas share 1,800 requests/s. Each has 40% spare.' },
-    { label: 'Double traffic', rate: '3,600/s', bars: [120, 120, 120], spare: ['overloaded', 'overloaded', 'overloaded'], text: 'First limit: compute. Each replica gets 1,200/s but can serve about 1,000/s. About 600/s are rejected.' },
-    { label: 'Lose a replica', rate: '1,800/s', bars: [90, 90, 0], spare: ['10% spare', '10% spare', 'down'], down: 2, text: 'One replica is down. The other two now carry 900/s each. Routing recovers, but headroom falls to 10%.' },
-  ];
+// The markup comes from hero-markup.js (the same text is written into index.html); this adds the behaviour.
+function wireBench(el) {
+  const readout = el.querySelector('.sh-bench-rate');
+  const caption = el.querySelector('.sh-bench-caption');
+  const chips = el.querySelector('.sh-bench-chips');
+  const svg = el.querySelector('.sh-bench-svg');
   function show(phase) {
     el.dataset.state = phase.down != null ? 'failure' : phase.bars[0] > 100 ? 'overload' : 'steady';
-    readout.firstChild.textContent = phase.rate;
+    readout.textContent = phase.rate;
     caption.textContent = phase.text;
     phase.bars.forEach((v, i) => {
       const bar = svg.querySelector(`[data-bar="${i}"]`);
       if (!bar) return;
-      bar.setAttribute('width', String(Math.round((Math.min(v, 100) / 100) * BENCH_W)));
-      bar.setAttribute('fill', v > 100 ? '#FF5B3A' : v >= 90 ? '#FFC93C' : '#2D5BFF');
+      bar.setAttribute('width', String(barWidth(v)));
+      bar.setAttribute('fill', barFill(v));
       const spare = svg.querySelector(`[data-spare="${i}"]`);
       if (spare) spare.textContent = phase.spare[i];
       svg.querySelector(`[data-x="${i}"]`)?.setAttribute('opacity', phase.down === i ? '1' : '0');
       svg.querySelector(`[data-replica="${i}"] .sh-rep-box`)?.setAttribute('fill', phase.down === i ? '#FFD9D0' : '#FFFCF4');
     });
-    [...chips.children].forEach((b, i) => { const on = phases[i] === phase; b.setAttribute('aria-pressed', String(on)); b.className = 'sh-bench-chip' + (on ? ' is-on' : ''); });
+    [...chips.children].forEach((b, i) => { const on = PHASES[i] === phase; b.setAttribute('aria-pressed', String(on)); b.className = 'sh-bench-chip' + (on ? ' is-on' : ''); });
   }
-  phases.forEach((phase) => chips.append(h('button', { type: 'button', class: 'sh-bench-chip', onclick: () => show(phase), text: phase.label })));
-  show(phases[0]);
-  return el;
+  [...chips.children].forEach((b, i) => b.addEventListener('click', () => show(PHASES[i])));
+  show(PHASES[0]);
 }
 
 // A mode card: a coloured strip with its icon, a big number, a plain line and a link.
@@ -133,17 +106,12 @@ export function renderHome(host, ctx) {
     const note = !member ? 'Playing here needs a free Google or GitHub account.'
       : isIn() ? 'Signed in. Your progress follows you across devices.'
       : 'No sign-up. Your progress stays in this browser.';
-    const oss = h('div', { class: 'sh-oss' },
-      h('p', { text: gated ? 'Would rather not sign in? The whole game is open source (MIT). Run the code yourself.' : 'The whole game is open source (MIT). Read it, run it or fork it.' }),
-      h('a', { class: 'sh-text-link', href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, 'Get the source on GitHub', arrow()));
-    const hero = h('section', { class: 'sh-hero' },
-      h('div', { class: 'sh-hero-copy' },
-        h('p', { class: 'sh-eyebrow', text: 'Free system design practice' }),
-        h('h1', { class: 'sh-display', text: 'Build the system. Survive the day.' }),
-        h('p', { class: 'sh-lead', text: 'A free browser game where you draw a system, run a full day of traffic through it, and read what held, what broke and what it cost.' }),
-        h('div', { class: 'sh-gate' }, h('div', { class: 'sh-cta-row' }, cta), h('p', { class: 'sh-gate-note', 'aria-live': 'polite', text: note })),
-        oss),
-      heroArt(ctx));
+    const wrap = document.createElement('div');
+    wrap.innerHTML = heroHtml({ note: '', gated, moving: !ctx.reducedMotion() });
+    const hero = wrap.firstElementChild;
+    hero.querySelector('.sh-gate-note').textContent = note;
+    hero.querySelector('.sh-cta-row').append(...cta);
+    wireBench(hero.querySelector('.sh-bench'));
 
     let daily = null;
     if (member) {
