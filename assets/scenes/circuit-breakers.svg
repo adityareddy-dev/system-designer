@@ -1,17 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#EDF2F9"/><title>Open switch stops calls to a failing service; a fallback answers</title>
-<rect x="16" y="45" width="70" height="60" rx="10" fill="#C5D0E1"/><rect x="16" y="42" width="70" height="60" rx="10" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="26" y="42" width="50" height="3" fill="#006E68"/>
-<circle cx="51" cy="74" r="11" fill="none" stroke="#1B2B45" stroke-width="2"/><circle cx="51" cy="74" r="3" fill="#1B2B45"/>
-<rect x="330" y="45" width="80" height="60" rx="10" fill="#C5D0E1"/><rect x="330" y="42" width="80" height="60" rx="10" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="340" y="42" width="60" height="3" fill="#006E68"/>
-<rect x="342" y="84" width="56" height="10" rx="3" fill="#A92733" stroke="#1B2B45" stroke-width="2"/>
-<path d="M356 56l8 8M364 56l-8 8M376 56l8 8M384 56l-8 8" stroke="#A92733" stroke-width="3" stroke-linecap="round"/>
-<line x1="86" y1="72" x2="152" y2="72" stroke="#60738D" stroke-width="2"/><line x1="278" y1="72" x2="330" y2="72" stroke="#60738D" stroke-width="2"/>
-<circle cx="104" cy="72" r="6" fill="#244ED8"/><circle cx="122" cy="72" r="6" fill="#244ED8"/><circle cx="140" cy="72" r="6" fill="#244ED8"/>
-<rect x="136" y="82" width="158" height="14" rx="6" fill="#C5D0E1" stroke="#60738D" stroke-width="2"/>
-<line x1="160" y1="72" x2="252" y2="26" stroke="#1B2B45" stroke-width="9" stroke-linecap="round"/>
-<circle cx="160" cy="72" r="9" fill="#F1F5FB" stroke="#1B2B45" stroke-width="3"/><circle cx="270" cy="72" r="9" fill="#F1F5FB" stroke="#1B2B45" stroke-width="3"/>
-<path d="M298 60l12 12M310 60l-12 12" stroke="#A92733" stroke-width="4" stroke-linecap="round"/>
-<path d="M51 106C51 200 200 214 322 190" fill="none" stroke="#244ED8" stroke-width="4" stroke-dasharray="9 7"/>
-<circle cx="142" cy="191" r="6" fill="#244ED8"/>
-<rect x="330" y="168" width="80" height="48" rx="10" fill="#C5D0E1"/><rect x="330" y="165" width="80" height="48" rx="10" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="340" y="165" width="60" height="3" fill="#24643F"/>
-<path d="M356 191l9 9 18-18" fill="none" stroke="#24643F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><title>Open switch stops calls to a failing service; a fallback answers</title>
+<rect x="19" y="45" width="70" height="60" rx="6" fill="#141414"/><rect x="16" y="42" width="70" height="60" rx="6" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><rect x="26" y="42" width="50" height="3" fill="#7FD9A8" stroke="#141414" stroke-width="2"/>
+<circle cx="51" cy="74" r="11" fill="none" stroke="#141414" stroke-width="2.5"/><circle cx="51" cy="74" r="3" fill="#141414"/>
+<rect x="333" y="45" width="80" height="60" rx="6" fill="#141414"/><rect x="330" y="42" width="80" height="60" rx="6" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><rect x="340" y="42" width="60" height="3" fill="#7FD9A8" stroke="#141414" stroke-width="2"/>
+<rect x="342" y="84" width="56" height="10" rx="3" fill="#FF5B3A" stroke="#141414" stroke-width="2.5"/>
+<path d="M356 56l8 8M364 56l-8 8M376 56l8 8M384 56l-8 8" stroke="#B3261E" stroke-width="3" stroke-linecap="butt"/>
+<line x1="86" y1="72" x2="152" y2="72" stroke="#141414" stroke-width="2.5"/><line x1="278" y1="72" x2="330" y2="72" stroke="#141414" stroke-width="2.5"/>
+<circle cx="104" cy="72" r="6" fill="#2D5BFF" stroke="#141414" stroke-width="2"/><circle cx="122" cy="72" r="6" fill="#2D5BFF" stroke="#141414" stroke-width="2"/><circle cx="140" cy="72" r="6" fill="#2D5BFF" stroke="#141414" stroke-width="2"/>
+<rect x="136" y="82" width="158" height="14" rx="6" fill="#E8DCC0" stroke="#141414" stroke-width="2.5"/>
+<line x1="160" y1="72" x2="252" y2="26" stroke="#141414" stroke-width="9" stroke-linecap="butt"/>
+<circle cx="160" cy="72" r="9" fill="#FFFCF4" stroke="#141414" stroke-width="3"/><circle cx="270" cy="72" r="9" fill="#FFFCF4" stroke="#141414" stroke-width="3"/>
+<path d="M298 60l12 12M310 60l-12 12" stroke="#B3261E" stroke-width="4" stroke-linecap="butt"/>
+<path d="M51 106C51 200 200 214 322 190" fill="none" stroke="#2D5BFF" stroke-width="4" stroke-dasharray="9 7"/>
+<circle cx="142" cy="191" r="6" fill="#2D5BFF" stroke="#141414" stroke-width="2"/>
+<rect x="333" y="168" width="80" height="48" rx="6" fill="#141414"/><rect x="330" y="165" width="80" height="48" rx="6" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><rect x="340" y="165" width="60" height="3" fill="#7FD9A8" stroke="#141414" stroke-width="2"/>
+<path d="M356 191l9 9 18-18" fill="none" stroke="#17663A" stroke-width="5" stroke-linecap="butt" stroke-linejoin="miter"/>
 </svg>

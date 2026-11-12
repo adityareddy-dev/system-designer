@@ -1,0 +1,79 @@
+/* The one top bar: used by the game and by every readable page (same markup, same file). Brand left, sections in the middle,
+   Sign in and small controls right. On a phone the sections move to a bar at the bottom of the screen. */
+:root { --sh-bar-h: 64px; --sh-nav-h: 68px; }
+.sh-topbar {
+  position: relative; z-index: var(--z-panel, 20); flex: none; height: var(--sh-bar-h);
+  display: flex; align-items: center; gap: 12px; padding: 0 clamp(14px, 2.4vw, 56px);
+  background: var(--paper); border-bottom: 2px solid var(--ink);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.sh-topbar *, .sh-topbar *::before, .sh-topbar *::after { box-sizing: border-box; }
+.sh-topbar a { text-decoration: none; color: inherit; }
+.sh-brand { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font: 700 20px/1 var(--font-display); letter-spacing: -.01em; color: var(--ink); border-radius: 6px; }
+.sh-brand-mark { display: inline-flex; filter: none; }
+.sh-nav {
+  position: absolute; z-index: calc(var(--z-panel, 20) + 1); top: calc(var(--sh-bar-h) / 2); left: 50%; transform: translate(-50%, -50%);
+  display: flex; gap: 6px; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent;
+}
+.sh-tab {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px;
+  border: 2px solid transparent; border-radius: 6px; background: transparent; color: var(--ink);
+  font: 700 15px/1 var(--font-mono); letter-spacing: 0;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.sh-tab .sh-ico, .sh-tab svg { width: 20px; height: 20px; flex: none; }
+.sh-tab:hover { background: var(--card); border-color: var(--ink); color: var(--ink); }
+.sh-tab[aria-current="page"] { background: var(--yellow); border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); color: var(--ink); }
+.sh-tab[aria-current="page"] .sh-ico { color: var(--ink); }
+.sh-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.sh-icon-btn {
+  display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0;
+  border: 2px solid transparent; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer;
+}
+.sh-icon-btn:hover { background: var(--card); border-color: var(--ink); color: var(--ink); }
+.sh-icon-btn:active { transform: translate(2px, 2px); }
+.sd-signin, .ac-signin-btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 18px;
+  border: 2px solid var(--ink); border-radius: 6px; background: var(--tomato); color: var(--ink);
+  font: 700 15px/1 var(--font-ui); box-shadow: 3px 3px 0 var(--ink); cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.sd-signin:hover, .ac-signin-btn:hover { transform: translate(-2px, -2px); box-shadow: 5px 5px 0 var(--ink); }
+.sd-signin:active, .ac-signin-btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+.sh-topbar :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+@media (max-width: 1020px) { .sh-brand-name { display: none; } }
+@media (max-width: 900px) and (min-width: 721px) { .sh-tab-label { display: none; } .sh-tab { padding: 8px 14px; } }
+
+/* phone: the sections sit in a bar at the bottom, each at least 44px tall, the sign-in button stays in the top bar */
+@media (max-width: 720px) {
+  :root { --sh-bar-h: 56px; }
+  .sh-topbar { padding: 0 12px 0 14px; }
+  .sh-brand-name { display: inline; font-size: 18px; }
+  .sh-actions .sh-icon-btn#sh-sound-btn { display: none; }
+  .sh-nav {
+    position: fixed; left: 0; right: 0; top: auto; bottom: 0; transform: none; z-index: var(--z-drawer, 30);
+    justify-content: space-between; gap: 6px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    background: var(--paper); border-top: 2px solid var(--ink);
+  }
+  .sh-tab { flex: 1 1 0; flex-direction: column; justify-content: center; gap: 3px; min-height: 52px; padding: 6px 2px; font-size: 12px; text-align: center; }
+  .sh-tab[aria-current="page"] { box-shadow: 2px 2px 0 var(--ink); background: var(--yellow); }
+  .sh-tab[aria-current="page"] .sh-tab-label { color: var(--ink); }
+}
+@media (max-width: 400px) { .sh-brand-name { font-size: 16px; } .sd-signin, .ac-signin-btn { padding: 8px 12px; } }
+@media (prefers-reduced-motion: reduce) {
+  .sh-tab, .sd-signin, .ac-signin-btn { transition: none; }
+  .sd-signin:hover, .ac-signin-btn:hover { transform: none; }
+}
+:root[data-motion="reduce"] .sd-signin:hover, :root[data-motion="reduce"] .ac-signin-btn:hover { transform: none; }
+.sh-tab[hidden], .sh-actions [hidden] { display: none; }
+
+@media (max-width: 720px) { .sh-topbar:has(.sh-account:not([hidden])) .sh-brand-name { display: inline; } }
+@media (max-width: 400px) { .sh-topbar:has(.sh-account:not([hidden])) .sh-brand-name { display: none; } }
+/* big screens: the bar grows with the page */
+@media (min-width: 2200px) and (min-height: 1250px) { .sh-topbar, .sh-shell > .sh-nav { zoom: 1.2; } }
+@media (min-width: 2200px) and (min-height: 1600px) { .sh-topbar, .sh-shell > .sh-nav { zoom: 1.45; } }
+@media (min-width: 2200px) and (min-height: 1950px) { .sh-topbar, .sh-shell > .sh-nav { zoom: 1.7; } }
+
+.sd-me { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 2px solid var(--ink); border-radius: 50%; background: var(--yellow); color: var(--ink); font: 700 16px/1 var(--font-ui); text-decoration: none; }
+.sd-me:hover { box-shadow: 3px 3px 0 var(--ink); }

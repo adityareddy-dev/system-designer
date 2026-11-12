@@ -3,7 +3,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { HttpError, readJson, parseCookies, cookie, clientIp, ipKey, sendJson, redirect } from './http.js';
 import { LIMITS } from './ratelimit.js';
 import { nameProblem } from './names.js';
-import { TokenError } from './google.js';
+import { TokenError, cleanEmail } from './google.js';
 import { makeState, checkState, STATE_COOKIE, STATE_TTL_SEC } from './github.js';
 import { ReplayError, NOT_LISTED, prepare } from './replay-core.js';
 import { sanitizeProgress, mergeProgress, emptyProgress } from '../account/merge.js';
@@ -111,7 +111,8 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
   function publicUser(id) {
     const u = db.user(id);
     if (!u) return null;
-    return { name: u.name, avatar: u.avatar, providers: u.providers, since: utcDate(u.createdAt) };
+    // The player's own address is shown to them here and nowhere else.
+    return { name: u.name, avatar: u.avatar, providers: u.providers, since: utcDate(u.createdAt), email: u.email, surveyOptIn: u.surveyOptIn };
   }
 
   // Creates a session for the user (dropping the caller's old one) and returns its Set-Cookie line.
@@ -148,8 +149,9 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
   }
   const nonceCookie = (v, maxAge) => cookie(NONCE_COOKIE, v, { maxAge, path: '/auth/google', secure });
 
-  function signIn(provider, subject, profile, sess) {
-    const { userId } = db.signIn({ provider, subject, name: providerName(profile.name), avatar: cleanAvatar(profile.avatar), currentUserId: sess?.userId ?? null }, now());
+  // survey: true or false when the player chose at sign-in, null when they did not.
+  function signIn(provider, subject, profile, sess, survey = null) {
+    const { userId } = db.signIn({ provider, subject, name: providerName(profile.name), avatar: cleanAvatar(profile.avatar), email: cleanEmail(profile.email), surveyOptIn: survey, currentUserId: sess?.userId ?? null }, now());
     return { userId, setCookie: startSession(userId, sess) };
   }
 
@@ -207,7 +209,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
         throw e;
       }
       spendNonce(n);
-      const { userId, setCookie } = signIn('google', p.sub, { name: p.givenName || p.name, avatar: p.picture }, sess);
+      const { userId, setCookie } = signIn('google', p.sub, { name: p.givenName || p.name, avatar: p.picture, email: p.email }, sess, typeof body.surveyOptIn === 'boolean' ? body.surveyOptIn : null);
       return [200, { user: publicUser(userId) }, { 'Set-Cookie': [clear, setCookie] }];
     },
 
@@ -216,7 +218,8 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       const origin = url.searchParams.get('origin') || config.sites[0];
       const ret = url.searchParams.get('return') || '#/';
       if (!config.github.enabled) return redirect(res, backTo(origin, ret, 'unavailable'));
-      const { state, cookieValue } = makeState(config.sessionSecret, { ret: RETURN_RE.test(ret) ? ret : '#/', origin: config.sites.includes(origin) ? origin : config.sites[0] }, now());
+      const survey = url.searchParams.get('survey');
+      const { state, cookieValue } = makeState(config.sessionSecret, { ret: RETURN_RE.test(ret) ? ret : '#/', origin: config.sites.includes(origin) ? origin : config.sites[0], survey: survey === '1' ? true : survey === '0' ? false : undefined }, now());
       return redirect(res, github.authorizeUrl(state), {
         'Set-Cookie': cookie(STATE_COOKIE, cookieValue, { maxAge: STATE_TTL_SEC, path: '/auth/github', secure }),
         'Cache-Control': 'no-store',
@@ -234,7 +237,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       try { p = await github.profile(url.searchParams.get('code')); } catch {
         return redirect(res, backTo(st.origin, st.ret, 'failed'), { 'Set-Cookie': clear });
       }
-      const { setCookie } = signIn('github', p.id, { name: p.name || p.login, avatar: p.avatar }, sess);
+      const { setCookie } = signIn('github', p.id, { name: p.name || p.login, avatar: p.avatar, email: p.email }, sess, st.survey);
       return redirect(res, backTo(st.origin, st.ret, 'github'), { 'Set-Cookie': [clear, setCookie] });
     },
 
@@ -244,7 +247,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       const body = await readJson(req, BODY.small);
       const id = typeof body.id === 'string' ? body.id : '';
       if (!/^[a-z0-9-]{1,32}$/.test(id)) throw new HttpError(400, 'bad-input', 'id must be 1 to 32 lowercase letters, digits or dashes.');
-      const { userId, setCookie } = signIn('fake', id, { name: safeName(cleanName(body.name)) || 'Test player ' + id, avatar: null }, sess);
+      const { userId, setCookie } = signIn('fake', id, { name: safeName(cleanName(body.name)) || 'Test player ' + id, avatar: null, email: body.email }, sess, typeof body.surveyOptIn === 'boolean' ? body.surveyOptIn : null);
       return [200, { user: publicUser(userId) }, { 'Set-Cookie': setCookie }];
     },
 
@@ -261,14 +264,23 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       const userId = needUser(sess);
       limit('account', ip, userId);
       const body = await readJson(req, BODY.small);
-      if (typeof body.name === 'string' && /[<>]/.test(body.name)) throw new HttpError(400, 'bad-name', 'Names cannot contain < or >.');
-      const name = cleanName(body.name);
-      if (!name) throw new HttpError(400, 'bad-name', 'Pick a name of 1 to 24 letters.');
-      const bad = nameProblem(name);
-      if (bad === 'reserved') throw new HttpError(400, 'reserved-name', 'That name is kept for the project. Try another one.');
-      if (bad) throw new HttpError(400, 'rude-name', 'Please pick a friendlier name.');
-      if (db.nameTaken(name, userId)) throw new HttpError(409, 'name-taken', 'That name is already taken. Try another one.');
-      db.setName(userId, name);
+      const hasName = body.name !== undefined, hasSurvey = body.surveyOptIn !== undefined;
+      if (!hasName && !hasSurvey) throw new HttpError(400, 'bad-input', 'Send { name } or { surveyOptIn }.');
+      if (hasSurvey && typeof body.surveyOptIn !== 'boolean') throw new HttpError(400, 'bad-input', 'surveyOptIn must be true or false.');
+      let name = null;
+      if (hasName) {
+        if (typeof body.name === 'string' && /[<>]/.test(body.name)) throw new HttpError(400, 'bad-name', 'Names cannot contain < or >.');
+        name = cleanName(body.name);
+        if (!name) throw new HttpError(400, 'bad-name', 'Pick a name of 1 to 24 letters.');
+        const bad = nameProblem(name);
+        if (bad === 'reserved') throw new HttpError(400, 'reserved-name', 'That name is kept for the project. Try another one.');
+        if (bad) throw new HttpError(400, 'rude-name', 'Please pick a friendlier name.');
+        if (db.nameTaken(name, userId)) throw new HttpError(409, 'name-taken', 'That name is already taken. Try another one.');
+      }
+      db.tx(() => {
+        if (hasName) db.setName(userId, name);
+        if (hasSurvey) db.setSurveyOptIn(userId, body.surveyOptIn, now());
+      });
       return [200, { user: publicUser(userId) }];
     },
 

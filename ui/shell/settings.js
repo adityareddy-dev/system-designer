@@ -5,12 +5,12 @@ import { mountFeedback } from './feedback.js';
 import { metrics } from '../../core/metrics.js';
 
 export const SETTING_DEFAULTS = {
-  theme: 'dark', reducedMotion: 'system', quality: 'auto', soundMaster: 0.6, soundMuted: false,
+  theme: 'light', reducedMotion: 'system', quality: 'auto', soundMaster: 0.6, soundMuted: false,
   ambient: true, autoSlowOnEvent: true, highContrast: false, playerName: '', anonymousCounts: true,
 };
 
 const CHECK = {
-  theme: (v) => ['system', 'light', 'dark'].includes(v),
+  theme: (v) => v === 'light',
   reducedMotion: (v) => ['system', 'reduce', 'full'].includes(v),
   quality: (v) => ['auto', 'high', 'medium', 'low'].includes(v),
   soundMaster: (v) => typeof v === 'number' && v >= 0 && v <= 1,
@@ -28,8 +28,7 @@ export function createSettings(store, bus) {
   const state = { ...SETTING_DEFAULTS };
   for (const k of Object.keys(SETTING_DEFAULTS)) if (k in saved && CHECK[k](saved[k])) state[k] = saved[k];
   // Older System values were saved even without a player choice.
-  let themeExplicit = saved.themeExplicit === true;
-  if (state.theme === 'system' && !themeExplicit) state.theme = 'dark';
+  let themeExplicit = false;
   return {
     get: (key) => state[key],
     set(key, value) {
@@ -85,9 +84,7 @@ export function renderSettings(hostEl, ctx) {
   const set = (k, v) => { settings.set(k, v); };
 
   // Appearance
-  const themeSeg = segmented('Theme', [['system', 'System', 'ui.theme-system'], ['light', 'Light', 'ui.theme-light'], ['dark', 'Dark', 'ui.theme-dark']], settings.get('theme'), (v) => set('theme', v));
   const appearance = card('Appearance',
-    row('Theme', 'Dark by default. System follows your device.', themeSeg),
     toggleRow('High contrast', 'Stronger borders and text for hard lighting or low vision.', settings.get('highContrast'), (v) => set('highContrast', v), 'sh-s-contrast'));
 
   // Motion
@@ -159,17 +156,30 @@ export function renderSettings(hostEl, ctx) {
       ? toggleRow('Anonymous usage counts', 'Helps us see what gets played and where the game breaks. No cookies or player ids. Browser privacy signals turn this off too.', settings.get('anonymousCounts'), v => set('anonymousCounts', v), 'sh-s-counts')
       : h('p', { class: 'sh-muted', text: 'Automatic usage counts and error reports are disabled.' }),
     h('div', { class: 'sh-btn-row sh-privacy-actions' },
-      h('a', { href: new URL('./privacy.html', document.baseURI).href, text: 'Read the privacy page' }),
+      h('a', { class: 'sh-btn', href: new URL('./privacy.html', document.baseURI).href, text: 'Read the privacy page' }),
       h('button', { type: 'button', class: 'sh-btn', 'data-feedback-general': '', text: 'Send feedback', onclick: event => {
         feedbackHost.replaceChildren(); mountFeedback(feedbackHost, ctx, 'general', null, true, event.currentTarget); feedbackHost.querySelector('input')?.focus();
       } })), feedbackHost);
-  append(page, [h('h1', { class: 'sh-h1', text: 'Settings' }), appearance, privacy, motion, sound, shapesCard, profile, data, keysCard]);
+  // Email and surveys: what we hold for a signed-in player, and the switch for survey emails.
+  const emailCard = h('section', { class: 'sh-card sh-settings-card', id: 'sh-email-card', hidden: true });
+  const paintEmail = (given) => {
+    const u = given !== undefined ? given : ctx.account?.user?.();
+    emailCard.hidden = !u || !ctx.account?.emailBlock;
+    if (emailCard.hidden) return;
+    emailCard.replaceChildren(h('h2', { class: 'sh-card-title', text: 'Email and surveys' }),
+      h('p', { class: 'sh-muted', text: 'We store your email address with your account so we can reach you about it. We send short surveys and product updates only if you turn them on here. You can turn them off at any time.' }),
+      ctx.account.emailBlock(u));
+  };
+  paintEmail();
+  // The account reports before it is on ctx, so the event carries the user and the card waits a tick for the account object.
+  const offEmail = ctx.bus.on('account', (st) => { const key = st?.user ? `u|${st.user.email || ''}` : ''; if (key !== emailCard.dataset.key) { emailCard.dataset.key = key; setTimeout(() => paintEmail(st?.user || null), 0); } });
+  append(page, [h('h1', { class: 'sh-h1', text: 'Settings' }), appearance, emailCard, privacy, motion, sound, shapesCard, profile, data, keysCard]);
   hostEl.append(page);
-  const off = ctx.bus.on('settings', ({ key, value }) => {
+  const off0 = ctx.bus.on('settings', ({ key, value }) => {
     const label = { theme: 'Theme', reducedMotion: 'Reduced motion', quality: 'Graphics quality' }[key];
     if (label) page.querySelectorAll(`[role="radiogroup"][aria-label="${label}"] [role="radio"]`).forEach(b => b.setAttribute('aria-checked', String(b.dataset.value === value)));
   });
-  return off;
+  return () => { off0(); offEmail(); };
 }
 
 async function fillLegend(legend, ctx) {

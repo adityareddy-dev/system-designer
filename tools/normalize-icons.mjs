@@ -2,7 +2,7 @@
 // Run from the app folder: node tools/normalize-icons.mjs
 import fs from 'node:fs';
 const cat = JSON.parse(fs.readFileSync('catalog/elements.json', 'utf8'));
-const K = 1.75; // 2px at 48 -> 3.5 inside the 0.5 scale group = 1.75 on the 24 grid
+const K = 2.25; // 2.25 on the 24 grid, drawn in a 0.5 scale group
 for (const el of cat.elements) {
   const f = `assets/icons/${el.id}.svg`;
   let s = fs.readFileSync(f, 'utf8');
@@ -15,6 +15,6 @@ for (const el of cat.elements) {
     .replace(/var\(--icon-fg\)/g, 'currentColor')
     .replace(/var\(--icon-accent\s*,\s*currentColor\)/g, 'currentColor')
     .replace(/var\(--icon-accent\)/g, 'currentColor');
-  const out = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>${el.name}</title><g transform="scale(.5)" stroke-width="3.5">${inner}</g></svg>\n`;
+  const out = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" role="img"><title>${el.name}</title><g transform="scale(.5)" stroke-width="4.5">${inner}</g></svg>\n`;
   fs.writeFileSync(f, out);
 }

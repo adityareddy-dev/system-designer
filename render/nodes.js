@@ -1,17 +1,17 @@
-// Node views: glass silhouette, icon, label, busy ring, status glyphs, chips, glows; spring placement.
+// Node views: cream card with a hard shadow, icon, label, load bar, status glyphs, chips; spring placement.
 
 import { poolCells } from './pool.js';
 import { outline, HALF } from './geom.js';
-import { statusColor, severityColor } from './theme.js';
+import { barColor, severityColor } from './theme.js';
 import { P_SHAPE, BODY_BOX } from './textures.js';
 import { queuePressure, count } from './pressure.js';
 import { intersects } from './routing.js';
 
-const FONT_UI = 'Atkinson Hyperlegible, Arial, sans-serif';
-const FONT_MONO = 'IBM Plex Mono, monospace';
+const FONT_UI = 'Space Grotesk, Arial, sans-serif';
+const FONT_MONO = 'Space Mono, monospace';
 const nowForStatus = () => performance.now();
 const K = 320, C = 24;              // placement spring (≈ 6 % overshoot, settles in ≈ 300 ms)
-const SHADOW = 114;               // shadow sprite size; its baked box comes out at about 68 units
+const SHOVE_MS = 120, SHOVE_PX = 2.5; // a part that takes a hit jumps this far for this long
 const PILE = [[-47, -6], [-47, 6], [-55, 0], [-55, -12], [-55, 12], [-63, -6]];
 // One-word names for the zoomed-out overview. Whole words only: a name is never cut in the middle.
 const SHORT = {
@@ -52,7 +52,7 @@ export function makeMini(PIXI, kit, env, type, { faint = false } = {}) {
   if (faint) body = new PIXI.Graphics(kit.faint[cat]);
   else { body = new PIXI.Sprite(kit.bodyTex[cat]); body.anchor.set(0.5); body.width = body.height = BODY_BOX; }
   c.addChild(body);
-  const tex = kit.icons.get('el.' + type, kit.P.cat[cat] ?? kit.P.text3);
+  const tex = kit.icons.get('el.' + type, kit.P.ink);
   const icon = new PIXI.Sprite(tex || PIXI.Texture.EMPTY);
   icon.anchor.set(0.5); icon.width = icon.height = 28; icon.y = iconOffset(shape);
   c.addChild(icon);
@@ -63,7 +63,7 @@ export function makeMini(PIXI, kit, env, type, { faint = false } = {}) {
 export function refreshMini(kit, c) {
   if (c.__faint) c.__body.context = kit.faint[c.__cat];
   else { c.__body.texture = kit.bodyTex[c.__cat]; c.__body.width = c.__body.height = BODY_BOX; }
-  const tex = kit.icons.get('el.' + c.__type, kit.P.cat[c.__cat] ?? kit.P.text3);
+  const tex = kit.icons.get('el.' + c.__type, kit.P.ink);
   if (tex) c.__icon.texture = tex;
 }
 
@@ -106,23 +106,21 @@ export function createNodeLayer(PIXI, parent, env) {
       drag: null, dragUntil: 0, removing: false,
       live: false, tu: 0, du: 0, drawnU: -1, drawnColor: -1, status: 0, down: false, queue: 0, drawnQ: -1, over: 0, pileType: -1,
       units: 1, zones: 1, region: null, locked: false, label: '',
-      event: null, eventPhase: Math.random(),
+      event: null, eventPhase: Math.random(), shoveAt: -1e9, shoveDir: 1, isLead: false,
       outline: outline(shape, 6, 96),
     };
     const c = new PIXI.Container();
     c.position.set(n.x, n.y);
     v.c = c;
-    v.glow = new PIXI.Sprite(kit.fx.glow); v.glow.anchor.set(0.5); v.glow.visible = false;
     v.pulse = new PIXI.Sprite(kit.fx.ring); v.pulse.anchor.set(0.5); v.pulse.visible = false;
-    v.shadow = new PIXI.Sprite(kit.fx.shadow); v.shadow.anchor.set(0.5); v.shadow.width = v.shadow.height = SHADOW; v.shadow.y = 5;
-    v.shadow.tint = P.shadow; v.shadow.alpha = 0;
+    v.lead = new PIXI.Sprite(kit.leadTex[shape]); v.lead.anchor.set(0.5); v.lead.width = v.lead.height = BODY_BOX; v.lead.visible = false;
     v.body = new PIXI.Sprite(kit.bodyTex[cat]); v.body.anchor.set(0.5); v.body.width = v.body.height = BODY_BOX;
     v.select = new PIXI.Sprite(kit.selectTex[shape]); v.select.anchor.set(0.5); v.select.width = v.select.height = BODY_BOX; v.select.visible = false;
-    v.icon = new PIXI.Sprite(kit.icons.get('el.' + n.type, P.cat[cat] ?? P.text3) || PIXI.Texture.EMPTY);
+    v.icon = new PIXI.Sprite(kit.icons.get('el.' + n.type, P.ink) || PIXI.Texture.EMPTY);
     v.icon.anchor.set(0.5); v.icon.width = v.icon.height = 28; v.icon.y = iconOffset(shape);
     v.busy = new PIXI.Graphics();
     v.pool = new PIXI.Graphics();
-    v.poolT = makeText('', 10.5, P.text2, true); v.poolT.anchor.set(.5); v.poolT.y = 19;
+    v.poolT = makeText('', 10.5, P.text2, true); v.poolT.anchor.set(.5); v.poolT.y = 15;
     v.labelBg = new PIXI.Graphics();
     v.evidenceBg = new PIXI.Graphics();
     v.pile = new PIXI.Container(); v.pile.visible = false;
@@ -135,11 +133,11 @@ export function createNodeLayer(PIXI, parent, env) {
     v.statusG = new PIXI.Graphics(kit.glyphs.status[0]); v.statusG.position.set(-HALF + 7, -HALF + 7); v.statusG.visible = false;
     v.valid = new PIXI.Graphics(kit.glyphs.valid.warn); v.valid.position.set(HALF - 7, -HALF + 7); v.valid.visible = false;
     v.lock = new PIXI.Graphics(kit.glyphs.lock); v.lock.position.set(-HALF + 8, HALF - 8); v.lock.visible = false;
-    v.chip = new PIXI.Container(); v.chip.position.set(HALF - 6, HALF - 6); v.chip.visible = false;
+    v.chip = new PIXI.Container(); v.chip.position.set(HALF - 6, -HALF + 6); v.chip.visible = false;
     v.chipBg = new PIXI.Graphics(); v.chip.addChild(v.chipBg);
     v.chipText = null;
-    v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, HALF + 6);
-    v.labelT = makeText('', 12, P.text2, false, '500', 72); // narrow lines, so neighbours' names do not touch when zoomed out
+    v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, -HALF + 14);
+    v.labelT = makeText('', 12, P.ink, false, '600', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
     v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
@@ -153,7 +151,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeBg = new PIXI.Graphics(); v.badge.addChild(v.badgeBg);
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
-    c.addChild(v.glow, v.pulse, v.shadow, v.body, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
+    c.addChild(v.pulse, v.body, v.lead, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
       v.chip, v.zonesG, v.regionC, v.badge, v.captionC);
     c.alpha = 0;
     c.scale.set(v.s);
@@ -170,15 +168,15 @@ export function createNodeLayer(PIXI, parent, env) {
     v.chip.visible = show;
     if (show) {
       const s = '×' + v.units;
-      if (!v.chipText) { v.chipText = makeText(s, 10, P.text2, true, '500'); v.chipText.anchor.set(0.5); v.chip.addChild(v.chipText); }
+      if (!v.chipText) { v.chipText = makeText(s, 10, P.ink, true, '700'); v.chipText.anchor.set(0.5); v.chip.addChild(v.chipText); }
       v.chipText.text = s;
-      v.chipText.style.fill = P.text2;
+      v.chipText.style.fill = P.ink;
       const w = Math.max(18, v.chipText.width + 8);
-      v.chipBg.clear().roundRect(-w / 2, -7.5, w, 15, 7.5).fill({ color: P.surfaceSolid }).stroke({ width: 1, color: P.text3, alpha: 0.35 });
+      v.chipBg.clear().roundRect(-w / 2 + 1.5, -6, w, 15, 3).fill({ color: P.ink }).roundRect(-w / 2, -7.5, w, 15, 3).fill({ color: P.yellow }).stroke({ width: 1.5, color: P.ink });
     }
     const dots = v.zones > 1 || show ? Math.max(1, Math.min(3, v.zones)) : 0;
     v.zonesG.clear();
-    for (let i = 0; i < dots; i++) v.zonesG.circle((i - (dots - 1) / 2) * 5, 4, 1.7).fill({ color: P.accent2 });
+    for (let i = 0; i < dots; i++) v.zonesG.rect((i - (dots - 1) / 2) * 6 - 2, 2, 4, 4).fill({ color: P.mint }).stroke({ width: 1, color: P.ink });
   }
 
   function drawRegion(v) {
@@ -187,11 +185,11 @@ export function createNodeLayer(PIXI, parent, env) {
     const show = multiRegion && !!r && v.region !== mainRegion && !v.event;
     v.regionC.visible = show;
     if (!show) return;
-    if (!v.regionT) { v.regionT = makeText(r, 9.5, P.text3, true, '500'); v.regionT.anchor.set(0.5); v.regionC.addChild(v.regionT); }
+    if (!v.regionT) { v.regionT = makeText(r, 9.5, P.ink, true, '700'); v.regionT.anchor.set(0.5); v.regionC.addChild(v.regionT); }
     v.regionT.text = r;
-    v.regionT.style.fill = P.text3;
+    v.regionT.style.fill = P.ink;
     const w = v.regionT.width + 10;
-    v.regionBg.clear().roundRect(-w / 2, -7, w, 14, 7).fill({ color: P.surfaceSolid }).stroke({ width: 1, color: P.text3, alpha: 0.3 });
+    v.regionBg.clear().roundRect(-w / 2, -7, w, 14, 3).fill({ color: P.card }).stroke({ width: 1.5, color: P.ink });
   }
 
   function update(v, n, fresh = false) {
@@ -222,37 +220,37 @@ export function createNodeLayer(PIXI, parent, env) {
   function drawBusy(v, P) {
     const g = v.busy;
     const u = Math.min(1, Math.max(0, v.du));
-    const color = v.down ? P.bad : statusColor(P, v.status);
-    g.clear().roundRect(-26, 25, 52, 4, 2).fill({ color: P.border, alpha: .5 });
-    if (u > .004) g.roundRect(-26, 25, Math.max(3, 52 * u), 4, 2).fill({ color });
+    const color = barColor(P, v.status, v.down);
+    g.clear().rect(-26, 23.5, 52, 8).fill({ color: P.card }).stroke({ width: 1.5, color: P.ink });
+    if (u > .004) g.rect(-26, 23.5, Math.max(4, 52 * u), 8).fill({ color }).stroke({ width: 1.5, color: P.ink });
     v.drawnU = v.du; v.drawnColor = color;
   }
 
   function drawQueue(v, P, dt, reduced) {
     const pressure=queuePressure(v.telemetry);
     v.ageFill=reduced?pressure.fill:(v.ageFill||0)+(pressure.fill-(v.ageFill||0))*(1-Math.exp(-dt/180));
-    const fill=v.ageFill, color=pressure.late?P.bad:fill>.7?P.warn:P.cat.messaging;
-    const g=v.qbar;g.clear().roundRect(-25,-22,50,42,4).fill({color:P.surfaceSolid}).stroke({width:1.5,color:P.text3});
-    if(fill>.001)g.rect(-21,16-34*fill,42,34*fill).fill({color,alpha:P.dark?.7:.85});
-    for(let i=1;i<4;i++)g.moveTo(-24,16-i*8.5).lineTo(-19,16-i*8.5).stroke({width:1,color:P.text3,alpha:.6});
+    const fill=v.ageFill, color=pressure.late?P.tomato:fill>.7?P.yellow:P.blue;
+    const g=v.qbar;g.clear().rect(-25,-22,50,42).fill({color:P.card}).stroke({width:2,color:P.ink});
+    if(fill>.001)g.rect(-22,17-34*fill,44,34*fill).fill({color}).stroke({width:1.5,color:P.ink});
+    for(let i=1;i<4;i++)g.moveTo(-25,16-i*8.5).lineTo(-19,16-i*8.5).stroke({width:1.5,color:P.ink});
     // The top rule is the actual deadline, not a capacity limit.
-    g.moveTo(-28,-18).lineTo(28,-18).stroke({width:2,color:pressure.late?P.bad:P.warn,alpha:1});
-    if(pressure.late)g.poly([-4,-27,4,-27,0,-21]).fill({color:P.bad});
+    g.moveTo(-29,-18).lineTo(29,-18).stroke({width:2.5,color:pressure.late?P.bad:P.ink,alpha:1});
+    if(pressure.late)g.poly([-4,-28,4,-28,0,-21]).fill({color:P.tomato}).stroke({width:1.5,color:P.ink});
     const change=Math.abs(pressure.net);
-    if(change>.01){const direction=pressure.net>0?-1:1;g.moveTo(30,-direction*8).lineTo(30,direction*8).lineTo(27,direction*4).moveTo(30,direction*8).lineTo(33,direction*4).stroke({width:2,color});}
+    if(change>.01){const direction=pressure.net>0?-1:1;g.moveTo(31,-direction*8).lineTo(31,direction*8).lineTo(28,direction*4).moveTo(31,direction*8).lineTo(34,direction*4).stroke({width:2,color:P.ink});}
   }
 
   function drawRetries(v,P,time,reduced) {
     const rate=v.telemetry?.retryRps||0,g=v.retryG;g.clear();
     if(!v.live||rate<.5)return;
-    g.moveTo(38,6).bezierCurveTo(64,-54,-64,-54,-38,6).stroke({width:2,color:P.bad,alpha:P.dark?.65:.85});
+    g.moveTo(38,6).bezierCurveTo(64,-54,-64,-54,-38,6).stroke({width:2.5,color:P.bad});
     g.poly([-38,6,-46,1,-38,-3]).fill({color:P.bad});
     // One marker is a dot-scale group of the engine's retry arrivals.
     const scale=env.dotScale?.()||1,n=Math.min(4,Math.ceil(rate/scale));
     for(let i=0;i<n;i++){
       const t=reduced?.5:((time/1100+i/n)%1),u=1-t;
       const x=u*u*u*38+3*u*u*t*64+3*u*t*t*(-64)+t*t*t*(-38),y=u*u*u*6+3*u*u*t*(-54)+3*u*t*t*(-54)+t*t*t*6;
-      g.circle(x,y,3).fill({color:P.bad});
+      g.circle(x,y,3.4).fill({color:P.tomato}).stroke({width:1.5,color:P.ink});
     }
   }
 
@@ -269,13 +267,12 @@ export function createNodeLayer(PIXI, parent, env) {
     g.clear();
     cells.forEach((cell, i) => {
       const x = -28 + (i % cols) * (w + 3), y = -22 + Math.floor(i / cols) * (h + 3);
-      g.roundRect(x, y, w, h, 1.5).fill({ color: P.border, alpha: .6 });
-      if (cell.available > 0) g.roundRect(x, y, Math.max(1, w * cell.available), h, 1.5).fill({ color: P.cat.compute, alpha: .15 });
+      g.rect(x, y, w, h).fill({ color: P.card }).stroke({ width: 1.5, color: P.ink });
+      if (cell.available > 0) g.rect(x, y, Math.max(1, w * cell.available), h).fill({ color: P.mint }).stroke({ width: 1.5, color: P.ink });
       if (cell.busy > .002) {
-        const light = reduced || !v.motionActive ? 1 : .75 + .25 * Math.sin(time / 135 - i * 1.2);
-        g.roundRect(x, y + h * (1 - cell.busy), Math.max(1, w * cell.available), Math.max(1, h * cell.busy), 1).fill({ color: v.tu > 1 ? P.bad : P.cat.compute, alpha: light });
+        g.rect(x, y + h * (1 - cell.busy), Math.max(1, w * cell.available), Math.max(1, h * cell.busy)).fill({ color: v.tu > 1 ? P.tomato : P.blue }).stroke({ width: 1.5, color: P.ink });
       }
-      if (cell.available < .99) g.moveTo(x + w - 4, y + 2).lineTo(x + w - 1, y + h - 2).moveTo(x + w - 1, y + 2).lineTo(x + w - 4, y + h - 2).stroke({ width: 1, color: P.bad });
+      if (cell.available < .99) g.moveTo(x + w - 4, y + 2).lineTo(x + w - 1, y + h - 2).moveTo(x + w - 1, y + 2).lineTo(x + w - 4, y + h - 2).stroke({ width: 1.5, color: P.ink });
     });
     v.poolT.text = `${alive}/${count}`;
   }
@@ -301,7 +298,14 @@ export function createNodeLayer(PIXI, parent, env) {
         v.x = v.tx; v.y = v.ty; v.vx = v.vy = 0;
       }
     }
-    v.c.position.set(v.x, v.y);
+    // A part that takes a hit jumps a few pixels for a moment; a reduced-motion player gets no movement at all.
+    let sx = 0, sy = 0;
+    if (!reduced && now - v.shoveAt < SHOVE_MS) {
+      const ph = (now - v.shoveAt) / SHOVE_MS;
+      const amp = ph < 0.34 ? SHOVE_PX : ph < 0.67 ? -SHOVE_PX * 0.6 : SHOVE_PX * 0.3;
+      sx = amp * v.shoveDir; sy = amp * 0.4;
+    }
+    v.c.position.set(v.x + sx, v.y + sy);
     if (reduced) {
       if (v.c.alpha < 1) v.c.alpha = Math.min(1, v.c.alpha + dt / 120);
       v.s = 1; v.vs = 0; v.c.scale.set(1);
@@ -316,7 +320,7 @@ export function createNodeLayer(PIXI, parent, env) {
     // live load
     if (v.live) {
       v.du = reduced ? v.tu : v.du + (v.tu - v.du) * (1 - Math.exp(-dt / 140));
-      const color = v.down ? P.bad : statusColor(P, v.status);
+      const color = barColor(P, v.status, v.down);
       if (Math.abs(v.du - v.drawnU) > 0.004 || color !== v.drawnColor) drawBusy(v, P);
       const over = v.down || v.tu > 1 || v.status >= 3;
       if (over && !reduced) {
@@ -340,39 +344,14 @@ export function createNodeLayer(PIXI, parent, env) {
     drawPool(v, P, now, reduced, time);
     if(v.live && v.kind==='queue') v.icon.visible=false;
     drawRetries(v,P,time,reduced);
-    // glow: overload pulse > event > selection
-    const over = v.live && (v.down || v.tu > 1 || v.status >= 3);
-    const isSel = selected === v.id;
-    if (over) {
-      const k = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 0.001 * Math.PI * 2 * 1.2);
-      v.glow.visible = false; v.glow.tint = P.bad;
-      v.glow.alpha = (P.dark ? 0.32 : 0.22) + k * (P.dark ? 0.3 : 0.18);
-      v.glow.width = v.glow.height = 150 + k * 18;
-    } else if (v.event) {
-      v.glow.visible = true; v.glow.tint = v.event.color;
-      v.glow.alpha = P.dark ? 0.38 : 0.24;
-      v.glow.width = v.glow.height = 156;
-    } else if (isSel) {
-      const k = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 0.0025);
-      v.glow.visible = false; v.glow.tint = P.accent;
-      v.glow.alpha = (P.dark ? 0.3 : 0.18) + k * 0.08;
-      v.glow.width = v.glow.height = 150;
-    } else v.glow.visible = false;
-    v.glow.blendMode = P.dark ? 'add' : 'normal';
-
-    if (!reduced && over && now - (v.statusAt || 0) < 320) {
-      const progress = Math.max(0, (now - v.statusAt) / 320);
-      v.pulse.visible = true; v.pulse.tint = P.bad; v.pulse.alpha = 1 - progress; v.pulse.width = v.pulse.height = 100 + progress * 20;
-    } else if (v.event) {
-      v.pulse.visible = true; v.pulse.tint = v.event.color;
-      if (reduced) { v.pulse.alpha = 0.7; v.pulse.width = v.pulse.height = 118; }
-      else {
-        const ph = ((time / 1200) + v.eventPhase) % 1;
-        v.pulse.alpha = 0.85 * (1 - ph);
-        v.pulse.width = v.pulse.height = 112 + ph * 46;
-      }
+    // Flat markers only: an event gets a still ring in its colour, the first failing part a yellow frame with an ink edge.
+    v.lead.visible = v.isLead && !isSelNow(v);
+    if (v.event) {
+      v.pulse.visible = true; v.pulse.tint = v.event.color; v.pulse.alpha = 1;
+      v.pulse.width = v.pulse.height = 104;
     } else v.pulse.visible = false;
   }
+  const isSelNow = v => selected === v.id;
 
   return {
     views,
@@ -490,7 +469,7 @@ export function createNodeLayer(PIXI, parent, env) {
         const bx=near(p.x,box.x,box.x+box.width), by=near(p.y,box.y,box.y+box.height);
         const ax=near(bx,p.x-half,p.x+half), ay=near(by,p.y-half,p.y+half);
         if(Math.hypot(bx-ax,by-ay)<14)return;
-        v.leader.moveTo((ax-p.x)/z,(ay-p.y)/z).lineTo((bx-p.x)/z,(by-p.y)/z).stroke({width:1/z,color:P.edgeIdle,alpha:.7});
+        v.leader.moveTo((ax-p.x)/z,(ay-p.y)/z).lineTo((bx-p.x)/z,(by-p.y)/z).stroke({width:1.5/z,color:P.ink});
       };
       const screenBox=(v,box)=>{const p=camera.worldToScreen(v.x,v.y);return box?{x:p.x+box.x*z,y:p.y+box.y*z,width:box.width*z,height:box.height*z}:null;};
       // The wide readings keep the fuller clearance around every part, so wires still find a way past them; only names pack tighter.
@@ -553,7 +532,7 @@ export function createNodeLayer(PIXI, parent, env) {
         if(name){
           const labelX=(name.x+width/2-p.x)/z,labelY=(name.y-p.y)/z;
           v.labelT.position.set(labelX,labelY);
-          v.labelBg.roundRect((name.x-p.x)/z,labelY,width/z,height/z,3/z).fill({color:P.canvas,alpha:.97});
+          v.labelBg.roundRect((name.x-p.x)/z,labelY,width/z,height/z,3/z).fill({color:P.canvas});
           lead(v,name,p,z,P);
           boxes.push(name);
         }
@@ -561,7 +540,7 @@ export function createNodeLayer(PIXI, parent, env) {
         v.evidenceT.renderable=!!facts;
         if(facts){
           v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x)/z,(facts.y-p.y)/z);
-          v.evidenceBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.canvas,alpha:.97});
+          v.evidenceBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.card}).stroke({width:1.5/z,color:P.ink});
           lead(v,{x:facts.x,y:facts.y,width:Math.min(114,v.evidenceT.width*z+4),height:Math.min(facts.height,v.evidenceT.height*z+2)},p,z,P);
           boxes.push(facts);
         }
@@ -589,10 +568,10 @@ export function createNodeLayer(PIXI, parent, env) {
       else if (live && v.telemetry?.retryRps > .5) v.evidenceT.text += `\n↶ ${count(v.telemetry.retryRps)}/s retry`;
       v.evidenceT.style.fill = (v.kind === 'queue' && queuePressure(v.telemetry).late) || failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
       if (!live) {
-        v.queue = v.over = 0; v.pileType = -1; v.down = false; v.status = 0; v.recoverUntil = 0;
+        v.queue = v.over = 0; v.pileType = -1; v.down = false; v.status = 0; v.recoverUntil = 0; v.isLead = false;
         if (v.live) {
           v.live = false; v.busy.clear(); v.drawnU = -1; v.drawnColor = -1; v.statusG.visible = false;
-          v.pile.visible = false; v.qbar.visible = false; v.icon.alpha = 1; v.body.alpha = 1; v.tu = v.du = 0;
+          v.pile.visible = false; v.qbar.visible = false; v.icon.alpha = 1; v.body.texture = env.kit().bodyTex[v.cat]; v.tu = v.du = 0;
         }
         return;
       }
@@ -602,13 +581,16 @@ export function createNodeLayer(PIXI, parent, env) {
       if (status !== v.status || down !== v.down) {
         v.status = status; v.down = down; v.statusAt = nowForStatus();
         v.statusG.context = env.kit().glyphs.status[Math.min(4, status)];
-        v.icon.alpha = down ? 0.4 : 1;
-        v.body.alpha = down ? 0.7 : 1;
+        v.icon.alpha = 1;
+        v.body.texture = down || status >= 3 ? env.kit().downTex : env.kit().bodyTex[v.cat];
+        if (!down && status >= 3 || down) { v.shoveAt = performance.now(); v.shoveDir = -v.shoveDir; }
       }
       v.statusG.visible = status > 0;
       v.statusG.alpha = 1;
       v.queue = queue; v.over = over; v.pileType = pileType;
     },
+    // The first failing part gets a yellow frame instead of the rest of the canvas being dimmed.
+    setLead(id) { for (const v of list) v.isLead = v.id === id; },
     setSelection(id) {
       selected = id;
       for (const v of list) { v.select.visible = v.id === id; showLabel(v); }
@@ -629,7 +611,7 @@ export function createNodeLayer(PIXI, parent, env) {
       const kit = env.kit();
       if (ev) {
         v.badge.visible = true;
-        v.badgeBg.clear().circle(0, 0, 11).fill({ color: kit.P.surfaceSolid }).stroke({ width: 1.6, color: ev.color });
+        v.badgeBg.clear().circle(1.5, 1.5, 11).fill({ color: kit.P.ink }).circle(0, 0, 11).fill({ color: kit.P.card }).stroke({ width: 2, color: kit.P.ink });
         const t = kit.icons.get(ev.iconId, ev.color);
         v.badgeIcon.texture = t || PIXI.Texture.EMPTY;
         v.badgeIcon.width = v.badgeIcon.height = 15;
@@ -640,7 +622,7 @@ export function createNodeLayer(PIXI, parent, env) {
       const kit = env.kit();
       for (const v of list) {
         if (!id || id === 'el.' + v.type) {
-          const t = kit.icons.get('el.' + v.type, kit.P.cat[v.cat] ?? kit.P.text3);
+          const t = kit.icons.get('el.' + v.type, kit.P.ink);
           if (t) { v.icon.texture = t; v.icon.width = v.icon.height = 28; }
         }
         if (v.event && (!id || id === v.event.iconId)) {
@@ -653,19 +635,18 @@ export function createNodeLayer(PIXI, parent, env) {
       this.captionKey = null;
       const P = kit.P;
       for (const v of [...list, ...dying]) {
-        v.glow.texture = kit.fx.glow; v.pulse.texture = kit.fx.ring;
-        v.shadow.texture = kit.fx.shadow; v.shadow.tint = P.shadow; v.shadow.alpha = 0;
-        v.shadow.width = v.shadow.height = SHADOW;
-        v.body.texture = kit.bodyTex[v.cat]; v.body.width = v.body.height = BODY_BOX;
+        v.pulse.texture = kit.fx.ring;
+        v.lead.texture = kit.leadTex[v.shape]; v.lead.width = v.lead.height = BODY_BOX;
+        v.body.texture = v.down || v.status >= 3 ? kit.downTex : kit.bodyTex[v.cat]; v.body.width = v.body.height = BODY_BOX;
         v.select.texture = kit.selectTex[v.shape]; v.select.width = v.select.height = BODY_BOX;
-        v.icon.texture = kit.icons.get('el.' + v.type, P.cat[v.cat] ?? P.text3) || PIXI.Texture.EMPTY;
+        v.icon.texture = kit.icons.get('el.' + v.type, P.ink) || PIXI.Texture.EMPTY;
         v.icon.width = v.icon.height = 28;
         v.statusG.context = kit.glyphs.status[Math.min(4, v.status)];
         const lv = validation.get(v.id);
         v.valid.context = kit.glyphs.valid[lv || 'warn'];
         v.lock.context = kit.glyphs.lock;
         for (const s of v.pileSprites) { s.texture = kit.atlas.textures[Math.max(0, v.pileType)]; s.scale.set(8 / P_SHAPE); }
-        v.labelT.style.fill = P.text2;
+        v.labelT.style.fill = P.ink;
         v.poolT.style.fill = P.text2;
         drawChip(v); drawRegion(v);
         if (v.event) v.event.color = v.event.severity ? severityColor(P, v.event.severity) : v.event.color;

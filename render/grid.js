@@ -63,7 +63,7 @@ export function createGrid(PIXI, parent, env) {
       const P = env.kit().P;
       const fade = Math.max(0, Math.min(1, (z - 0.3) / 0.25));
       pc.visible = fade > 0;
-      pc.alpha = Math.min(1, P.gridDotAlpha * 1.7) * fade;
+      pc.alpha = Math.min(1, P.gridDotAlpha * 1.6) * fade;
       pc.tint = P.gridDot;
       if (!pc.visible) return;
       const hw = w / z / 2, hh = h / z / 2;

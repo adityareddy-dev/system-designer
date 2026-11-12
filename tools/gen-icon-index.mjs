@@ -26,5 +26,5 @@ for (const [ns, group, dir, list] of sets) {
 const contract = fs.readFileSync('CONTRACT.md', 'utf8').match(/Fixed `ui.` names: ([^\n]+)/)[1].replace(/\.\s*$/, '').split(', ').map(s => s.trim().replace(/\.$/, ''));
 for (const n of contract) { const file = `assets/ui/${n}.svg`; if (check(file, n)) icons.push({ id: `ui.${n}`, group: 'ui', file, name: n.replace(/-/g, ' ') }); }
 const counts = {}; for (const i of icons) counts[i.group] = (counts[i.group] || 0) + 1;
-fs.writeFileSync('assets/icons/index.json', JSON.stringify({ version: 1, updated: '2026-11-02', viewBox: '0 0 24 24', style: 'stroke currentColor 1.75, round caps and joins, duotone fill currentColor at .18, no text, own artwork', total: icons.length, counts, icons }, null, 1) + '\n');
+fs.writeFileSync('assets/icons/index.json', JSON.stringify({ version: 1, updated: '2026-11-02', viewBox: '0 0 24 24', style: 'stroke currentColor 2.25, square caps and mitre joins, duotone fill currentColor at .18, no text, own artwork', total: icons.length, counts, icons }, null, 1) + '\n');
 console.log(JSON.stringify({ total: icons.length, counts, problems }));

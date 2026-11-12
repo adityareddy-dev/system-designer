@@ -22,3 +22,27 @@ export function apiBase(loc = globalThis.location) {
   }
   return null;
 }
+
+// Does this page ask for a free account before any play? Only the hosted site does. Forks, localhost and file serves stay open.
+// ?preview=hosted shows the hosted behaviour on any other address (kept for the tab), with a stand-in sign-in; ?preview=off ends it.
+export function previewHosted(loc = globalThis.location) {
+  if (!loc || loc.origin === SITE) return false;
+  try {
+    const v = new URLSearchParams(loc.search || '').get('preview');
+    if (v === 'hosted') { sessionStorage.setItem('sd.preview', 'hosted'); return true; }
+    if (v === 'off') { sessionStorage.removeItem('sd.preview'); return false; }
+    return sessionStorage.getItem('sd.preview') === 'hosted';
+  } catch { return false; }
+}
+export function accountRequired(loc = globalThis.location) {
+  if (!loc) return false;
+  if (loc.origin === SITE) return API_LIVE;
+  return previewHosted(loc);
+}
+
+// The pages that start play. Lists, the front page, settings and the readable pages stay open to everyone.
+export function isPlayRoute(parts = []) {
+  const [a, b] = parts;
+  if (a === 'intro' || a === 'challenge' || a === 'beat' || a === 'sandbox' || a === 'drill') return true;
+  return (a === 'learn' || a === 'practice') && !!b;
+}

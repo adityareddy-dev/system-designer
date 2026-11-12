@@ -1,0 +1,25 @@
+/* Layout helpers loaded after the shell styles. The look itself (cards, outlines, shadows) is in assets/neo.css. */
+
+/* ---------- practice: a dense list of cards ---------- */
+.sh-industry-art { max-height: 150px; object-fit: contain; }
+.sh-industry-art svg { max-height: 150px; }
+
+/* ---------- small type: nothing important in dim 11px text ---------- */
+.sh-fine, .sh-section-stat, .sh-track-progress, .sh-lesson-min, .sh-tag, .sh-chapter-index, .sh-badge { font-size: max(13px, 1em); }
+.sh-section-stat { font-size: 13px; color: var(--text-2); }
+.sh-muted, .sh-fine { color: var(--text-2); }
+
+/* ---------- problem page: no duplicate brief, readable side panel ---------- */
+.pl-root:has(.pl-panel:not([hidden])) .pl-req-like, .pl-root:has(.pl-panel:not([hidden])) .pl-req-brief { display: none; }
+.pl-brief-more { margin: 0 0 12px; }
+.pl-brief-more summary { cursor: pointer; min-height: 32px; font-weight: 600; font-size: 14px; color: var(--accent); }
+.pl-brief-more p { margin: 6px 0 0; font-size: 14px; }
+.pl-req-like, .pl-req-notes, .pl-knob-help { font-size: 13px; color: var(--text-2); }
+.pl-req-k, .pl-facts dt { color: var(--text-2); }
+.pl-req-brief { font-size: 14px; }
+.pl-req-row, .pl-facts, .pl-cost-row { font-size: 13.5px; }
+
+.pl-req .pl-muted { color: var(--text-2); font-size: 13.5px; }
+.pl-root:has(.pl-panel:not([hidden])) .pl-req-body > p.pl-muted:not(:last-child) { display: none; }
+/* while the brief or the numbers are open, the canvas behind them is not shown at all: no ghost parts show through, no dimming */
+.pl-root:has(.pl-panel:not([hidden])) .pl-stage { visibility: hidden; }

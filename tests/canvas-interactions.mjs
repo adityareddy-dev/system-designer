@@ -38,6 +38,8 @@ try{
   const openingCamera=await p.evaluate(()=>{const v=__game.getState().view;return {zoom:v.zoom,screen:v.screen};});
   await p.evaluate(()=>{__game.startTraffic();__game.pause();__game.step(120000);});await sleep(700);await check();
   assert.deepEqual(await p.evaluate(()=>{const v=__game.getState().view;return {zoom:v.zoom,screen:v.screen};}),openingCamera,'starting traffic preserves the player camera');
+  // while a day runs on a phone the speed buttons wrap onto their own row, so the bar is taller than when the design was fitted: fit again
+  if(width===390){await p.click('[aria-label="Fit to screen (F)"]');await sleep(700);}
   assert(await p.evaluate(()=>__game.getState().view.diagram.labels.some(l=>l.text.startsWith('First limit'))),'paused overload identifies its first bottleneck');
   const before=await p.evaluate(()=>__game.getState().view.diagram.labels.filter(l=>l.kind==='failure').map(({id,x,y})=>({id,x,y})));
   await p.evaluate(()=>__game.step(120000));await check();

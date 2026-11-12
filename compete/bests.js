@@ -56,11 +56,24 @@ export function createBests(store, now = () => new Date()) {
       if (d.history.length > MAX_HISTORY) d.history.length = MAX_HISTORY;
       const keys = Object.keys(d.best);
       if (keys.length > MAX_KEYS) {
-        keys.sort((a, b) => (d.best[a].at || '').localeCompare(d.best[b].at || ''));
+        // daily results are the record of which problems came up and when: practice bests go first when the table is full
+        const daily = (k) => (/^challenge:[^:]+:daily-\d{4}-\d{2}-\d{2}$/.test(k) ? 1 : 0);
+        keys.sort((a, b) => daily(a) - daily(b) || (d.best[a].at || '').localeCompare(d.best[b].at || ''));
         for (const k of keys.slice(0, keys.length - MAX_KEYS)) delete d.best[k];
       }
       save(d);
       return { isBest, previous };
+    },
+
+    // { problemId: [daily dates played] } from the saved bests, which unrelated practice runs never push out (the history list is capped).
+    dailyPlays() {
+      const out = {};
+      for (const key of Object.keys(load().best)) {
+        const m = /^challenge:([^:]+):daily-(\d{4}-\d{2}-\d{2})$/.exec(key);
+        if (m) (out[m[1]] ||= []).push(m[2]);
+      }
+      for (const id of Object.keys(out)) out[id].sort();
+      return out;
     },
 
     // Days in a row with at least one finished day; kind 'challenge' counts only daily runs that earned a star (today may still be open: yesterday keeps the streak alive).

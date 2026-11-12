@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { problems } from '../content/problems/index.js';
 import { lessons } from '../content/lessons/index.js';
 import { dailyFor, addDays, todayLocal } from '../compete/daily.js';
-import { previewHtml } from './site-preview.mjs';
+import { previewHtml, PREVIEW_FONTS } from './site-preview.mjs';
 import { writeSitePages } from './gen-site-pages.mjs';
 
 const arg = (k,d)=>{const i=process.argv.indexOf('--'+k);return i<0?d:process.argv[i+1];};
@@ -27,6 +27,8 @@ const keyOf=r=>path.relative(root,dirOf(r)).replaceAll(path.sep,'/');
 const manifestFile=path.join(root,'tools/site-previews-manifest.json');
 const old=fs.existsSync(manifestFile)?JSON.parse(fs.readFileSync(manifestFile,'utf8')):{};
 const manifest={};
+// Cards name their fonts by placeholder; the files are read from assets/fonts and inlined so a card renders offline.
+const withFonts=html=>Object.entries(PREVIEW_FONTS).reduce((h,[key,file])=>h.replaceAll(key,'data:font/woff2;base64,'+fs.readFileSync(path.join(root,'assets/fonts',file)).toString('base64')),html);
 const hash=r=>createHash('sha256').update(previewHtml(r)).digest('hex');
 // The renderer and text are fingerprinted independently of each page's article content.
 const redraw=rows.filter(r=>!fs.existsSync(path.join(dirOf(r),'preview.jpg'))||(old[keyOf(r)]!=null&&old[keyOf(r)]!==hash(r)));
@@ -38,7 +40,8 @@ if (!process.argv.includes('--no-images') && redraw.length) {
     const pg=await browser.newPage();
     await pg.setViewport({width:1200,height:630,deviceScaleFactor:1});
     for (const r of redraw) {
-      await pg.setContent(previewHtml(r),{waitUntil:'load'});
+      await pg.setContent(withFonts(previewHtml(r)),{waitUntil:'load'});
+      await pg.evaluate(()=>document.fonts.ready);
       await pg.screenshot({path:path.join(dirOf(r),'preview.jpg'),type:'jpeg',quality:84});
       manifest[keyOf(r)]=hash(r);
     }

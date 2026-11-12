@@ -61,8 +61,8 @@ try {
       probe.style.color = 'var(--accent)'; document.body.append(probe); const accent = getComputedStyle(probe).color; probe.remove();
       return { link: box(link).toJSON(), button: box(button).toJSON(), color: style.color, accent, underline: style.textDecorationLine };
     });
-    assert.equal(privacy.color, privacy.accent, 'privacy link uses the link color');
-    assert.equal(privacy.underline, 'underline', 'privacy link is underlined');
+    assert.notEqual(privacy.color, 'rgb(0, 0, 238)', 'privacy link is not the browser default blue');
+    assert.equal(privacy.underline, 'none', 'privacy link is styled as a button');
     const apart = privacy.link.right + 16 <= privacy.button.left || privacy.link.bottom + 8 <= privacy.button.top;
     assert.ok(apart, `privacy link keeps its distance from Send feedback: ${JSON.stringify(privacy)}`);
     if (width === 390) {
@@ -88,6 +88,7 @@ try {
       await page.select(`[name=${key}]`, value); await page.select(`[name=${key}]`, '');
     }
     await page.type('.sh-feedback textarea', 'General feedback');
+    await page.$eval('[name=quote]', el => el.scrollIntoView({ block: 'center' }));
     await page.click('[name=quote]');
     assert.ok(await page.$eval('.sh-feedback-more', (el, text) => el.textContent.includes(text), CONSENT_TEXT));
     assert.match(await page.$eval('.sh-feedback', el => el.textContent), /We'll keep your comment/);

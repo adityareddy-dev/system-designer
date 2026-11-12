@@ -3,10 +3,10 @@ import { getPalette } from '../assets/palette.js';
 import { elementById, hexCss, fmtInt, fmtMoney, fmtPct } from './util.js';
 
 const W = 1200, H = 630;
-// The site's own faces (assets/fonts.css): Atkinson Hyperlegible in 400 and 700, IBM Plex Mono in 400.
-const DISPLAY = '"Atkinson Hyperlegible", Arial, sans-serif';
+// The site's own faces (assets/fonts.css): Space Grotesk (400 to 700) and Space Mono in 400 and 700.
+const DISPLAY = '"Space Grotesk", Arial, sans-serif';
 const BODY = DISPLAY;
-const MONO = '"IBM Plex Mono", ui-monospace, monospace';
+const MONO = '"Space Mono", ui-monospace, monospace';
 // Text keeps to x 76..1124 inside the panel. The architecture drawing gets the right half, above the four results.
 const L = 76, R = W - 76;
 const FRAME = { x: 560, y: 72, w: 564, h: 272 };
@@ -209,7 +209,7 @@ function drawMiniGraph(ctx, graph, catalog, c, x, y, w, h) {
 
 async function ensureFonts() {
   if (typeof document === 'undefined' || !document.fonts?.load) return;
-  const loads = ['700 40px "Atkinson Hyperlegible"', '400 16px "Atkinson Hyperlegible"', '400 14px "IBM Plex Mono"'].map((f) => document.fonts.load(f).catch(() => {}));
+  const loads = ['700 40px "Space Grotesk"', '400 16px "Space Grotesk"', '400 14px "Space Mono"'].map((f) => document.fonts.load(f).catch(() => {}));
   await Promise.race([Promise.all(loads), new Promise((r) => setTimeout(r, 1200))]);
 }
 

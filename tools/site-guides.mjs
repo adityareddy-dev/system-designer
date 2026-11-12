@@ -27,10 +27,10 @@ ${para('The debrief is written in plain words. It tells you which event hurt, wh
 <h2>More than one way to practise</h2>
 ${para(`There are ${lessons.length} lessons and ${problems.length} problems across ${new Set(problems.map(p=>p.group)).size} industries. Lessons focus on one mechanism. Problems put several mechanisms together, from small services to systems where an outage, an unfair customer or a late queue changes the answer.`)}
 <p>Try ${p('notification-service')} when you want to separate accepting work from finishing it. Try ${p('chat-app')} when bad connections and repeated messages matter. Use ${l('lead-interview')} before a timed attempt. Interview mode on Medium and Hard problems asks you to lead the discussion and defend choices with evidence.</p>
-${para('The daily challenge gives everyone the same seeded scenario for a date. A beat my design link carries the architecture with it, so a friend can replay it and compete. Sandbox leaves the score behind and lets you try a traffic pattern or event just to understand it.')}
-<h2>Free, with no account needed</h2>
-${para('Play in the browser. There is no download, no subscription and no sign-up wall. Your progress stays on this device in the browser.')}
-${accountLive ? para('Optional Google or GitHub sign-in keeps progress across devices and adds challenge leaderboards. You can keep playing without it.'):''}
+${para('Sandbox leaves the score behind and lets you try a traffic pattern or event just to understand it.')}
+<h2>Free, with a free account</h2>
+${para('Play in the browser. There is no download and no subscription. Playing on systemdesigner.io needs a free Google or GitHub account. Reading the problems, lessons and guides does not.')}
+${accountLive ? para('Your account keeps progress across devices. The code is open source under the MIT license, so you can also run your own copy with no account at all.'):''}
 ${para('Prices, capacities and timings are rounded teaching approximations. A simulation cannot certify a production system, but it can make a useful question concrete: what did this choice protect, what did it cost, and what would make you change it?')}
 <p>Start with ${l('intro')}, then build the ${p('url-shortener')}. Predict the first bottleneck before you press Start.</p>`),
     make('how-to-practise-system-design','How to practise system design',

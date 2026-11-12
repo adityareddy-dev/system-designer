@@ -18,5 +18,5 @@ const art = {
 };
 fs.mkdirSync('assets/categories', { recursive: true });
 for (const k of cats) {
-  fs.writeFileSync(`assets/categories/${k.id}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>${k.name}</title>${art[k.id]}</svg>\n`);
+  fs.writeFileSync(`assets/categories/${k.id}.svg`, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" role="img"><title>${k.name}</title>${art[k.id]}</svg>\n`);
 }

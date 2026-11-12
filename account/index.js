@@ -1,6 +1,6 @@
 // Optional accounts: asks the sign-in service what is set up, keeps progress in sync, and sends finished days to the leaderboards.
 // With no service (or an unreachable one) it stays silent and the game works exactly as without it.
-import { apiBase } from './config.js';
+import { apiBase, previewHosted } from './config.js';
 import { sanitizeProgress, mergeProgress } from './merge.js';
 import { createAccountUi } from './ui.js';
 
@@ -26,12 +26,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export function createAccount(ctx) {
   const { bus, store } = ctx;
   const base = apiBase();
-  const S = { status: base ? 'checking' : 'off', config: null, user: null, sync: 'idle', syncedAt: 0, lastJson: '', lastResult: null };
+  // A stand-in for the service, only for ?preview=hosted on a page with no service: it signs in locally so the gate can be seen and passed.
+  const preview = !base && previewHosted();
+  const PREVIEW_KEY = 'sd.preview.user';
+  const S = { status: base ? 'checking' : preview ? 'ready' : 'off', config: preview ? { google: null, github: true, fake: false, preview: true } : null, user: null, sync: 'idle', syncedAt: 0, lastJson: '', lastResult: null };
   let readyResolve;
   const ready = new Promise((r) => { readyResolve = r; });
   const toast = (text, level = 'info', ms) => bus.emit('toast', { text, level, ms });
 
   async function call(method, path, body, timeout = 8000) {
+    if (preview) throw Object.assign(new Error('Not available in the preview.'), { status: 0, code: 'preview' });
     const init = { method, credentials: 'include', headers: { Accept: 'application/json' }, cache: 'no-store' };
     if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) init.signal = AbortSignal.timeout(timeout);
     if (body !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(body); }
@@ -47,7 +51,7 @@ export function createAccount(ctx) {
     return data;
   }
 
-  const providers = () => (S.config ? { google: !!S.config.google, github: S.config.github, fake: S.config.fake } : { google: false, github: false, fake: false });
+  const providers = () => (S.config ? { google: !!S.config.google, github: S.config.github, fake: S.config.fake, preview } : { google: false, github: false, fake: false, preview: false });
   const available = () => S.status === 'ready' && !!S.config && (S.config.google || S.config.github || S.config.fake);
   const snapshot = () => ({ status: S.status, available: available(), user: S.user, sync: S.sync, syncedAt: S.syncedAt, providers: providers() });
   const emit = () => bus.emit('account', snapshot());
@@ -79,6 +83,7 @@ export function createAccount(ctx) {
     if (syncing) { again = true; return syncing; }
     const snap = sanitizeProgress(local());
     if (!force && JSON.stringify(snap) === S.lastJson) return Promise.resolve();
+    if (preview) { S.lastJson = JSON.stringify(snap); S.sync = 'ok'; S.syncedAt = Date.now(); emit(); return Promise.resolve(); }
     S.sync = 'syncing';
     emit();
     syncing = (async () => {
@@ -125,23 +130,33 @@ export function createAccount(ctx) {
       const r = await call('POST', '/auth/google/nonce', {});
       return typeof r?.nonce === 'string' ? r.nonce : null;
     },
-    async signInWithGoogle(credential) {
-      const r = await call('POST', '/auth/google', { credential });
+    async signInWithGoogle(credential, surveyOptIn) {
+      const r = await call('POST', '/auth/google', typeof surveyOptIn === 'boolean' ? { credential, surveyOptIn } : { credential });
       await signedIn(r.user);
       return r.user;
     },
-    githubUrl() {
+    githubUrl(surveyOptIn) {
       const path = location.hash.split('?')[0];
       const ret = RETURN_RE.test(path) ? path : '#/';
-      return `${base}/auth/github/start?${new URLSearchParams({ return: ret, origin: location.origin })}`;
+      const q = { return: ret, origin: location.origin };
+      if (typeof surveyOptIn === 'boolean') q.survey = surveyOptIn ? '1' : '0';
+      return `${base}/auth/github/start?${new URLSearchParams(q)}`;
     },
-    async signInFake(id = 'tester', name = 'Test player') {
-      const r = await call('POST', '/auth/fake', { id, name });
+    isPreview: () => preview,
+    async signInPreview(provider, surveyOptIn = false) {
+      const user = { name: 'Preview player', avatar: null, providers: [provider === 'github' ? 'github' : 'google'], email: 'player@example.com', surveyOptIn: !!surveyOptIn };
+      try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(user)); } catch { /* keep going */ }
+      await signedIn(user);
+      return user;
+    },
+    async signInFake(id = 'tester', name = 'Test player', surveyOptIn) {
+      const r = await call('POST', '/auth/fake', typeof surveyOptIn === 'boolean' ? { id, name, surveyOptIn } : { id, name });
       await signedIn(r.user);
       return r.user;
     },
     async signOut() {
       clearTimeout(timer);
+      if (preview) { try { sessionStorage.removeItem(PREVIEW_KEY); } catch { /* ignore */ } }
       try { await call('POST', '/auth/signout', {}); } catch { /* the cookie ends anyway when it expires */ }
       S.user = null;
       S.sync = 'idle';
@@ -150,7 +165,7 @@ export function createAccount(ctx) {
       toast('Signed out. Your progress stays on this device.', 'info');
     },
     async deleteAccount() {
-      await call('DELETE', '/me');
+      if (preview) { try { sessionStorage.removeItem(PREVIEW_KEY); } catch { /* ignore */ } } else await call('DELETE', '/me');
       clearTimeout(timer);
       S.user = null;
       S.sync = 'idle';
@@ -159,14 +174,25 @@ export function createAccount(ctx) {
       toast('Account deleted. Everything about it is gone from the server.', 'ok', 4200);
     },
     async rename(name) {
-      const r = await call('PATCH', '/me', { name });
+      const r = preview ? { user: { ...S.user, name } } : await call('PATCH', '/me', { name });
       S.user = r.user;
+      if (preview) { try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(S.user)); } catch { /* ignore */ } }
+      emit();
+      return r.user;
+    },
+    // The player turns survey and product update emails on or off. Saved at once.
+    async setSurveyOptIn(on) {
+      const surveyOptIn = !!on;
+      const r = preview ? { user: { ...S.user, surveyOptIn } } : await call('PATCH', '/me', { surveyOptIn });
+      S.user = r.user;
+      if (preview) { try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(S.user)); } catch { /* ignore */ } }
       emit();
       return r.user;
     },
     syncNow: () => syncNow(true),
     report: (uid, reason = 'name') => call('POST', '/report', { uid, reason }),
     leaderboard({ problem, daily }) {
+      if (preview) return Promise.resolve({ top: [], total: 0 });
       const q = daily ? `daily=${encodeURIComponent(daily)}` : `problem=${encodeURIComponent(problem)}`;
       return call('GET', '/leaderboard?' + q);
     },
@@ -183,7 +209,7 @@ export function createAccount(ctx) {
     }
   }
   async function postResult({ mode, problemId, seed, result }) {
-    if (!S.user || !result?.graph || !problemId || !['practice', 'challenge', 'beat'].includes(mode)) return;
+    if (preview || !S.user || !result?.graph || !problemId || !['practice', 'challenge', 'beat'].includes(mode)) return;
     const m = DAILY_SEED.exec(String(seed));
     if (!(seed === 'practice' || (m && dailyOpen(m[1])))) return;
     const share = ctx.compete?.share;
@@ -248,6 +274,9 @@ export function createAccount(ctx) {
   const ui = createAccountUi(ctx, api);
   api.mountHeader = ui.mountHeader;
   api.leaderboardCard = ui.leaderboardCard;
+  api.signInCard = ui.signInCard;
+  api.emailBlock = ui.emailBlock;
+  api.openSignIn = ui.open;
 
   // Is the service there? A hidden frame loads its /probe page, which posts the public settings back. A frame that cannot
   // load leaves nothing in the console (a failed fetch would), so an unreachable service stays silent.
@@ -285,7 +314,14 @@ export function createAccount(ctx) {
 
   // Start: nothing at all when there is no service for this page; otherwise one silent check, then who is signed in.
   (async () => {
-    if (!base) { readyResolve(); return; }
+    if (!base) {
+      if (preview) {
+        try { S.user = JSON.parse(sessionStorage.getItem(PREVIEW_KEY) || 'null'); } catch { S.user = null; }
+        emit();
+      }
+      readyResolve();
+      return;
+    }
     try {
       const cfg = await probe();
       if (!cfg) throw new Error('unreachable');

@@ -31,6 +31,32 @@ function variantLines(ctx, v) {
   return out;
 }
 
+// Daily dates the player has played, per problem, from the stored history.
+function playedDailyMap(compete) {
+  try { return compete.bests.dailyPlays?.() || {}; } catch { return {}; }
+}
+function shortDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+// Compact card: how much of this round's problem pool the player has played.
+function poolCard(compete, date, isToday) {
+  let st = null;
+  try { st = compete.daily.poolStatus?.(date, playedDailyMap(compete)); } catch { /* ignore */ }
+  if (!st || !st.poolSize) return null;
+  const name = `${st.doneInRound} of ${st.poolSize} problems done in this round`;
+  const twist = 'After a full round, the problems come back with a different twist: events can move earlier or later, hit harder or softer, or a surprise event can be added.';
+  const again = st.repeats
+    ? (st.lastPlayed ? `You played this one on ${shortDate(st.lastPlayed)}. This round it has a different twist.` : 'You played this one before. This round it has a different twist.')
+    : null;
+  return h('section', { class: 'sh-card sh-pool-card', 'aria-label': 'Daily problem rounds' },
+    h('p', null, h('strong', { text: name + '.' }), ' ', isToday ? `Today is problem ${st.positionInRound} of ${st.poolSize} in this round.` : `This day was problem ${st.positionInRound} of ${st.poolSize} in its round.`),
+    h('progress', { max: String(st.poolSize), value: String(st.doneInRound), 'aria-label': name }),
+    again ? h('p', null, again) : null,
+    h('p', { class: 'sh-fine', text: twist }));
+}
+
 function noCompete(host) {
   host.append(h('div', { class: 'sh-page sh-page--narrow sh-empty' }, h('h1', { class: 'sh-h1', text: 'Challenge is not ready' }),
     h('p', { class: 'sh-muted', text: 'The daily challenge could not load. Practice is still available.' }), h('a', { class: 'sh-btn sh-btn--primary', href: '#/practice' }, 'Go to Practice')));
@@ -168,9 +194,9 @@ export function renderChallenge(host, ctx, route0) {
       const checking = ctx.account?.state?.().status === 'checking';
       offline.hidden = available;
       offline.replaceChildren(h('h2', { class: 'sh-h2', text: checking ? 'Checking online competition' : 'Playing offline' }),
-        h('p', { class: 'sh-muted', text: checking ? 'Checking whether sign-in and leaderboards are available.' : 'Sign-in and leaderboards are unavailable. Your scores and streak stay in this browser. You can still play the daily challenge and share a link with a friend.' }));
-      accountInfo.replaceChildren(h('strong', { text: available && ctx.account?.isSignedIn?.() ? 'You are signed in. ' : 'No account needed. ' }),
-        available ? (ctx.account?.isSignedIn?.() ? 'Your score and streak follow you to every device. See the leaderboard above.' : 'Your score stays in this browser. Sign in through the leaderboard above to sync progress and join.') : 'Your score and streak stay in this browser.');
+        h('p', { class: 'sh-muted', text: checking ? 'Checking whether sign-in and leaderboards are available.' : (ctx.gate?.required ? 'Sign-in and leaderboards are not reachable right now. Try again in a moment.' : 'Sign-in and leaderboards are unavailable. Your scores and streak stay in this browser. You can still play the daily challenge and share a link with a friend.') }));
+      accountInfo.replaceChildren(h('strong', { text: available && ctx.account?.isSignedIn?.() ? 'You are signed in. ' : ctx.gate?.required ? 'Free account. ' : 'No account needed. ' }),
+        available ? (ctx.account?.isSignedIn?.() ? 'Your score and streak follow you to every device. See the leaderboard above.' : (ctx.gate?.required ? 'Your score and streak follow your account to every device.' : 'Your score stays in this browser. Sign in through the leaderboard above to sync progress and join.')) : 'Your score and streak stay in this browser.');
     };
     const mountBoard = () => {
       if (board || !ctx.account?.leaderboardCard) return;
@@ -189,7 +215,7 @@ export function renderChallenge(host, ctx, route0) {
     if (ctx.account?.leaderboardCard) mountBoard();
     else if (ctx.bus?.on) offAttach = ctx.bus.on('account:attached', () => { if (offAttach) { offAttach(); offAttach = null; } mountBoard(); updateService(); });
 
-    append(host, [h('div', { class: 'sh-page sh-challenge-page' }, head, nav, diffRow, hardNudge, quickPlay, h('div', { class: 'sh-two-col' }, scenario, stack))]);
+    append(host, [h('div', { class: 'sh-page sh-challenge-page' }, head, nav, diffRow, poolCard(compete, date, isToday), hardNudge, quickPlay, h('div', { class: 'sh-two-col' }, scenario, stack))]);
   }
 
   draw(route0);

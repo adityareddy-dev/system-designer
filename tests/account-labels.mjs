@@ -8,7 +8,7 @@ class Element {
   listeners = {};
   style = { setProperty() {} };
   dataset = {};
-  classList = { add() {} };
+  classList = { add() {}, contains() { return false; }, toggle() {} };
   setAttribute(k, v) { this[k] = v; }
   append(...kids) { for (const c of kids) { if (c instanceof Element) c.parent = this; this.children.push(c); } }
   replaceChildren(...kids) { this.children = []; this.append(...kids); }
@@ -52,11 +52,11 @@ const ctx = { bus, account: api, reducedMotion: () => true, content: { problems:
   progress: { stats: () => ({ solved: 0, stars: 0, lessonsDone: 0 }), all: () => ({}) }, store: { get: () => false } };
 const home = new Element();
 const view = renderHome(home, ctx);
-const line = home.querySelector('.sh-fine');
-assert.match(line.textContent, /stays in this browser/);
+const note = () => home.querySelector('.sh-gate-note');
+assert.match(note().textContent, /stays in this browser/);
 user = { name: 'Test player', providers: ['fake'] };
 bus.emit('account');
-assert.match(line.textContent, /across devices/);
+assert.match(note().textContent, /across devices/);
 const slot = new Element();
 createAccountUi(ctx, api).mountHeader(slot);
 slot.children[0].listeners.click();
@@ -72,6 +72,6 @@ assert.equal(slot.querySelector('.ac-avatar-letter').textContent, 'A');
 assert.equal(slot.children[0]['aria-label'], 'Your account: Adi R');
 user = null;
 bus.emit('account');
-assert.match(line.textContent, /stays in this browser/);
+assert.match(note().textContent, /stays in this browser/);
 view.destroy();
 console.log('Home sign-in wording and open-menu rename passed.');

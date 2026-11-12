@@ -1,4 +1,4 @@
-// Edge views: smooth cubic curves between ports, load-scaled width, direction chevrons, dashed links, hot-path glow ropes.
+// Edge views: ink curves between ports, load-scaled width, blocky direction marks, dashed links, flat highlight bands on hot paths.
 
 import { createRouter, routedLut, inkPath } from './routing.js';
 import { makeLut, edgeSides, lutAt, distToLut, LUT_SEGS } from './geom.js';
@@ -56,8 +56,8 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
     const flowing = v.rps > 0.01;
     const hi = highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id);
     if (!v.carries) {
-      const color = hi ? P.accent : v.kind === 'observe' ? P.cat.ops : P.cat.platform;
-      const alpha = hi ? 0.95 : 0.55;
+      const color = hi ? P.blue : P.text3;
+      const alpha = 1;
       let s = 0, on = true;
       const dash = 6, gap = 5;
       while (s < lut.len) {
@@ -68,24 +68,25 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
         }
         s = e; on = !on;
       }
-      g.stroke({ width: 1.6, color, alpha });
-      g.circle(lut.p3x, lut.p3y, 2.4).fill({ color, alpha });
-      v.drawnW = 1.6; v.drawnColor = color; v.drawnHi = hi;
+      g.stroke({ width: 2, color, alpha, cap: 'butt' });
+      g.rect(lut.p3x - 2.5, lut.p3y - 2.5, 5, 5).fill({ color, alpha });
+      v.drawnW = 2; v.drawnColor = color; v.drawnHi = hi;
       return;
     }
-    const w = 2 + Math.min(4, Math.log10(1 + v.rps) * 0.8) + (env.highContrast() ? 1.2 : 0);
+    const w = 2.5 + Math.min(2.5, Math.log10(1 + v.rps) * 0.6) + (env.highContrast() ? 1.2 : 0);
     const wq = Math.round(w * 4) / 4;
-    const color = hi ? P.accent : flowing ? P.edgeFlow : P.edgeIdle;
+    const color = hi ? P.blue : flowing ? P.ink : P.text3;
     if (v.band > 0) {
-      inkPath(g, lut)
-        .stroke({ width: v.band, color: v.bandColor, alpha: P.dark ? 0.42 : 0.32 });
+      // reduced motion: a still band in the traffic colour, outlined like a pipe
+      inkPath(g, lut).stroke({ width: v.band + 4, color: P.ink, cap: 'butt', join: 'miter' });
+      inkPath(g, lut).stroke({ width: v.band, color: v.bandColor, cap: 'butt', join: 'miter' });
     }
     inkPath(g, lut)
-      .stroke({ width: v.kind === 'tap' ? wq * 0.75 : wq, color, alpha: hi ? 1 : v.kind === 'tap' ? 0.75 : 0.95 });
+      .stroke({ width: v.kind === 'tap' ? wq * 0.75 : wq, color, alpha: 1, cap: 'butt', join: 'miter' });
     // direction marks every 80 units; with reduced motion (no moving dots) a flowing line gets bold chevrons in its
     // traffic colour, closer together, so direction and load still read at a glance
     const still = env.reduced() && flowing;
-    const markColor = hi ? P.accent : still ? (v.bandColor || P.edgeFlow) : P.text3;
+    const markColor = hi ? P.blue : P.ink;
     const len = lut.len;
     const step = still ? 56 : 80, k = still ? 1.6 : 1;
     if (len > 60) {
@@ -96,14 +97,14 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
           g.poly([tmp.x + tmp.tx * a, tmp.y + tmp.ty * a, tmp.x + nx * 3, tmp.y + ny * 3, tmp.x - tmp.tx * a, tmp.y - tmp.ty * a, tmp.x - nx * 3, tmp.y - ny * 3], true);
         } else {
           // small filled arrowhead pointing along the flow
-          const back = 3.4 * k, half = 3.2 * k, tip = 3.2 * k;
+          const back = 4 * k, half = 3.8 * k, tip = 3.6 * k;
           g.poly([tmp.x + tmp.tx * tip, tmp.y + tmp.ty * tip, tmp.x - tmp.tx * back + nx * half, tmp.y - tmp.ty * back + ny * half, tmp.x - tmp.tx * back - nx * half, tmp.y - tmp.ty * back - ny * half], true);
         }
       }
-      g.fill({ color: markColor, alpha: hi || env.highContrast() || still ? 1 : v.kind === 'replication' ? 0.7 : 0.55 });
+      g.fill({ color: markColor, alpha: 1 });
     }
-    g.circle(lut.p0x, lut.p0y, 2.8).fill({ color });
-    g.circle(lut.p3x, lut.p3y, 2.8).fill({ color });
+    g.rect(lut.p0x - 3, lut.p0y - 3, 6, 6).fill({ color });
+    g.rect(lut.p3x - 3, lut.p3y - 3, 6, 6).fill({ color });
     v.drawnW = wq; v.drawnColor = color; v.drawnBand = v.band; v.drawnHi = hi;
   }
 
@@ -112,8 +113,8 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
     const hi = highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id);
     if (hi !== v.drawnHi) return true;
     if (!v.carries) return false;
-    const w = Math.round((2 + Math.min(4, Math.log10(1 + v.rps) * 0.8) + (env.highContrast() ? 1.2 : 0)) * 4) / 4;
-    const color = hi ? P.accent : v.rps > 0.01 ? P.edgeFlow : P.edgeIdle;
+    const w = Math.round((2.5 + Math.min(2.5, Math.log10(1 + v.rps) * 0.6) + (env.highContrast() ? 1.2 : 0)) * 4) / 4;
+    const color = hi ? P.blue : v.rps > 0.01 ? P.ink : P.text3;
     return w !== v.drawnW || color !== v.drawnColor || v.band !== v.drawnBand;
   }
 
@@ -233,11 +234,11 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
           }
           r.edge = v; r.ver = v.lut.ver;
         }
-        const pulse = reduced ? 1 : 0.85 + 0.15 * Math.sin(time * 0.004 + i);
+        // a flat highlighter band under the wire: yellow when hot, tomato when over
         r.rope.visible = true;
-        r.rope.tint = it.strength >= 1 ? P.bad : P.hot;
-        r.rope.blendMode = P.dark ? 'add' : 'normal';
-        r.rope.alpha = Math.min(1, it.strength) * (P.dark ? 0.75 : 0.42) * pulse;
+        r.rope.tint = it.strength >= 1 ? P.tomato : P.yellow;
+        r.rope.blendMode = 'normal';
+        r.rope.alpha = 1;
       }
     },
     redrawAll() { for (const v of list) v.dirty = true; },

@@ -1,6 +1,7 @@
 // Shared HTML, structured data and text helpers for the readable site.
 import path from 'node:path';
 import fs from 'node:fs';
+import { icon } from '../assets/icons/index.js';
 
 export const themeHead = '<!-- theme:start --><script>\n' + fs.readFileSync(new URL('../assets/theme.js', import.meta.url), 'utf8') + '</script><!-- theme:end -->';
 
@@ -15,13 +16,21 @@ export const REPO = 'https://github.com/adityareddy-dev/system-designer';
 export const link = (href, text) => `<a href="${esc(href)}">${esc(text)}</a>`;
 export const relative = (page, target) => {
   const [file, hash] = target.split('#');
-  return (path.posix.relative(path.posix.dirname(page), file || 'index.html') || 'index.html').replace(/index\.html$/, '') + (hash == null ? '' : '#' + hash) || './';
+  const base = (path.posix.relative(path.posix.dirname(page), file || 'index.html') || 'index.html').replace(/index\.html$/, '');
+  // a fragment on the front page from a page in the root must still name the page, or it only changes this page's fragment
+  return (hash == null ? base : (base || './') + '#' + hash) || './';
 };
 export const json = obj => JSON.stringify(obj).replace(/</g, '\\u003c');
 export const breadcrumb = crumbs => ({ '@type':'BreadcrumbList', itemListElement: crumbs.map(([name, href], i)=>({ '@type':'ListItem', position:i+1, name:clean(name), item:new URL(href, SITE).href })) });
-export function navigation(file) {
-  const a = (target, label) => link(relative(file, target), label);
-  return `<a class="site-skip" href="#content">Skip to content</a><header class="site-header"><a class="site-brand" href="${relative(file, 'index.html')}"><span class="site-mark" aria-hidden="true">S</span>System Designer</a><nav aria-label="Main navigation">${a('problems/index.html','Problems')}${a('learn/index.html','Learn')}${a('guides/index.html','Guides')}${a('index.html#/','Open game')}</nav></header>`;
+export const LOGO = '<svg viewBox="0 0 32 32" width="36" height="36" aria-hidden="true" focusable="false"><rect x="2" y="2" width="28" height="28" rx="6" fill="#141414"/><path d="M11 14 20 10M11 18l9 4" stroke="#FFF4E0" stroke-width="2"/><circle cx="8.5" cy="16" r="3.5" fill="#FFC93C"/><circle cx="23" cy="8.5" r="3.5" fill="#FF5B3A"/><circle cx="23" cy="23.5" r="3.5" fill="#2D5BFF"/></svg>';
+// The same top bar as the game (assets/header.css): brand, the sections, Sign in.
+export function navigation(file, { absolute = false } = {}) {
+  // absolute: for a page served at any depth (404), links start at the site root
+  const to = (target) => absolute ? '/' + target.replace(/index\.html$/, '').replace(/index\.html#/, '#') : relative(file, target);
+  const section = file.startsWith('learn/') ? 'learn' : file.startsWith('problems/') || file.startsWith('p/') ? 'practice' : file.startsWith('guides/') ? 'guides' : '';
+  const tab = (id, target, label, iconId, extra = '') => `<a class="sh-tab" data-tab="${id}" href="${esc(to(target))}"${section === id ? ' aria-current="page"' : ''}${extra}><span class="sh-ico" style="--ico:20px">${icon(iconId, { size: 20 })}</span><span class="sh-tab-label">${esc(label)}</span></a>`;
+  const app = esc(to('index.html'));
+  return `<a class="site-skip" href="#content">Skip to content</a><header class="sh-topbar"><a class="sh-brand" href="${to('index.html')}" aria-label="System Designer, home"><span class="sh-brand-mark">${LOGO}</span><span class="sh-brand-name">System Designer</span></a><nav class="sh-nav" aria-label="Sections">${tab('learn','learn/index.html','Learn','ui.learn')}${tab('practice','problems/index.html','Practice','ui.practice')}${tab('challenge','index.html#/challenge','Challenge','ui.challenge',' hidden')}${tab('sandbox','index.html#/sandbox','Sandbox','ui.sandbox')}${tab('guides','guides/index.html','Guides','ui.editorial')}</nav><div class="sh-actions"><a class="sd-signin" data-app="${app}" href="${esc(to('index.html#/signin'))}">Sign in</a><button type="button" class="sh-icon-btn" id="sh-sound-btn" aria-pressed="true" aria-label="Sound is on. Turn off." title="Sound on"><span class="sh-ico" style="--ico:20px" data-snd="on">${icon('ui.sound-on', { size: 20 })}</span><span class="sh-ico" style="--ico:20px" data-snd="off" hidden>${icon('ui.sound-off', { size: 20 })}</span></button><a class="sh-icon-btn" href="${esc(to('index.html#/settings'))}" aria-label="Settings" title="Settings"><span class="sh-ico" style="--ico:20px">${icon('ui.settings', { size: 20 })}</span></a></div></header><script src="${absolute ? '/assets/header.js' : relative(file, 'assets/header.js')}"></script>`;
 }
 export function bodyShell(file, {title, description, kicker = 'Build the system. Survive the day.', crumbs, body, action = '', image = ''}) {
   const trail = `<nav class="site-crumbs" aria-label="Breadcrumb">${crumbs.map(([name, target],i)=>i===crumbs.length-1 ? `<span aria-current="page">${esc(name)}</span>` : link(relative(file,target),name)).join('<span aria-hidden="true"> / </span>')}</nav>`;
@@ -36,7 +45,7 @@ export function page(file, opts) {
   const css = relative(file, 'assets/site.css');
   return `<!doctype html>
 <!-- Readable content generated by tools/gen-site-pages.mjs. -->
-<html lang="en" data-theme="dark"><head>
+<html lang="en" data-theme="light"><head>
 <meta charset="utf-8">
 ${themeHead}
 <meta name="viewport" content="width=device-width, initial-scale=1">

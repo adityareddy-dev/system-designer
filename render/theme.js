@@ -97,9 +97,24 @@ export function resolvePalette(palette, theme) {
   }
   for (const id of CATEGORY_IDS) P.cat[id] = pick(id, '--cat-' + id, 'cat').c;
   for (const id of FAMILY_IDS) P.req[id] = pick(id, '--req-' + id, 'req').c;
-  P.mark = P.dark ? P.canvas : 0xffffff; // ink drawn on top of status fills
-  P.shadow = P.dark ? 0x000000 : P.text;
-  P.shadowAlpha = P.dark ? 0.55 : 0.16;
+  // Neo-brutalist workbench palette: ink outlines, flat accent fills, hard shadows.
+  P.ink = pick('ink', '--ink').c;
+  P.card = pick('card', '--card').c;
+  P.paper = pick('paper', '--paper').c;
+  P.tomato = pick('tomato', '--tomato').c;
+  P.blue = pick('blue', '--blue').c;
+  P.yellow = pick('yellow', '--yellow').c;
+  P.mint = pick('mint', '--mint').c;
+  P.tomatoDeep = 0xd9401f; // hatch lines on a failed part
+  P.mark = P.ink;
+  P.onBlue = P.card;
+  P.shadow = P.ink;
+  P.shadowAlpha = 1;
+  // Flat light fills for each category's header strip: ink text stays above 4.5:1 on every one of them.
+  P.catFill = {
+    clients: 0xe3dccb, edge: 0xbfd0ff, compute: P.mint, data: P.yellow, messaging: 0xf4b6c8,
+    platform: 0xcfc4f5, ops: 0xbdebd3, ai: 0xe0bdf0, external: 0xbfe0f5,
+  };
   return P;
 }
 
@@ -109,4 +124,9 @@ export function statusColor(P, status) {
 
 export function severityColor(P, severity) {
   return severity >= 3 ? P.bad : severity === 2 ? P.hot : P.warn;
+}
+
+// Load bars: blue while it copes, yellow as it gets hot, tomato when it is over.
+export function barColor(P, status, down = false) {
+  return down || status >= 3 ? P.tomato : status >= 1 ? P.yellow : P.blue;
 }

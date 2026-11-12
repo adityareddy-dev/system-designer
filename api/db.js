@@ -9,7 +9,10 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL,
   avatar TEXT,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  email TEXT,
+  survey_optin INTEGER NOT NULL DEFAULT 0,
+  survey_optin_at INTEGER
 );
 CREATE TABLE IF NOT EXISTS identities (
   provider TEXT NOT NULL,
@@ -61,14 +64,21 @@ export function openDb(file) {
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000; PRAGMA synchronous = NORMAL; PRAGMA secure_delete = ON;');
   db.exec(SCHEMA);
+  // Databases made before these columns existed gain them here, keeping every row.
+  const userCols = new Set(db.prepare('PRAGMA table_info(users)').all().map((r) => r.name));
+  if (!userCols.has('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
+  if (!userCols.has('survey_optin')) db.exec('ALTER TABLE users ADD COLUMN survey_optin INTEGER NOT NULL DEFAULT 0');
+  if (!userCols.has('survey_optin_at')) db.exec('ALTER TABLE users ADD COLUMN survey_optin_at INTEGER');
   db.exec('PRAGMA user_version = 1;');
 
   const q = (sql) => db.prepare(sql);
   const st = {
     identity: q('SELECT user_id AS userId FROM identities WHERE provider = ? AND subject = ?'),
     addIdentity: q('INSERT INTO identities (provider, subject, user_id, created_at) VALUES (?, ?, ?, ?)'),
-    addUser: q('INSERT INTO users (name, avatar, created_at) VALUES (?, ?, ?)'),
-    user: q('SELECT id, name, avatar, created_at AS createdAt FROM users WHERE id = ?'),
+    addUser: q('INSERT INTO users (name, avatar, created_at, email, survey_optin, survey_optin_at) VALUES (?, ?, ?, ?, ?, ?)'),
+    user: q('SELECT id, name, avatar, created_at AS createdAt, email, survey_optin AS surveyOptIn, survey_optin_at AS surveyOptInAt FROM users WHERE id = ?'),
+    setEmail: q('UPDATE users SET email = ? WHERE id = ?'),
+    setSurvey: q('UPDATE users SET survey_optin = ?, survey_optin_at = ? WHERE id = ?'),
     providers: q('SELECT provider FROM identities WHERE user_id = ? ORDER BY created_at, provider'),
     setAvatar: q('UPDATE users SET avatar = ? WHERE id = ?'),
     setName: q('UPDATE users SET name = ? WHERE id = ?'),
@@ -93,6 +103,8 @@ export function openDb(file) {
     count: q('SELECT COUNT(*) AS n FROM scores WHERE board = ?'),
   };
 
+  function setSurvey(id, on, now) { st.setSurvey.run(on ? 1 : 0, on ? now : null, id); }
+
   function tx(fn) {
     db.exec('BEGIN IMMEDIATE');
     try { const r = fn(); db.exec('COMMIT'); return r; } catch (e) { db.exec('ROLLBACK'); throw e; }
@@ -105,16 +117,23 @@ export function openDb(file) {
     tx,
 
     // Finds the user behind a provider identity, links it to `currentUserId` when given, or creates a new user.
-    signIn({ provider, subject, name, avatar, currentUserId = null }, now) {
+    signIn({ provider, subject, name, avatar, email = '', surveyOptIn = null, currentUserId = null }, now) {
+      // An empty email leaves the stored one alone. A missing choice leaves the stored choice alone.
+      const keep = (id) => {
+        if (email) st.setEmail.run(email, id);
+        if (surveyOptIn === true || surveyOptIn === false) setSurvey(id, surveyOptIn, now);
+      };
       return tx(() => {
         const found = st.identity.get(provider, subject);
         if (found) {
           if (avatar !== undefined) st.setAvatar.run(avatar, found.userId);
+          keep(found.userId);
           return { userId: Number(found.userId), created: false };
         }
         if (currentUserId && st.user.get(currentUserId)) {
           st.addIdentity.run(provider, subject, currentUserId, now);
           if (avatar) st.setAvatar.run(avatar, currentUserId);
+          keep(currentUserId);
           return { userId: Number(currentUserId), created: false, linked: true };
         }
         // Display names are unique, ignoring case: a taken name gets a short number so nobody can pass for a top player.
@@ -124,7 +143,7 @@ export function openDb(file) {
           unique = Array.from(name).slice(0, 24 - tag.length).join('').trim() + tag;
           if (n > 50) break;
         }
-        const r = st.addUser.run(unique, avatar || null, now);
+        const r = st.addUser.run(unique, avatar || null, now, email || null, surveyOptIn === true ? 1 : 0, surveyOptIn === true ? now : null);
         const userId = Number(r.lastInsertRowid);
         st.addIdentity.run(provider, subject, userId, now);
         return { userId, created: true };
@@ -133,10 +152,14 @@ export function openDb(file) {
     user(id) {
       const u = st.user.get(id);
       if (!u) return null;
-      return { id: Number(u.id), name: u.name, avatar: u.avatar || null, createdAt: Number(u.createdAt), providers: st.providers.all(id).map((r) => r.provider) };
+      return { id: Number(u.id), name: u.name, avatar: u.avatar || null, createdAt: Number(u.createdAt), providers: st.providers.all(id).map((r) => r.provider),
+        email: u.email || null, surveyOptIn: !!u.surveyOptIn, surveyOptInAt: u.surveyOptInAt == null ? null : Number(u.surveyOptInAt) };
     },
     nameTaken: (name, exceptId = 0) => !!st.nameTaken.get(name, exceptId),
     setName: (id, name) => st.setName.run(name, id),
+    setEmail: (id, email) => st.setEmail.run(email || null, id),
+    // Turning on records the time, turning off clears it.
+    setSurveyOptIn: (id, on, now) => setSurvey(id, !!on, now),
     deleteUser: (id) => st.deleteUser.run(id),
     report: (reporter, target, reason, now) => st.addReport.run(reporter, target, reason, now),
 
