@@ -1,7 +1,6 @@
 /* Layout helpers loaded after the shell styles. The look itself (cards, outlines, shadows) is in assets/neo.css. */
 
 /* ---------- practice: a dense list of cards ---------- */
-.sh-workload-art { display: none; }
 .sh-industry-art { max-height: 150px; object-fit: contain; }
 .sh-industry-art svg { max-height: 150px; }
 

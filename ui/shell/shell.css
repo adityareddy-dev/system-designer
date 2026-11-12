@@ -272,8 +272,6 @@
 .sh-group-head .sh-h2 { color: var(--text); }
 .sh-group-head p { font-size: 13px; }
 .sh-prob { gap: 8px; padding: 18px; }
-.sh-workload-art {display:block;overflow:hidden;border-radius:8px;background:var(--canvas);margin-bottom:6px}
-.sh-workload-art svg {display:block;width:100%;height:150px;object-fit:contain}
 .sh-prob-top { display: flex; justify-content: space-between; align-items: center; }
 .sh-prob-state { font-size: 12px; font-weight: 600; color: var(--text-3); display: inline-flex; align-items: center; gap: 3px; }
 .sh-prob-state.is-ok { color: var(--ok); }
