@@ -1,5 +1,5 @@
 // The readable pages share the game's top bar. This file makes it behave like the game's bar: the sound switch, and the
-// same account button and menu (it loads the game's own account code, so there is one copy). Without an account service
+// same account menu for a signed-in player (it loads the game's own account code, so there is one copy). Without an account service
 // (forks, local copies) the plain Sign in link stays and nothing is loaded.
 (function () {
   var SITE = 'https://systemdesigner.io', API = 'https://api.systemdesigner.io';
@@ -91,13 +91,19 @@
           new MutationObserver(fix).observe(host, { childList: true, subtree: true });
           var account = m[4].createAccount({ bus: bus, store: store, progress: m[2].createProgress(store, bus) });
           return account.ready.then(function () {
-            if (!account.state().available) return;
+            // a signed-out visitor keeps the Sign in link exactly as it is (it opens the sign-in panel on the front page);
+            // only a signed-in player gets the avatar and the account menu
+            if (!account.state().available || !account.state().user) return;
             return Promise.all([css(u('ui/shell/shell.css')), css(u('account/account.css')), css(u('assets/neo.css')), css(u('assets/header.css'))]).then(function () {
               var slot = document.createElement('div');
               slot.className = 'sh-account';
               link.parentNode.replaceChild(slot, link);
               bus.on('account', function (st) { if (tab) tab.hidden = !st.user; });
+              // the account button keeps the class the plain avatar had
+              var tag = function () { var b = slot.querySelector('.ac-me-btn'); if (b) b.classList.add('sd-me'); };
+              new MutationObserver(tag).observe(slot, { childList: true });
               account.mountHeader(slot);
+              tag();
               if (tab) tab.hidden = !account.state().user;
             });
           });
