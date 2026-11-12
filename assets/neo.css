@@ -335,15 +335,16 @@
 .ac-card-title { font-size: 26px; letter-spacing: -.02em; }
 .ac-card-lead { font-size: 16px; color: var(--text-2); }
 .ac-pop.ac-pop--modal { width: min(500px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
-.ac-gate { max-width: min(2400px, 100%); width: 100%; padding-inline: var(--gutter, clamp(16px, 4vw, 120px)); }
-@media (min-width: 901px) { .ac-gate { grid-template-columns: minmax(0, 1.1fr) minmax(380px, 520px); } }
+/* r2-signin: one centred composition, text and card side by side, centred in the first screen at every width */
+.ac-gate { max-width: 1240px; width: 100%; margin-inline: auto; padding-inline: clamp(16px, 4vw, 48px); min-height: calc(100dvh - var(--sh-bar-h, 56px)); align-content: center; }
+@media (min-width: 901px) { .ac-gate { grid-template-columns: minmax(0, 1fr) minmax(380px, 500px); column-gap: clamp(32px, 5vw, 80px); } }
 .ac-gate-target { border: var(--line); border-radius: var(--radius-1); background: var(--card); box-shadow: 3px 3px 0 var(--ink); }
 .ac-gate-target-kind { color: var(--ink); font-weight: 700; }
 .ac-gate-side .ac-card { box-shadow: var(--hard-lg); }
 .ac-gate-lead, .ac-gate-points, .ac-gate-alt { color: var(--text-2); }
 .ac-gate-alt { font-size: 16px; }
-@media (min-width: 2200px) and (min-height: 1250px) { .ac-gate { zoom: 1.35; } }
-@media (min-width: 2200px) and (min-height: 1600px) { .ac-gate { zoom: 1.7; } }
+@media (min-width: 2200px) and (min-height: 1250px) { .ac-gate { zoom: 1.35; min-height: calc((100dvh - var(--sh-bar-h, 56px)) / 1.35); } }
+@media (min-width: 2200px) and (min-height: 1600px) { .ac-gate { zoom: 1.7; min-height: calc((100dvh - var(--sh-bar-h, 56px)) / 1.7); } }
 @media (max-width: 720px) {
   .ac-pop.ac-pop--modal { top: auto; bottom: 0; left: 0; right: 0; transform: none; width: 100%; max-height: 90dvh; border-radius: 14px 14px 0 0; border-bottom: 0; box-shadow: 0 -6px 0 var(--ink); }
   .ac-card { padding: 22px 18px 18px; }

@@ -329,7 +329,13 @@ export function createAccountUi(ctx, api) {
           onclick: () => (popKind === 'menu' ? closePop(true) : openPop('menu', profileMenu)) }, avatarEl(st.user, 30));
       } else {
         trigger = h('button', { type: 'button', class: 'ac-signin-btn', 'aria-haspopup': 'dialog', 'aria-expanded': 'false',
-          onclick: () => (popKind === 'signin' ? closePop(true) : openPop('signin', signInPanel)) },
+          onclick: () => {
+            // on the sign-in page the card is already there: move focus to it instead of stacking a dialog on top
+            const inline = document.querySelector('.ac-gate-side .ac-card');
+            const first = inline?.querySelector('input, button, a[href]');
+            if (first) { inline.scrollIntoView({ block: 'center' }); first.focus(); return; }
+            popKind === 'signin' ? closePop(true) : openPop('signin', signInPanel);
+          } },
           h('span', { class: 'ac-signin-label', text: 'Sign in' }));
       }
       slot.append(trigger);
