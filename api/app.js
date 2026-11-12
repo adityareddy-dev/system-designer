@@ -180,7 +180,9 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
 
     'GET /probe': async ({ res }) => {
       res.removeHeader('X-Frame-Options');
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': probeCsp, 'Content-Length': Buffer.byteLength(probeHtml) });
+      // no-transform: a proxy in front of the service (Cloudflare) must not add its own script here. The policy above
+      // would block it, and every game page would log a console error.
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': probeCsp, 'Cache-Control': 'no-store, no-transform', 'Content-Length': Buffer.byteLength(probeHtml) });
       res.end(probeHtml);
     },
 

@@ -59,6 +59,8 @@ test('/probe is a framable page for the site only, posting the public settings',
   assert.equal(r.status, 200);
   assert.ok(r.headers.get('content-type').startsWith('text/html'));
   assert.equal(r.headers.get('x-frame-options'), null);
+  // A proxy in front of the service must not add scripts to this page: its policy allows only the one pinned script.
+  assert.equal(r.headers.get('cache-control'), 'no-store, no-transform');
   const csp = r.headers.get('content-security-policy');
   assert.ok(csp.endsWith('frame-ancestors https://systemdesigner.io http://localhost:8765 http://127.0.0.1:8765'), csp);
   const html = (await fetch(app.base + '/probe').then((x) => x.text()));
