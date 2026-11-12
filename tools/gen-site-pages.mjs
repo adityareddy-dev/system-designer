@@ -8,9 +8,10 @@ import { lessons, lessonById } from '../content/lessons/index.js';
 import { createCatalog } from '../sim/catalog.js';
 import { dailyFor } from '../compete/daily.js';
 import { API_LIVE } from '../account/config.js';
-import { SITE, navigation, esc, para, link, relative, json, page, bodyShell, breadcrumb, textOf, themeHead } from './site-template.mjs';
+import { SITE, REPO, navigation, esc, para, link, relative, json, page, bodyShell, breadcrumb, textOf, themeHead } from './site-template.mjs';
 import { problemBody, lessonBody, problemCards, listLinks } from './site-content.mjs';
 import { makeGuides } from './site-guides.mjs';
+import { ARROW, heroHtml } from '../ui/shell/hero-markup.js';
 
 const MANIFEST = 'tools/site-pages-manifest.json';
 const HOME_HEAD = /  <!-- site:head:start -->[\s\S]*?<!-- site:head:end -->\n?/;
@@ -112,7 +113,7 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
   const homeOpts = {
     title:'Build the system. Survive the day. See why it held.',description:`A free browser game for learning system design. Practise ${problems.length} problems across ${groups.length} industries, study ${lessons.length} lessons and see how your architecture handles spikes, outages and retries.`,
     crumbs:[rootCrumb],action:action('index.html','intro','Build your first system'),
-    body:`<div class="site-prose"><section><h2>Learn by making a design work</h2>${para('Clarify the brief, estimate the scale and connect the parts. Fast-forward through a traffic day, then use the plain-words debrief to compare reliability, speed, data safety and monthly cost. Playing on this site needs a free Google or GitHub account. Rather run it yourself? The code is open source (MIT) and runs with no account.')}<p>${link('problems/','Browse the practice problems')}, ${link('learn/','read the lessons')} or ${link('guides/','follow a guide')} before you play.</p></section><section><h2>Start here</h2>${listLinks([['learn/intro/','Your first system'],['p/url-shortener/','URL shortener practice'],['guides/how-to-practise-system-design/','How to practise system design'],['guides/two-week-system-design-plan/','A two-week interview plan']])}</section><section><h2>Common questions</h2>${faqs.map(([q,a])=>`<h3>${esc(q)}</h3>${para(a)}`).join('')}</section></div>`
+    body:`<section><h2>Learn by making a design work</h2>${para('Clarify the brief, estimate the scale and connect the parts. Fast-forward through a traffic day, then use the plain-words debrief to compare reliability, speed, data safety and monthly cost. Playing on this site needs a free Google or GitHub account. Rather run it yourself? The code is open source (MIT) and runs with no account.')}<p>${link('problems/','Browse the practice problems')}, ${link('learn/','read the lessons')} or ${link('guides/','follow a guide')} before you play.</p></section><section><h2>Start here</h2>${listLinks([['learn/intro/','Your first system'],['p/url-shortener/','URL shortener practice'],['guides/how-to-practise-system-design/','How to practise system design'],['guides/two-week-system-design-plan/','A two-week interview plan']])}</section><section><h2>Common questions</h2>${faqs.map(([q,a])=>`<h3>${esc(q)}</h3>${para(a)}`).join('')}</section>`
   };
   const homeData = {'@context':'https://schema.org','@graph':[
     {'@type':'WebApplication','@id':SITE+'#app',name:'System Designer',url:SITE,description:homeOpts.description,applicationCategory:'EducationalApplication',operatingSystem:'Any modern browser',browserRequirements:'JavaScript is required to play; lessons and guides can be read without it.',isAccessibleForFree:true,offers:{'@type':'Offer',price:'0',priceCurrency:'USD'}},
@@ -123,7 +124,11 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
   const earlyTheme = html => html.replace(/<!-- theme:start -->[\s\S]*?<!-- theme:end -->|<script src="assets\/theme.js"><\/script>/, () => themeHead);
   let home = earlyTheme(read('index.html'));
   home = HOME_HEAD.test(home) ? home.replace(HOME_HEAD,()=>headBlock) : home.replace('  <meta name="theme-color"',headBlock+'  <meta name="theme-color"');
-  const homeBlock = `<!-- site:body:start -->\n<div id="app"><div class="site">${bodyShell('index.html',homeOpts)}</div></div>\n  <div id="overlay"></div>\n  <noscript><p class="site site-note">JavaScript is needed to play. Read the <a href="problems/">problems</a>, <a href="learn/">lessons</a> and <a href="guides/">guides</a> without it.</p></noscript>\n<!-- site:body:end -->`;
+  // The first screen is the game's own hero (same markup as ui/shell/home.js), inside the same frame the game draws, so the game
+  // takes over without a change. The readable page (description, links, questions) follows it for readers without scripts and for search.
+  const hero = heroHtml({ ctaHtml: `<a class="sh-btn sh-btn--primary sh-btn--lg" href="./#/signin">Sign in to play, free${ARROW}</a>`, note: 'Playing here needs a free Google or GitHub account.', gated: true, moving: true });
+  const readable = `<div class="site site-below"><div class="site-prose"><p class="site-lead">${esc(homeOpts.description)}</p>${homeOpts.body}</div><footer class="site-footer"><p>System Designer · Free system design practice in your browser. Open source under the MIT License.</p><nav aria-label="Footer">${link('problems/','All problems')} ${link('learn/','All lessons')} ${link('guides/','Guides')} ${link('privacy.html','Privacy')} ${link(REPO,'Source on GitHub')}</nav></footer></div>`;
+  const homeBlock = `<!-- site:body:start -->\n<div id="app"><div class="sh-shell" data-immersive="0" data-nav="0">${navigation('index.html').replace('<script src="assets/header.js"></script>','<script src="assets/header.js" defer></script>')}<main id="content" class="sh-main" tabindex="-1"><div class="sh-view sh-view--still"><div class="sh-page sh-home-page">${hero}${readable}</div></div></main></div></div>\n  <div id="overlay"></div>\n  <noscript><p class="site site-note">JavaScript is needed to play. Read the <a href="problems/">problems</a>, <a href="learn/">lessons</a> and <a href="guides/">guides</a> without it.</p></noscript>\n<!-- site:body:end -->`;
   home = HOME_BODY.test(home) ? home.replace(HOME_BODY,()=>homeBlock) : home.replace(/  <div id="app">[\s\S]*?<\/noscript>/,()=>homeBlock);
   add('index.html',home);
   let privacy = earlyTheme(read('privacy.html'));

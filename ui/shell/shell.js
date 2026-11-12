@@ -24,8 +24,9 @@ function parseHash(s) {
 
 export function mountShell(rootEl, ctx) {
   const { bus, router, settings } = ctx;
-  clear(rootEl);
-  const overlayEl = document.getElementById('overlay') || rootEl.appendChild(h('div', { id: 'overlay' }));
+  // The page arrives with its first screen already drawn (the readable front page). It stays until the game's own first view is
+  // ready, then the game's frame takes its place in one step, so the screen is never empty in between.
+  const overlayEl = document.getElementById('overlay') || h('div', { id: 'overlay' });
   setOverlayHost(overlayEl);
 
   // Chrome
@@ -42,7 +43,8 @@ export function mountShell(rootEl, ctx) {
   };
   const brand = h('a', { class: 'sh-brand', href: '#/', 'aria-label': 'System Designer home' }, h('span', { class: 'sh-brand-mark', html: LOGO }), h('span', { class: 'sh-brand-name', text: 'System Designer' }));
   // Optional account button; stays empty and hidden when sign-in is not available.
-  const accountSlot = h('div', { class: 'sh-account', hidden: true });
+  // On the hosted site the Sign in button is on the page before the game starts: it stays until the account code takes the slot over.
+  const accountSlot = ctx.gate?.required ? h('div', { class: 'sh-account' }, h('a', { class: 'sd-signin', href: '#/signin' }, 'Sign in')) : h('div', { class: 'sh-account', hidden: true });
   const bar = h('header', { class: 'sh-topbar' }, brand, h('div', { class: 'sh-actions' }, accountSlot, soundBtn, settingsLink));
   const attachAccount = () => { try { ctx.account?.mountHeader?.(accountSlot); } catch { /* the game works without accounts */ }
     if (ctx.account) { try { ctx.bus?.emit('account:attached'); } catch { /* ignore */ } }
@@ -54,7 +56,16 @@ export function mountShell(rootEl, ctx) {
   // The intro is full screen but keeps the section bar on phones, so there is always a way out.
   const setImmersive = (on) => { shell.dataset.immersive = on ? '1' : '0'; overlayEl.dataset.immersive = on ? '1' : '0'; shell.dataset.nav = on && view && view.nav ? '1' : '0'; };
   main.addEventListener('sh:immersive', () => setImmersive(view && view.immersive));
-  rootEl.append(shell);
+  let attached = false;
+  function attach() {
+    if (attached) return;
+    attached = true;
+    // the moving dashes carry on from where they were, so the swap does not restart them
+    const old = [...rootEl.querySelectorAll('.sh-flow')].map((el) => el.getAnimations?.()[0]?.currentTime);
+    rootEl.replaceChildren(shell);
+    if (!overlayEl.isConnected) rootEl.append(overlayEl);
+    if (old.some((t) => t != null)) shell.querySelectorAll('.sh-flow').forEach((el, i) => { const a = el.getAnimations?.()[0]; if (a && old[i] != null) a.currentTime = old[i]; });
+  }
 
   function refreshButtons() {
     document.documentElement.dataset.contrast = settings.get('highContrast') ? 'high' : 'normal';
@@ -175,9 +186,11 @@ export function mountShell(rootEl, ctx) {
         nav.querySelectorAll('.sh-tab').forEach(a => {
           if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
         });
-        const page = h('div', { class: 'sh-view' + (document.documentElement.dataset.transitioning ? ' sh-view--native' : '') }); main.append(page);
+        // the first view has nothing to slide in from: on the front page it must look exactly like the page that was already there
+        const page = h('div', { class: 'sh-view' + (document.documentElement.dataset.transitioning ? ' sh-view--native' : '') + (!previous && !r.parts.length ? ' sh-view--still' : '') }); main.append(page);
         try { view = error || !spec ? (page.append(notFound(error ? 'This page could not load. Check your connection and try again.' : undefined)), {}) : spec.make(mod, page, r) || {}; }
         catch (err) { metrics.reportError(err, 'shell.js'); console.error(err); page.append(notFound('Something went wrong drawing this page.')); view = {}; }
+        attach();
         finish(opts);
       }, { reduced: !previous || ctx.reducedMotion(), direction: returning || depth(previous) > depth(key) ? 'back' : 'forward' });
     })();

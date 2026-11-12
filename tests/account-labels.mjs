@@ -18,6 +18,19 @@ class Element {
   get firstChild() { return this.children[0]; }
   removeChild(c) { this.children = this.children.filter((x) => x !== c); }
   focus() {}
+  // the real home hero is written as HTML text: this stand-in turns each class in it into a child element
+  set innerHTML(html) {
+    const section = Object.assign(new Element(), { tag: 'section' });
+    let into = section;
+    for (const m of String(html).matchAll(/class="([^"]+)"/g)) {
+      const el = Object.assign(new Element(), { className: m[1] });
+      into.append(el);
+      if (m[1] === 'sh-bench') into = el; // the bench holds the elements written after it
+    }
+    this.children = [section];
+    section.parent = this;
+  }
+  get firstElementChild() { return this.children[0]; }
   getBoundingClientRect() { return { bottom: 50, right: 100 }; }
   all() { return [this, ...this.children.flatMap((c) => c instanceof Element ? c.all() : [])]; }
   querySelectorAll(selector) {
