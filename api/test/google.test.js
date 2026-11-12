@@ -226,7 +226,7 @@ test('POST /auth/google signs in with a valid token and refuses a bad one', asyn
     assert.equal((await again.req('POST', '/auth/google', { body: { credential: stolen } })).status, 401);
     assert.deepEqual(ok.json.user.providers, ['google']);
     assert.equal(ok.json.user.email, null, 'this token had no email');
-    assert.equal(ok.json.user.surveyOptIn, false);
+    assert.equal(ok.json.user.surveyOptIn, true);
     assert.equal(ok.json.user.name, 'Ada', 'first name only on leaderboards');
     assert.equal(ok.json.user.avatar, 'https://lh3.googleusercontent.com/a/x');
     assert.ok(c.jar.has('sd_session'));
@@ -239,7 +239,7 @@ test('POST /auth/google signs in with a valid token and refuses a bad one', asyn
   } finally { await app.close(); }
 });
 
-test('POST /auth/google stores the email, updates it on a later sign-in and takes the survey choice from the body', async () => {
+test('POST /auth/google stores the email, updates it on a later sign-in and ignores the old survey field', async () => {
   const { startApp, client } = await import('./helpers.js');
   const app = await startApp({ env: { GOOGLE_CLIENT_ID: CLIENT, AUTH_FAKE: '0' }, google: createGoogleVerifier({ clientId: CLIENT, fetchImpl: jwksFetch([[K1.jwk]]), now: () => NOW }) });
   try {
@@ -250,7 +250,7 @@ test('POST /auth/google stores the email, updates it on a later sign-in and take
       assert.equal(r.status, 200);
       return r;
     };
-    const first = await signIn({ email: 'Ada@Example.com' }, { surveyOptIn: true });
+    const first = await signIn({ email: 'Ada@Example.com' }, { surveyOptIn: false });
     assert.equal(first.json.user.email, 'ada@example.com');
     assert.equal(first.json.user.surveyOptIn, true);
     const row = () => app.db.raw.prepare('SELECT email, survey_optin AS s, survey_optin_at AS at FROM users').get();
@@ -261,10 +261,10 @@ test('POST /auth/google stores the email, updates it on a later sign-in and take
     assert.equal(second.json.user.surveyOptIn, true);
     // a new address replaces the old one
     assert.equal((await signIn({ email: 'new@example.com' })).json.user.email, 'new@example.com');
-    // an explicit false turns it off and clears the date; a non-boolean is no choice
-    assert.equal((await signIn({}, { surveyOptIn: 'no' })).json.user.surveyOptIn, true);
-    const off = await signIn({}, { surveyOptIn: false });
-    assert.equal(off.json.user.surveyOptIn, false);
+    // the old field never changes the choice, only the account setting does
+    assert.equal((await signIn({}, { surveyOptIn: false })).json.user.surveyOptIn, true);
+    app.db.setSurveyOptIn(1, false, NOW);
+    assert.equal((await signIn({}, { surveyOptIn: true })).json.user.surveyOptIn, false);
     assert.equal(row().at, null);
     assert.equal(app.db.raw.prepare('SELECT COUNT(*) AS n FROM users').get().n, 1);
   } finally { await app.close(); }

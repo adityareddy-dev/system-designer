@@ -141,10 +141,6 @@ export function createAccountUi(ctx, api) {
     const st = api.state();
     const done = () => { try { onDone?.(); } catch { /* ignore */ } };
     const err = h('p', { class: 'ac-err', role: 'status', 'aria-live': 'polite' });
-    // Survey emails are a separate, unticked choice. It travels with the sign-in and is saved with the account.
-    const surveyId = 'ac-survey-' + Math.random().toString(36).slice(2, 7);
-    const survey = h('input', { type: 'checkbox', class: 'ac-check', id: surveyId });
-    const optin = h('label', { class: 'ac-optin', for: surveyId }, survey, h('span', { text: 'Email me short surveys and product updates' }));
     const list = h('div', { class: 'ac-providers' });
     const preview = !!st.providers.preview;
     const googleBtn = (label, onclick) => h('button', { type: 'button', class: 'ac-provider ac-provider--google', onclick }, h('span', { class: 'ac-provider-ico', html: GOOGLE }), h('span', { class: 'ac-provider-label', text: label }));
@@ -153,7 +149,7 @@ export function createAccountUi(ctx, api) {
       const pick = async (e, which) => {
         const b = e.currentTarget;
         b.disabled = true;
-        try { await api.signInPreview(which, survey.checked); done(); } catch { err.textContent = 'The preview sign-in failed.'; b.disabled = false; }
+        try { await api.signInPreview(which); done(); } catch { err.textContent = 'The preview sign-in failed.'; b.disabled = false; }
       };
       list.append(googleBtn('Continue with Google', (e) => pick(e, 'google')));
       list.append(h('button', { type: 'button', class: 'ac-provider ac-provider--github', onclick: (e) => pick(e, 'github') }, h('span', { class: 'ac-provider-ico', html: GITHUB }), h('span', { class: 'ac-provider-label', text: 'Continue with GitHub' })));
@@ -178,7 +174,7 @@ export function createAccountUi(ctx, api) {
               callback: async (resp) => {
                 err.textContent = '';
                 nonce = null;
-                try { await api.signInWithGoogle(resp?.credential, survey.checked); done(); } catch { if (err.isConnected) err.textContent = 'Google sign-in did not go through. Try again, or use GitHub.'; }
+                try { await api.signInWithGoogle(resp?.credential); done(); } catch { if (err.isConnected) err.textContent = 'Google sign-in did not go through. Try again, or use GitHub.'; }
               },
             });
             gisFor = clientId + '|' + n;
@@ -193,15 +189,14 @@ export function createAccountUi(ctx, api) {
         });
       }
       if (st.providers.github) {
-        const gh = h('a', { class: 'ac-provider ac-provider--github', href: api.githubUrl(false) }, h('span', { class: 'ac-provider-ico', html: GITHUB }), h('span', { class: 'ac-provider-label', text: 'Continue with GitHub' }));
-        survey.addEventListener('change', () => gh.setAttribute('href', api.githubUrl(survey.checked)));
+        const gh = h('a', { class: 'ac-provider ac-provider--github', href: api.githubUrl() }, h('span', { class: 'ac-provider-ico', html: GITHUB }), h('span', { class: 'ac-provider-label', text: 'Continue with GitHub' }));
         list.append(gh);
       }
       if (st.providers.fake) {
         list.append(h('button', { type: 'button', class: 'ac-provider ac-provider--test', onclick: async (e) => {
           const b = e.currentTarget;
           b.disabled = true;
-          try { await api.signInFake('tester', 'Test player', survey.checked); done(); } catch { err.textContent = 'The test sign-in failed.'; b.disabled = false; }
+          try { await api.signInFake('tester', 'Test player'); done(); } catch { err.textContent = 'The test sign-in failed.'; b.disabled = false; }
         } }, h('span', { class: 'ac-provider-ico', html: KEY }), h('span', { class: 'ac-provider-label', text: 'Continue as a test player' })));
       }
     }
@@ -211,10 +206,9 @@ export function createAccountUi(ctx, api) {
         showClose ? h('button', { type: 'button', class: 'ac-x', 'aria-label': 'Close', onclick: () => closePop(true) }, ico('ui.close', 18)) : null),
       h('h2', { class: 'ac-card-title', id: headingId, text: heading }),
       h('p', { class: 'ac-card-lead', text: lead }),
-      optin, list, err,
-      h('div', { class: 'ac-stored' }, h('strong', { text: 'What we store' }), h('p', { class: 'ac-fine ac-fine--store' }, 'We store your email address with your account, along with a display name, your avatar link, your progress and your scores. We use the email to reach you about your account, and for surveys and product updates only if you tick the box. Nothing is sold and there are no ads. You can delete it all at any time. ',
-        h('a', { href: 'privacy.html', class: 'ac-link' }, 'Privacy'))),
-      preview ? h('p', { class: 'ac-fine ac-preview-note', text: 'Preview of the hosted site. This sign-in is a stand-in and stores nothing on a server.' }) : null);
+      list, err,
+      h('p', { class: 'ac-fine ac-agree' }, 'By continuing you agree to the ', h('a', { href: 'privacy.html', class: 'ac-link' }, 'Privacy policy'), '.'),
+      preview ? h('p', { class: 'ac-fine ac-preview-note', text: 'Preview of the hosted site. This sign-in is a stand-in.' }) : null);
   }
 
   function signInPanel() {
@@ -237,7 +231,7 @@ export function createAccountUi(ctx, api) {
     return h('div', { class: 'ac-email' },
       h('p', { class: 'ac-label', text: 'Email on your account' }),
       h('p', { class: 'ac-email-addr', text: u?.email || 'None. Your sign-in did not give us a verified address.' }),
-      h('label', { class: 'ac-optin', for: id }, box, h('span', { text: 'Email me short surveys and product updates' })),
+      h('label', { class: 'ac-optin', for: id }, box, h('span', { text: 'Email me surveys and product updates' })),
       msg);
   }
 

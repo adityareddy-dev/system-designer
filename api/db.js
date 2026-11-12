@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   avatar TEXT,
   created_at INTEGER NOT NULL,
   email TEXT,
-  survey_optin INTEGER NOT NULL DEFAULT 0,
+  survey_optin INTEGER NOT NULL DEFAULT 1,
   survey_optin_at INTEGER
 );
 CREATE TABLE IF NOT EXISTS identities (
@@ -117,12 +117,9 @@ export function openDb(file) {
     tx,
 
     // Finds the user behind a provider identity, links it to `currentUserId` when given, or creates a new user.
-    signIn({ provider, subject, name, avatar, email = '', surveyOptIn = null, currentUserId = null }, now) {
-      // An empty email leaves the stored one alone. A missing choice leaves the stored choice alone.
-      const keep = (id) => {
-        if (email) st.setEmail.run(email, id);
-        if (surveyOptIn === true || surveyOptIn === false) setSurvey(id, surveyOptIn, now);
-      };
+    signIn({ provider, subject, name, avatar, email = '', currentUserId = null }, now) {
+      // An empty email leaves the stored one alone. Signing in never changes the survey choice of an existing account.
+      const keep = (id) => { if (email) st.setEmail.run(email, id); };
       return tx(() => {
         const found = st.identity.get(provider, subject);
         if (found) {
@@ -143,7 +140,7 @@ export function openDb(file) {
           unique = Array.from(name).slice(0, 24 - tag.length).join('').trim() + tag;
           if (n > 50) break;
         }
-        const r = st.addUser.run(unique, avatar || null, now, email || null, surveyOptIn === true ? 1 : 0, surveyOptIn === true ? now : null);
+        const r = st.addUser.run(unique, avatar || null, now, email || null, 1, now);
         const userId = Number(r.lastInsertRowid);
         st.addIdentity.run(provider, subject, userId, now);
         return { userId, created: true };
