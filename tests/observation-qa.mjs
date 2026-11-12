@@ -88,6 +88,7 @@ try {
       await page.select(`[name=${key}]`, value); await page.select(`[name=${key}]`, '');
     }
     await page.type('.sh-feedback textarea', 'General feedback');
+    await page.$eval('[name=quote]', el => el.scrollIntoView({ block: 'center' }));
     await page.click('[name=quote]');
     assert.ok(await page.$eval('.sh-feedback-more', (el, text) => el.textContent.includes(text), CONSENT_TEXT));
     assert.match(await page.$eval('.sh-feedback', el => el.textContent), /We'll keep your comment/);

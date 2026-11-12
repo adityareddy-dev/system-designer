@@ -6,14 +6,14 @@ export const hash = key => { let h = 2166136261; for (const c of String(key)) h 
 export const text = (x,y,label,cls='') => `<text x="${x}" y="${y}" class="${cls}">${esc(label)}</text>`;
 export const line = (x,y,x2,y2,cls='') => `<path d="M${x} ${y}L${x2} ${y2}" class="fg-wire ${cls}"/>`;
 const shorten=(value,n)=>String(value).length>n?String(value).slice(0,n-1)+'…':String(value);
-export const box = (x,y,w,h,label,sub='',cls='') => `<g class="fg-box ${cls}" aria-label="${esc(label+' '+sub)}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5"/>${text(x+10,y+24,shorten(label,Math.floor((w-20)/9.5)))}${sub ? text(x+10,y+46,shorten(sub,Math.floor((w-20)/8)),'fg-small') : ''}</g>`;
-export const dot = (id,x,y,label='',cls='') => `<g data-key="${esc(id)}" data-x="${x}" data-y="${y}" class="fg-mark ${cls}"><circle cx="${x}" cy="${y}" r="5"/></g>${label ? text(x+9,y+5,label,'fg-small') : ''}`;
+export const box = (x,y,w,h,label,sub='',cls='') => `<g class="fg-box ${cls}" aria-label="${esc(label+' '+sub)}"><rect class="fg-sh" x="${x+4}" y="${y+4}" width="${w}" height="${h}" rx="5"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5"/>${text(x+10,y+24,shorten(label,Math.floor((w-20)/9.5)))}${sub ? text(x+10,y+46,shorten(sub,Math.floor((w-20)/8)),'fg-small') : ''}</g>`;
+export const dot = (id,x,y,label='',cls='') => `<g data-key="${esc(id)}" data-x="${x}" data-y="${y}" class="fg-mark ${cls}"><circle cx="${x}" cy="${y}" r="6"/></g>${label ? text(x+9,y+5,label,'fg-small') : ''}`;
 export const packet = (id,x,y,fromX,fromY,label='',cls='') => dot(id,x,y,label,cls).replace('data-key=',`data-packet="true" data-from-x="${fromX}" data-from-y="${fromY}" data-key=`);
 // Each transient key names one operation; retained marks may move between states.
 export const transient = (...args) => packet(...args).replace('data-packet=', 'data-transient="true" data-packet=');
 // A stored copy keeps its own identity. Updating another copy never moves this one.
 export const stored = (id,version,x,y,fromX=x,fromY=y) => packet(id+':'+version,x,y,fromX,fromY);
-export const bars = (items,max=Math.max(1,...items.map(x=>x[1]))) => items.map(([label,value,cls=''],i) => {const y=28+i*37,x=130+Math.max(0,value)/max*155;return text(12,y,label,'fg-small')+`<rect class="fg-bar ${cls}" x="130" y="${y-15}" width="${Math.max(0,value)/max*155}" height="20" rx="2"/>`+dot('bar:'+label,x,y-5,'',cls)+text(295,y,value,'fg-small');}).join('');
+export const bars = (items,max=Math.max(1,...items.map(x=>x[1]))) => items.map(([label,value,cls=''],i) => {const y=28+i*37,x=130+Math.max(0,value)/max*155;return text(12,y,label,'fg-small')+`<rect class="fg-bar ${cls}" x="130" y="${y-15}" width="${Math.max(0,value)/max*155}" height="20" rx="0"/>`+dot('bar:'+label,x,y-5,'',cls)+text(295,y,value,'fg-small');}).join('');
 export const lanes = items => items.map(([label,value,cls=''],i) => box(12,12+i*70,336,60,label,value,cls)).join('');
 export const range = (id,label,min,max,value,step=1) => ({id,label,type:'range',min,max,value,step});
 export const select = (id,label,options) => ({id,label,type:'select',options});
@@ -56,7 +56,7 @@ export function mount(host, ctx, step, model) {
       const frames=el.dataset.viaX&&!moved?
         [{transform:`translate(${dx}px, ${dy}px)`},{transform:`translate(${via-x}px, ${dy}px)`,offset:.2},{transform:`translate(${via-x}px, 0px)`,offset:.8},{transform:'translate(0px, 0px)'}]:
         [{transform:`translate(${dx}px, ${dy}px)`},{transform:'translate(0px, 0px)'}];
-      if(dx||dy) animations.push(el.animate(frames,{duration:1000,easing:'cubic-bezier(.25,.6,.35,1)',fill:'both'}));
+      if(dx||dy) animations.push(el.animate(frames,{duration:1000,easing:'linear',fill:'both'}));
     }
     syncMotion();
   }

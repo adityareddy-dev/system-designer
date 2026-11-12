@@ -8,7 +8,7 @@ import { lessons, lessonById } from '../content/lessons/index.js';
 import { createCatalog } from '../sim/catalog.js';
 import { dailyFor } from '../compete/daily.js';
 import { API_LIVE } from '../account/config.js';
-import { SITE, esc, para, link, relative, json, page, bodyShell, breadcrumb, textOf, themeHead } from './site-template.mjs';
+import { SITE, navigation, esc, para, link, relative, json, page, bodyShell, breadcrumb, textOf, themeHead } from './site-template.mjs';
 import { problemBody, lessonBody, problemCards, listLinks } from './site-content.mjs';
 import { makeGuides } from './site-guides.mjs';
 
@@ -18,7 +18,7 @@ const HOME_BODY = /<!-- site:body:start -->[\s\S]*?<!-- site:body:end -->/;
 const faqs = [
   ['What is System Designer?','A free browser game for learning system design. Build an architecture, run a simulated traffic day of spikes and outages, and see how it handles reliability, speed, data safety and cost.'],
   ['Who is it for?','Backend engineers, students and interview candidates who want to understand how systems behave. Beginners can start with the guided first system; experienced engineers can try harder constraints.'],
-  ['Is it free?','Yes. The lessons, practice problems, daily challenge and sandbox are free.'],
+  ['Is it free?','Yes. The lessons, practice problems and sandbox are free.'],
   ['Does it need an account?','On systemdesigner.io, yes: a free account with Google or GitHub is needed to play. Reading the problems, lessons and guides needs no account. The code is open source (MIT), so you can also run your own copy with no account at all.'],
   ['Does it help with interviews?','It helps you practise clarification, estimates, architecture, failures and trade-offs. Interview mode on Medium and Hard problems adds a timed discussion and evidence-based defenses.'],
   ['How is it different from reading a book?','You make a prediction and watch your own design face traffic and failures. A debrief gives measurements for a retry. Books can explain the ideas; playing makes you apply and test them.'],
@@ -130,10 +130,11 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
   let privacy = earlyTheme(read('privacy.html'));
   const privacyBlock = `<!-- site:privacy:start --><link rel="canonical" href="${SITE}privacy.html"><script type="application/ld+json">${json({'@context':'https://schema.org',...breadcrumb([rootCrumb,['Privacy','privacy.html']])})}</script><!-- site:privacy:end -->`;
   privacy = /<!-- site:privacy:start -->/.test(privacy) ? privacy.replace(/<!-- site:privacy:start -->[\s\S]*?<!-- site:privacy:end -->/,()=>privacyBlock) : privacy.replace('</head>',privacyBlock+'\n</head>');
+  privacy = privacy.replace(/<!-- site:header:start -->[\s\S]*?<!-- site:header:end -->/,()=>`<!-- site:header:start -->\n  ${navigation('privacy.html')}\n  <!-- site:header:end -->`);
   add('privacy.html',privacy);
   outputs.set('404.html', earlyTheme(read('404.html')));
-  outputs.set('assets/site.css',read('assets/palette.css')+'\n'+read('tools/site-styles.css'));
-  const publicFiles = Object.keys(manifest).sort();
+  outputs.set('assets/site.css',read('assets/palette.css')+'\n'+read('assets/header.css')+'\n'+read('tools/site-styles.css'));
+  const publicFiles = Object.keys(manifest).filter(f=>!f.startsWith('d/')).sort();
   outputs.set('sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${publicFiles.map(f=>`  <url><loc>${SITE+f.replace(/index\.html$/,'')}</loc><lastmod>${manifest[f].lastmod}</lastmod></url>`).join('\n')}\n</urlset>\n`);
   const crawlers = ['*','GPTBot','OAI-SearchBot','ChatGPT-User','ClaudeBot','Claude-SearchBot','Claude-User','PerplexityBot','Perplexity-User','Google-Extended','Googlebot','bingbot','Applebot-Extended','Amazonbot','cohere-ai'];
   outputs.set('robots.txt',`# Public reading pages and game assets are open to crawlers.\n${crawlers.map(c=>`User-agent: ${c}\nAllow: /\n`).join('\n')}\nSitemap: ${SITE}sitemap.xml\n`);

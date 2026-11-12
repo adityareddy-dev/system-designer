@@ -130,25 +130,27 @@ export function createAccount(ctx) {
       const r = await call('POST', '/auth/google/nonce', {});
       return typeof r?.nonce === 'string' ? r.nonce : null;
     },
-    async signInWithGoogle(credential) {
-      const r = await call('POST', '/auth/google', { credential });
+    async signInWithGoogle(credential, surveyOptIn) {
+      const r = await call('POST', '/auth/google', typeof surveyOptIn === 'boolean' ? { credential, surveyOptIn } : { credential });
       await signedIn(r.user);
       return r.user;
     },
-    githubUrl() {
+    githubUrl(surveyOptIn) {
       const path = location.hash.split('?')[0];
       const ret = RETURN_RE.test(path) ? path : '#/';
-      return `${base}/auth/github/start?${new URLSearchParams({ return: ret, origin: location.origin })}`;
+      const q = { return: ret, origin: location.origin };
+      if (typeof surveyOptIn === 'boolean') q.survey = surveyOptIn ? '1' : '0';
+      return `${base}/auth/github/start?${new URLSearchParams(q)}`;
     },
     isPreview: () => preview,
-    async signInPreview(provider) {
-      const user = { name: 'Preview player', avatar: null, providers: [provider === 'github' ? 'github' : 'google'] };
+    async signInPreview(provider, surveyOptIn = false) {
+      const user = { name: 'Preview player', avatar: null, providers: [provider === 'github' ? 'github' : 'google'], email: 'player@example.com', surveyOptIn: !!surveyOptIn };
       try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(user)); } catch { /* keep going */ }
       await signedIn(user);
       return user;
     },
-    async signInFake(id = 'tester', name = 'Test player') {
-      const r = await call('POST', '/auth/fake', { id, name });
+    async signInFake(id = 'tester', name = 'Test player', surveyOptIn) {
+      const r = await call('POST', '/auth/fake', typeof surveyOptIn === 'boolean' ? { id, name, surveyOptIn } : { id, name });
       await signedIn(r.user);
       return r.user;
     },
@@ -173,6 +175,15 @@ export function createAccount(ctx) {
     },
     async rename(name) {
       const r = preview ? { user: { ...S.user, name } } : await call('PATCH', '/me', { name });
+      S.user = r.user;
+      if (preview) { try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(S.user)); } catch { /* ignore */ } }
+      emit();
+      return r.user;
+    },
+    // The player turns survey and product update emails on or off. Saved at once.
+    async setSurveyOptIn(on) {
+      const surveyOptIn = !!on;
+      const r = preview ? { user: { ...S.user, surveyOptIn } } : await call('PATCH', '/me', { surveyOptIn });
       S.user = r.user;
       if (preview) { try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(S.user)); } catch { /* ignore */ } }
       emit();
@@ -264,6 +275,7 @@ export function createAccount(ctx) {
   api.mountHeader = ui.mountHeader;
   api.leaderboardCard = ui.leaderboardCard;
   api.signInCard = ui.signInCard;
+  api.emailBlock = ui.emailBlock;
   api.openSignIn = ui.open;
 
   // Is the service there? A hidden frame loads its /probe page, which posts the public settings back. A frame that cannot

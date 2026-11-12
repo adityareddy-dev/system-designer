@@ -56,6 +56,16 @@ test('a valid token gives the subject, name and picture', async () => {
   assert.equal(r.sub, '1100223344556677');
   assert.equal(r.givenName, 'Ada');
   assert.equal(r.picture, 'https://lh3.googleusercontent.com/a/x');
+  assert.equal(r.email, '');
+});
+
+test('the verified email is returned trimmed and lowercased, and a bad one is empty', async () => {
+  const { v } = verifier();
+  assert.equal((await v.verify(token({ email: '  Ada.Lovelace@Example.COM ' }))).email, 'ada.lovelace@example.com');
+  for (const email of ['not an email', 'a@b', 'a b@c.de', 42, null, ['a@b.co'], 'x'.repeat(250) + '@b.co']) {
+    assert.equal((await v.verify(token({ email }))).email, '', JSON.stringify(email));
+  }
+  await rejects(v.verify(token({ email: 'a@b.co', email_verified: false })), 'email-not-verified');
 });
 
 test('the issuer without https is also accepted', async () => {
@@ -215,6 +225,8 @@ test('POST /auth/google signs in with a valid token and refuses a bad one', asyn
     again.jar.set('sd_g_nonce', cookieValue);
     assert.equal((await again.req('POST', '/auth/google', { body: { credential: stolen } })).status, 401);
     assert.deepEqual(ok.json.user.providers, ['google']);
+    assert.equal(ok.json.user.email, null, 'this token had no email');
+    assert.equal(ok.json.user.surveyOptIn, false);
     assert.equal(ok.json.user.name, 'Ada', 'first name only on leaderboards');
     assert.equal(ok.json.user.avatar, 'https://lh3.googleusercontent.com/a/x');
     assert.ok(c.jar.has('sd_session'));
@@ -223,6 +235,37 @@ test('POST /auth/google signs in with a valid token and refuses a bad one', asyn
     const bad = await other.req('POST', '/auth/google', { body: { credential: token({ aud: 'someone-else', nonce: n2.json.nonce }) } });
     assert.equal(bad.status, 401);
     assert.equal(bad.json.error, 'bad-token');
+    assert.equal(app.db.raw.prepare('SELECT COUNT(*) AS n FROM users').get().n, 1);
+  } finally { await app.close(); }
+});
+
+test('POST /auth/google stores the email, updates it on a later sign-in and takes the survey choice from the body', async () => {
+  const { startApp, client } = await import('./helpers.js');
+  const app = await startApp({ env: { GOOGLE_CLIENT_ID: CLIENT, AUTH_FAKE: '0' }, google: createGoogleVerifier({ clientId: CLIENT, fetchImpl: jwksFetch([[K1.jwk]]), now: () => NOW }) });
+  try {
+    const signIn = async (claims, body = {}) => {
+      const c = client(app.base);
+      const n = await c.req('POST', '/auth/google/nonce', { body: {} });
+      const r = await c.req('POST', '/auth/google', { body: { credential: token({ nonce: n.json.nonce, ...claims }), ...body } });
+      assert.equal(r.status, 200);
+      return r;
+    };
+    const first = await signIn({ email: 'Ada@Example.com' }, { surveyOptIn: true });
+    assert.equal(first.json.user.email, 'ada@example.com');
+    assert.equal(first.json.user.surveyOptIn, true);
+    const row = () => app.db.raw.prepare('SELECT email, survey_optin AS s, survey_optin_at AS at FROM users').get();
+    assert.deepEqual({ ...row() }, { email: 'ada@example.com', s: 1, at: NOW });
+    // no choice and no email: both stay
+    const second = await signIn({});
+    assert.equal(second.json.user.email, 'ada@example.com');
+    assert.equal(second.json.user.surveyOptIn, true);
+    // a new address replaces the old one
+    assert.equal((await signIn({ email: 'new@example.com' })).json.user.email, 'new@example.com');
+    // an explicit false turns it off and clears the date; a non-boolean is no choice
+    assert.equal((await signIn({}, { surveyOptIn: 'no' })).json.user.surveyOptIn, true);
+    const off = await signIn({}, { surveyOptIn: false });
+    assert.equal(off.json.user.surveyOptIn, false);
+    assert.equal(row().at, null);
     assert.equal(app.db.raw.prepare('SELECT COUNT(*) AS n FROM users').get().n, 1);
   } finally { await app.close(); }
 });

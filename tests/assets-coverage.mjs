@@ -51,7 +51,7 @@ for (const f of fs.readdirSync(path.join(app, 'content/lessons')).filter((x) => 
 const svg = icon('el.cache', { size: 24, title: 'Cache' });
 const ok1 = svg.startsWith('<svg') && svg.includes('<title>Cache</title>') && iconInner('el.cache').startsWith('<g ');
 const pal = ['light', 'dark'].map(getPalette);
-const ok2 = pal.every((p) => typeof p.hex.canvas === 'number' && Object.keys(p.hex.cat).length === 9 && Object.keys(p.hex.req).length === 8) && pal[0].hex.bg !== pal[1].hex.bg;
+const ok2 = pal.every((p) => typeof p.hex.canvas === 'number' && Object.keys(p.hex.cat).length === 9 && Object.keys(p.hex.req).length === 8);
 
 const out = {
   icons: ICON_IDS.length,

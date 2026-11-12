@@ -1,4 +1,4 @@
-// Pooled request particles: one shape per request type, emitted per edge from flow rates, moving at constant screen speed.
+// Pooled request particles: one flat shape per request type with an ink outline, emitted per edge from flow rates, moving at constant screen speed. No trails or glow.
 
 import { lutAt } from './geom.js';
 import { P_SHAPE } from './textures.js';
@@ -83,7 +83,7 @@ export function createParticles(PIXI, parent, env) {
     const x = tmp.x - tmp.ty * lane[i], y = tmp.y + tmp.tx * lane[i];
     if (hasPC) { p.x = x; p.y = y; p.scaleX = p.scaleY = scale; }
     else { p.position.set(x, y); p.scale.set(scale); }
-    p.alpha = alpha * (v.quiet ? .2 : 1);
+    p.alpha = alpha;
   }
 
   return {
@@ -155,17 +155,17 @@ export function createParticles(PIXI, parent, env) {
           if (k >= 1) { kill(i); continue; }
           if (running) s[i] = Math.max(0, s[i] - step * 0.55 * (1 - k));
           seg[i] = 0;
-          place(i, v, base * (1 - 0.3 * k), 1 - k);
+          place(i, v, base * (1 - k), 1);
         } else if (ph === SHRINK) {
           tph[i] += dt;
           const k = tph[i] / 120;
           if (k >= 1) { kill(i); continue; }
-          place(i, v, base * (1 - k), 1 - 0.3 * k);
+          place(i, v, base * (1 - k), 1);
         } else {
           tph[i] += dt;
           const k = tph[i] / 260;
           if (k >= 1) { kill(i); continue; }
-          place(i, v, base * (1 + 0.5 * k), 1 - k);
+          place(i, v, base * (1 - k), 1);
           const p = pool[i];
           const j = (Math.random() - 0.5) * 2;
           if (hasPC) { p.x += j; p.y -= k * 6; } else { p.position.x += j; p.position.y -= k * 6; }

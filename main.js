@@ -15,7 +15,6 @@ import { accountRequired } from './account/config.js';
 
 const root = document.documentElement;
 const media = (q) => { try { return globalThis.matchMedia ? matchMedia(q) : null; } catch { return null; } };
-const darkQuery = media('(prefers-color-scheme: dark)');
 const motionQuery = media('(prefers-reduced-motion: reduce)');
 
 // Runtime errors are kept for window.__game.getState().errors.
@@ -49,10 +48,8 @@ async function boot() {
   const [catalog, content] = await Promise.all([loadCatalog(), loadContent()]);
   const { problemById } = content;
 
-  const theme = () => {
-    const t = settings.get('theme');
-    return t === 'light' || t === 'dark' ? t : darkQuery?.matches ? 'dark' : 'light';
-  };
+  // One theme: the cream workbench.
+  const theme = () => 'light';
   const reducedMotion = () => {
     const m = settings.get('reducedMotion');
     return m === 'reduce' ? true : m === 'full' ? false : !!motionQuery?.matches;
@@ -89,7 +86,7 @@ async function boot() {
     root.dataset.motion = reducedMotion() ? 'reduce' : 'full';
     root.dataset.contrast = settings.get('highContrast') ? 'high' : 'normal';
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', t === 'dark' ? '#0A0E18' : '#EDF2F9');
+    if (meta) meta.setAttribute('content', '#FFF4E0');
     if (t !== shownTheme) { shownTheme = t; bus.emit('theme', { theme: t }); }
   }
   function applySound() {
@@ -105,7 +102,6 @@ async function boot() {
     if (key === 'theme' || key === 'reducedMotion' || key === 'highContrast') applyLook();
     if (key === 'soundMaster' || key === 'soundMuted' || key === 'ambient') applySound();
   });
-  darkQuery?.addEventListener?.('change', applyLook);
   motionQuery?.addEventListener?.('change', () => { applyLook(); bus.emit('settings', { key: 'reducedMotion', value: settings.get('reducedMotion') }); });
 
   // The readable home page uses a content anchor before the game takes over.

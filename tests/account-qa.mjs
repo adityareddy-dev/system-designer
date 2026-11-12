@@ -170,9 +170,22 @@ try {
   const panel = await p1.evaluate(() => ({ text: document.querySelector('.ac-pop')?.innerText || '', gis: !!document.querySelector('.ac-gis'), github: [...document.querySelectorAll('.ac-provider')].some((a) => /GitHub/.test(a.textContent)), test: [...document.querySelectorAll('.ac-provider')].some((a) => /test player/.test(a.textContent)), privacy: !!document.querySelector('.ac-pop a[href="privacy.html"]') }));
   check('panel hides Google and GitHub when they are not set up, shows the test provider', !panel.gis && !panel.github && panel.test && panel.privacy, panel);
   await shot(p1, '03-sign-in-panel');
+  // the panel says plainly that the email is stored, and the survey box starts unticked
+  check('sign-in panel says the email address is stored and the survey box starts unticked', /store your email address/i.test(panel.text) && /surveys and product updates/i.test(panel.text) && (await p1.evaluate(() => document.querySelector('.ac-pop .ac-check')?.checked === false)), panel.text.slice(0, 200));
+  await p1.evaluate(() => document.querySelector('.ac-pop .ac-check').click());
   await p1.evaluate(() => [...document.querySelectorAll('.ac-provider')].find((b) => /test player/.test(b.textContent)).click());
   await p1.waitForSelector('.ac-me-btn', { visible: true, timeout: 8000 }).catch(() => {});
   check('fake-provider sign-in shows the profile button', await visible(p1, '.ac-me-btn'));
+  const me1 = await api(p1, 'GET', '/me');
+  check('the survey choice made at sign-in is saved with the account', me1.json?.user?.surveyOptIn === true, me1.json);
+  // the account menu shows the email state and lets the player turn surveys off
+  await p1.click('.ac-me-btn');
+  await p1.waitForSelector('.ac-pop .ac-email .ac-check', { visible: true, timeout: 4000 }).catch(() => {});
+  await p1.evaluate(() => document.querySelector('.ac-pop .ac-email .ac-check').click());
+  await sleep(800);
+  const meOff = await api(p1, 'GET', '/me');
+  check('turning surveys off in the account menu is saved', meOff.json?.user?.surveyOptIn === false, meOff.json);
+  await p1.keyboard.press('Escape');
   await sleep(1500);
   const srv1 = await api(p1, 'GET', '/progress');
   check('local progress uploaded on sign-in', srv1.status === 200 && srv1.json?.progress?.problems?.['url-shortener']?.solvedAt > 0, srv1.json?.progress?.problems);
@@ -335,7 +348,7 @@ try {
   await p5.click('.ac-signin-btn');
   await sleep(400);
   const popBox = await p5.evaluate(() => { const r = document.querySelector('.ac-pop')?.getBoundingClientRect(); return r ? { left: Math.round(r.left), right: Math.round(r.right), width: innerWidth } : null; });
-  check('phone: no horizontal scroll and the panel fits with a 16 px gutter', !overflow && popBox && popBox.left >= 16 && popBox.right <= popBox.width - 16, { overflow, popBox });
+  check('phone: no horizontal scroll and the sign-in sheet fits the screen', !overflow && popBox && popBox.left >= 0 && popBox.right <= popBox.width, { overflow, popBox });
   await shot(p5, '10-phone-sign-in');
   await ctx5.close();
 

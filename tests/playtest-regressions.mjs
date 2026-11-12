@@ -96,10 +96,8 @@ try {
     assert(view.screen.every(n => n.x >= view.free.l && n.x <= view.free.w - view.free.r && n.y >= view.free.t && n.y <= view.free.h - view.free.b), `${fit} Fit frames the complete wide phone diagram`);
   }
   await page.evaluate(() => { location.hash = '#/settings'; });
-  await page.waitForSelector('[role="radiogroup"][aria-label="Theme"]');
-  await page.click('#sh-theme-btn');
-  const theme = await page.evaluate(() => ({ active: document.querySelector('[aria-label="Theme"] [aria-checked="true"]').dataset.value, header: document.querySelector('#sh-theme-btn').title }));
-  assert.equal(theme.header, `Theme: ${theme.active}`);
+  await page.waitForSelector('.sh-settings-card');
+  assert.equal(await page.$('#sh-theme-btn'), null, 'the site has one theme and no theme button');
   assert.deepEqual(errors, []);
-  console.log('Measured lesson goals, headroom, TTL, visible hints and synchronized theme passed.');
+  console.log('Measured lesson goals, headroom, TTL and visible hints passed.');
 } finally { await browser.close(); await site.close(); }

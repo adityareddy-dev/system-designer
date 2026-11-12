@@ -2,7 +2,7 @@
  "version": 1,
  "updated": "2026-11-02",
  "viewBox": "0 0 24 24",
- "style": "stroke currentColor 1.75, round caps and joins, duotone fill currentColor at .18, no text, own artwork",
+ "style": "stroke currentColor 2.25, square caps and mitre joins, duotone fill currentColor at .18, no text, own artwork",
  "total": 239,
  "counts": {
   "element": 99,

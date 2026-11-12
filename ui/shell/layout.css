@@ -1,93 +1,7 @@
-/* Wide screens, the front page and shared polish. Loaded last.
-   Tiers: 1700px (1080p and up), 2300px (27 inch 4K at 150%, ultrawide), 3000px (4K at 100%, ultrawide). */
+/* Layout helpers loaded after the shell styles. The look itself (cards, outlines, shadows) is in assets/neo.css. */
 
-/* ---------- front page, first screen ---------- */
-.sh-hero-facts { display: grid; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; max-width: 52ch; font-size: 15px; color: var(--text-2); }
-.sh-hero-facts li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; }
-.sh-hero-facts .sh-ico { color: var(--ok); margin-top: 3px; }
-.sh-hero-facts b { color: var(--text); }
-.sh-hero-facts a { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
-.sh-home-page .sh-fine { max-width: 52ch; }
-.sh-home-page .sh-cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
-.sh-home-page .sh-cta-row > .sh-btn--primary { flex: 0 0 auto; }
-
-/* ---------- shared: the sections and lists use the width ---------- */
-@media (min-width: 1700px) {
-  .sh-page { max-width: 1560px; }
-  .sh-home-page { max-width: 1680px; }
-  .sh-home-page .sh-display { font-size: clamp(64px, 4.6vw, 84px); max-width: 11ch; }
-  .sh-home-page .sh-lead { font-size: 20px; max-width: 48ch; }
-  .sh-home-page .sh-hero { grid-template-columns: 1fr 1.25fr; gap: 72px; }
-  .sh-chapter .sh-lesson-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 40px; }
-  .sh-practice-page .sh-group { grid-template-columns: minmax(300px, .6fr) 2fr; }
-  .sh-practice-page .sh-group:nth-child(even) { grid-template-columns: minmax(300px, .6fr) 2fr; }
-  .sh-practice-page .sh-group:nth-child(even) .sh-group-head { grid-column: 1; }
-  .sh-practice-page .sh-group:nth-child(even) .sh-prob-grid { grid-column: 2; }
-  .sh-lesson-page { max-width: 1280px; }
-  .sh-lp-text { font-size: 19px; max-width: 68ch; }
-}
-@media (min-width: 2300px) {
-  .sh-page { max-width: 2080px; }
-  .sh-home-page { max-width: 2240px; }
-  .sh-home-page .sh-display { font-size: 96px; letter-spacing: -3.4px; }
-  .sh-home-page .sh-lead { font-size: 22px; }
-  .sh-hero-facts { font-size: 17px; }
-  .sh-home-page .sh-hero-art > svg { min-height: 400px; }
-  .sh-home-page .sh-section-title { font-size: 32px; }
-  .sh-home-page .sh-section-text { font-size: 16px; }
-  .sh-chapter .sh-lesson-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .sh-practice-page .sh-group { grid-template-columns: minmax(320px, .5fr) 2.4fr; }
-  .sh-lesson-page { max-width: 1560px; }
-  .sh-lp-text { font-size: 21px; }
-  .sh-lp-title .sh-h1 { font-size: 40px; }
-  /* the workbench: wider side panels and a roomier brief */
-  .pl-left { width: 332px; }
-  .pl-right { width: 400px; }
-  .pl-issues { left: 356px; width: 400px; }
-  .pl-hints { right: 424px; width: 400px; }
-  .pl-panel { width: min(860px, calc(100% - 24px)); }
-  .pl-panel { font-size: 17px; }
-}
-@media (min-width: 3000px) {
-  .sh-page { max-width: 2640px; }
-  .sh-home-page { max-width: 2800px; }
-  .sh-chapter .sh-lesson-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .sh-lesson-page { max-width: 1900px; }
-}
-/* a 4K screen at 100%: scale the reading pages up so type is as large as on a 1440p screen (pages with a canvas are left alone) */
-@media (min-width: 3000px) and (min-height: 1800px) {
-  .sh-home-page, .sh-learn-page, .sh-practice-page, .ac-gate { zoom: 1.4; }
-  .sh-home-page, .sh-learn-page, .sh-practice-page { max-width: 2400px; }
-  .ac-pop.ac-pop--modal { width: 560px; }
-  .ac-card { font-size: 18px; }
-  .ac-card-title { font-size: 28px; }
-  .ac-provider { min-height: 56px; font-size: 18px; }
-  .ac-fine { font-size: 15px; }
-  .sh-topbar { zoom: 1.25; }
-  .pl-left { width: 400px; }
-  .pl-right { width: 480px; }
-  .pl-panel { width: min(1000px, calc(100% - 24px)); font-size: 20px; }
-  .pl-toolbar, .pl-inspector, .pl-hud { font-size: 17px; }
-}
-
-/* ---------- hero art: plain labels, no decorative captions ---------- */
-.sh-hero-art::before, .sh-hero-art::after { content: none; display: none; }
-.sh-hero-art { padding: 0; }
-.sh-hero-try { margin: 14px 0 8px; font-weight: 600; color: var(--text); font-size: 15px; }
-.sh-hero-art .sh-hero-controls .sh-btn { min-height: 44px; font-size: 15px; }
-.sh-hero-art small { display: block; margin-top: 8px; font-size: 13px; color: var(--text-2); }
-.sh-hero-evidence { font-size: 16px; line-height: 1.5; }
-.sh-eyebrow, .sh-kicker { font-family: var(--font-ui); font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-
-/* ---------- practice: a dense list, no repeated picture on every card ---------- */
+/* ---------- practice: a dense list of cards ---------- */
 .sh-workload-art { display: none; }
-.sh-practice-page .sh-group .sh-prob-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 28px; }
-.sh-practice-page .sh-prob, .sh-practice-page .sh-group .sh-prob-grid > li:first-child .sh-prob, .sh-practice-page .sh-group .sh-prob-grid > li:nth-child(2) .sh-prob { border-top: 1px solid var(--border); padding: 16px 0; }
-.sh-practice-page .sh-prob-title { font-size: 19px; }
-.sh-practice-page .sh-prob-like { font-size: 15px; color: var(--text-2); }
-.sh-practice-page .sh-tag { font-size: 13px; }
-.sh-practice-page .sh-prob-foot { font-size: 14px; }
-.sh-practice-page .sh-prob:hover .sh-prob-title { color: var(--accent); }
 .sh-industry-art { max-height: 150px; object-fit: contain; }
 .sh-industry-art svg { max-height: 150px; }
 
@@ -96,21 +10,8 @@
 .sh-section-stat { font-size: 13px; color: var(--text-2); }
 .sh-muted, .sh-fine { color: var(--text-2); }
 
-/* ---------- phone: the first screen has the main action ---------- */
-@media (max-width: 719px) {
-  .sh-home-page .sh-cta-row { order: 4; }
-  .sh-home-page .sh-hero-facts { order: 5; font-size: 14px; }
-  .sh-home-page .sh-fine { order: 6; }
-  .sh-home-page .sh-hero-art { order: 7; }
-  .sh-home-page .sh-hero-copy .sh-cta-row .sh-btn { flex: 1 1 100%; min-height: 48px; }
-  .sh-home-page .sh-hero-copy .sh-cta-row .sh-btn:not(.sh-btn--primary) { flex: 1 1 calc(50% - 6px); }
-  .sh-home-page .sh-display { font-size: 40px; max-width: 14ch; }
-  .sh-home-page .sh-lead { font-size: 16px; margin: 4px 0 8px; }
-  .sh-home-page .sh-hero { padding-top: 8px; }
-}
-
 /* ---------- problem page: no duplicate brief, readable side panel ---------- */
-.pl-root:has(.pl-panel) .pl-req-like, .pl-root:has(.pl-panel) .pl-req-brief { display: none; }
+.pl-root:has(.pl-panel:not([hidden])) .pl-req-like, .pl-root:has(.pl-panel:not([hidden])) .pl-req-brief { display: none; }
 .pl-brief-more { margin: 0 0 12px; }
 .pl-brief-more summary { cursor: pointer; min-height: 32px; font-weight: 600; font-size: 14px; color: var(--accent); }
 .pl-brief-more p { margin: 6px 0 0; font-size: 14px; }
@@ -119,12 +20,7 @@
 .pl-req-brief { font-size: 14px; }
 .pl-req-row, .pl-facts, .pl-cost-row { font-size: 13.5px; }
 
-/* ---------- dark theme: a firm primary button (white on #4560DB is 5.3:1) ---------- */
-:root[data-theme="dark"] .sh-btn--primary, :root[data-theme="dark"] .sh-btn--primary:hover,
-:root[data-theme="dark"] .pl-btn--primary, :root[data-theme="dark"] .ac-btn--primary, :root[data-theme="dark"] .ac-btn--primary:hover,
-:root[data-theme="dark"] .site-nav-cta { background: #4560DB; border-color: #4560DB; color: #fff; }
-:root[data-theme="dark"] .sh-btn--primary:hover, :root[data-theme="dark"] .pl-btn--primary:hover, :root[data-theme="dark"] .ac-btn--primary:hover { background: #5470E6; border-color: #5470E6; }
 .pl-req .pl-muted { color: var(--text-2); font-size: 13.5px; }
-.pl-root:has(.pl-panel) .pl-req-body > p.pl-muted:not(:last-child) { display: none; }
-/* while the brief or the numbers are open, the empty canvas behind them stays quiet */
-.pl-root:has(.pl-panel) .pl-stage { opacity: 0.18; transition: opacity var(--dur-3) var(--ease-out); }
+.pl-root:has(.pl-panel:not([hidden])) .pl-req-body > p.pl-muted:not(:last-child) { display: none; }
+/* while the brief or the numbers are open, the canvas behind them is not shown at all: no ghost parts show through, no dimming */
+.pl-root:has(.pl-panel:not([hidden])) .pl-stage { visibility: hidden; }

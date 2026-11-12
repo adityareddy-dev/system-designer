@@ -10,7 +10,7 @@ Read `DESIGN.md` for the game itself and `catalog/*.json` for every element, req
 
 1. **Static files only.** No build step, no bundler, no npm in the app, no TypeScript. Plain modern JavaScript ES modules (`<script type="module">`), relative imports with the `.js` extension. Must run from GitHub Pages under a sub-path (never assume the site root; build URLs with `new URL(path, import.meta.url)`).
 2. **PixiJS v8** is loaded once by `index.html` as a classic script from `https://cdn.jsdelivr.net/npm/pixi.js@8.6.6/dist/pixi.min.js` and used through `globalThis.PIXI`. Only `render/` (and `compete/card.js` for its thumbnail, through the scene's snapshot) touches PIXI.
-3. **Fonts** (Atkinson Hyperlegible 400/700 and IBM Plex Mono 400) are self-hosted WOFF2 files under `assets/fonts/`, with their OFL licenses and `font-display: swap`. Their combined initial transfer stays below 120 KB. `index.html` links `assets/fonts.css` once. No other external requests, except the optional sign-in in `account/` (section 15): its service, and Google's sign-in script loaded only when the sign-in panel opens.
+3. **Fonts** (Space Grotesk, one variable file for 400 to 700, and Space Mono 400 and 700) are self-hosted WOFF2 files under `assets/fonts/`, with their OFL licenses and `font-display: swap`. Their combined initial transfer stays below 120 KB. `index.html` links `assets/fonts.css` once. No other external requests, except the optional sign-in in `account/` (section 15): its service, and Google's sign-in script loaded only when the sign-in panel opens.
 4. **Work only in your own files** (section 1). Never edit another builder's file, including to "fix" it. Never edit `catalog/*.json` after Phase 0; request changes from the integrator.
 5. **No globals.** The only globals are `window.__game` and `window.__perf`, created by `main.js`.
 6. **Storage**: only through `ctx.store` (section 3), which wraps `localStorage` in try/catch. The game must work with storage blocked.
@@ -41,7 +41,7 @@ app/
     store.js                    integrator
     router.js                   integrator
   assets/
-    tokens.css                  assets       all CSS tokens (light, dark), base .hp-* components, reset
+    tokens.css                  assets       all CSS tokens (one light theme), base .hp-* components, reset
     palette.js                  assets       same tokens as numbers for PixiJS
     shapes.js                   assets       request particle shapes and node silhouettes
     sound.js                    assets       Web Audio synth
@@ -110,7 +110,7 @@ Bus event names (fixed):
 |---|---|---|
 | `route` | `{ path, parts, query }` | router |
 | `settings` | `{ key, value }` | settings |
-| `theme` | `{ theme: 'light' \| 'dark' }` | main.js |
+| `theme` | `{ theme: 'light' }` | main.js |
 | `toast` | `{ text, level: 'info' \| 'ok' \| 'warn' \| 'bad', ms? }` | anyone; shell renders |
 | `play:loaded` | `{ mode, problemId \| null, lessonId \| null }` | play |
 | `play:graph` | `{ graph }` (after any build change) | play |
@@ -157,7 +157,7 @@ ctx = {
   progress,                // ui/shell/progress.js createProgress(store, bus)
   audio,                   // assets/sound.js createAudio()
   compete,                 // compete/index.js createCompete(ctx)
-  theme(),                 // 'light' | 'dark' (resolved from settings and system)
+  theme(),                 // always 'light' (the site has one theme)
   reducedMotion(),         // boolean (resolved)
   palette(),               // assets/palette.js getPalette(theme())
 }
@@ -195,7 +195,7 @@ Field meanings are in each file's `fieldGuide`. Key rules the engine and UI rely
 ## 5. assets/ (Phase 0)
 
 ### 5.1 assets/tokens.css
-All tokens from DESIGN.md 9.1 and 9.4 (colours, category tints, request families, fonts, radii 6/10/14/20 px, shadows, motion durations and easings, z-index scale below), light on `:root`, dark on `:root[data-theme="dark"]` and on `:root:not([data-theme="light"])` inside `@media (prefers-color-scheme: dark)`. `body` gets an explicit background. A minimal reset. Reduced motion: under `[data-motion="reduce"]` all `--dur-*` become `0ms` except fades capped at 120 ms.
+All tokens from DESIGN.md 9.1 and 9.4 (colours, category tints, request families, fonts, radii 6/10/14/20 px, shadows, motion durations and easings, z-index scale below), one light theme on `:root` (cream paper, ink outlines, hard offset shadows; there is no dark theme, and `data-theme` is always `light`). `body` gets an explicit background. A minimal reset. Reduced motion: under `[data-motion="reduce"]` all `--dur-*` become `0ms` except fades capped at 120 ms.
 
 z-index tokens: `--z-canvas: 0`, `--z-hud: 10`, `--z-panel: 20`, `--z-drawer: 30`, `--z-modal: 40`, `--z-toast: 50`.
 

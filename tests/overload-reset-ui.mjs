@@ -31,7 +31,7 @@ try {
   await page.goto((site.base) + '#/sandbox');
   await page.waitForFunction(() => window.__game?.getState().nodes.length === 4);
   await page.evaluate(() => { __game.startTraffic(); __game.pause(); __game.step(60000); });
-  await page.waitForFunction(() => [...window.__resetEdges.values()].some(e => e.quiet && e.g.alpha === .35));
+  await page.waitForFunction(() => [...window.__resetEdges.values()].some(e => e.quiet));
   await page.mouse.move(400,300); await page.mouse.wheel({deltaY:-2000});
   await page.waitForFunction(() => __game.getState().view.zoom > 1.05);
   await page.waitForFunction(() => [...window.__resetNodes.values()].some(v => v.pile.visible));

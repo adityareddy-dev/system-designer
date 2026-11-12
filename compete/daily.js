@@ -51,10 +51,15 @@ function cycleOrder(pool, c) {
 const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 const toMin = (s) => { const [h, m] = String(s).split(':').map(Number); return (h || 0) * 60 + (m || 0); };
 
+// The ids the daily draws from: flagged daily and not skipped as unsolvable.
+export function dailyPool(problems = []) {
+  return problems.filter((p) => p.daily && !DAILY_SAFE[p.id]?.skip).map((p) => p.id).sort();
+}
+
 // problems: the full list; only those flagged daily are drawn.
 export function dailyFor(dateStr = todayLocal(), problems = []) {
   if (!isDateStr(dateStr)) dateStr = todayLocal();
-  const pool = problems.filter((p) => p.daily && !DAILY_SAFE[p.id]?.skip).map((p) => p.id).sort();
+  const pool = dailyPool(problems);
   const seed = 'daily-' + dateStr;
   const dn = dayNumber(dateStr);
   const n = pool.length;
@@ -73,6 +78,27 @@ export function dailyFor(dateStr = todayLocal(), problems = []) {
   const [lo, hi] = safe ? (extraEventId ? safe.extras[extraEventId] : safe.mag) : [0.75, 1.25];
   const magnitude = Math.round(Math.min(hi, Math.max(lo, rawMag)) * 100) / 100;
   return { date: dateStr, seed, problemId, variant: { shiftMin, magnitude, extraEventId, extraAt } };
+}
+
+// Where a date sits in the shuffled cycle. playedMap: { problemId: [daily dates (YYYY-MM-DD) the player played] }.
+// A round is one full pass over the pool. Returns { poolSize, round, positionInRound (1-based), doneInRound,
+// repeats (today's problem was played in an earlier round), lastPlayed (latest such date, or null) }.
+export function poolStatus(dateStr, playedMap = {}, problems = []) {
+  if (!isDateStr(dateStr)) dateStr = todayLocal();
+  const pool = dailyPool(problems);
+  const n = pool.length;
+  if (!n) return { poolSize: 0, round: 0, positionInRound: 0, doneInRound: 0, repeats: false, lastPlayed: null };
+  const dn = dayNumber(dateStr);
+  const round = Math.floor(dn / n);
+  const inPool = new Set(pool);
+  let done = 0;
+  for (const [id, dates] of Object.entries(playedMap || {})) {
+    if (!inPool.has(id)) continue;
+    if ((dates || []).some((d) => isDateStr(d) && Math.floor(dayNumber(d) / n) === round)) done++;
+  }
+  const todayId = cycleOrder(pool, round)[((dn % n) + n) % n];
+  const earlier = ((playedMap || {})[todayId] || []).filter((d) => isDateStr(d) && Math.floor(dayNumber(d) / n) < round).sort();
+  return { poolSize: n, round, positionInRound: ((dn % n) + n) % n + 1, doneInRound: done, repeats: earlier.length > 0, lastPlayed: earlier.length ? earlier[earlier.length - 1] : null };
 }
 
 const MUL = new Set(['factor', 'factorOfPeak', 'addLatencyMs', 'addMs', 'lagSec']);
@@ -135,6 +161,7 @@ export function createDaily(getProblems, catalog) {
     addDays,
     isDateStr,
     dailyFor: (dateStr = todayLocal()) => dailyFor(dateStr, list()),
+    poolStatus: (dateStr = todayLocal(), playedMap = {}) => poolStatus(dateStr, playedMap, list()),
     applyVariant: (problem, variant) => applyVariant(problem, variant, catalog),
     forDate(dateStr = todayLocal()) {
       const d = dailyFor(dateStr, list());

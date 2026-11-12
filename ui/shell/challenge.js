@@ -31,6 +31,44 @@ function variantLines(ctx, v) {
   return out;
 }
 
+// Daily dates the player has played, per problem, from the stored history.
+function playedDailyMap(compete) {
+  const out = {};
+  let rows = [];
+  try { rows = compete.bests.history(200) || []; } catch { /* ignore */ }
+  for (const x of rows) {
+    const seed = x && (x.seed ?? (x.key ? String(x.key).split(':').slice(2).join(':') : ''));
+    const id = x && (x.problemId ?? (x.key ? String(x.key).split(':')[1] : null));
+    if (!id || x.mode !== 'challenge' && !String(x.key || '').startsWith('challenge:')) continue;
+    if (typeof seed !== 'string' || !seed.startsWith('daily-')) continue;
+    const d = seed.slice(6);
+    if (!DATE_RE.test(d)) continue;
+    (out[id] ||= []).includes(d) || out[id].push(d);
+  }
+  return out;
+}
+function shortDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+// Compact card: how much of this round's problem pool the player has played.
+function poolCard(compete, date, isToday) {
+  let st = null;
+  try { st = compete.daily.poolStatus?.(date, playedDailyMap(compete)); } catch { /* ignore */ }
+  if (!st || !st.poolSize) return null;
+  const name = `${st.doneInRound} of ${st.poolSize} problems done in this round`;
+  const twist = 'After a full round, the problems come back with a different twist: events can move earlier or later, hit harder or softer, or a surprise event can be added.';
+  const again = st.repeats
+    ? (st.lastPlayed ? `You played this one on ${shortDate(st.lastPlayed)}. This round it has a different twist.` : 'You played this one before. This round it has a different twist.')
+    : null;
+  return h('section', { class: 'sh-card sh-pool-card', 'aria-label': 'Daily problem rounds' },
+    h('p', null, h('strong', { text: name + '.' }), ' ', isToday ? `Today is problem ${st.positionInRound} of ${st.poolSize} in this round.` : `This day was problem ${st.positionInRound} of ${st.poolSize} in its round.`),
+    h('progress', { max: String(st.poolSize), value: String(st.doneInRound), 'aria-label': name }),
+    again ? h('p', null, again) : null,
+    h('p', { class: 'sh-fine', text: twist }));
+}
+
 function noCompete(host) {
   host.append(h('div', { class: 'sh-page sh-page--narrow sh-empty' }, h('h1', { class: 'sh-h1', text: 'Challenge is not ready' }),
     h('p', { class: 'sh-muted', text: 'The daily challenge could not load. Practice is still available.' }), h('a', { class: 'sh-btn sh-btn--primary', href: '#/practice' }, 'Go to Practice')));
@@ -189,7 +227,7 @@ export function renderChallenge(host, ctx, route0) {
     if (ctx.account?.leaderboardCard) mountBoard();
     else if (ctx.bus?.on) offAttach = ctx.bus.on('account:attached', () => { if (offAttach) { offAttach(); offAttach = null; } mountBoard(); updateService(); });
 
-    append(host, [h('div', { class: 'sh-page sh-challenge-page' }, head, nav, diffRow, hardNudge, quickPlay, h('div', { class: 'sh-two-col' }, scenario, stack))]);
+    append(host, [h('div', { class: 'sh-page sh-challenge-page' }, head, nav, diffRow, poolCard(compete, date, isToday), hardNudge, quickPlay, h('div', { class: 'sh-two-col' }, scenario, stack))]);
   }
 
   draw(route0);

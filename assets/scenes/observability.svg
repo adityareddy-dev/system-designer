@@ -1,15 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#EDF2F9"/><title>p99 spikes past the threshold, the bell rings, rollback points back</title>
-<rect x="16" y="19" width="408" height="154" rx="12" fill="#C5D0E1"/><rect x="16" y="16" width="408" height="154" rx="12" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/>
-<rect x="32" y="32" width="290" height="122" rx="8" fill="#EDF2F9" stroke="#60738D" stroke-width="2"/>
-<line x1="44" y1="104" x2="312" y2="104" stroke="#C5D0E1" stroke-width="2"/><line x1="44" y1="138" x2="312" y2="138" stroke="#C5D0E1" stroke-width="2"/>
-<line x1="38" y1="76" x2="316" y2="76" stroke="#A92733" stroke-width="3" stroke-dasharray="9 6"/>
-<polyline points="40,128 80,122 110,130 150,120 180,125 196,120 222,40 240,118 280,124 312,119" fill="none" stroke="#244ED8" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="210" cy="76" r="8" fill="#A92733" stroke="#F1F5FB" stroke-width="2"/>
-<text x="42" y="58" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="18" fill="#4D607B">p99</text>
-<path d="M356 102C365 96 362 90 362 80C362 64 394 64 394 80C394 90 391 96 400 102Z" fill="#875500" stroke="#1B2B45" stroke-width="2" stroke-linejoin="round"/>
-<circle cx="378" cy="60" r="5" fill="#1B2B45"/><circle cx="378" cy="110" r="6" fill="#1B2B45"/>
-<path d="M344 72Q338 84 344 96M412 72Q418 84 412 96" fill="none" stroke="#875500" stroke-width="3" stroke-linecap="round"/>
-<circle cx="360" cy="140" r="6" fill="#24643F"/><circle cx="378" cy="140" r="6" fill="#C5D0E1"/><circle cx="396" cy="140" r="6" fill="#A92733"/>
-<path d="M210 170Q160 238 106 182" fill="none" stroke="#24643F" stroke-width="5" stroke-linecap="round"/>
-<polygon points="94,174 116,182 104,196" fill="#24643F" stroke="#24643F" stroke-width="2" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#FFF4E0"/><title>p99 spikes past the threshold, the bell rings, rollback points back</title>
+<rect x="19" y="19" width="408" height="154" rx="6" fill="#141414"/><rect x="16" y="16" width="408" height="154" rx="6" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/>
+<rect x="32" y="32" width="290" height="122" rx="6" fill="#FFF4E0" stroke="#141414" stroke-width="2.5"/>
+<line x1="44" y1="104" x2="312" y2="104" stroke="#D9CFBB" stroke-width="2"/><line x1="44" y1="138" x2="312" y2="138" stroke="#D9CFBB" stroke-width="2"/>
+<line x1="38" y1="76" x2="316" y2="76" stroke="#B3261E" stroke-width="3" stroke-dasharray="9 6"/>
+<polyline points="40,128 80,122 110,130 150,120 180,125 196,120 222,40 240,118 280,124 312,119" fill="none" stroke="#2D5BFF" stroke-width="4" stroke-linejoin="miter" stroke-linecap="butt"/>
+<circle cx="210" cy="76" r="8" fill="#FF5B3A" stroke="#FFFCF4" stroke-width="2"/>
+<text x="42" y="58" font-family="var(--font-mono, 'Space Mono', monospace)" font-size="18" fill="#33312C">p99</text>
+<path d="M356 102C365 96 362 90 362 80C362 64 394 64 394 80C394 90 391 96 400 102Z" fill="#FFC93C" stroke="#141414" stroke-width="2.5" stroke-linejoin="miter"/>
+<circle cx="378" cy="60" r="5" fill="#141414"/><circle cx="378" cy="110" r="6" fill="#141414"/>
+<path d="M344 72Q338 84 344 96M412 72Q418 84 412 96" fill="none" stroke="#7A4B00" stroke-width="3" stroke-linecap="butt"/>
+<circle cx="360" cy="140" r="6" fill="#7FD9A8" stroke="#141414" stroke-width="2"/><circle cx="378" cy="140" r="6" fill="#E8DCC0"/><circle cx="396" cy="140" r="6" fill="#FF5B3A" stroke="#141414" stroke-width="2"/>
+<path d="M210 170Q160 238 106 182" fill="none" stroke="#17663A" stroke-width="5" stroke-linecap="butt"/>
+<polygon points="94,174 116,182 104,196" fill="#7FD9A8" stroke="#17663A" stroke-width="2" stroke-linejoin="miter"/>
 </svg>

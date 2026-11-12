@@ -1,4 +1,4 @@
-/* Self-hosted interface and measurement fonts. */
-@font-face{font-family:'Atkinson Hyperlegible';font-style:normal;font-weight:400;font-display:swap;src:url('./fonts/atkinson-400.woff2') format('woff2')}
-@font-face{font-family:'Atkinson Hyperlegible';font-style:normal;font-weight:700;font-display:swap;src:url('./fonts/atkinson-700.woff2') format('woff2')}
-@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('./fonts/plex-mono-400.woff2') format('woff2')}
+/* Self-hosted interface and measurement fonts: Space Grotesk (one variable file, 400 to 700) and Space Mono (400 and 700). */
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:400 700;font-display:swap;src:url('./fonts/space-grotesk.woff2') format('woff2')}
+@font-face{font-family:'Space Mono';font-style:normal;font-weight:400;font-display:swap;src:url('./fonts/space-mono-400.woff2') format('woff2')}
+@font-face{font-family:'Space Mono';font-style:normal;font-weight:700;font-display:swap;src:url('./fonts/space-mono-700.woff2') format('woff2')}

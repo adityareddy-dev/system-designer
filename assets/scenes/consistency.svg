@@ -1,17 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#EDF2F9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#FFF4E0"/>
 <title>The primary says v2 while a lagging replica still says v1</title>
-<path d="M118 64 H322" stroke="#60738D" stroke-width="2"/><polyline points="310,54 322,64 310,74" fill="none" stroke="#60738D" stroke-width="2"/>
-<rect x="208" y="57" width="14" height="14" fill="#865400"/>
-<path d="M28 39 V99 A45 12 0 0 0 118 99 V39 Z" fill="#C5D0E1"/>
-<path d="M28 36 V96 A45 12 0 0 0 118 96 V36" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><ellipse cx="73" cy="36" rx="45" ry="12" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="66" y="58" width="14" height="14" fill="#865400"/>
-<path d="M322 39 V99 A45 12 0 0 0 412 99 V39 Z" fill="#C5D0E1"/>
-<path d="M322 36 V96 A45 12 0 0 0 412 96 V36" fill="#F1F5FB" stroke="#60738D" stroke-width="2"/><ellipse cx="367" cy="36" rx="45" ry="12" fill="#F1F5FB" stroke="#60738D" stroke-width="2"/><rect x="361" y="59" width="12" height="12" fill="none" stroke="#865400" stroke-width="2"/>
-<path d="M73 110 V150 M367 110 V150" stroke="#60738D" stroke-width="2"/>
-<circle cx="73" cy="130" r="6" fill="#244ED8"/><circle cx="367" cy="130" r="6" fill="#244ED8"/>
-<rect x="35" y="164" width="76" height="52" rx="10" fill="#C5D0E1"/><rect x="35" y="161" width="76" height="52" rx="10" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="43" y="163" width="60" height="3" rx="1.5" fill="#006E68"/>
-<text x="73" y="198" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="28" font-weight="bold" text-anchor="middle" fill="#1B2B45">v2</text>
-<rect x="329" y="164" width="76" height="52" rx="10" fill="#C5D0E1"/><rect x="329" y="161" width="76" height="52" rx="10" fill="#F1F5FB" stroke="#875500" stroke-width="2"/><rect x="337" y="163" width="60" height="3" rx="1.5" fill="#006E68"/>
-<text x="367" y="198" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="28" font-weight="bold" text-anchor="middle" fill="#875500">v1</text>
-<path d="M111 187 H186 M254 187 H329" stroke="#C5D0E1" stroke-width="2" stroke-dasharray="6 4"/>
-<path d="M200 180 H240 M200 194 H240 M232 168 L208 206" stroke="#A92733" stroke-width="3" stroke-linecap="round"/>
+<path d="M118 64 H322" stroke="#141414" stroke-width="2.5"/><polyline points="310,54 322,64 310,74" fill="none" stroke="#141414" stroke-width="2"/>
+<rect x="208" y="57" width="14" height="14" fill="#FFC93C" stroke="#141414" stroke-width="2"/>
+<path d="M28 39 V99 A45 12 0 0 0 118 99 V39 Z" fill="#E8DCC0"/>
+<path d="M28 36 V96 A45 12 0 0 0 118 96 V36" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><ellipse cx="73" cy="36" rx="45" ry="12" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><rect x="66" y="58" width="14" height="14" fill="#FFC93C" stroke="#141414" stroke-width="2"/>
+<path d="M322 39 V99 A45 12 0 0 0 412 99 V39 Z" fill="#E8DCC0"/>
+<path d="M322 36 V96 A45 12 0 0 0 412 96 V36" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><ellipse cx="367" cy="36" rx="45" ry="12" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><rect x="361" y="59" width="12" height="12" fill="none" stroke="#7A4B00" stroke-width="2"/>
+<path d="M73 110 V150 M367 110 V150" stroke="#141414" stroke-width="2.5"/>
+<circle cx="73" cy="130" r="6" fill="#2D5BFF" stroke="#141414" stroke-width="2"/><circle cx="367" cy="130" r="6" fill="#2D5BFF" stroke="#141414" stroke-width="2"/>
+<rect x="38" y="164" width="76" height="52" rx="6" fill="#141414"/><rect x="35" y="161" width="76" height="52" rx="6" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><rect x="43" y="163" width="60" height="3" rx="1.5" fill="#7FD9A8" stroke="#141414" stroke-width="2"/>
+<text x="73" y="198" font-family="var(--font-mono, 'Space Mono', monospace)" font-size="28" font-weight="bold" text-anchor="middle" fill="#141414">v2</text>
+<rect x="332" y="164" width="76" height="52" rx="6" fill="#141414"/><rect x="329" y="161" width="76" height="52" rx="6" fill="#FFFCF4" stroke="#7A4B00" stroke-width="2"/><rect x="337" y="163" width="60" height="3" rx="1.5" fill="#7FD9A8" stroke="#141414" stroke-width="2"/>
+<text x="367" y="198" font-family="var(--font-mono, 'Space Mono', monospace)" font-size="28" font-weight="bold" text-anchor="middle" fill="#FFC93C">v1</text>
+<path d="M111 187 H186 M254 187 H329" stroke="#D9CFBB" stroke-width="2" stroke-dasharray="6 4"/>
+<path d="M200 180 H240 M200 194 H240 M232 168 L208 206" stroke="#B3261E" stroke-width="3" stroke-linecap="butt"/>
 </svg>

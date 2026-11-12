@@ -1,4 +1,4 @@
-// Short pooled effects: failure shards and cache-hit sparkles.
+// Short pooled effects: failure chips and cache-hit marks. Flat shapes that shrink away; nothing fades or glows.
 
 const SHARDS = 192;
 const SPARKS = 72;
@@ -35,7 +35,7 @@ export function createFx(PIXI, parent, env) {
 
   return {
     get count() { return live; },
-    // Failed request: four shards in the failure colour, fading over 300 ms.
+    // Failed request: four flat chips in the failure colour, shrinking over 300 ms.
     burst(x, y, color, scale = 1) {
       const base = Math.random() * Math.PI * 2;
       for (let k = 0; k < 4; k++) {
@@ -56,7 +56,6 @@ export function createFx(PIXI, parent, env) {
       o.life = 0; o.max = 300; o.size = 15 * scale; o.on = true;
       o.s.visible = true; o.s.tint = color; o.s.alpha = 1; o.s.position.set(x, y); o.s.rotation = Math.random();
       o.s.width = o.s.height = o.size * 0.3;
-      o.s.blendMode = env.kit().P.dark ? 'add' : 'normal';
       live++;
     },
     update(dt) {
@@ -70,17 +69,14 @@ export function createFx(PIXI, parent, env) {
         o.s.x += o.vx * t; o.s.y += o.vy * t;
         o.vx *= 0.9; o.vy *= 0.9;
         o.s.rotation += o.vr * t;
-        o.s.alpha = 1 - k * k;
-        o.s.width = o.s.height = o.size * (1 - 0.4 * k);
+        o.s.width = o.s.height = o.size * (1 - k);
       }
       for (const o of sparks) {
         if (!o.on) continue;
         o.life += dt;
         const k = o.life / o.max;
         if (k >= 1) { o.on = false; o.s.visible = false; live--; continue; }
-        o.s.alpha = 1 - k;
-        o.s.width = o.s.height = o.size * (0.3 + 0.7 * Math.min(1, k * 2));
-        o.s.rotation += t * 2;
+        o.s.width = o.s.height = o.size * (k < 0.4 ? 0.3 + 0.7 * (k / 0.4) : 1 - (k - 0.4) / 0.6 * 0.7);
       }
     },
     clear() {

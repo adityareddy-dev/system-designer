@@ -4,58 +4,73 @@ import { iconInner, hasIcon } from '../../assets/icons/index.js';
 import { conceptStats, weakestConcept, totalResults } from './concepts.js';
 import { nextTracks } from './next-tracks.js';
 
+const ARROW = '<svg class="sh-arr" viewBox="0 0 18 18" aria-hidden="true" focusable="false"><path d="M2 9h13M10 4l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>';
+const arrow = () => { const s = document.createElement('span'); s.className = 'sh-arr-wrap'; s.innerHTML = ARROW; return s.firstChild; };
+
+// The bench: a load balancer sharing steady traffic across three replicas. Three buttons change the picture.
+const BENCH_W = 280; // width of a full load bar
 function heroArt(ctx) {
   const motion = !ctx.reducedMotion();
-  const nodes = [
-    { id: 'el.web-browser', x: 20, y: 98, c: 'var(--cat-clients)' },
-    { id: 'el.regional-lb', x: 160, y: 98, c: 'var(--cat-edge)' },
-    { id: 'el.vm-fleet', x: 310, y: 28, c: 'var(--cat-compute)' },
-    { id: 'el.vm-fleet', x: 310, y: 98, c: 'var(--cat-compute)' },
-    { id: 'el.vm-fleet', x: 310, y: 168, c: 'var(--cat-compute)' },
-    { id: 'el.cache', x: 450, y: 98, c: 'var(--cat-data)' },
-  ];
-  const paths = [
-    'M92 134 C126 134 126 134 160 134',
-    'M232 134 C270 134 270 64 310 64', 'M232 134 C270 134 270 134 310 134', 'M232 134 C270 134 270 204 310 204',
-    'M382 64 C416 64 416 134 450 134', 'M382 134 L450 134', 'M382 204 C416 204 416 134 450 134',
-  ];
-  const nodeSvg = nodes.map((n) => {
-    const inner = hasIcon(n.id) ? iconInner(n.id) : '';
-    return `<g data-part="${n.id}-${n.y}" transform="translate(${n.x} ${n.y})"><rect width="72" height="72" rx="10" fill="var(--surface-solid)" stroke="var(--border-strong)"/>
-      <path d="M12 2h48" stroke="${n.c}" stroke-width="3"/><path d="M12 61h48" stroke="var(--border)" stroke-width="4"/><path class="sh-demo-capacity" d="M12 61h32" stroke="${n.c}" stroke-width="4"/><circle cy="36" r="4" fill="var(--surface-solid)" stroke="var(--edge-idle)"/><circle cx="72" cy="36" r="4" fill="var(--surface-solid)" stroke="var(--edge-idle)"/><g transform="translate(20 16) scale(1.35)" style="color:${n.c}" fill="none" stroke="currentColor">${inner}</g>${n.id === 'el.vm-fleet' && n.y === 28 ? '<path class="sh-demo-cross" d="M16 16l40 40m0-40L16 56" fill="none" stroke="var(--bad)" stroke-width="3"/>' : ''}</g>`;
-  }).join('');
-  const edgeSvg = paths.map((d, i) => `<path id="sh-hp-${i}" d="${d}" fill="none" stroke="var(--edge-idle)" stroke-width="2.5" stroke-linecap="round"/>`).join('');
-  let dots = '';
-  if (motion) {
-    paths.forEach((_, i) => {
-      for (let k = 0; k < 3; k++) {
-        const shape = k === 1 ? '<rect x="-4" y="-4" width="8" height="8" rx="2" fill="var(--req-write)"/>' : '<circle r="4.5" fill="var(--req-read)"/>';
-        const b = (k * 0.8 + i * 0.17).toFixed(2);
-        dots += `<g data-stream="${i}" opacity="0"><set attributeName="opacity" to="1" begin="${b}s"/>${shape}<animateMotion dur="${2.4 + (i % 3) * 0.3}s" begin="${b}s" repeatCount="indefinite"><mpath href="#sh-hp-${i}"/></animateMotion></g>`;
-      }
-    });
-  }
-  const el = h('div', { class: 'sh-hero-art', 'aria-label': 'Try a capacity experiment' });
-  el.innerHTML = `<svg viewBox="0 0 540 270" role="presentation" focusable="false"><g fill="none" stroke="var(--border)" stroke-width="1"><path d="M4 14h532M4 250h532M4 8v12m532-12v12M4 244v12m532-12v12"/></g><g fill="var(--text-2)" font-family="var(--font-ui)" font-size="12.5" font-weight="600"><text x="20" y="84">Users</text><text x="160" y="84">Load balancer</text><text x="310" y="264">3 app servers</text><text x="450" y="84">Cache</text></g>${edgeSvg}${nodeSvg}${dots}</svg>`;
-  const out = h('p', { class: 'sh-hero-evidence', role: 'status' });
-  const controls = h('div', { class: 'sh-hero-controls', role: 'group', 'aria-labelledby': 'sh-hero-try' });
+  const replica = (i, y) => `<g data-replica="${i}"><rect x="266" y="${y + 4}" width="320" height="82" rx="8" fill="#141414"/><rect class="sh-rep-box" x="260" y="${y}" width="320" height="82" rx="8" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/>
+    <text class="sh-svg-label" x="280" y="${y + 34}">Replica ${i + 1}</text><text class="sh-svg-small" x="560" y="${y + 34}" text-anchor="end" data-spare="${i}">40% spare</text>
+    <rect x="280" y="${y + 48}" width="${BENCH_W}" height="16" fill="#FFF4E0" stroke="#141414" stroke-width="2"/><rect class="sh-rep-bar" data-bar="${i}" x="280" y="${y + 48}" width="168" height="16" fill="#2D5BFF"/>
+    <path class="sh-rep-x" data-x="${i}" d="M296 ${y + 22}l16 16m0-16l-16 16" stroke="#B3261E" stroke-width="3" fill="none" opacity="0"/></g>`;
+  const link = (d) => `<path class="sh-flow${motion ? ' is-moving' : ''}" d="${d}" fill="none" stroke="#141414" stroke-width="2.5"/>`;
+  const el = h('figure', { class: 'sh-bench', 'aria-label': 'Try a capacity experiment' });
+  const readout = h('div', { class: 'sh-bench-readout' }, h('strong', { class: 'sh-bench-rate', text: '1,800/s' }), h('span', { text: 'requests per second arriving' }));
+  const caption = h('figcaption', { class: 'sh-bench-caption', role: 'status' });
+  const chips = h('div', { class: 'sh-bench-chips', role: 'group', 'aria-label': 'Pick a situation' });
+  const svg = h('div', { class: 'sh-bench-svg' });
+  svg.innerHTML = `<svg viewBox="0 0 600 400" role="img" aria-labelledby="sh-bench-t sh-bench-d" focusable="false">
+    <title id="sh-bench-t">A load balancer splitting traffic across three replicas</title>
+    <desc id="sh-bench-d">Users send requests to a load balancer, which splits them across three replicas. Each replica shows how full it is.</desc>
+    <text class="sh-svg-mono" x="2" y="176">Users</text>
+    <path d="M2 190H54" stroke="#141414" stroke-width="2.5"/><path d="M62 190l-9-5v10z" fill="#141414"/>
+    <rect x="70" y="158" width="120" height="86" rx="8" fill="#141414"/><rect x="64" y="152" width="120" height="86" rx="8" fill="#FFC93C" stroke="#141414" stroke-width="2.5"/>
+    <text class="sh-svg-label" x="124" y="190" text-anchor="middle">Load</text><text class="sh-svg-label" x="124" y="214" text-anchor="middle">balancer</text>
+    ${link('M190 195C222 195 222 61 252 61')}${link('M190 195H252')}${link('M190 195C222 195 222 329 252 329')}
+    <path d="M260 61l-9-5v10z" fill="#141414"/><path d="M260 195l-9-5v10z" fill="#141414"/><path d="M260 329l-9-5v10z" fill="#141414"/>
+    ${replica(0, 20)}${replica(1, 154)}${replica(2, 288)}</svg>`;
+  el.append(
+    h('div', { class: 'sh-bench-head' }, h('span', { class: 'sh-bench-title', text: 'Try it' }), chips),
+    readout, caption, svg,
+    h('p', { class: 'sh-bench-foot', text: 'A simplified picture. Real numbers in the game are rounded estimates.' }));
   const phases = [
-    { label: 'Steady load', rate: '1,800/s', busy: 60, text: 'Three replicas share 1,800 requests/s. Each has 40% spare.', state: 'steady' },
-    { label: 'Double traffic', rate: '3,600/s', busy: 120, text: 'First limit: compute. Each replica gets 1,200/s but can serve about 1,000/s. About 600/s are rejected.', state: 'overload' },
-    { label: 'Lose a replica', rate: '1,800/s', busy: 90, text: 'One replica is down. The other two now carry 900/s each. Routing recovers, but headroom falls to 10%.', state: 'failure' },
+    { label: 'Steady load', rate: '1,800/s', bars: [60, 60, 60], spare: ['40% spare', '40% spare', '40% spare'], text: 'Three replicas share 1,800 requests/s. Each has 40% spare.' },
+    { label: 'Double traffic', rate: '3,600/s', bars: [120, 120, 120], spare: ['overloaded', 'overloaded', 'overloaded'], text: 'First limit: compute. Each replica gets 1,200/s but can serve about 1,000/s. About 600/s are rejected.' },
+    { label: 'Lose a replica', rate: '1,800/s', bars: [90, 90, 0], spare: ['10% spare', '10% spare', 'down'], down: 2, text: 'One replica is down. The other two now carry 900/s each. Routing recovers, but headroom falls to 10%.' },
   ];
   function show(phase) {
-    el.dataset.state = phase.state;
-    el.querySelectorAll('.sh-demo-capacity').forEach(path => {
-      const compute = path.closest('[data-part]')?.dataset.part.startsWith('el.vm-fleet');
-      if (compute) { path.style.transformOrigin = '12px 61px'; path.style.transform = `scaleX(${Math.min(1, phase.busy / 100) * 1.5})`; path.style.stroke = phase.busy > 100 ? 'var(--bad)' : 'var(--cat-compute)'; }
+    el.dataset.state = phase.down != null ? 'failure' : phase.bars[0] > 100 ? 'overload' : 'steady';
+    readout.firstChild.textContent = phase.rate;
+    caption.textContent = phase.text;
+    phase.bars.forEach((v, i) => {
+      const bar = svg.querySelector(`[data-bar="${i}"]`);
+      if (!bar) return;
+      bar.setAttribute('width', String(Math.round((Math.min(v, 100) / 100) * BENCH_W)));
+      bar.setAttribute('fill', v > 100 ? '#FF5B3A' : v >= 90 ? '#FFC93C' : '#2D5BFF');
+      const spare = svg.querySelector(`[data-spare="${i}"]`);
+      if (spare) spare.textContent = phase.spare[i];
+      svg.querySelector(`[data-x="${i}"]`)?.setAttribute('opacity', phase.down === i ? '1' : '0');
+      svg.querySelector(`[data-replica="${i}"] .sh-rep-box`)?.setAttribute('fill', phase.down === i ? '#FFD9D0' : '#FFFCF4');
     });
-    out.replaceChildren(h('b', { text: phase.rate + ' · ' }), phase.text);
-    [...controls.children].forEach((b,i) => b.setAttribute('aria-pressed', String(phases[i] === phase)));
+    [...chips.children].forEach((b, i) => { const on = phases[i] === phase; b.setAttribute('aria-pressed', String(on)); b.className = 'sh-bench-chip' + (on ? ' is-on' : ''); });
   }
-  phases.forEach(phase => controls.append(h('button', { type: 'button', class: 'sh-btn', onclick: () => show(phase), text: phase.label })));
-  el.append(h('p', { class: 'sh-hero-try', id: 'sh-hero-try', text: 'Try it: pick a situation and watch the servers.' }), controls, out, h('small', { class: 'sh-muted', text: 'A simplified picture. Real numbers in the game are rounded estimates.' })); show(phases[0]);
+  phases.forEach((phase) => chips.append(h('button', { type: 'button', class: 'sh-bench-chip', onclick: () => show(phase), text: phase.label })));
+  show(phases[0]);
   return el;
+}
+
+// A mode card: a coloured strip with its icon, a big number, a plain line and a link.
+function modeCard({ href, iconId, label, big, title, text, extra, link, color }) {
+  return h('a', { class: 'sh-mode', href, style: `--c:${color}` },
+    h('div', { class: 'sh-mode-top' }, ico(iconId, 30), h('b', { text: label })),
+    h('div', { class: 'sh-mode-body' },
+      h('div', { class: 'sh-mode-big' + (String(big).length > 4 ? ' is-small' : ''), text: big }),
+      h('h3', { text: title }),
+      h('p', { text }),
+      extra ? h('p', { class: 'sh-mode-extra', text: extra }) : null,
+      h('span', { class: 'sh-mode-link' }, link, arrow())));
 }
 
 function sectionCard({ href, iconId, title, text, stat, tone }) {
@@ -91,94 +106,121 @@ export function nextProblem(ctx, afterId) {
 }
 
 export function renderHome(host, ctx) {
-  const stats = ctx.progress.stats();
-  const total = (ctx.content.problems || []).length;
-  const lessonsTotal = (ctx.content.lessons || []).length;
-  const seenIntro = ctx.store.get('introTaken', false) === true || ctx.progress.isLessonDone?.('intro') === true;
-  let streak = 0;
-  try { const s = ctx.compete.bests.streak('challenge'); streak = typeof s === 'number' ? s : s?.current || 0; } catch { /* ignore */ }
-
-  const cta = [];
-  if (lessonOf(ctx, 'intro')) {
-    cta.push(h('a', { class: 'sh-btn sh-btn--primary sh-btn--lg', href: '#/intro' }, ico('ui.play', 20), seenIntro ? 'Replay the 3-minute intro' : 'Take the 3-minute intro'));
-  }
-  cta.push(h('a', { class: 'sh-btn sh-btn--lg', href: '#/drill' }, ico('ui.speed', 20), 'Quick drill'));
-  cta.push(h('a', { class: 'sh-btn sh-btn--lg' + (lessonOf(ctx, 'intro') ? '' : ' sh-btn--primary'), href: '#/practice' }, 'Browse problems'));
-
-  const progressLine = h('p', { class: 'sh-fine', 'aria-live': 'polite' });
   const gated = !!ctx.gate?.required;
-  const paintAccount = () => { progressLine.textContent = ctx.account?.isSignedIn()
-    ? 'Signed in. Your progress follows you across devices.'
-    : gated ? 'Sign-in takes one click. Progress you made before signing in is kept.' : 'No sign-up. Your progress stays in this browser.'; };
-  paintAccount();
-  const offAccount = ctx.bus.on('account', paintAccount);
-  const hero = h('section', { class: 'sh-hero' },
-    h('div', { class: 'sh-hero-copy' },
-      h('p', { class: 'sh-eyebrow', text: 'Free system design practice' }),
-      h('h1', { class: 'sh-display', text: 'Build the system. Survive the day.' }),
-      h('p', { class: 'sh-lead', text: 'System Designer is a browser game for learning system design. Draw an architecture for a real problem, from a link shortener to a bank ledger, then watch a full day of traffic, spikes and outages hit it. A plain-words debrief shows what held, what broke and why.' }),
-      h('div', { class: 'sh-cta-row' }, cta),
-      h('ul', { class: 'sh-hero-facts', 'aria-label': 'About the game' },
-        h('li', null, ico('ui.check', 18), h('span', null, h('b', { text: 'Free. ' }), gated ? 'Sign in with a free Google or GitHub account.' : 'No account needed. Progress stays in this browser.')),
-        h('li', null, ico('ui.check', 18), h('span', null, h('b', { text: 'Open source (MIT). ' }), gated ? 'Rather run it yourself? ' : 'Read or fork it: ', h('a', { href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, gated ? 'Get the code' : 'github.com/adityareddy-dev/system-designer'), gated ? ', no account needed.' : '.'))),
-      progressLine),
-    heroArt(ctx));
+  let signedKey = null;
+  let known = null; // set from the account event: the account object is not on ctx yet when it first reports
+  const isIn = () => (known !== null ? known : !!ctx.account?.isSignedIn?.());
 
-  const cards = h('section', { class: 'sh-section-grid', 'aria-label': 'Sections' },
-    sectionCard({ href: '#/learn', iconId: 'ui.learn', title: 'Learn', tone: 'a', text: 'Live demos and worked examples. Learn the building blocks, then go deeper and defend your choices.', stat: `${stats.lessonsDone} of ${lessonsTotal || 41} lessons done` }),
-    sectionCard({ href: '#/practice', iconId: 'ui.practice', title: 'Practice', tone: 'b', text: 'A bank of real problems across the whole industry. Build, survive the day, read the debrief.', stat: `${stats.solved} of ${total || 75} solved, ${stats.stars} stars` }),
-    sectionCard({ href: '#/challenge', iconId: 'ui.challenge', title: 'Challenge', tone: 'c', text: 'One new scenario every day. Beat your best, then send a friend a link to beat your design.', stat: streak ? `${streak}-day streak` : 'Start a streak today' }),
-    sectionCard({ href: '#/sandbox', iconId: 'ui.sandbox', title: 'Sandbox', tone: 'd', text: 'Every component and any amount of traffic. Break things on purpose; nothing is graded.', stat: 'No game over' }));
+  function build() {
+    const stats = ctx.progress.stats();
+    const total = (ctx.content.problems || []).length;
+    const lessonsTotal = (ctx.content.lessons || []).length;
+    const groupsTotal = (ctx.content.groups || []).length;
+    const seenIntro = ctx.store.get('introTaken', false) === true || ctx.progress.isLessonDone?.('intro') === true;
+    // On the hosted site a signed-out visitor sees the public page: sign in to play, no daily challenge.
+    const member = !gated || isIn();
+    let streak = 0;
+    try { const s = ctx.compete.bests.streak('challenge'); streak = typeof s === 'number' ? s : s?.current || 0; } catch { /* ignore */ }
 
-  const extras = h('div', { class: 'sh-home-extras' });
-
-  // Today's challenge teaser
-  try {
-    const d = ctx.compete.daily.dailyFor();
-    const p = problemOf(ctx, d.problemId);
-    if (p) {
-      extras.append(h('a', { class: 'sh-card sh-card--link sh-teaser', href: '#/challenge' },
-        h('span', { class: 'sh-eyebrow', text: "Today's challenge" }),
-        h('span', { class: 'sh-teaser-title', text: p.title }),
-        h('span', { class: 'sh-muted', text: p.like || '' }),
-        h('span', { class: 'sh-teaser-meta' }, diffBadge(p.difficulty))));
+    const cta = [];
+    if (!member) {
+      cta.push(h('button', { type: 'button', class: 'sh-btn sh-btn--primary sh-btn--lg', 'aria-haspopup': 'dialog', onclick: () => ctx.account?.openSignIn?.() }, 'Sign in to play, free', arrow()));
+    } else {
+      if (lessonOf(ctx, 'intro')) cta.push(h('a', { class: 'sh-btn sh-btn--primary sh-btn--lg', href: '#/intro' }, ico('ui.play', 20), seenIntro ? 'Replay the 3-minute intro' : 'Take the 3-minute intro'));
+      cta.push(h('a', { class: 'sh-btn sh-btn--lg', href: '#/drill' }, ico('ui.speed', 20), 'Quick drill'));
+      cta.push(h('a', { class: 'sh-btn sh-btn--lg' + (lessonOf(ctx, 'intro') ? '' : ' sh-btn--primary'), href: '#/practice' }, 'Browse problems'));
     }
-  } catch { /* challenge needs compete; skip when absent */ }
+    const note = !member ? 'Playing here needs a free Google or GitHub account.'
+      : isIn() ? 'Signed in. Your progress follows you across devices.'
+      : 'No sign-up. Your progress stays in this browser.';
+    const oss = h('div', { class: 'sh-oss' },
+      h('p', { text: gated ? 'Would rather not sign in? The whole game is open source (MIT). Run the code yourself.' : 'The whole game is open source (MIT). Read it, run it or fork it.' }),
+      h('a', { class: 'sh-text-link', href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, 'Get the source on GitHub', arrow()));
+    const hero = h('section', { class: 'sh-hero' },
+      h('div', { class: 'sh-hero-copy' },
+        h('p', { class: 'sh-eyebrow', text: 'Free system design practice' }),
+        h('h1', { class: 'sh-display', text: 'Build the system. Survive the day.' }),
+        h('p', { class: 'sh-lead', text: 'A free browser game where you draw a system, run a full day of traffic through it, and read what held, what broke and what it cost.' }),
+        h('div', { class: 'sh-gate' }, h('div', { class: 'sh-cta-row' }, cta), h('p', { class: 'sh-gate-note', 'aria-live': 'polite', text: note })),
+        oss),
+      heroArt(ctx));
 
-  // Suggested next problem
-  const np = nextProblem(ctx);
-  if (np) {
-    extras.append(h('a', { class: 'sh-card sh-card--link sh-teaser', href: '#/practice/' + np.id },
-      h('span', { class: 'sh-eyebrow', text: np.weakConcept ? `Practice: ${np.weakConcept}` : stats.solved ? 'Up next' : 'Good first problem' }),
-      h('span', { class: 'sh-teaser-title', text: np.title }),
-      h('span', { class: 'sh-muted', text: np.like || '' }),
-      h('span', { class: 'sh-teaser-meta' }, diffBadge(np.difficulty))));
+    let daily = null;
+    if (member) {
+      try { const d = ctx.compete.daily.dailyFor(); daily = problemOf(ctx, d.problemId); } catch { /* challenge needs compete */ }
+    }
+    const modes = [
+      modeCard({ href: '#/learn', iconId: 'ui.learn', label: 'Learn', big: String(lessonsTotal || 41), title: 'lessons in nine tracks', text: 'Live demos and worked examples. Learn the building blocks, then go deeper and defend your choices.', extra: `${stats.lessonsDone} of ${lessonsTotal || 41} done`, link: 'Browse the lessons', color: 'var(--yellow)' }),
+      modeCard({ href: '#/practice', iconId: 'ui.practice', label: 'Practice', big: String(total || 82), title: `problems from ${groupsTotal || 15} industries`, text: 'A bank of real problems across the whole industry. Build, survive the day, read the debrief.', extra: `${stats.solved} of ${total || 82} solved, ${stats.stars} stars`, link: 'Pick a problem', color: 'var(--mint)' }),
+    ];
+    if (member) modes.push(modeCard({ href: '#/challenge', iconId: 'ui.challenge', label: 'Challenge', big: '1', title: 'new scenario every day', text: 'Beat your best, then send a friend a link to beat your design.', extra: daily ? `Today: ${daily.title}${daily.difficulty ? '. ' + daily.difficulty + '.' : ''}` : (streak ? `${streak}-day streak` : ''), link: 'Start today\u2019s challenge', color: 'var(--tomato)' }));
+    modes.push(modeCard({ href: '#/sandbox', iconId: 'ui.sandbox', label: 'Sandbox', big: 'No game over', title: 'every component, any traffic', text: 'Break things on purpose. Nothing is graded.', link: 'Open the sandbox', color: '#9DB4FF' }));
+    const cards = h('section', { class: 'sh-modes-sec', 'aria-labelledby': 'sh-modes-h' },
+      h('div', { class: 'sh-sec-head' }, h('h2', { id: 'sh-modes-h', text: modes.length === 4 ? 'Four ways to play' : 'Three ways to play' }),
+        h('p', { text: member ? 'Learn the parts, practice on real problems, take the daily challenge, or build anything in the sandbox.' : 'Learn the parts, practice on real problems, or build anything in the sandbox.' })),
+      h('div', { class: 'sh-modes', 'data-count': String(modes.length) }, modes));
+
+    const steps = h('section', { class: 'sh-modes-sec', 'aria-labelledby': 'sh-how-h' },
+      h('div', { class: 'sh-sec-head' }, h('h2', { id: 'sh-how-h', text: 'How a run works' }), h('p', { text: 'You draw the design. The day does the testing.' })),
+      h('ol', { class: 'sh-steps-grid' },
+        [['01', 'Draw the architecture', 'Place the parts on a canvas and connect them the way your design needs.'], ['02', 'Run a full day of traffic', 'Spikes, outages and retries hit your design in a simulated day.'], ['03', 'Read the debrief', 'See what held, what broke, what it cost, and why, in plain words.']]
+          .map(([n, t, d]) => h('li', { class: 'sh-step-card' }, h('span', { class: 'sh-step-n', text: n }), h('h3', { text: t }), h('p', { text: d })))));
+
+    const extras = h('div', { class: 'sh-home-extras' });
+    if (member) {
+      // Today's challenge teaser
+      if (daily) {
+        extras.append(h('a', { class: 'sh-card sh-card--link sh-teaser', href: '#/challenge' },
+          h('span', { class: 'sh-eyebrow', text: "Today's challenge" }),
+          h('span', { class: 'sh-teaser-title', text: daily.title }),
+          h('span', { class: 'sh-muted', text: daily.like || '' }),
+          h('span', { class: 'sh-teaser-meta' }, diffBadge(daily.difficulty))));
+      }
+      // Suggested next problem
+      const np = nextProblem(ctx);
+      if (np) {
+        extras.append(h('a', { class: 'sh-card sh-card--link sh-teaser', href: '#/practice/' + np.id },
+          h('span', { class: 'sh-eyebrow', text: np.weakConcept ? `Practice: ${np.weakConcept}` : stats.solved ? 'Up next' : 'Good first problem' }),
+          h('span', { class: 'sh-teaser-title', text: np.title }),
+          h('span', { class: 'sh-muted', text: np.like || '' }),
+          h('span', { class: 'sh-teaser-meta' }, diffBadge(np.difficulty))));
+      }
+    }
+
+    // Your concepts: tries and best result per idea, weakest first
+    const rows = member ? conceptStats(ctx) : [];
+    const weakId = weakestConcept(ctx)?.id;
+    const conceptStrip = rows.length ? h('section', { class: 'sh-concepts', 'aria-label': 'Your concepts' },
+      h('h2', { class: 'sh-h2', text: 'Your concepts' }),
+      totalResults(ctx) >= 3 && weakId ? h('p', { class: 'sh-muted', text: 'The highlighted idea has the weakest record so far. Its lesson is one tap away.' }) : null,
+      h('div', { class: 'sh-concept-list' }, [...rows].sort((a, b) => (a.id === weakId ? -1 : b.id === weakId ? 1 : (a.solved / a.tried) - (b.solved / b.tried) || b.tries - a.tries)).slice(0, 8).map((r) =>
+        h('a', { class: 'sh-concept', href: '#/learn/' + r.id, dataset: { weak: r.id === weakId ? '1' : '0' }, title: 'Open the lesson' },
+          h('b', { text: r.title }),
+          h('span', { class: 'sh-muted', text: `${r.tries} ${r.tries === 1 ? 'try' : 'tries'} \u00b7 ${r.solved} of ${r.tried} solved \u00b7 best ${r.best}` }),
+          h('span', { class: 'sh-concept-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.round((r.solved / r.tried) * 100)}%` })))))) : null;
+
+    // Industries strip
+    const groups = (ctx.content.groups || []).map((g) => ({ id: g.id || g.group?.id, title: g.title || g.group?.title }));
+    const strip = groups.length ? h('section', { class: 'sh-industries', 'aria-label': 'Industries' },
+      h('h2', { class: 'sh-h2', text: 'Every corner of the industry' }),
+      h('div', { class: 'sh-chip-wrap' }, groups.map((g) => h('a', { class: 'sh-chip', href: `#/practice?g=${g.id}` }, ico(GROUP_ICON[g.id] || 'ui.grid', 16), g.title)))) : null;
+
+    const foot = h('footer', { class: 'sh-footer' },
+      h('p', null, 'System Designer is free and open source (MIT). Source on GitHub. Numbers shown are approximations for learning. Made by Aditya Reddy. Company names appear only as plain comparisons.'),
+      h('div', { class: 'sh-foot-row' },
+        h('a', { href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, 'GitHub'),
+        h('a', { href: 'privacy.html' }, 'Privacy')));
+
+    return h('div', { class: 'sh-page sh-home-page' }, hero, cards, steps, member ? nextTracks() : null, extras, conceptStrip, strip, foot);
   }
 
-  // Your concepts: tries and best result per idea, weakest first
-  const rows = conceptStats(ctx);
-  const weakId = weakestConcept(ctx)?.id;
-  const conceptStrip = rows.length ? h('section', { class: 'sh-concepts', 'aria-label': 'Your concepts' },
-    h('h2', { class: 'sh-h2', text: 'Your concepts' }),
-    totalResults(ctx) >= 3 && weakId ? h('p', { class: 'sh-muted', text: 'The highlighted idea has the weakest record so far. Its lesson is one tap away.' }) : null,
-    h('div', { class: 'sh-concept-list' }, [...rows].sort((a, b) => (a.id === weakId ? -1 : b.id === weakId ? 1 : (a.solved / a.tried) - (b.solved / b.tried) || b.tries - a.tries)).slice(0, 8).map((r) =>
-      h('a', { class: 'sh-concept', href: '#/learn/' + r.id, dataset: { weak: r.id === weakId ? '1' : '0' }, title: 'Open the lesson' },
-        h('b', { text: r.title }),
-        h('span', { class: 'sh-muted', text: `${r.tries} ${r.tries === 1 ? 'try' : 'tries'} · ${r.solved} of ${r.tried} solved · best ${r.best}` }),
-        h('span', { class: 'sh-concept-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.round((r.solved / r.tried) * 100)}%` })))))) : null;
-
-  // Industries strip
-  const groups = (ctx.content.groups || []).map((g) => ({ id: g.id || g.group?.id, title: g.title || g.group?.title }));
-  const strip = groups.length ? h('section', { class: 'sh-industries', 'aria-label': 'Industries' },
-    h('h2', { class: 'sh-h2', text: 'Every corner of the industry' }),
-    h('div', { class: 'sh-chip-wrap' }, groups.map((g) => h('a', { class: 'sh-chip', href: `#/practice?g=${g.id}` }, ico(GROUP_ICON[g.id] || 'ui.grid', 16), g.title)))) : null;
-
-  const foot = h('footer', { class: 'sh-footer' },
-    h('span', null, 'System Designer is free and open source (MIT). ',
-      h('a', { href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, 'Source on GitHub'),
-      '. Numbers shown are approximations for learning.'),
-    h('span', null, 'Made by Aditya Reddy. Company names appear only as plain comparisons.'));
-
-  host.append(h('div', { class: 'sh-page sh-home-page' }, hero, cards, nextTracks(), extras, conceptStrip, strip, foot));
+  const paint = () => {
+    const key = String(isIn());
+    if (key === signedKey) return;
+    signedKey = key;
+    host.replaceChildren(build());
+  };
+  paint();
+  const offAccount = ctx.bus.on('account', (st) => { known = st && 'user' in st ? !!st.user : null; paint(); });
   return { title: 'Home', destroy: offAccount };
 }

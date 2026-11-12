@@ -1,11 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#EDF2F9"/><path d="M28 61v56a48 10 0 0 0 96 0v-56z" fill="#C5D0E1"/><path d="M28 58v56a48 10 0 0 0 96 0v-56" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><ellipse cx="76" cy="58" rx="48" ry="10" fill="#F1F5FB" stroke="#865400" stroke-width="3"/><path d="M316 61v56a48 10 0 0 0 96 0v-56z" fill="#C5D0E1"/><path d="M316 58v56a48 10 0 0 0 96 0v-56" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><ellipse cx="364" cy="58" rx="48" ry="10" fill="#F1F5FB" stroke="#865400" stroke-width="3"/>
-<text x="76" y="38" text-anchor="middle" font-size="18" font-family="ui-monospace, Menlo, Consolas, monospace" fill="#1B2B45">new</text><text x="364" y="38" text-anchor="middle" font-size="18" font-family="ui-monospace, Menlo, Consolas, monospace" fill="#4D607B">old</text>
-<rect x="68" y="80" width="16" height="16" fill="#865400" stroke="#1B2B45" stroke-width="2"/>
-<rect x="356" y="80" width="16" height="16" fill="#F1F5FB" stroke="#4D607B" stroke-width="2" stroke-dasharray="3 2"/>
-<path d="M124 92H306" stroke="#60738D" stroke-width="2" stroke-dasharray="6 4" fill="none"/><polygon points="304,86 316,92 304,98" fill="#60738D"/>
-<rect x="154" y="86" width="12" height="12" fill="#865400"/>
-<circle cx="230" cy="92" r="18" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><polyline points="230,80 230,92 238,98" fill="none" stroke="#1B2B45" stroke-width="2"/>
-<polyline points="128,138 128,146 312,146 312,138" fill="none" stroke="#875500" stroke-width="3"/>
-<path d="M346 138V168M382 168V138" stroke="#60738D" stroke-width="2" fill="none"/><circle cx="346" cy="152" r="6" fill="#244ED8"/><rect x="376" y="146" width="12" height="12" fill="#F1F5FB" stroke="#4D607B" stroke-width="2"/>
-<rect x="316" y="173" width="96" height="36" rx="10" fill="#C5D0E1"/><rect x="316" y="170" width="96" height="36" rx="10" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="326" y="170" width="76" height="3" fill="#4051A1"/>
-<rect x="358" y="180" width="16" height="16" fill="#F1F5FB" stroke="#4D607B" stroke-width="2"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#FFF4E0"/><path d="M28 61v56a48 10 0 0 0 96 0v-56z" fill="#E8DCC0"/><path d="M28 58v56a48 10 0 0 0 96 0v-56" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><ellipse cx="76" cy="58" rx="48" ry="10" fill="#FFFCF4" stroke="#7A4B00" stroke-width="3"/><path d="M316 61v56a48 10 0 0 0 96 0v-56z" fill="#E8DCC0"/><path d="M316 58v56a48 10 0 0 0 96 0v-56" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><ellipse cx="364" cy="58" rx="48" ry="10" fill="#FFFCF4" stroke="#7A4B00" stroke-width="3"/>
+<text x="76" y="38" text-anchor="middle" font-size="18" font-family="var(--font-mono, 'Space Mono', monospace)" fill="#141414">new</text><text x="364" y="38" text-anchor="middle" font-size="18" font-family="var(--font-mono, 'Space Mono', monospace)" fill="#33312C">old</text>
+<rect x="68" y="80" width="16" height="16" fill="#FFC93C" stroke="#141414" stroke-width="2.5"/>
+<rect x="356" y="80" width="16" height="16" fill="#FFFCF4" stroke="#33312C" stroke-width="2" stroke-dasharray="3 2"/>
+<path d="M124 92H306" stroke="#55514A" stroke-width="2" stroke-dasharray="6 4" fill="none"/><polygon points="304,86 316,92 304,98" fill="#55514A"/>
+<rect x="154" y="86" width="12" height="12" fill="#FFC93C" stroke="#141414" stroke-width="2"/>
+<circle cx="230" cy="92" r="18" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><polyline points="230,80 230,92 238,98" fill="none" stroke="#141414" stroke-width="2"/>
+<polyline points="128,138 128,146 312,146 312,138" fill="none" stroke="#7A4B00" stroke-width="3"/>
+<path d="M346 138V168M382 168V138" stroke="#141414" stroke-width="2.5" fill="none"/><circle cx="346" cy="152" r="6" fill="#2D5BFF" stroke="#141414" stroke-width="2"/><rect x="376" y="146" width="12" height="12" fill="#FFFCF4" stroke="#33312C" stroke-width="2"/>
+<rect x="319" y="173" width="96" height="36" rx="6" fill="#141414"/><rect x="316" y="170" width="96" height="36" rx="6" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><rect x="326" y="170" width="76" height="3" fill="#2D5BFF" stroke="#141414" stroke-width="2"/>
+<rect x="358" y="180" width="16" height="16" fill="#FFFCF4" stroke="#33312C" stroke-width="2"/></svg>

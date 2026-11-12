@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import { startApp, client, payloadFor, ownDesign, editorialGraph, SITE, NOW } from './helpers.js';
 import { loadConfig } from '../config.js';
 import { dailyOpen } from '../app.js';
+import { openDb } from '../db.js';
+import { DatabaseSync } from 'node:sqlite';
+import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
 
 let app;
 before(async () => { app = await startApp(); });
@@ -455,4 +460,99 @@ test('reserved and rude display names are refused, and a signed-in player can re
   assert.equal((await client(app.base).req('POST', '/report', { body: { uid: 1 } })).status, 401);
   assert.equal((await c.req('POST', '/report', { body: { uid: 999999 } })).status, 404);
   assert.equal((await c.req('POST', '/report', { body: { uid: Number(app.db.raw.prepare("SELECT id FROM users WHERE name = 'Test player mod-2'").get().id), reason: 'name' } })).status, 200);
+});
+
+test('/me has the documented shape, with email null until one is known', async () => {
+  const c = client(app.base);
+  await signIn(c, 'shape', 'Shape');
+  const u = (await c.req('GET', '/me')).json.user;
+  assert.deepEqual(Object.keys(u).sort(), ['avatar', 'email', 'name', 'providers', 'since', 'surveyOptIn']);
+  assert.equal(u.email, null);
+  assert.equal(u.surveyOptIn, false);
+  const withMail = client(app.base);
+  const r = await withMail.req('POST', '/auth/fake', { body: { id: 'shape2', name: 'Shape Two', email: 'Shape@Example.com', surveyOptIn: true } });
+  assert.equal(r.json.user.email, 'shape@example.com');
+  assert.equal(r.json.user.surveyOptIn, true);
+  const junk = client(app.base);
+  assert.equal((await junk.req('POST', '/auth/fake', { body: { id: 'shape3', email: 'nope' } })).json.user.email, null);
+});
+
+test('PATCH /me turns the survey opt-in on and off, records and clears the date, and checks its input', async () => {
+  const c = client(app.base);
+  await signIn(c, 'optin', 'Opt In');
+  const at = () => app.db.raw.prepare("SELECT u.survey_optin AS s, u.survey_optin_at AS at FROM users u JOIN identities i ON i.user_id = u.id WHERE i.subject = 'optin'").get();
+  app.clock.t = NOW + 5000;
+  const on = await c.req('PATCH', '/me', { body: { surveyOptIn: true } });
+  assert.equal(on.status, 200);
+  assert.equal(on.json.user.surveyOptIn, true);
+  assert.equal(on.json.user.name, 'Opt In', 'name untouched');
+  assert.deepEqual({ ...at() }, { s: 1, at: NOW + 5000 });
+  const off = await c.req('PATCH', '/me', { body: { surveyOptIn: false } });
+  assert.equal(off.json.user.surveyOptIn, false);
+  assert.deepEqual({ ...at() }, { s: 0, at: null });
+  app.clock.t += 3600_000;   // past the account rate limit
+  for (const bad of ['true', 1, 0, null, {}, []]) assert.equal((await c.req('PATCH', '/me', { body: { surveyOptIn: bad } })).status, 400, JSON.stringify(bad));
+  assert.equal((await c.req('PATCH', '/me', { body: {} })).json.error, 'bad-input');
+  const both = await c.req('PATCH', '/me', { body: { name: 'Opt Two', surveyOptIn: true } });
+  assert.deepEqual([both.json.user.name, both.json.user.surveyOptIn], ['Opt Two', true]);
+  assert.equal((await c.req('PATCH', '/me', { body: { name: 'Opt Two', surveyOptIn: 'x' } })).status, 400);
+  app.clock.t = NOW;
+});
+
+test('a later sign-in updates the email, and an empty one leaves it alone', async () => {
+  const c = client(app.base);
+  await c.req('POST', '/auth/fake', { body: { id: 'mailer', name: 'Mailer', email: 'one@example.com' } });
+  assert.equal((await c.req('GET', '/me')).json.user.email, 'one@example.com');
+  const r2 = await c.req('POST', '/auth/fake', { body: { id: 'mailer', email: 'two@example.com' } });
+  assert.equal(r2.json.user.email, 'two@example.com');
+  const r3 = await c.req('POST', '/auth/fake', { body: { id: 'mailer' } });
+  assert.equal(r3.json.user.email, 'two@example.com');
+  assert.equal((await c.req('POST', '/auth/fake', { body: { id: 'mailer', email: '' } })).json.user.email, 'two@example.com');
+});
+
+test('deleting the account removes the row and the email', async () => {
+  const c = client(app.base);
+  await c.req('POST', '/auth/fake', { body: { id: 'gone-mail', name: 'Gone Mail', email: 'gone@example.com', surveyOptIn: true } });
+  const row = () => app.db.raw.prepare('SELECT u.id FROM users u JOIN identities i ON i.user_id = u.id WHERE i.subject = ?').get('gone-mail');
+  const id = row().id;
+  assert.equal((await c.req('DELETE', '/me')).status, 200);
+  assert.equal(app.db.raw.prepare('SELECT COUNT(*) AS n FROM users WHERE id = ?').get(id).n, 0);
+  assert.equal(app.db.raw.prepare("SELECT COUNT(*) AS n FROM users WHERE email = 'gone@example.com'").get().n, 0);
+  assert.equal(app.db.user(id), null);
+});
+
+test('no route other than /me returns an email', async () => {
+  const c = client(app.base);
+  await c.req('POST', '/auth/fake', { body: { id: 'private-mail', name: 'Private Mail', email: 'private-mail@example.com' } });
+  const { userId } = app.db.signIn({ provider: 'fake', subject: 'private-mail', name: 'x' }, NOW);
+  app.db.recordScore({ board: 'p:chat-app', userId, score: 500, stars: 2, passed: true, verified: true }, NOW);
+  const seen = [];
+  for (const [m, p] of [['GET', '/leaderboard?problem=chat-app'], ['GET', '/progress'], ['GET', '/auth/config'], ['GET', '/health'], ['POST', '/auth/signout']]) {
+    const r = await c.req(m, p, m === 'POST' ? { body: {} } : {});
+    seen.push(JSON.stringify(r.json));
+  }
+  assert.ok(seen[0].includes('Private Mail'), 'the player is on the board');
+  assert.ok(seen.every((x) => !/private-mail@|@example\.com|email/i.test(x)));
+});
+
+test('an old database gains the new user columns on start and keeps its rows', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sd-mig-'));
+  const file = path.join(dir, 'old.db');
+  try {
+    const old = new DatabaseSync(file);
+    old.exec("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, avatar TEXT, created_at INTEGER NOT NULL); INSERT INTO users (name, avatar, created_at) VALUES ('Veteran', NULL, 1234);");
+    old.close();
+    const db = openDb(file);
+    try {
+      const cols = db.raw.prepare('PRAGMA table_info(users)').all().map((r) => r.name);
+      for (const c of ['email', 'survey_optin', 'survey_optin_at']) assert.ok(cols.includes(c), c);
+      assert.deepEqual(db.user(1), { id: 1, name: 'Veteran', avatar: null, createdAt: 1234, providers: [], email: null, surveyOptIn: false, surveyOptInAt: null });
+      db.setEmail(1, 'v@example.com');
+      db.setSurveyOptIn(1, true, 99);
+      assert.equal(db.user(1).email, 'v@example.com');
+      assert.equal(db.user(1).surveyOptInAt, 99);
+    } finally { db.close(); }
+    const again = openDb(file);   // a second start is harmless
+    try { assert.equal(again.user(1).email, 'v@example.com'); } finally { again.close(); }
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

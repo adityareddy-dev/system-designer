@@ -11,13 +11,10 @@ const TABS = [
   { id: 'practice', label: 'Practice', icon: 'ui.practice', href: '#/practice' },
   { id: 'challenge', label: 'Challenge', icon: 'ui.challenge', href: '#/challenge' },
   { id: 'sandbox', label: 'Sandbox', icon: 'ui.sandbox', href: '#/sandbox' },
+  { id: 'guides', label: 'Guides', icon: 'ui.editorial', href: 'guides/' },
 ];
 
-const LOGO = `<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-<defs><linearGradient id="sh-lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/></linearGradient></defs>
-<rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="url(#sh-lg)"/>
-<path d="M8 21c4 0 4-10 8-10s4 10 8 10" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
-<circle cx="8" cy="21" r="2.4" fill="#fff"/><circle cx="16" cy="11" r="2.4" fill="#fff"/><circle cx="24" cy="21" r="2.4" fill="#fff"/></svg>`;
+const LOGO = `<svg viewBox="0 0 32 32" width="36" height="36" aria-hidden="true" focusable="false"><rect x="2" y="2" width="28" height="28" rx="6" fill="#141414"/><path d="M11 14 20 10M11 18l9 4" stroke="#FFF4E0" stroke-width="2"/><circle cx="8.5" cy="16" r="3.5" fill="#FFC93C"/><circle cx="23" cy="8.5" r="3.5" fill="#FF5B3A"/><circle cx="23" cy="23.5" r="3.5" fill="#2D5BFF"/></svg>`;
 
 function parseHash(s) {
   const raw = String(s || '').replace(/^#\/?/, '');
@@ -32,15 +29,21 @@ export function mountShell(rootEl, ctx) {
   setOverlayHost(overlayEl);
 
   // Chrome
-  const themeBtn = h('button', { type: 'button', class: 'sh-icon-btn', id: 'sh-theme-btn' });
   const soundBtn = h('button', { type: 'button', class: 'sh-icon-btn', id: 'sh-sound-btn' });
   const settingsLink = h('a', { class: 'sh-icon-btn', href: '#/settings', 'aria-label': 'Settings', title: 'Settings' }, ico('ui.settings', 20));
   const nav = h('nav', { class: 'sh-nav', 'aria-label': 'Sections' },
     TABS.map((t) => h('a', { class: 'sh-tab', href: t.href, dataset: { tab: t.id } }, ico(t.icon, 20), h('span', { class: 'sh-tab-label', text: t.label }))));
+  // The daily challenge is for signed-in players: a signed-out visitor on the hosted site does not see it in the bar.
+  let signedIn = false;
+  const syncChallengeTab = (st) => {
+    if (st && typeof st === 'object') signedIn = !!st.user;
+    const tab = nav.querySelector('[data-tab="challenge"]');
+    if (tab) tab.hidden = !!(ctx.gate?.required && !signedIn);
+  };
   const brand = h('a', { class: 'sh-brand', href: '#/', 'aria-label': 'System Designer home' }, h('span', { class: 'sh-brand-mark', html: LOGO }), h('span', { class: 'sh-brand-name', text: 'System Designer' }));
   // Optional account button; stays empty and hidden when sign-in is not available.
   const accountSlot = h('div', { class: 'sh-account', hidden: true });
-  const bar = h('header', { class: 'sh-topbar' }, brand, h('div', { class: 'sh-actions' }, accountSlot, themeBtn, soundBtn, settingsLink));
+  const bar = h('header', { class: 'sh-topbar' }, brand, h('div', { class: 'sh-actions' }, accountSlot, soundBtn, settingsLink));
   const attachAccount = () => { try { ctx.account?.mountHeader?.(accountSlot); } catch { /* the game works without accounts */ }
     if (ctx.account) { try { ctx.bus?.emit('account:attached'); } catch { /* ignore */ } }
   };
@@ -53,20 +56,14 @@ export function mountShell(rootEl, ctx) {
   main.addEventListener('sh:immersive', () => setImmersive(view && view.immersive));
   rootEl.append(shell);
 
-  const THEME_NEXT = { system: 'light', light: 'dark', dark: 'system' };
   function refreshButtons() {
     document.documentElement.dataset.contrast = settings.get('highContrast') ? 'high' : 'normal';
-    const t = settings.get('theme');
-    themeBtn.replaceChildren(ico('ui.theme-' + t, 20));
-    themeBtn.setAttribute('aria-label', `Theme: ${t}. Switch to ${THEME_NEXT[t]}.`);
-    themeBtn.title = `Theme: ${t}`;
     const muted = settings.get('soundMuted');
     soundBtn.replaceChildren(ico(muted ? 'ui.sound-off' : 'ui.sound-on', 20));
     soundBtn.setAttribute('aria-label', muted ? 'Sound is off. Turn on.' : 'Sound is on. Turn off.');
     soundBtn.setAttribute('aria-pressed', String(!muted));
     soundBtn.title = muted ? 'Sound off' : 'Sound on';
   }
-  themeBtn.addEventListener('click', () => settings.set('theme', THEME_NEXT[settings.get('theme')]));
   soundBtn.addEventListener('click', () => {
     const next = !settings.get('soundMuted');
     settings.set('soundMuted', next);
@@ -188,6 +185,8 @@ export function mountShell(rootEl, ctx) {
   const offs = [];
   offs.push(bus.on('route', (r) => show(r)));
   offs.push(bus.on('settings', refreshButtons));
+  offs.push(bus.on('account', syncChallengeTab));
+  syncChallengeTab();
   // Signing in on a sign-in page opens the page that was asked for; signing out of a play page goes back to the sign-in page.
   offs.push(bus.on('account', (st) => {
     if (!ctx.gate?.required) return;

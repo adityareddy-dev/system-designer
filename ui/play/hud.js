@@ -13,11 +13,11 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
   host.append(root);
 
   // controls
-  const playBtn = h('button', { class: 'pl-btn pl-btn--primary pl-play', type: 'button', 'aria-label': 'Start the traffic day' }, iconEl('ui.play', 20), h('span', { class: 'pl-play-l', text: 'Start day' }));
+  const playBtn = h('button', { class: 'pl-btn pl-btn--primary pl-play', type: 'button', 'aria-label': 'Start day' }, iconEl('ui.play', 20), h('span', { class: 'pl-play-l', text: 'Start day' }));
   const resetBtn = h('button', { class: 'pl-btn pl-btn--small pl-reset', type: 'button', 'aria-label': 'Back to drawing', title: 'Stop the day and go back to drawing', onClick: () => onReset?.() }, iconEl('ui.restart', 18), h('span', { class: 'pl-reset-l', text: 'Back to drawing' }));
   const speedPill = h('div', { class: 'pl-speed', role: 'radiogroup', 'aria-label': 'Speed' });
   const speedBtns = SPEEDS.map((s) => {
-    const b = h('button', { class: 'pl-speed-b', type: 'button', role: 'radio', 'aria-checked': 'false', 'aria-label': `${s} times speed`, onClick: () => { ran = true; onSpeed?.(s); } }, `${s}×`);
+    const b = h('button', { class: 'pl-speed-b', type: 'button', role: 'radio', 'aria-checked': 'false', 'aria-label': `${s}× speed`, onClick: () => { ran = true; onSpeed?.(s); } }, `${s}×`);
     speedPill.append(b);
     return [s, b];
   });
@@ -118,7 +118,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     const lab = playBtn.querySelector('.pl-play-l');
     const ico = playBtn.querySelector('.pl-ic');
     const set = (id, text, aria) => { ico.innerHTML = iconEl(id, 20).innerHTML; lab.textContent = text; playBtn.setAttribute('aria-label', aria); };
-    if (p === 'build' || (p === 'paused' && !ran)) set('ui.play', sandbox || lesson ? 'Run' : 'Start day', 'Start the traffic day');
+    if (p === 'build' || (p === 'paused' && !ran)) set('ui.play', sandbox || lesson ? 'Run' : 'Start day', sandbox || lesson ? 'Run, start the traffic day' : 'Start day');
     else if (p === 'running') set('ui.pause', 'Pause', 'Pause');
     else if (p === 'paused') set('ui.play', 'Resume', 'Resume');
     else set('ui.restart', 'Done', 'Day finished');

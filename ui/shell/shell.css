@@ -166,10 +166,7 @@
 .sh-empty { display: grid; justify-items: center; gap: 12px; text-align: center; padding: 56px 16px; color: var(--text-2); }
 
 /* ---------- home ---------- */
-.sh-hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 32px; align-items: center; padding: 24px 0 36px; }
 .sh-cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
-.sh-hero-art { padding: 16px; border-radius: 28px; border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-2); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-.sh-hero-art svg { display: block; width: 100%; height: auto; }
 .sh-section-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .sh-section-card { gap: 8px; padding: 22px; min-height: 210px; }
 .sh-section-ico { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); margin-bottom: 6px; }
@@ -424,7 +421,6 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 }
 @media (max-width: 1020px) {
   .sh-section-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sh-hero { grid-template-columns: 1fr; }
   .sh-two-col { grid-template-columns: 1fr; }
   .sh-brand-name { display: none; }
 }
@@ -464,7 +460,6 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
   .sh-lp-card { padding: 20px; }
   .sh-demo-stage { height: max(500px, 56vh); min-height: 500px; }
   .sh-btn { min-height: 44px; }
-  .sh-hero-art { padding: 8px; border-radius: 20px; }
   .sh-toasts { bottom: calc(var(--sh-nav-h) + 16px + env(safe-area-inset-bottom)); }
   [data-immersive="1"] > .sh-toasts { bottom: 16px; }
   .sh-slot { grid-template-columns: auto 1fr; }
@@ -611,10 +606,6 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 .sh-h2 {font-size:24px;line-height:1.25}
 .sh-lead {max-width:65ch}
 .sh-eyebrow,.sh-kicker {text-transform:none;letter-spacing:.03em;font-family:var(--font-mono);font-size:12px}
-.sh-hero-title {font-size:clamp(32px,4vw,52px);line-height:1.05}
-.sh-hero-art {border-radius:12px;box-shadow:none;background:var(--canvas);backdrop-filter:none;padding:16px;border-color:var(--border-strong)}
-.sh-hero-art::before {content:'Signal bench / 01';display:block;font:12px var(--font-mono);color:var(--text-3);padding-bottom:12px;border-bottom:1px solid var(--border)}
-.sh-hero-art::after {content:'One route. Spare capacity. A way to recover.';display:block;font:13px var(--font-mono);color:var(--text-2);padding-top:12px;border-top:1px solid var(--border)}
 .sh-section-ico,.sh-lesson-ico,.sh-lp-hero-ico {border-radius:8px;background:none;border:1px solid var(--border);color:var(--cat-compute)}
 .sh-section-card {border-top:3px solid var(--cat-compute)}
 .sh-section-card:nth-child(2) {border-top-color:var(--cat-data)}
@@ -756,18 +747,6 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-lesson .sh-badge {grid-column:2;grid-row:4;justify-self:start}
 }
 
-.sh-hero-art::after {display:none}
-.sh-hero-controls {display:flex;gap:6px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)}
-.sh-hero-controls .sh-btn {flex:1;font-size:13px;padding-inline:8px;box-shadow:none;white-space:nowrap}
-.sh-hero-controls [aria-pressed=true] {background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.sh-hero-evidence {font-size:15px;line-height:1.5;min-height:68px;margin:12px 0 8px}
-.sh-hero-evidence b {font-family:var(--font-mono);font-size:13px}
-.sh-hero-art .sh-demo-capacity {transition:transform 120ms ease-out,stroke 120ms ease-out}
-.sh-hero-art [data-part] {transition:opacity 200ms ease-out}
-.sh-hero-art[data-state=failure] [data-part="el.vm-fleet-28"] {opacity:.25}
-.sh-hero-art[data-state=failure] [data-part="el.vm-fleet-28"]::after {content:'×'}
-.sh-hero-art[data-state=overload] {border-color:var(--bad)}
-:root[data-motion=reduce] .sh-hero-art [data-part],:root[data-motion=reduce] .sh-hero-art .sh-demo-capacity {transition:none}
 .sh-lp-card:has(.sh-tap-lane) .sh-lp-hero-ico {display:none}
 @media(min-width:768px){.sh-lp-card:has(.sh-tap-lane) {gap:12px}.sh-tap-lane {min-height:160px}}
 
@@ -784,25 +763,10 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
  .sh-next-paths {grid-template-columns:1fr;gap:24px}
  .sh-next-path+.sh-next-path {border-top:1px solid var(--border);padding-top:24px}
 }
-.sh-home-page {max-width:1240px}
-.sh-home-page .sh-hero {grid-template-columns:1fr 1.15fr;gap:48px;padding:48px 0 40px;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
-.sh-home-page .sh-display {font-size:clamp(46px,5.1vw,72px);line-height:.98;letter-spacing:-2.7px;max-width:9.8ch;margin:16px 0 24px}
-.sh-home-page .sh-lead {font-size:18px;line-height:1.55;max-width:44ch}
-.sh-home-page .sh-hero-art {border:0;border-radius:0;background:transparent;padding:24px 0;box-shadow:none;align-self:center}
-.sh-home-page .sh-hero-art>svg {min-height:290px;width:100%;max-height:none}
-.sh-home-page .sh-section-grid {gap:0;border-top:2px solid var(--text);border-bottom:1px solid var(--border);margin-top:24px}
-.sh-home-page .sh-section-card {border:0;border-right:1px solid var(--border);border-radius:0;background:transparent;padding:24px;box-shadow:none}
-.sh-home-page .sh-section-card:last-child {border-right:0}
 .sh-home-page .sh-section-title {font-size:27px;letter-spacing:-.7px}
-.sh-home-page .sh-section-card .sh-section-ico {background:none;border:0;width:auto;height:auto;justify-items:start;margin-bottom:12px}
-.sh-home-page .sh-section-card[data-tone="a"] .sh-section-ico {color:var(--accent)}
 .sh-home-page .sh-home-extras .sh-card {border:0;border-radius:0;border-bottom:1px solid var(--border);background:transparent;box-shadow:none;padding-inline:0}
-.sh-home-page .sh-cta-row {display:grid;grid-template-columns:repeat(2,max-content);justify-content:start}
-.sh-home-page .sh-cta-row>.sh-btn--primary {grid-column:1/-1;justify-self:start}
 .sh-home-page .sh-concepts {margin-top:36px}
 @media(max-width:1020px) {
- .sh-home-page .sh-section-card:nth-child(2n) {border-right:0}
- .sh-home-page .sh-section-card:nth-child(-n+2) {border-bottom:1px solid var(--border)}
 }
 @media(max-width:340px) {.sh-home-page .sh-cta-row {display:flex}}
 .sh-learn-page>.sh-page-head {padding:20px 0 16px;align-items:end}
@@ -856,15 +820,6 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 .sh-lp-card,.sh-lp-nav,.sh-modal,.sh-filters.is-open,.sh-score-details[open]>*:not(summary) {animation:sh-page-settle 260ms cubic-bezier(.2,.8,.2,1) both}
 @keyframes sh-page-settle {from {opacity:.2;transform:translateY(12px)}to {opacity:1;transform:translateY(0)}}
 @media(max-width:719px) {
- .sh-home-page .sh-hero {grid-template-columns:1fr;padding:24px 0;gap:8px}
- .sh-home-page .sh-display {font-size:52px;letter-spacing:-2px;max-width:10ch;margin:12px 0 20px}
- .sh-home-page .sh-lead {font-size:16px;line-height:1.5}
- .sh-home-page .sh-hero-art {padding:12px 0}
- .sh-home-page .sh-hero-art>svg {min-height:190px}
- .sh-home-page .sh-section-grid {grid-template-columns:1fr 1fr}
- .sh-home-page .sh-section-card {padding:20px 12px}
- .sh-home-page .sh-section-card:nth-child(2n) {padding-right:0}
- .sh-home-page .sh-section-card:nth-child(2n+1) {padding-left:0}
  .sh-home-page .sh-section-title {font-size:24px}
  .sh-home-page .sh-section-text {font-size:13px}
  .sh-home-page .sh-section-stat {font-size:11px}
@@ -895,14 +850,6 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 @media(max-width:719px){.sh-problem:has(.sh-interview-toggle) .sh-problem-bar>.sh-diff {display:none}}
 
 @media(max-width:719px){
- .sh-home-page .sh-hero {display:flex;flex-direction:column;align-items:stretch}
- .sh-home-page .sh-hero-copy {display:contents}
- .sh-home-page .sh-eyebrow {order:0;margin-bottom:0}
- .sh-home-page .sh-display {order:1;font-size:44px;max-width:15ch;letter-spacing:-1.5px;margin:8px 0}
- .sh-home-page .sh-hero-art {order:2}
- .sh-home-page .sh-lead {order:3;margin:12px 0}
- .sh-home-page .sh-cta-row {order:4}
- .sh-home-page .sh-fine {order:5}
 }
 /* Capture titles and evidence tokens while controls remain live. */
 :root {view-transition-name:none}

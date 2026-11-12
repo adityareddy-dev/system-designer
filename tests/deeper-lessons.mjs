@@ -34,7 +34,7 @@ for (const [i,id] of expected.entries()) {
   assert(!/href=|style=|filter=/.test(svg));
   assert((svg.match(/<text\b/g) || []).length <= 5);
   assert(svg.includes('patternUnits="userSpaceOnUse"'), id + ' shared drawing grid');
-  const colors = new Set(['#EDF2F9','#F1F5FB','#1B2B45','#4D607B','#3D506E','#C5D0E1','#60738D','#244ED8','#E7ECFF','#006E68','#865400','#4051A1','#24643F','#875500','#A92733']);
+  const colors = new Set(['#FFF4E0','#FFFCF4','#141414','#33312C','#55514A','#D9CFBB','#E8DCC0','#2D5BFF','#3B4FB8','#FFE59A','#BFD0FF','#FFC93C','#7FD9A8','#FF5B3A','#0F6B49','#7A4B00','#17663A','#B3261E']);
   assert([...svg.matchAll(/#[0-9A-Fa-f]{6}/g)].every(m => colors.has(m[0])));
 }
 assert.equal(8/9*8, 64/9);

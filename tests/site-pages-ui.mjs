@@ -82,11 +82,11 @@ try {
   assert.equal(progress['chat-app'].bestScore,800,'existing progress remains');
   await pg.goto(BASE+'p/url-shortener/',{waitUntil:'load'});
   await pg.evaluate(payload => location.hash = '#/beat/' + payload, payload);
-  await pg.waitForFunction(() => document.body.innerText.includes('Reading check challenges you'));
+  await pg.waitForFunction(() => document.body.innerText.toLowerCase().includes('reading check challenges you'));
   assert.equal(new URL(pg.url()).pathname, new URL(BASE).pathname, 'same-tab beat links enter the game');
   for(const route of ['p/url-shortener/','d/2026-11-07/']) {
     await pg.goto(BASE+route+'#/beat/'+payload,{waitUntil:'load'});
-    await pg.waitForFunction(()=>document.body.innerText.includes('Reading check challenges you'),{timeout:30000});
+    await pg.waitForFunction(()=>document.body.innerText.toLowerCase().includes('reading check challenges you'),{timeout:30000});
     assert.equal(new URL(pg.url()).hash,'#/beat/'+payload,'share payload preserved');
     const text=await pg.evaluate(()=>document.body.innerText);
     assert.ok(text.includes('1000')&&text.includes('Score checked by replay'),'design arrives and its score is verified');

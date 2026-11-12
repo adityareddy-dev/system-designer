@@ -1,15 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#EDF2F9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#FFF4E0"/>
 <title>Two identical payments with one key: one is processed, the repeat is turned aside</title>
-<g stroke="#1B2B45" stroke-width="4"><path d="M44 92 H204"/><path d="M44 150 H204"/></g>
-<polygon points="202,82 218,92 202,102" fill="#1B2B45"/><polygon points="202,140 218,150 202,160" fill="#1B2B45"/>
-<g fill="#865400"><rect x="28" y="86" width="12" height="12"/><rect x="28" y="144" width="12" height="12"/></g>
-<g fill="#E7ECFF" stroke="#4051A1" stroke-width="2"><rect x="92" y="80" width="40" height="24" rx="5"/><rect x="92" y="138" width="40" height="24" rx="5"/></g>
-<g fill="none" stroke="#4051A1" stroke-width="2" stroke-linecap="round"><circle cx="104" cy="92" r="4"/><path d="M108 92 H124 M120 92 V97 M124 92 V96"/><circle cx="104" cy="150" r="4"/><path d="M108 150 H124 M120 150 V155 M124 150 V154"/></g>
-<rect x="222" y="72" width="8" height="40" rx="3" fill="#C5D0E1" stroke="#60738D" stroke-width="2"/>
-<path d="M226 72 V48 H190" fill="none" stroke="#4D607B" stroke-width="3" stroke-dasharray="6 4"/><polyline points="200,38 190,48 200,58" fill="none" stroke="#4D607B" stroke-width="3"/>
-<rect x="240" y="67" width="100" height="128" rx="10" fill="#C5D0E1"/><rect x="240" y="64" width="100" height="128" rx="10" fill="#F1F5FB" stroke="#1B2B45" stroke-width="2"/><rect x="248" y="66" width="84" height="3" rx="1.5" fill="#006E68"/>
-<rect x="272" y="80" width="36" height="24" rx="5" fill="#E7ECFF" stroke="#4051A1" stroke-width="2"/><g fill="none" stroke="#4051A1" stroke-width="2" stroke-linecap="round"><circle cx="284" cy="92" r="4"/><path d="M288 92 H304 M300 92 V97 M304 92 V96"/></g>
-<path d="M340 150 H368" stroke="#60738D" stroke-width="2"/><path d="M240 150 H262" stroke="#60738D" stroke-width="2"/>
-<rect x="346" y="144" width="12" height="12" fill="#865400"/>
-<circle cx="392" cy="150" r="24" fill="#24643F"/><polyline points="379,150 388,160 406,138" fill="none" stroke="#F1F5FB" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<g stroke="#141414" stroke-width="4"><path d="M44 92 H204"/><path d="M44 150 H204"/></g>
+<polygon points="202,82 218,92 202,102" fill="#141414"/><polygon points="202,140 218,150 202,160" fill="#141414"/>
+<g fill="#FFC93C"><rect x="28" y="86" width="12" height="12"/><rect x="28" y="144" width="12" height="12"/></g>
+<g fill="#FFE59A" stroke="#3B4FB8" stroke-width="2"><rect x="92" y="80" width="40" height="24" rx="5"/><rect x="92" y="138" width="40" height="24" rx="5"/></g>
+<g fill="none" stroke="#3B4FB8" stroke-width="2" stroke-linecap="butt"><circle cx="104" cy="92" r="4"/><path d="M108 92 H124 M120 92 V97 M124 92 V96"/><circle cx="104" cy="150" r="4"/><path d="M108 150 H124 M120 150 V155 M124 150 V154"/></g>
+<rect x="222" y="72" width="8" height="40" rx="3" fill="#E8DCC0" stroke="#141414" stroke-width="2.5"/>
+<path d="M226 72 V48 H190" fill="none" stroke="#33312C" stroke-width="3" stroke-dasharray="6 4"/><polyline points="200,38 190,48 200,58" fill="none" stroke="#33312C" stroke-width="3"/>
+<rect x="243" y="67" width="100" height="128" rx="6" fill="#141414"/><rect x="240" y="64" width="100" height="128" rx="6" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><rect x="248" y="66" width="84" height="3" rx="1.5" fill="#7FD9A8" stroke="#141414" stroke-width="2"/>
+<rect x="272" y="80" width="36" height="24" rx="5" fill="#FFE59A" stroke="#3B4FB8" stroke-width="2"/><g fill="none" stroke="#3B4FB8" stroke-width="2" stroke-linecap="butt"><circle cx="284" cy="92" r="4"/><path d="M288 92 H304 M300 92 V97 M304 92 V96"/></g>
+<path d="M340 150 H368" stroke="#141414" stroke-width="2.5"/><path d="M240 150 H262" stroke="#141414" stroke-width="2.5"/>
+<rect x="346" y="144" width="12" height="12" fill="#FFC93C" stroke="#141414" stroke-width="2"/>
+<circle cx="392" cy="150" r="24" fill="#7FD9A8" stroke="#141414" stroke-width="2"/><polyline points="379,150 388,160 406,138" fill="none" stroke="#FFFCF4" stroke-width="5" stroke-linecap="butt" stroke-linejoin="miter"/>
 </svg>

@@ -30,7 +30,7 @@ const res = await esbuild.build({
 });
 
 // Styles in one file, in the order index.html loads them.
-const css = ['assets/palette.css', 'ui/shell/shell.css', 'ui/play/play.css', 'compete/compete.css', 'account/account.css', 'ui/shell/layout.css']
+const css = ['assets/palette.css', 'ui/shell/shell.css', 'ui/play/play.css', 'compete/compete.css', 'compete/pool.css', 'account/account.css', 'ui/shell/layout.css', 'assets/neo.css', 'assets/header.css']
   .map((f) => fs.readFileSync(path.join(root, f), 'utf8')).join('\n');
 fs.writeFileSync(path.join(dist, 'app.css'), (await esbuild.transform(css, { loader: 'css', minify: true })).code);
 

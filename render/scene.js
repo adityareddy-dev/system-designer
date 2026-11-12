@@ -178,13 +178,13 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       groups.get(region).push(n);
     }
     const label = (text, x, y) => {
-      const t = new PIXI.Text({ text, style: { fontFamily: 'Atkinson Hyperlegible', fontSize: 14, fill: P.text } });
+      const t = new PIXI.Text({ text, style: { fontFamily: 'Space Grotesk', fontSize: 14, fontWeight: '700', fill: P.ink } });
       t.position.set(x, y); regionLayer.addChild(t);
     };
     for (const [region, ns] of groups) {
       const x = Math.min(...ns.map(n => n.x)) - 90, y = Math.min(...ns.map(n => n.y)) - 100;
       const w = Math.max(...ns.map(n => n.x)) - x + 90, h = Math.max(...ns.map(n => n.y)) - y + 90;
-      regionLayer.addChild(new PIXI.Graphics().roundRect(x, y, w, h, 16).fill({ color: P.accent, alpha: 0.04 }).stroke({ color: P.accent, alpha: 0.4, width: 2 }));
+      regionLayer.addChild(new PIXI.Graphics().roundRect(x, y, w, h, 8).stroke({ color: P.text3, width: 2 }));
       label(catalog.world.regions.find(r => r.id === region)?.name || region, x + 12, y + 10);
     }
     for (const e of graph.edges) {
@@ -197,7 +197,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
 
   // ---- interaction drawings: port ring, rubber band, guides, ghost ----
   const portRing = new PIXI.Graphics(); portRing.visible = false;
-  const portHint = new PIXI.Text({ text: 'Drag to connect →', style: { fontFamily: 'Atkinson Hyperlegible', fontSize: 13, fill: P.accent, fontWeight: '700' }, resolution: 2 });
+  const portHint = new PIXI.Text({ text: 'Drag to connect →', style: { fontFamily: 'Space Grotesk', fontSize: 13, fill: P.accent, fontWeight: '700' }, resolution: 2 });
   portHint.anchor.set(.5, 1); portHint.visible = false;
   const connectionInk = new PIXI.Graphics();
   let connection = null;
@@ -220,14 +220,13 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2;
       portRing.moveTo(Math.cos(a0) * PORT_R, Math.sin(a0) * PORT_R).arc(0, 0, PORT_R, a0, a1);
     }
-    portRing.stroke({ width: ringHot ? 2.4 : 1.6, color: P.accent, alpha: ringHot ? 0.95 : 0.6, cap: 'round' });
-    if (ringHot) portRing.circle(0, 0, PORT_R + 6).stroke({ width: 10, color: P.accent, alpha: 0.12 });
+    portRing.stroke({ width: ringHot ? 3 : 2.5, color: P.blue, cap: 'butt' });
     // The handle keeps a full finger target outside the body, even at overview zoom.
     const handleX = HALF + 22 / camera.zoom;
-    portRing.moveTo(HALF, 0).lineTo(handleX, 0).stroke({width:1.6*k,color:P.accent,alpha:.65});
-    portRing.circle(handleX, 0, 22 / camera.zoom).fill({ color: P.accent, alpha: .08 });
-    portRing.circle(handleX, 0, 10 * k).fill({ color: P.accent }).stroke({ width: 2 * k, color: P.surfaceSolid });
-    portRing.moveTo(handleX - 3.5 * k, -4 * k).lineTo(handleX + 3 * k, 0).lineTo(handleX - 3.5 * k, 4 * k).stroke({ width: 2 * k, color: P.surfaceSolid, cap: 'round', join: 'round' });
+    portRing.moveTo(HALF, 0).lineTo(handleX, 0).stroke({width:2.5*k,color:P.ink});
+    portRing.rect(handleX - 10 * k + 2 * k, -10 * k + 2 * k, 20 * k, 20 * k).fill({ color: P.ink });
+    portRing.rect(handleX - 10 * k, -10 * k, 20 * k, 20 * k).fill({ color: P.blue }).stroke({ width: 2 * k, color: P.ink });
+    portRing.moveTo(handleX - 3.5 * k, -4 * k).lineTo(handleX + 3 * k, 0).lineTo(handleX - 3.5 * k, 4 * k).stroke({ width: 2.2 * k, color: P.card, cap: 'butt', join: 'miter' });
   }
 
   const ui = {
@@ -242,21 +241,21 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (pair !== previewPair) { previewPair = pair; emitter.emit('connect:preview', { from: from.id, to: to?.id || null, ok }); }
       band.visible = true;
       band.clear();
-      const color = ok ? P.accent : P.bad;
+      const color = ok ? P.blue : P.tomato;
       if (to) {
         edgeCurve(bandLut, from.x, from.y, to.x, to.y);
         band.moveTo(bandLut.p0x, bandLut.p0y).bezierCurveTo(bandLut.c1x, bandLut.c1y, bandLut.c2x, bandLut.c2y, bandLut.p3x, bandLut.p3y)
-          .stroke({ width: 2.6, color, alpha: 0.95, cap: 'round' });
+          .stroke({ width: 2.5, color, cap: 'butt' });
         target.visible = true;
         target.context = ok ? kit.select[to.shape] : kit.ghost[to.shape];
-        target.tint = ok ? 0xffffff : P.bad;
+        target.tint = ok ? 0xffffff : P.tomato;
         target.position.set(to.x, to.y);
       } else {
         const s = x >= from.x ? 1 : -1;
         const sx = from.x + s * HALF, sy = from.y;
         const h = Math.max(30, Math.abs(x - sx) * 0.5);
-        band.moveTo(sx, sy).bezierCurveTo(sx + s * h, sy, x - s * h * 0.4, y, x, y).stroke({ width: 2.4, color, alpha: 0.85, cap: 'round' });
-        band.circle(x, y, 5).fill({ color }).stroke({ width: 1.5, color: P.surfaceSolid });
+        band.moveTo(sx, sy).bezierCurveTo(sx + s * h, sy, x - s * h * 0.4, y, x, y).stroke({ width: 2.5, color, cap: 'butt' });
+        band.rect(x - 5, y - 5, 10, 10).fill({ color }).stroke({ width: 2, color: P.ink });
         target.visible = false;
       }
     },
@@ -270,7 +269,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
           guides.moveTo(x1 + ux * s, y1 + uy * s).lineTo(x1 + ux * e, y1 + uy * e);
         }
       }
-      if (lines.length) guides.stroke({ width: 1.2, color: P.accent, alpha: 0.7 });
+      if (lines.length) guides.stroke({ width: 1.5, color: P.blue });
     },
     clearGuides() { guides.clear(); },
   };
@@ -304,7 +303,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (a && b && plan) {
         dropWires.moveTo(a.x, a.y).lineTo(ghost.x, ghost.y);
         if (plan.kind !== 'side') dropWires.lineTo(b.x, b.y);
-        dropWires.stroke({ width: 3 / camera.zoom, color: P.accent, alpha: .8 });
+        dropWires.stroke({ width: 3 / camera.zoom, color: P.blue });
       }
     }
     if (ghost.view) { ghost.view.position.set(ghost.x, ghost.y); ghost.view.visible = true; ghost.shown = true; }
@@ -366,7 +365,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       edgeCurve(lut, a.x, a.y, b.x, b.y);
       overlayEdges.moveTo(lut.p0x, lut.p0y).bezierCurveTo(lut.c1x, lut.c1y, lut.c2x, lut.c2y, lut.p3x, lut.p3y);
     }
-    overlayEdges.stroke({ width: 2, color: P.text3, alpha: 0.8 });
+    overlayEdges.stroke({ width: 2, color: P.text3 });
     for (const n of g.nodes) {
       const m = makeMini(PIXI, kit, env, n.type, { faint: true });
       m.position.set(n.x, n.y);
@@ -488,6 +487,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       for (let i = 0; i < N; i++) if ((util[i] > 1 || status?.[i] === 4) && nodeView[i]?.kind !== 'source') { first = i; break; }
       if (first >= 0) failureLead = { id: F.nodeIds[first], until: now + 1600 };
     }
+    nodes.setLead(failureLead ? failureLead.id : null);
     for (let i = 0; i < N; i++) {
       const v = nodeView[i];
       if (!v || v.removing) continue;
@@ -508,7 +508,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         map.srcAcc[i] += (fail * inv * dt) / 1000;
         if (map.srcAcc[i] >= 1) {
           map.srcAcc[i] = Math.min(map.srcAcc[i] - 1, 1);
-          fx.burst(v.x + HALF + 6, v.y + (Math.random() - 0.5) * 30, P.bad, particleSize() / 10);
+          fx.burst(v.x + HALF + 6, v.y + (Math.random() - 0.5) * 30, P.tomato, particleSize() / 10);
         }
       }
     }
@@ -617,8 +617,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const geo = edges.updateGeometry(nodes.views);
     if (viewChanged || geo) cull();
     edges.update(dt);
-    for (const v of nodes.list) v.c.alpha = pathFocus && !pathFocus.nodes.has(v.id) ? 0.16 : 1;
-    for (const v of edges.list) v.g.alpha = pathFocus && !pathFocus.edges.has(v.id) ? 0.1 : v.quiet ? .35 : 1;
+    // Isolating paths only softens what is off the path; nothing is hidden, and a failing part never sits behind a dim.
+    for (const v of nodes.list) v.c.alpha = pathFocus && !pathFocus.nodes.has(v.id) ? 0.6 : 1;
+    for (const v of edges.list) v.g.alpha = pathFocus && !pathFocus.edges.has(v.id) ? 0.5 : 1;
     particleLayer.visible = !pathFocus;
     glowLayer.visible = !pathFocus;
     fxLayer.visible = !pathFocus;
@@ -631,8 +632,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         zoom: camera.zoom,
         cap: Math.min(QUALITY[level].cap, hostEl.clientWidth < 768 ? 80 : 160),
         size: particleSize(),
-        colorBad: P.bad,
-        colorHit: P.accent2,
+        colorBad: P.tomato,
+        colorHit: P.mint,
         fx,
       });
     }
@@ -645,13 +646,12 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       else {
         const z = camera.zoom, path = edge.lut;
         const p = lutAt(path, path.len * (reduced ? 1 : Math.min(1, elapsed / 720)), {});
-        inkPath(connectionInk, path).stroke({ width: 4 / z, color: P.accent, alpha: .22 });
+        inkPath(connectionInk, path).stroke({ width: 4 / z, color: P.blue, cap: 'butt' });
         if (elapsed < 720 && !reduced) {
-          connectionInk.circle(p.x, p.y, 12 / z).fill({ color: P.accent, alpha: .15 });
-          connectionInk.circle(p.x, p.y, 5 / z).fill({ color: P.accent }).stroke({ width: 2 / z, color: P.surfaceSolid });
+          connectionInk.rect(p.x - 6 / z, p.y - 6 / z, 12 / z, 12 / z).fill({ color: P.blue }).stroke({ width: 2 / z, color: P.ink });
         } else {
           const v = nodes.views.get(edge.to);
-          if (v) connectionInk.circle(v.x, v.y, (44 + (reduced ? 0 : (elapsed - 720) / 16)) / Math.max(.7, z)).stroke({ color: P.accent, width: 3 / z, alpha: reduced ? .7 : Math.max(0, 1 - (elapsed - 720) / 380) });
+          if (v) connectionInk.circle(v.x, v.y, (44 + (reduced ? 0 : (elapsed - 720) / 16)) / Math.max(.7, z)).stroke({ color: P.blue, width: 3 / z });
         }
       }
     }
@@ -669,7 +669,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const v = nodes.views.get(selected);
       if (v) ui.setPortRing(v, false);
     }
-    if (ghost.view && ghost.ring) ghost.ring.alpha = reduced ? 0.9 : 0.6 + 0.35 * Math.sin(now * 0.006);
+    if (ghost.view && ghost.ring) ghost.ring.alpha = 1;
   }
 
   function renderCanvas() {
@@ -1005,9 +1005,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         }
         // wires keep one thickness in the finished picture, whatever the design's size
         const wire = height / (124 * sc);
-        eg.stroke({ width: wire, color: P.edgeFlow, cap: 'round' });
+        eg.stroke({ width: wire, color: P.ink, cap: 'butt' });
         for (const d of dashed) eg.moveTo(d[0], d[1]).bezierCurveTo(d[2], d[3], d[4], d[5], d[6], d[7]);
-        if (dashed.length) eg.stroke({ width: wire * 0.6, color: P.cat.ops, alpha: 0.7, cap: 'round' });
+        if (dashed.length) eg.stroke({ width: wire * 0.6, color: P.text3, cap: 'butt' });
         inner.addChild(eg);
         for (const n of gn) {
           const m = makeMini(PIXI, kit, env, n.type);

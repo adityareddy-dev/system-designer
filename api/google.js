@@ -22,6 +22,13 @@ function sameText(a, b) {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
+// A verified address, trimmed and lowercased, or '' when it is missing or does not look like an address.
+export function cleanEmail(v) {
+  if (typeof v !== 'string') return '';
+  const e = v.trim().toLowerCase();
+  return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : '';
+}
+
 function b64json(part) {
   try { return JSON.parse(Buffer.from(part, 'base64url').toString('utf8')); } catch { throw new TokenError('malformed'); }
 }
@@ -81,7 +88,7 @@ export function createGoogleVerifier({ clientId, jwksUrl = GOOGLE_JWKS, fetchImp
     throw new TokenError('unknown-key');
   }
 
-  // nonce: the value this service gave the page for this sign-in. Returns { sub, name, givenName, picture } or throws TokenError.
+  // nonce: the value this service gave the page for this sign-in. Returns { sub, name, givenName, picture, email } or throws TokenError.
   async function verify(credential, { nonce } = {}) {
     if (!clientId) throw new TokenError('not-configured');
     if (typeof nonce !== 'string' || nonce.length < 16 || nonce.length > 128) throw new TokenError('bad-nonce');
@@ -112,6 +119,7 @@ export function createGoogleVerifier({ clientId, jwksUrl = GOOGLE_JWKS, fetchImp
       name: typeof c.name === 'string' ? c.name : '',
       givenName: typeof c.given_name === 'string' ? c.given_name : '',
       picture: typeof c.picture === 'string' ? c.picture : '',
+      email: cleanEmail(c.email),
     };
   }
 

@@ -8,7 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = (p, s) => { const f = path.join(root, p); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, s); };
 
 const F = ' fill="currentColor" fill-opacity=".18"';
-const stroke = (inner, title) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" role="img"><title>${title}</title>${inner}</svg>\n`;
+const stroke = (inner, title) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="square" stroke-linejoin="miter" role="img"><title>${title}</title>${inner}</svg>\n`;
 const solid = (inner, title) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" role="img"><title>${title}</title>${inner}</svg>\n`;
 const p = (d, extra = '') => `<path d="${d}"${extra}/>`;
 const fp = d => p(d, F);
@@ -127,44 +127,35 @@ const ui = {
 };
 for (const [id, inner] of Object.entries(ui)) out(`assets/ui/${id}.svg`, stroke(inner, id.replace(/-/g, ' ')));
 
-// ---------- favicon ----------
-out('assets/favicon.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5146E5"/><stop offset="1" stop-color="#0E9F94"/></linearGradient>
-<radialGradient id="h"><stop offset="0" stop-color="#FFB27A" stop-opacity=".95"/><stop offset="1" stop-color="#FF8A4C" stop-opacity="0"/></radialGradient></defs>
-<rect width="64" height="64" rx="16" fill="url(#g)"/>
-<circle cx="32" cy="20" r="14" fill="url(#h)"/>
-<path d="M13 46C24 46 22 20 32 20s9 26 20 26" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-opacity=".92"/>
-<circle cx="13" cy="46" r="5" fill="#fff"/><circle cx="52" cy="46" r="5" fill="#fff"/><circle cx="32" cy="20" r="6" fill="#FF8A4C" stroke="#fff" stroke-width="2.5"/>
-</svg>
-`);
+// ---------- favicon: ink square, cream links, three dots ----------
+const MARK = '<rect x="2" y="2" width="28" height="28" rx="6" fill="#141414"/><path d="M11 14 20 10M11 18l9 4" stroke="#FFF4E0" stroke-width="2"/><circle cx="8.5" cy="16" r="3.5" fill="#FFC93C"/><circle cx="23" cy="8.5" r="3.5" fill="#FF5B3A"/><circle cx="23" cy="23.5" r="3.5" fill="#2D5BFF"/>';
+out('assets/favicon.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${MARK}</svg>\n`);
 
 // ---------- social preview 1200x630 ----------
-const node = (x, y, r, col, glow) => `${glow ? `<circle cx="${x}" cy="${y}" r="${r * 2.6}" fill="url(#glow)"/>` : ''}<rect x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" rx="${(r * 0.38).toFixed(1)}" fill="#151B2C" stroke="${col}" stroke-width="3"/><circle cx="${x}" cy="${y}" r="${(r * 0.32).toFixed(1)}" fill="${col}"/>`;
-const route = 'M120 480C300 480 270 380 430 380S560 470 700 440 860 300 980 300 1070 360 1120 360';
+const SG = "font-family=\"'Space Grotesk', system-ui, sans-serif\"";
+const SM = "font-family=\"'Space Mono', ui-monospace, monospace\"";
+const box = (x, y, w, h, fill = '#FFFCF4', sh = 5, rx = 8) => `<rect x="${x + sh}" y="${y + sh}" width="${w}" height="${h}" rx="${rx}" fill="#141414"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" stroke="#141414" stroke-width="3"/>`;
+const replica = (y, label, load, fill) => `${box(640, y, 250, 52, '#FFFCF4', 5, 6)}<text x="658" y="${y + 33}" ${SM} font-size="20" font-weight="700" fill="#141414">${label}</text><rect x="752" y="${y + 17}" width="120" height="18" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/><rect x="752" y="${y + 17}" width="${load}" height="18" fill="${fill}" stroke="#141414" stroke-width="2.5"/>`;
+const wire = (y) => `<path d="M400 420H520V${y}H636" fill="none" stroke="#141414" stroke-width="3.5"/><path d="M628 ${y - 8}L640 ${y}L628 ${y + 8}" fill="none" stroke="#141414" stroke-width="3.5"/>`;
 out('assets/social-preview.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
 <title>System Designer: build the system, survive the day</title>
-<defs>
-<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0A0E18"/><stop offset="1" stop-color="#16203A"/></linearGradient>
-<linearGradient id="path" gradientUnits="userSpaceOnUse" x1="120" y1="0" x2="1120" y2="0"><stop offset="0" stop-color="#8B85FF"/><stop offset=".55" stop-color="#2DD4BF"/><stop offset="1" stop-color="#FF8A4C"/></linearGradient>
-<radialGradient id="glow"><stop offset="0" stop-color="#FF8A4C" stop-opacity=".55"/><stop offset="1" stop-color="#FF8A4C" stop-opacity="0"/></radialGradient>
-<pattern id="dots" width="32" height="32" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.3" fill="#E2E8F0" fill-opacity=".07"/></pattern>
-<filter id="soft" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="9"/></filter>
-</defs>
-<rect width="1200" height="630" fill="url(#bg)"/><rect width="1200" height="630" fill="url(#dots)"/>
-<path d="${route}" fill="none" stroke="url(#path)" stroke-width="16" stroke-linecap="round" opacity=".55" filter="url(#soft)"/>
-<path d="${route}" fill="none" stroke="url(#path)" stroke-width="5" stroke-linecap="round"/>
-<path d="M430 380C500 380 560 300 650 250M700 440C760 500 840 520 900 520" fill="none" stroke="#46516A" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 10"/>
-${node(120, 480, 26, '#94A3B8')}${node(430, 380, 30, '#2DD4BF')}${node(700, 440, 30, '#F2B544')}${node(980, 300, 34, '#FF8A4C', true)}${node(650, 250, 22, '#F472B6')}${node(900, 520, 22, '#A78BFA')}${node(1120, 360, 24, '#38BDF8')}
-<circle cx="205" cy="468" r="6" fill="#4FA8E8"/><rect x="319" y="396" width="12" height="12" rx="2" fill="#F2B33D"/><path d="M560 430l7 12h-14z" fill="#E59AC6"/><path d="M806 342l8 -8 8 8-8 8z" fill="#4FA8E8"/><circle cx="1050" cy="338" r="6" fill="#2FD1A0"/>
-<text x="80" y="170" font-family="Sora, Inter, system-ui, sans-serif" font-weight="700" font-size="104" fill="#E9EDF5">System Designer</text>
-<text x="84" y="232" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="36" fill="#B7C0D1">Build the system. Survive the day. See why it held.</text>
-<text x="84" y="288" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="24" fill="#8590A6">Free system design practice in your browser. Open source.</text>
-<g font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600">
-<rect x="84" y="560" width="148" height="40" rx="20" fill="#8B85FF" fill-opacity=".18"/><text x="158" y="587" text-anchor="middle" fill="#B9B5FF">Learn</text>
-<rect x="246" y="560" width="148" height="40" rx="20" fill="#2DD4BF" fill-opacity=".16"/><text x="320" y="587" text-anchor="middle" fill="#7EE8D8">Practice</text>
-<rect x="408" y="560" width="148" height="40" rx="20" fill="#F2B544" fill-opacity=".16"/><text x="482" y="587" text-anchor="middle" fill="#F7CB78">Challenge</text>
-<rect x="570" y="560" width="148" height="40" rx="20" fill="#F472B6" fill-opacity=".16"/><text x="644" y="587" text-anchor="middle" fill="#F9A3CF">Sandbox</text>
-</g>
+<defs><pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1.6" fill="#141414" fill-opacity=".18"/></pattern></defs>
+<rect width="1200" height="630" fill="#FFF4E0"/><rect width="1200" height="630" fill="url(#dots)"/>
+<rect x="68" y="58" width="1072" height="500" rx="10" fill="#141414"/>
+<rect x="60" y="50" width="1072" height="500" rx="10" fill="#FFFCF4" stroke="#141414" stroke-width="4"/>
+<rect x="104" y="188" width="560" height="22" fill="#FFC93C"/>
+<text x="104" y="160" ${SG} font-weight="700" font-size="76" fill="#141414" letter-spacing="-2">Build the system.</text>
+<text x="104" y="242" ${SG} font-weight="700" font-size="76" fill="#141414" letter-spacing="-2">Survive the day.</text>
+<text x="106" y="296" ${SM} font-size="24" fill="#33312C">System Designer. Practice in your browser.</text>
+<g transform="rotate(4 978 112)"><rect x="906" y="82" width="148" height="62" rx="8" fill="#141414" transform="translate(6 6)"/><rect x="906" y="82" width="148" height="62" rx="8" fill="#FF5B3A" stroke="#141414" stroke-width="4"/><text x="980" y="126" text-anchor="middle" ${SG} font-weight="700" font-size="38" fill="#141414">Free</text></g>
+<g fill="#141414"><circle cx="124" cy="390" r="9"/><circle cx="124" cy="420" r="9" fill="#FFC93C" stroke="#141414" stroke-width="3"/><circle cx="124" cy="450" r="9"/></g>
+<path d="M150 420H236" fill="none" stroke="#141414" stroke-width="3.5"/>
+${box(240, 372, 160, 96, '#FFC93C', 6, 8)}<text x="320" y="428" text-anchor="middle" ${SM} font-size="26" font-weight="700" fill="#141414">LB</text>
+${wire(356)}${wire(420)}${wire(484)}
+${replica(330, 'app-1', 66, '#2D5BFF')}${replica(394, 'app-2', 62, '#2D5BFF')}${replica(458, 'app-3', 70, '#2D5BFF')}
+<rect x="448" y="410" width="20" height="20" fill="#2D5BFF" stroke="#141414" stroke-width="3"/><rect x="570" y="346" width="20" height="20" fill="#2D5BFF" stroke="#141414" stroke-width="3"/><rect x="570" y="474" width="20" height="20" fill="#2D5BFF" stroke="#141414" stroke-width="3"/>
+<text x="934" y="420" ${SM} font-size="22" fill="#33312C">1/3 each</text>
+<g ${SM} font-size="22" font-weight="700" fill="#141414"><text x="68" y="602">Learn</text><text x="176" y="602">Practice</text><text x="322" y="602">Challenge</text><text x="498" y="602">Sandbox</text></g>
 </svg>
 `);
 

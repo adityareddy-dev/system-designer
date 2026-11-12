@@ -445,8 +445,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const side = phone ? 40 : Math.max(pad, 46);
     const room = a.room ? a.room() : a;
     let insets = { l: a.l + side, t: room.t + pad, r: a.r + side, b: room.b + low };
-    // a big build zooms out far enough to sit between the panels instead of running underneath them
-    const zoom = phone ? { minZ: minZoom ?? 0, maxZ: 0.9, reserveY: 0 } : { minZ: minZoom ?? 0, maxZ: mode === 'lesson' ? 1.35 : 1.4 };
+    // a big build zooms out far enough to sit between the panels instead of running underneath them; on a big screen the panels
+    // are scaled up, so a small diagram may grow with them
+    const uiScale = () => Math.min(2, Math.max(1, parseFloat(globalThis.getComputedStyle?.(root)?.getPropertyValue?.('--z')) || 1));
+    const zoom = phone ? { minZ: minZoom ?? 0, maxZ: 0.9, reserveY: 0 } : { minZ: minZoom ?? 0, maxZ: (mode === 'lesson' ? 1.35 : 1.4) * uiScale() };
     S.viewManual = false;
     try {
       const bounds = phone || a.blocks?.length ? scene.bounds?.() : null;
@@ -727,7 +729,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       later(() => { const n = graph().nodes.find((q) => q.id === id); if (n && !S.destroyed && S.selected === id) revealIfHidden(n.x, n.y); }, 120);
     }
     root.classList.toggle('pl-has-selection', !!id);
-    if (id && canStructure() && !S.captionNext && !store.get('seenConnectHandle', false)) {
+    if (id && canStructure() && !S.captionNext && caption.hidden && !store.get('seenConnectHandle', false)) {
       store.set('seenConnectHandle', true);
       showCaption('Drag the port to connect. Drag the body to move.', 6500);
     }

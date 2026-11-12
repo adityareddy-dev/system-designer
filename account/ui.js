@@ -8,7 +8,7 @@ const PERSON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stro
 const KEY = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="12" r="3.75" fill="currentColor" fill-opacity=".18"/><path d="M11.25 12H20.5M17.5 12v3M20.5 12v2.25"/></svg>';
 const GOOGLE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.46a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.56-5.17 3.56-8.81z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.29 14.29a7.2 7.2 0 0 1 0-4.58v-3.1H1.28a12 12 0 0 0 0 10.78l4.01-3.1z"/><path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.61l4.01 3.1C6.23 6.87 8.88 4.76 12 4.76z"/></svg>';
 const GITHUB = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a10.9 10.9 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>';
-const MARK = '<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect x="1.5" y="1.5" width="29" height="29" rx="8" fill="var(--accent)"/><path d="M8 21c4 0 4-10 8-10s4 10 8 10" fill="none" stroke="var(--on-accent, #fff)" stroke-width="2.2" stroke-linecap="round"/><circle cx="8" cy="21" r="2.4" fill="var(--on-accent, #fff)"/><circle cx="16" cy="11" r="2.4" fill="var(--on-accent, #fff)"/><circle cx="24" cy="21" r="2.4" fill="var(--on-accent, #fff)"/></svg>';
+const MARK = '<svg viewBox="0 0 32 32" width="36" height="36" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="6" fill="#141414"/><path d="M11 14 20 10M11 18l9 4" stroke="#FFF4E0" stroke-width="2"/><circle cx="8.5" cy="16" r="3.5" fill="#FFC93C"/><circle cx="23" cy="8.5" r="3.5" fill="#FF5B3A"/><circle cx="23" cy="23.5" r="3.5" fill="#2D5BFF"/></svg>';
 const PROVIDER_NAME = { google: 'Google', github: 'GitHub', fake: 'the test provider' };
 
 let gisLoading = null;
@@ -85,7 +85,7 @@ export function createAccountUi(ctx, api) {
   function onKey(e) {
     if (e.key === 'Escape' && pop && !document.querySelector('.sh-scrim')) { e.stopPropagation(); closePop(true); }
     if (e.key === 'Tab' && pop?.classList.contains('ac-pop--modal') && !document.querySelector('.sh-scrim')) {
-      const f = [...pop.querySelectorAll('button:not([disabled]), a[href], input, iframe')].filter((n) => n.offsetParent !== null);
+      const f = [...pop.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), iframe')].filter((n) => n.offsetParent !== null);
       if (!f.length) return;
       const first = f[0];
       const last = f[f.length - 1];
@@ -93,8 +93,15 @@ export function createAccountUi(ctx, api) {
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
   }
+  // While a sign-in dialog is open the page behind it cannot take focus or be read past the dialog.
+  function setBehind(on) {
+    const app = document.getElementById('app');
+    if (!app || typeof app.setAttribute !== 'function') return;
+    if (on) { app.setAttribute('inert', ''); app.setAttribute('aria-hidden', 'true'); } else { app.removeAttribute('inert'); app.removeAttribute('aria-hidden'); }
+  }
   function closePop(refocus) {
     if (!pop) return;
+    setBehind(false);
     pop.remove();
     scrim?.remove();
     scrim = null;
@@ -112,7 +119,7 @@ export function createAccountUi(ctx, api) {
     pop = build();
     popKind = kind;
     const host = document.getElementById('overlay') || document.body;
-    if (pop.classList.contains('ac-pop--modal')) { scrim = h('div', { class: 'ac-scrim' }); host.append(scrim); }
+    if (pop.classList.contains('ac-pop--modal')) { scrim = h('div', { class: 'ac-scrim' }); host.append(scrim); setBehind(true); }
     host.append(pop);
     place();
     document.addEventListener('pointerdown', onDocDown, true);
@@ -121,6 +128,7 @@ export function createAccountUi(ctx, api) {
     if (trigger) trigger.setAttribute('aria-expanded', 'true');
     const first = pop.querySelector('button, a[href], input');
     if (first && kind !== 'nudge') first.focus();
+    if (pop.classList.contains('ac-pop--modal') && !pop.contains(document.activeElement)) { pop.tabIndex = -1; pop.focus(); }
     return pop;
   }
   const head = (titleId, title) => h('div', { class: 'ac-pop-head' },
@@ -133,6 +141,10 @@ export function createAccountUi(ctx, api) {
     const st = api.state();
     const done = () => { try { onDone?.(); } catch { /* ignore */ } };
     const err = h('p', { class: 'ac-err', role: 'status', 'aria-live': 'polite' });
+    // Survey emails are a separate, unticked choice. It travels with the sign-in and is saved with the account.
+    const surveyId = 'ac-survey-' + Math.random().toString(36).slice(2, 7);
+    const survey = h('input', { type: 'checkbox', class: 'ac-check', id: surveyId });
+    const optin = h('label', { class: 'ac-optin', for: surveyId }, survey, h('span', { text: 'Email me short surveys and product updates' }));
     const list = h('div', { class: 'ac-providers' });
     const preview = !!st.providers.preview;
     const googleBtn = (label, onclick) => h('button', { type: 'button', class: 'ac-provider ac-provider--google', onclick }, h('span', { class: 'ac-provider-ico', html: GOOGLE }), h('span', { class: 'ac-provider-label', text: label }));
@@ -141,7 +153,7 @@ export function createAccountUi(ctx, api) {
       const pick = async (e, which) => {
         const b = e.currentTarget;
         b.disabled = true;
-        try { await api.signInPreview(which); done(); } catch { err.textContent = 'The preview sign-in failed.'; b.disabled = false; }
+        try { await api.signInPreview(which, survey.checked); done(); } catch { err.textContent = 'The preview sign-in failed.'; b.disabled = false; }
       };
       list.append(googleBtn('Continue with Google', (e) => pick(e, 'google')));
       list.append(h('button', { type: 'button', class: 'ac-provider ac-provider--github', onclick: (e) => pick(e, 'github') }, h('span', { class: 'ac-provider-ico', html: GITHUB }), h('span', { class: 'ac-provider-label', text: 'Continue with GitHub' })));
@@ -166,14 +178,14 @@ export function createAccountUi(ctx, api) {
               callback: async (resp) => {
                 err.textContent = '';
                 nonce = null;
-                try { await api.signInWithGoogle(resp?.credential); done(); } catch { if (err.isConnected) err.textContent = 'Google sign-in did not go through. Try again, or use GitHub.'; }
+                try { await api.signInWithGoogle(resp?.credential, survey.checked); done(); } catch { if (err.isConnected) err.textContent = 'Google sign-in did not go through. Try again, or use GitHub.'; }
               },
             });
             gisFor = clientId + '|' + n;
           }
           clear(gbox);
           const w = Math.max(200, Math.min(400, Math.round(gbox.getBoundingClientRect().width) || 320));
-          id.renderButton(gbox, { type: 'standard', theme: ctx.theme() === 'dark' ? 'filled_black' : 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', logo_alignment: 'left', width: w });
+          id.renderButton(gbox, { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', logo_alignment: 'left', width: w });
         }, () => {
           if (!gbox.isConnected) return;
           clear(gbox);
@@ -181,13 +193,15 @@ export function createAccountUi(ctx, api) {
         });
       }
       if (st.providers.github) {
-        list.append(h('a', { class: 'ac-provider ac-provider--github', href: api.githubUrl() }, h('span', { class: 'ac-provider-ico', html: GITHUB }), h('span', { class: 'ac-provider-label', text: 'Continue with GitHub' })));
+        const gh = h('a', { class: 'ac-provider ac-provider--github', href: api.githubUrl(false) }, h('span', { class: 'ac-provider-ico', html: GITHUB }), h('span', { class: 'ac-provider-label', text: 'Continue with GitHub' }));
+        survey.addEventListener('change', () => gh.setAttribute('href', api.githubUrl(survey.checked)));
+        list.append(gh);
       }
       if (st.providers.fake) {
         list.append(h('button', { type: 'button', class: 'ac-provider ac-provider--test', onclick: async (e) => {
           const b = e.currentTarget;
           b.disabled = true;
-          try { await api.signInFake('tester', 'Test player'); done(); } catch { err.textContent = 'The test sign-in failed.'; b.disabled = false; }
+          try { await api.signInFake('tester', 'Test player', survey.checked); done(); } catch { err.textContent = 'The test sign-in failed.'; b.disabled = false; }
         } }, h('span', { class: 'ac-provider-ico', html: KEY }), h('span', { class: 'ac-provider-label', text: 'Continue as a test player' })));
       }
     }
@@ -197,9 +211,9 @@ export function createAccountUi(ctx, api) {
         showClose ? h('button', { type: 'button', class: 'ac-x', 'aria-label': 'Close', onclick: () => closePop(true) }, ico('ui.close', 18)) : null),
       h('h2', { class: 'ac-card-title', id: headingId, text: heading }),
       h('p', { class: 'ac-card-lead', text: lead }),
-      list, err,
-      h('p', { class: 'ac-fine ac-fine--store' }, 'We keep your sign-in provider id, a display name, your avatar link, your progress and your scores. No email address, no ads, nothing sold. You can delete it all at any time. ',
-        h('a', { href: 'privacy.html', class: 'ac-link' }, 'Privacy')),
+      optin, list, err,
+      h('div', { class: 'ac-stored' }, h('strong', { text: 'What we store' }), h('p', { class: 'ac-fine ac-fine--store' }, 'We store your email address with your account, along with a display name, your avatar link, your progress and your scores. We use the email to reach you about your account, and for surveys and product updates only if you tick the box. Nothing is sold and there are no ads. You can delete it all at any time. ',
+        h('a', { href: 'privacy.html', class: 'ac-link' }, 'Privacy'))),
       preview ? h('p', { class: 'ac-fine ac-preview-note', text: 'Preview of the hosted site. This sign-in is a stand-in and stores nothing on a server.' }) : null);
   }
 
@@ -207,6 +221,24 @@ export function createAccountUi(ctx, api) {
     const el = signInCard({ headingId: 'ac-signin-title', showClose: true, onDone: () => closePop(false) });
     el.classList.add('ac-pop', 'ac-pop--modal');
     return el;
+  }
+
+  // The email we hold and the survey choice, with the switch to change it. Used in the account menu and in Settings.
+  function emailBlock(u) {
+    const id = 'ac-sv-' + Math.random().toString(36).slice(2, 7);
+    const box = h('input', { type: 'checkbox', class: 'ac-check', id, checked: u?.surveyOptIn ? true : undefined });
+    const msg = h('span', { class: 'ac-mini ac-sv-msg', role: 'status' });
+    box.addEventListener('change', async () => {
+      box.disabled = true;
+      try { await api.setSurveyOptIn(box.checked); msg.dataset.state = 'ok'; msg.textContent = box.checked ? 'Saved. Surveys are on.' : 'Saved. Surveys are off.'; }
+      catch { box.checked = !box.checked; msg.dataset.state = 'bad'; msg.textContent = 'Could not save that. Try again.'; }
+      box.disabled = false;
+    });
+    return h('div', { class: 'ac-email' },
+      h('p', { class: 'ac-label', text: 'Email on your account' }),
+      h('p', { class: 'ac-email-addr', text: u?.email || 'None. Your sign-in did not give us a verified address.' }),
+      h('label', { class: 'ac-optin', for: id }, box, h('span', { text: 'Email me short surveys and product updates' })),
+      msg);
   }
 
   // ---- profile menu
@@ -240,14 +272,14 @@ export function createAccountUi(ctx, api) {
         h('h2', { class: 'ac-pop-title', id: 'ac-menu-title', text: u.name }),
         h('span', { class: 'ac-mini', text: `Signed in with ${via || 'an account'}${api.isPreview?.() ? ' (preview)' : ''}` })),
         h('button', { type: 'button', class: 'ac-x', 'aria-label': 'Close', onclick: () => closePop(true) }, ico('ui.close', 18))),
-      syncLine, form,
+      syncLine, form, emailBlock(u),
       h('div', { class: 'ac-links' },
         h('a', { class: 'ac-row-link', href: '#/challenge', onclick: () => closePop(false) }, ico('ui.trophy', 18), h('span', { text: 'Leaderboards' }), ico('ui.chevron-right', 16)),
         h('a', { class: 'ac-row-link', href: 'privacy.html' }, ico('ui.shield', 18), h('span', { text: 'Privacy and your data' }), ico('ui.chevron-right', 16))),
       h('div', { class: 'ac-actions' },
         h('button', { type: 'button', class: 'ac-btn', onclick: async () => { closePop(true); await api.signOut(); } }, 'Sign out'),
         h('button', { type: 'button', class: 'ac-btn ac-btn--danger', onclick: async () => {
-          const ok = await confirmDialog({ title: 'Delete your account?', text: 'This removes your name, avatar link, synced progress and leaderboard scores from the server right away. Progress saved on this device stays here.', confirmLabel: 'Delete my account', cancelLabel: 'Keep it', danger: true });
+          const ok = await confirmDialog({ title: 'Delete your account?', text: 'This removes your name, email address, avatar link, synced progress and leaderboard scores from the server right away. Progress saved on this device stays here.', confirmLabel: 'Delete my account', cancelLabel: 'Keep it', danger: true });
           if (!ok) return;
           try { await api.deleteAccount(); closePop(false); } catch { bus.emit('toast', { text: 'The account could not be deleted right now. Try again shortly.', level: 'warn' }); }
         } }, 'Delete my account')));
@@ -398,5 +430,5 @@ export function createAccountUi(ctx, api) {
     return { el: root, destroy() { alive = false; offs.forEach((o) => o()); } };
   }
 
-  return { mountHeader, leaderboardCard, nudge, signInCard, open: () => openPop('signin', signInPanel) };
+  return { mountHeader, leaderboardCard, nudge, signInCard, emailBlock, open: () => openPop('signin', signInPanel) };
 }

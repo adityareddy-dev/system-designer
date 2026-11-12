@@ -147,8 +147,8 @@ try {
       const clickable = await page.evaluate(async () => {
         const { transitionScreen } = await import('./ui/shell/motion.js');
         await transitionScreen(() => document.querySelector('.sh-main').dataset.test = 'changed');
-        const button = document.querySelector('#sh-theme-btn'), r = button.getBoundingClientRect();
-        return !!document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('#sh-theme-btn');
+        const button = document.querySelector('#sh-sound-btn'), r = button.getBoundingClientRect();
+        return !!document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('#sh-sound-btn');
       });
       assert(clickable, 'shared header controls receive input during the transition');
     }
