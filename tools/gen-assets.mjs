@@ -155,7 +155,7 @@ ${wire(356)}${wire(420)}${wire(484)}
 ${replica(330, 'app-1', 66, '#2D5BFF')}${replica(394, 'app-2', 62, '#2D5BFF')}${replica(458, 'app-3', 70, '#2D5BFF')}
 <rect x="448" y="410" width="20" height="20" fill="#2D5BFF" stroke="#141414" stroke-width="3"/><rect x="570" y="346" width="20" height="20" fill="#2D5BFF" stroke="#141414" stroke-width="3"/><rect x="570" y="474" width="20" height="20" fill="#2D5BFF" stroke="#141414" stroke-width="3"/>
 <text x="934" y="420" ${SM} font-size="22" fill="#33312C">1/3 each</text>
-<g ${SM} font-size="22" font-weight="700" fill="#141414"><text x="68" y="602">Learn</text><text x="176" y="602">Practice</text><text x="322" y="602">Challenge</text><text x="498" y="602">Sandbox</text></g>
+<g ${SM} font-size="22" font-weight="700" fill="#141414"><text x="68" y="602">Learn</text><text x="176" y="602">Practice</text><text x="322" y="602">Sandbox</text></g>
 </svg>
 `);
 

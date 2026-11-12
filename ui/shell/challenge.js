@@ -33,19 +33,7 @@ function variantLines(ctx, v) {
 
 // Daily dates the player has played, per problem, from the stored history.
 function playedDailyMap(compete) {
-  const out = {};
-  let rows = [];
-  try { rows = compete.bests.history(200) || []; } catch { /* ignore */ }
-  for (const x of rows) {
-    const seed = x && (x.seed ?? (x.key ? String(x.key).split(':').slice(2).join(':') : ''));
-    const id = x && (x.problemId ?? (x.key ? String(x.key).split(':')[1] : null));
-    if (!id || x.mode !== 'challenge' && !String(x.key || '').startsWith('challenge:')) continue;
-    if (typeof seed !== 'string' || !seed.startsWith('daily-')) continue;
-    const d = seed.slice(6);
-    if (!DATE_RE.test(d)) continue;
-    (out[id] ||= []).includes(d) || out[id].push(d);
-  }
-  return out;
+  try { return compete.bests.dailyPlays?.() || {}; } catch { return {}; }
 }
 function shortDate(str) {
   const [y, m, d] = str.split('-').map(Number);

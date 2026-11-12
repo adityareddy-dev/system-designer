@@ -10,7 +10,7 @@ export function targetOf(ctx, route) {
   if (a === 'intro') return { kind: 'Lesson', title: 'Your first system', note: 'A 3-minute guided build' };
   if (a === 'learn' && b) { const l = c.lessonById?.get?.(b) || (c.lessons || []).find((x) => x.id === b); return { kind: 'Lesson', title: l?.title || 'This lesson', note: l?.summary || '' }; }
   if (a === 'practice' && b) { const p = c.problemById?.get?.(b); return { kind: 'Practice problem', title: p?.title || 'This problem', note: p?.like || '' }; }
-  if (a === 'challenge' || a === 'beat') return { kind: 'Daily challenge', title: 'Today’s challenge', note: 'The same scenario for everyone' };
+  if (a === 'challenge' || a === 'beat') return { kind: 'Challenge', title: 'Challenge', note: 'Sign in to play it' };
   if (a === 'sandbox') return { kind: 'Sandbox', title: 'Sandbox', note: 'Any part, any traffic' };
   if (a === 'drill') return { kind: 'Quick drill', title: 'Quick drill', note: 'One minute' };
   return null;

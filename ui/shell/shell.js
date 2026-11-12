@@ -117,6 +117,19 @@ export function mountShell(rootEl, ctx) {
 
   function show(routeIn, opts = {}) {
     const r = typeof routeIn === 'string' ? parseHash(routeIn) : routeIn || router.current();
+    // #/signin is the address of the sign-in panel: the readable pages link to it. It opens the front page and then the panel.
+    if (r.parts[0] === 'signin') {
+      router.replace('#/');
+      let tries = 0;
+      const openPanel = () => {
+        const st = ctx.account?.state?.();
+        if (ctx.account?.openSignIn && st && st.status !== 'checking') { if (!ctx.account.isSignedIn()) ctx.account.openSignIn(); return; }
+        if (tries++ < 40) setTimeout(openPanel, 250);
+      };
+      Promise.resolve(ctx.accountReady).then(() => setTimeout(openPanel, 150));
+      show(router.current(), opts);
+      return;
+    }
     const full = r.path + '?' + new URLSearchParams(r.query || {}).toString();
     if (!opts.force && full === lastKey) return;
     lastKey = full;

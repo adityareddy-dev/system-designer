@@ -132,7 +132,9 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
   privacy = /<!-- site:privacy:start -->/.test(privacy) ? privacy.replace(/<!-- site:privacy:start -->[\s\S]*?<!-- site:privacy:end -->/,()=>privacyBlock) : privacy.replace('</head>',privacyBlock+'\n</head>');
   privacy = privacy.replace(/<!-- site:header:start -->[\s\S]*?<!-- site:header:end -->/,()=>`<!-- site:header:start -->\n  ${navigation('privacy.html')}\n  <!-- site:header:end -->`);
   add('privacy.html',privacy);
-  outputs.set('404.html', earlyTheme(read('404.html')));
+  let notFound = earlyTheme(read('404.html'));
+  notFound = notFound.replace(/<!-- site:header:start -->[\s\S]*?<!-- site:header:end -->/,()=>`<!-- site:header:start -->\n${navigation('404.html',{absolute:true})}\n<!-- site:header:end -->`);
+  outputs.set('404.html', notFound);
   outputs.set('assets/site.css',read('assets/palette.css')+'\n'+read('assets/header.css')+'\n'+read('tools/site-styles.css'));
   const publicFiles = Object.keys(manifest).filter(f=>!f.startsWith('d/')).sort();
   outputs.set('sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${publicFiles.map(f=>`  <url><loc>${SITE+f.replace(/index\.html$/,'')}</loc><lastmod>${manifest[f].lastmod}</lastmod></url>`).join('\n')}\n</urlset>\n`);

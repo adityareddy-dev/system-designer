@@ -47,6 +47,7 @@ copy(path.join(root, 'content/data'), path.join(dist, 'content/data'));
 copy(path.join(root, 'assets'), path.join(dist, 'assets'), (f) => /\.(js|css)$/.test(f) || /preview\.html$/.test(f));
 copy(path.join(root, 'assets/fonts.css'), path.join(dist, 'assets/fonts.css'));
 copy(path.join(root, 'assets/site.css'), path.join(dist, 'assets/site.css'));
+copy(path.join(root, 'assets/header.js'), path.join(dist, 'assets/header.js'));
 copy(path.join(root, 'assets/palette.css'), path.join(dist, 'assets/palette.css'));
 for (const f of ['privacy.html', '404.html', 'd', 'p', 'problems', 'learn', 'guides', 'sitemap.xml', 'robots.txt', 'llms.txt', 'llms-full.txt', 'LICENSE', 'CNAME', '.nojekyll']) if (fs.existsSync(path.join(root, f))) copy(path.join(root, f), path.join(dist, f));
 

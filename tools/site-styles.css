@@ -81,3 +81,11 @@
   .site .site-button:hover, .site-grid > li:hover { transform: none; }
 }
 .site-crumbs a { min-width: 44px; justify-content: center; }
+
+/* the whole card opens its page, and links in lists have a 44px target */
+.site-grid > li { position: relative; }
+.site-grid > li h3 a, .site-grid > li h4 a, .site-grid > li h2 a { display: inline-block; padding-block: 4px; }
+.site-grid > li h3 a::after, .site-grid > li h4 a::after, .site-grid > li h2 a::after { content: ""; position: absolute; inset: 0; }
+.site-prose li > a, .site-panel li > a, .site-facts a, .site-toc a { display: inline-flex; align-items: center; min-height: 44px; }
+.site-prose li, .site-panel li { margin: 2px 0; }
+.site-prose p a, .site-panel p a { padding-block: 11px; }

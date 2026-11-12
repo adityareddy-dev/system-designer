@@ -148,7 +148,6 @@
 .pl-q--open { background: var(--paper); }
 .pl-try { border: var(--line); background: var(--accent-soft); box-shadow: 3px 3px 0 var(--ink); }
 .pl-try--near { background: var(--accent-soft); border-color: var(--ink); }
-.pl-overlay, .pl-overlay--debrief, .pl-overlay--editorial { background: rgba(255, 244, 224, .0); }
 .pl-verdict, .pl-day-seal, .pl-victory { border: var(--line); border-radius: var(--radius-3); box-shadow: var(--hard); background: var(--card); }
 .pl-play { box-shadow: 4px 4px 0 var(--ink); }
 .pl-issue { border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); border-radius: 999px; }
@@ -310,7 +309,8 @@
 .ac-card-title { font-size: 26px; letter-spacing: -.02em; }
 .ac-card-lead { font-size: 16px; color: var(--text-2); }
 .ac-pop.ac-pop--modal { width: min(500px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
-.ac-gate { max-width: min(2400px, 100%); width: 100%; padding-inline: var(--gutter, clamp(16px, 4vw, 120px)); grid-template-columns: minmax(0, 1.1fr) minmax(380px, 520px); }
+.ac-gate { max-width: min(2400px, 100%); width: 100%; padding-inline: var(--gutter, clamp(16px, 4vw, 120px)); }
+@media (min-width: 901px) { .ac-gate { grid-template-columns: minmax(0, 1.1fr) minmax(380px, 520px); } }
 .ac-gate-target { border: var(--line); border-radius: var(--radius-1); background: var(--card); box-shadow: 3px 3px 0 var(--ink); }
 .ac-gate-target-kind { color: var(--ink); font-weight: 700; }
 .ac-gate-side .ac-card { box-shadow: var(--hard-lg); }
@@ -372,4 +372,38 @@
   .pl-hud { padding: 8px 10px; }
   .pl-hud .pl-play { min-height: 44px; padding: 0 14px; }
   .pl-hud-ctl { gap: 8px; flex-wrap: nowrap; }
+}
+@media (max-width: 720px) {
+  .pl-hud:not([data-phase="build"]) .pl-hud-ctl { flex-wrap: wrap; }
+  .pl-hud:not([data-phase="build"]) .pl-speed { max-width: 100%; overflow-x: auto; }
+  .pl-hud:not([data-phase="build"]) .pl-hud-mid, .pl-hud:not([data-phase="build"]) .pl-meters { min-width: 0; max-width: 100%; }
+}
+
+/* ================= debrief and editorial: the same cards, and the width of the screen ================= */
+.pl-debrief :is(.pl-run-evidence, .pl-story, .pl-reflection, .pl-score-details, .pl-defense-card, .pl-sec > .pl-versus, .pl-try) {
+  border-width: 2px 2px 2px 8px; border-style: solid; border-top-color: var(--ink); border-right-color: var(--ink); border-bottom-color: var(--ink);
+  border-radius: var(--radius-3); background: var(--card); box-shadow: var(--hard);
+}
+.pl-debrief .pl-run-evidence { border-left-color: var(--tomato); }
+.pl-debrief :is(p, li, .pl-lead) { max-width: 80ch; }
+.pl-debrief .pl-footnote, .pl-debrief .pl-muted { font-size: max(14px, 1em); }
+@media (min-width: 1700px) {
+  .pl-debrief, .pl-editorial { max-width: min(2200px, 100%); }
+  .pl-debrief { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 32px; align-items: start; }
+  .pl-debrief > .pl-run-evidence, .pl-debrief > .pl-verdict-sec, .pl-debrief > .pl-footnote, .pl-debrief > .pl-muted, .pl-debrief > .pl-next,
+  .pl-debrief > .pl-actions, .pl-debrief > .sh-feedback, .pl-debrief > .pl-reflection { grid-column: 1 / -1; }
+  .pl-debrief > .sh-feedback { max-width: 620px; }
+}
+@media (min-width: 3000px) { .pl-debrief { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 2200px) and (min-height: 1250px) { .pl-debrief, .pl-editorial { zoom: 1.2; } }
+@media (min-width: 2200px) and (min-height: 1600px) { .pl-debrief, .pl-editorial { zoom: 1.45; } }
+
+/* lesson figure: the endpoint cards grow with their label */
+.sh-tap-end { width: auto; min-width: 84px; height: auto; min-height: 88px; padding-inline: 10px; }
+.sh-tap-end > span { white-space: nowrap; }
+/* phone, a day running: the speed buttons wrap onto their own row, so the rest of the bar and the page bar give some height back */
+@media (max-width: 720px) {
+  .pl-hud:not([data-phase="build"]) { padding-block: 4px; }
+  .pl-hud:not([data-phase="build"]) .pl-hud-ctl { row-gap: 2px; }
+  .sh-problem-bar { min-height: 40px; height: 46px; }
 }

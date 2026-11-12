@@ -74,3 +74,6 @@
 @media (min-width: 2200px) and (min-height: 1250px) { .sh-topbar, .sh-shell > .sh-nav { zoom: 1.2; } }
 @media (min-width: 2200px) and (min-height: 1600px) { .sh-topbar, .sh-shell > .sh-nav { zoom: 1.45; } }
 @media (min-width: 2200px) and (min-height: 1950px) { .sh-topbar, .sh-shell > .sh-nav { zoom: 1.7; } }
+
+.sd-me { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 2px solid var(--ink); border-radius: 50%; background: var(--yellow); color: var(--ink); font: 700 16px/1 var(--font-ui); text-decoration: none; }
+.sd-me:hover { box-shadow: 3px 3px 0 var(--ink); }
