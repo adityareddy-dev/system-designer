@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240"><rect width="440" height="240" rx="12" fill="#FFF4E0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 240">
 <title>Two identical payments with one key: one is processed, the repeat is turned aside</title>
 <g stroke="#141414" stroke-width="4"><path d="M44 92 H204"/><path d="M44 150 H204"/></g>
 <polygon points="202,82 218,92 202,102" fill="#141414"/><polygon points="202,140 218,150 202,160" fill="#141414"/>
