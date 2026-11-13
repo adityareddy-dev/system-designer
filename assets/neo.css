@@ -172,8 +172,12 @@
   .sh-challenge-page > .sh-nudge { grid-column: 1 / -1; grid-row: 3; margin: 0 0 12px; }
   .sh-challenge-page > .sh-diff-row, .sh-challenge-page > .sh-quickplay { display: none; }
   .sh-challenge-page > .sh-two-col { display: contents; }
-  .sh-challenge-page .sh-scenario { grid-column: 1; grid-row: 4; padding: 20px 24px; gap: 10px; }
-  .sh-challenge-page .sh-stack { grid-column: 2; grid-row: 4; }
+  /* r4-follow: the brief starts right under the date picker (beside the taller round card), so there is no empty gap under the picker */
+  .sh-challenge-page .sh-scenario { grid-column: 1; grid-row: 2 / span 2; margin-top: 60px; padding: 20px 24px; gap: 10px; }
+  .sh-challenge-page .sh-stack { grid-column: 2; grid-row: 3; }
+  .sh-challenge-page > .sh-date-nav { height: 48px; box-sizing: border-box; }
+  .sh-challenge-page:has(> .sh-nudge) .sh-scenario { grid-row: 4; margin-top: 0; }
+  .sh-challenge-page:has(> .sh-nudge) .sh-stack { grid-row: 4; }
   .sh-challenge-page .sh-scenario { grid-template-columns: minmax(0, 1fr) minmax(240px, 40%); }
   .sh-challenge-page .sh-scenario > .sh-bench-scene { max-height: none; }
   .sh-challenge-page .sh-scenario > .sh-bench-scene svg { max-height: none; }

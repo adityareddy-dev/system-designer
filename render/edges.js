@@ -169,7 +169,9 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
       for (const g of sides.values()) {
         g.sort((p, q) => p.k - q.k || p.t - q.t || (p.v.id < q.v.id ? -1 : 1));
         const n = g.length;
-        const gap = n > 1 ? Math.min(12, 44 / (n - 1)) : 0;
+        // r4-follow: wires that share a port all use the port's own height, so they meet in one shared last stretch
+        // instead of ending a few pixels off the dot and jogging into it
+        const gap = 0;
         g.forEach((it, i) => { const off = (i - (n - 1) / 2) * gap; if (it.end === 0) it.v.oa = off; else it.v.ob = off; });
       }
       const endpoints = new Map();
