@@ -18,14 +18,14 @@ for (const date of fs.readdirSync(dDir).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test
   const html = fs.readFileSync(path.join(dDir, date, 'index.html'), 'utf8');
   const want = byId.get(dailyFor(date, problems).problemId);
   if (!want) { fail(`${date}: no problem for this date`); continue; }
-  if (!html.includes(`<title>${esc(want.title)}: daily challenge,`)) fail(`${date}: page does not name ${want.title}`);
+  if (!html.includes(`<h1>${esc(want.title)}: daily challenge, ${date}</h1>`) || !html.includes(`<title>Daily ${date}:`)) fail(`${date}: page does not name ${want.title}`);
   if (!fs.existsSync(path.join(dDir, date, 'preview.jpg'))) fail(`${date}: no preview.jpg`);
 }
 for (const p of problems) {
   n++;
   const f = path.join(root, 'p', p.id, 'index.html');
   if (!fs.existsSync(f)) { fail(`p/${p.id}: missing page`); continue; }
-  if (!fs.readFileSync(f, 'utf8').includes(`<title>${esc(p.title)}: system design practice`)) fail(`p/${p.id}: page does not name ${p.title}`);
+  if (!fs.readFileSync(f, 'utf8').includes(`<h1>${esc(p.title)}</h1>`)) fail(`p/${p.id}: page does not name ${p.title}`);
   if (!fs.existsSync(path.join(root, 'p', p.id, 'preview.jpg'))) fail(`p/${p.id}: no preview.jpg`);
 }
 console.log(bad ? `${bad} of ${n} preview pages wrong` : `all ${n} preview pages match the game`);
