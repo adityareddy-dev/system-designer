@@ -1587,11 +1587,16 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function startTraffic(testHook = false) {
     if (interview && (interviewState.stage !== 'ready' || (interviewState.run && S.sim.phase === 'build'))) return getState();
+    // the checkpoint is asked once per problem, so a later run (a retry, a twist, another visit) reuses the answer given then
+    if (!testHook && mode === 'practice' && S.correctnessAnswer == null && S.problem?.correctness && gateSeen('checkpoint')) {
+      try { const kept = (store.get('gates', {}) || {})[S.problem.id]?.checkpointAnswer; if (kept) S.correctnessAnswer = kept; } catch { /* ignore */ }
+    }
     if (!testHook && !interview && mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id
       && S.problem.difficulty !== 'Easy' && !S.warm && !gateSeen('checkpoint')) {
       const begin = (answer) => {
         if (answer) S.correctnessAnswer = answer;
         S.checkpointReady = S.problem.id; gateSeen('checkpoint', true);
+        if (answer) { try { const all = store.get('gates', {}) || {}; store.set('gates', { ...all, [S.problem.id]: { ...(all[S.problem.id] || {}), checkpointAnswer: answer } }); } catch { /* ignore */ } }
         modal.hidden = true;
         startTraffic();
       };

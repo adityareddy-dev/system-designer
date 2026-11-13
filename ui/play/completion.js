@@ -1,9 +1,9 @@
 // One vocabulary for saved progress and the current run's learning credit.
-import { checkpointCorrect } from './correctness.js';
+import { checkpointCorrect, checkpointOwed } from './correctness.js';
 export function completionState(problem = {}, result = {}, answer, saved = {}) {
   saved ||= {};
   const credit = result.learning || {};
-  const traceChecked = credit.traceChecked ?? (!problem.correctness || checkpointCorrect(problem.correctness, answer));
+  const traceChecked = credit.traceChecked ?? (!checkpointOwed(problem) || checkpointCorrect(problem.correctness, answer));
   const assisted = !!credit.assisted;
   let key = 'new', label = 'New', message = 'Finish a traffic day to check this design.';
   if (saved.attempts) { key = 'tried'; label = 'Tried'; }

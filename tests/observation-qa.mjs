@@ -119,7 +119,7 @@ try {
     assert.ok(await page.$$eval('.sh-feedback input,.sh-feedback select,.sh-feedback textarea,.sh-feedback button', els => els.every(el => el.disabled)));
     await page.evaluate(() => window.__game.loadLesson('intro'));
     await page.evaluate(() => {
-      const g = window.__game; g.setKnob('app', 'units', 3); g.setKnob('app', 'autoscale', { on: true, min: 3, max: 12 });
+      const g = window.__game; g.setKnob('app', 'units', 5); g.setKnob('app', 'autoscale', { on: true, min: 5, max: 12 });
       for (const [type, from, to] of [['regional-lb', 'users', 'app'], ['cache', 'app', 'db']]) {
         const edge = g.getState().edges.find(e => e.from === from && e.to === to);
         g.placeComponent(type, 0, 180, edge.id);
