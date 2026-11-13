@@ -3,7 +3,6 @@ import { metrics } from '../../core/metrics.js';
 import { h, ico, clear, lessonOf } from './dom.js';
 import { setOverlayHost, toast, clearToasts, closeAllModals } from './overlay.js';
 import { transitionScreen } from './motion.js';
-import { completionState } from '../play/completion.js';
 import { isPlayRoute } from '../../account/config.js';
 
 const TABS = [
@@ -230,8 +229,8 @@ export function mountShell(rootEl, ctx) {
     if (!result) return;
     if (mode === 'practice' && problemId) {
       const r = ctx.progress.record(problemId, result, hintsUsed || 0);
-      const completion = completionState(ctx.content.problemById.get(problemId), result, null, ctx.progress.get(problemId));
-      if (result.passed && result.learning && (!result.learning.traceChecked || result.learning.assisted)) toast({ text: completion.message, level: 'info' });
+      // An open trace or an assisted pass is explained in full on the debrief, so no second message pops up here.
+      if (result.passed && result.learning && (!result.learning.traceChecked || result.learning.assisted)) { /* the debrief says it */ }
       else if (r.first && (result.stars || 0) > 0) toast({ text: `Solved with ${result.stars || 0} star${result.stars === 1 ? '' : 's'}. Nicely done.`, level: 'ok', ms: 4200 });
       else if (r.improved && r.previousBest != null && (result.stars || 0) > 0) toast({ text: 'New personal best on this problem.', level: 'ok' });
     }
