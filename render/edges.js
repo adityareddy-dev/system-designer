@@ -197,7 +197,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
         // Endpoint bodies are obstacles too, apart from their own port stubs.
         const points = router.route(start, end);
         const paper = env.kit().look === 'paper';
-        const route = [[a.x + sign * (paper ? PAPER.wire.port : a.portHalf||36), start[1]], ...points, [b.x - sign * (paper ? PAPER.wire.port : b.portHalf||36), end[1]]];
+        const route = [[a.x + sign * (paper ? a.portHalf||PAPER.wire.port : a.portHalf||36), start[1]], ...points, [b.x - sign * (paper ? b.portHalf||PAPER.wire.port : b.portHalf||36), end[1]]];
         if (paper) paperRoute(v.lut, route, obstacles, v.from, v.to);
         else routedLut(v.lut, route);
         const { lut } = v;

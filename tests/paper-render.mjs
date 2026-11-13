@@ -21,6 +21,12 @@ try {
       try {
         layer.sync({nodes:catalog.elements.map((el,i)=>({id:el.id,type:el.id,x:i*320,y:0})),edges:[]});layer.update(1000,0,0);
         const glyphs=new Set([...layer.views.values()].map(v=>v.icon.texture.uid)).size;
+        const inkPx=Math.min(...[...layer.views.values()].map(v=>{
+          const c=v.icon.texture.source.resource,a=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
+          let l=c.width,t=c.height,r=0,b=0;
+          for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++)if(a[(y*c.width+x)*4+3]>64){l=Math.min(l,x);t=Math.min(t,y);r=Math.max(r,x+1);b=Math.max(b,y+1);}
+          return Math.max((r-l)/c.width,(b-t)/c.height)*v.icon.width;
+        }));
         const v=layer.views.get('vm-fleet');
         const states=[.4,.9,1.3,0].map((load,i)=>{layer.setLive(v,true,load,i===3?4:i===2?3:0);layer.update(1000,0,0);
           return {status:v.paperStatus.text,color:v.drawnColor,down:v.down,rejected:v.rejected.visible};});
@@ -32,10 +38,11 @@ try {
         const svg=designDiagram(problemById.get('url-shortener').editorial.designs[0],catalog,'paper');
         const classic=designDiagram(problemById.get('chat-app').editorial.designs[0],catalog);
         await Promise.all([...svg.querySelectorAll('image')].map(img=>new Promise((resolve,reject)=>{let n=0;const poll=()=>img.getAttribute('href')?.startsWith('data:')?resolve():++n>100?reject(new Error('preview glyph timeout')):setTimeout(poll,20);poll();})));
-        return {headers:[...layer.views.values()].map(n=>{const b=n.paperTitle.getLocalBounds();return {x:n.paperTitle.x+b.x*n.paperTitle.scale.x,y:n.paperTitle.y+b.y*n.paperTitle.scale.y,width:b.width*n.paperTitle.scale.x,height:b.height*n.paperTitle.scale.y};}),body:PAPER.body,duplicateName:v.labelT.visible,arc:v.retryG.visible,pile:v.pile.visible,reading:v.paperReading?.text,wideHit:layer.hit(v.x+110,v.y)?.id===v.id,edgeHit:layer.hit(v.x+43,v.y)?.id===v.id,ghost,glyphs,count:layer.views.size,states,ready,pixel,look:svg.dataset.look,classic:classic.dataset.look||'classic',
+        return {inkPx,headers:[...layer.views.values()].map(n=>{const b=n.paperTitle.getLocalBounds();return {x:n.paperTitle.x+b.x*n.paperTitle.scale.x,y:n.paperTitle.y+b.y*n.paperTitle.scale.y,width:b.width*n.paperTitle.scale.x,height:b.height*n.paperTitle.scale.y};}),body:PAPER.body,duplicateName:v.labelT.visible,arc:v.retryG.visible,pile:v.pile.visible,reading:v.paperReading?.text,wideHit:layer.hit(v.x+110,v.y)?.id===v.id,edgeHit:layer.hit(v.x+43,v.y)?.id===v.id,ghost,glyphs,count:layer.views.size,states,ready,pixel,look:svg.dataset.look,classic:classic.dataset.look||'classic',
           wires:[...svg.querySelectorAll('path[stroke-dasharray]')].map(e=>({d:e.getAttribute('d'),width:e.getAttribute('stroke-width'),dash:e.getAttribute('stroke-dasharray'),ink:e.getAttribute('stroke')})),type:v.labelT.style.fontFamily,title:v.paperTitle.style.fontFamily,bar:PAPER.bar};
       }finally{layer.destroy();parent.destroy();kit.destroy();}
     });
+    assert(result.inkPx>=14,'every glyph has at least 14px of visible ink, excluding SVG padding');
     for(const h of result.headers){assert(h.x>=-114&&h.x+h.width<=114,'every catalog name fits the paper header');assert(h.y>=-59&&h.y+h.height<=-17,'every catalog name stays above its bar');}
     assert(result.body.width >= 220 && result.body.height >= 110, 'wide paper cards match the approved mock'); assert.equal(result.duplicateName,false,'no second name below the card'); assert.equal(result.arc,false,'no retry arc over paper headers'); assert.equal(result.pile,false,'no legacy input dots'); assert.equal(result.wideHit,true,'wide card edges stay clickable');
     assert.equal(result.edgeHit,true,'the paper card edge remains clickable');assert.deepEqual(result.ghost,{paper:true,alpha:.45,size:22});assert.equal(result.count,99);assert.equal(result.glyphs,99);assert.deepEqual(result.pixel,[255,252,244,255]);

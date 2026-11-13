@@ -40,7 +40,7 @@ try {
           scene.fit(40, false); scene.renderNow(1000);
           const vs = [...window.spacingNodes.views.values()];
           const hit = (a,b) => a.x < b.x+b.width && a.x+a.width > b.x && a.y < b.y+b.height && a.y+a.height > b.y;
-          const cards = vs.map(v => { const a=v.c.toGlobal({x:-116.25,y:-60.25}), b=v.c.toGlobal({x:122.25,y:64.25}); return {id:v.id,x:a.x,y:a.y,width:b.x-a.x,height:b.y-a.y}; });
+          const cards = vs.map(v => { const r=v.paperBox,a=v.c.toGlobal({x:r.x,y:r.y}),b=v.c.toGlobal({x:r.x+r.width,y:r.y+r.height}); return {id:v.id,x:a.x,y:a.y,width:b.x-a.x,height:b.y-a.y}; });
           const overlaps = cards.flatMap((a,i)=>cards.slice(i+1).filter(b=>hit(a,b)).map(b=>[a.id,b.id]));
           const covered = vs.flatMap(v => ['paperTitle','paperStatus','paperReading','paperWaiting'].filter(k=>v[k].visible&&v[k].renderable&&v[k].text).flatMap(k=>cards.filter(b=>b.id!==v.id&&hit(v[k].getBounds(),b)).map(b=>[v.id,k,b.id])));
           return {overlaps,covered};

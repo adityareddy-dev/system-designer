@@ -159,6 +159,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.paperStatus = makeText('', PAPER.status.size, P.text2, true, PAPER.type.weight); v.paperStatus.anchor.set(.5); v.paperStatus.position.set(PAPER.status.x, PAPER.status.y); v.paperStatus.style.fontFamily = PAPER.type.mono; v.paperStatus.visible = false;
     v.paperReading = makeText('', PAPER.status.size, P.ink, true, PAPER.type.weight);
     v.paperOutline = new PIXI.Graphics();
+    v.paperCard = new PIXI.Graphics();
     v.paperWaiting = makeText('', 11, P.ink, true, PAPER.type.weight);v.paperWaiting.anchor.set(0,.5);
     v.leader = new PIXI.Graphics();
     v.captionC = new PIXI.Container();
@@ -170,7 +171,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeBg = new PIXI.Graphics(); v.badge.addChild(v.badgeBg);
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
-    c.addChild(v.pulse, v.body, v.lead, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
+    c.addChild(v.pulse, v.body, v.lead, v.select, v.paperCard, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
       v.chip, v.regionC, v.badge, v.captionC, v.rejected, v.paperTitle, v.paperStatus, v.paperReading, v.paperOutline, v.paperWaiting);
     c.alpha = 0;
     c.scale.set(v.s);
@@ -178,6 +179,7 @@ export function createNodeLayer(PIXI, parent, env) {
     parent.addChild(c);
     views.set(n.id, v);
     update(v, n, true);
+    if(kit.look==='paper')paintPaper(v);
     return v;
   }
 
@@ -237,6 +239,12 @@ export function createNodeLayer(PIXI, parent, env) {
     dying.push(v);
     if (selected === v.id) selected = null;
     if (hovered === v.id) hovered = null;
+  }
+
+  function paintPaper(v) {
+    v.paperShortName=shortName(v);v.paperZoom=env.zoom?.()||1;
+    v.paperCompact=v.paperZoom*Math.abs(v.c.scale.x||1)<PAPER.detail.fullZoom;
+    v.paperSelected=selected===v.id;drawPaperLoad(v,env.kit());v.select.visible=false;
   }
 
   function drawBusy(v, P) {
@@ -439,7 +447,7 @@ export function createNodeLayer(PIXI, parent, env) {
         v.statusG.visible = e08 || (v.live && v.status > 0);
         if (!e08 && !detailZoom) { v.statusG.context = env.kit().glyphs.status[v.status]; v.statusG.scale.set(Math.max(1, labelK * .7)); }
         else v.statusG.scale.set(1);
-        if (env.kit().look === 'paper') {v.paperShortName=shortName(v);v.paperCompact=(env.zoom?.()||1)<.5;v.paperSelected=selected===v.id;drawPaperLoad(v, env.kit());v.select.visible=false;}
+        if (env.kit().look === 'paper') paintPaper(v);
         else {v.paperReading.visible=v.paperWaiting.visible=false;v.paperOutline.clear();if (e08) drawE08Load(v, env.kit(), time, reduced);}
 
       }
@@ -677,7 +685,7 @@ export function createNodeLayer(PIXI, parent, env) {
       this.captionKey = null;
       const P = kit.P;
       for (const v of [...list, ...dying]) {
-        v.renderWidth=kit.look==='paper'?PAPER.body.width:null;v.renderHeight=kit.look==='paper'?PAPER.body.height:null;
+        v.paperCard.clear();v.body.visible=true;v.paperTitle.visible=false;v.renderWidth=kit.look==='paper'?PAPER.body.width:null;v.renderHeight=kit.look==='paper'?PAPER.body.height:null;
         v.valid.position.set(HALF-7,-HALF+7);v.lock.position.set(-HALF+9,-HALF+20);v.regionC.position.set(0,-HALF-12);
         v.labelT.visible=kit.look!=='paper';
         v.paperTitle.visible = v.paperStatus.visible = kit.look === 'paper';
@@ -717,7 +725,7 @@ export function createNodeLayer(PIXI, parent, env) {
     redrawAll() { for (const v of list) { v.drawnU = -1; v.drawnColor = -1; } },
     // Hides nodes outside the world rectangle (cheap culling; their state keeps updating).
     cull(x0, y0, x1, y1) {
-      for (const v of list) v.c.visible = v.x + (env.kit().look==='paper'?PAPER.body.textureSize/2:90) > x0 && v.x - (env.kit().look==='paper'?PAPER.body.textureSize/2:90) < x1 && v.y + 90 > y0 && v.y - 90 < y1;
+      for (const v of list) v.c.visible = v.x + (env.kit().look==='paper'?(v.renderWidth||PAPER.body.width)/2:90) > x0 && v.x - (env.kit().look==='paper'?(v.renderWidth||PAPER.body.width)/2:90) < x1 && v.y + (env.kit().look==='paper'?(v.renderHeight||PAPER.body.height)/2+4:90) > y0 && v.y - (env.kit().look==='paper'?(v.renderHeight||PAPER.body.height)/2+4:90) < y1;
     },
     // Keep names readable through zoom and part entry motion.
     setLabelScale(z) {
@@ -745,9 +753,9 @@ export function createNodeLayer(PIXI, parent, env) {
     },
     hit(x, y, tol = 0) {
       const paper = env.kit().look === 'paper';
-      const hw = paper ? PAPER.body.width / 2 : HALF, hh = paper ? PAPER.body.height / 2 : HALF;
       for (let i = list.length - 1; i >= 0; i--) {
         const v = list[i];
+        const hw=paper?(v.renderWidth||PAPER.body.width)/2:HALF,hh=paper?(v.renderHeight||PAPER.body.height)/2:HALF;
         if (Math.abs(x - v.x) <= hw + tol && Math.abs(y - v.y) <= hh + tol) return v;
       }
       return null;
@@ -767,6 +775,20 @@ export function createNodeLayer(PIXI, parent, env) {
     cancelDrag(id) {
       const v = views.get(id);
       if (v) { v.drag = null; v.dragUntil = 0; }
+    },
+    minimumPaperZoom() {
+      if(env.kit().look!=='paper')return 0;
+      const sizes=list.map(v=>{
+        const t=makeText(shortName(v),PAPER.detail.namePx,0,false,'700');t.style.wordWrap=false;
+        const width=Math.max(PAPER.detail.minWidth,t.width+PAPER.detail.glyphPx+24)+4.5;t.destroy();
+        return {v,width,height:PAPER.detail.height+4.5};
+      });
+      let min=0;
+      for(let i=0;i<sizes.length;i++)for(const b of sizes.slice(i+1)){
+        const a=sizes[i],dx=Math.abs(a.v.tx-b.v.tx),dy=Math.abs(a.v.ty-b.v.ty);
+        min=Math.max(min,Math.min(dx?((a.width+b.width)/2+PAPER.detail.gap)/dx:Infinity,dy?((a.height+b.height)/2+PAPER.detail.gap)/dy:Infinity));
+      }
+      return Number.isFinite(min)?min:0;
     },
     bounds(graph) {
       const nodes = graph ? graph.nodes : list.map(v => ({ x: v.tx, y: v.ty }));

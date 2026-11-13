@@ -1,8 +1,9 @@
-// Large diagrams enter and resize inside the measured panel bounds.
+// Large paper diagrams keep readable, nonoverlapping headers on entry and resize.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer-core';
+import {serveGame} from './browser-server.js';
 
-const base = process.argv[2] || 'http://localhost:8765/';
+const site=await serveGame(),base=site.base;
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const types = ['web-browser', 'dns', 'cdn', 'waf', 'api-gateway', 'mobile-app', 'regional-lb', 'vm-fleet', 'cache', 'sql-primary', 'metrics', 'object-storage', 'queue', 'worker-pool', 'third-party-api'];
@@ -11,7 +12,10 @@ const graph = { nodes: types.map((type, i) => ({ id: 'n' + i, type, x: i % 5 * 2
 
 function assertFitted(view, message) {
   const f = view.free;
-  assert(view.diagram.parts.every(p => p.x >= f.l && p.x + p.width <= f.w - f.r && p.y >= f.t && p.y + p.height <= f.h - f.b), message);
+  assert(view.labelPx>=13,message+': readable names');
+  const parts=view.diagram.parts,hit=(a,b)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
+  assert(parts.some(p=>p.x>=f.l&&p.x+p.width<=f.w-f.r&&p.y>=f.t&&p.y+p.height<=f.h-f.b),message+': readable entry is visible');
+  assert(!parts.some((a,i)=>parts.slice(i+1).some(b=>hit(a,b))),message+': headers do not overlap');
 }
 
 try {
@@ -28,7 +32,8 @@ try {
     await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme);
     await delay(1000);
     let view = await page.evaluate(() => window.__game.getState().view);
-    assertFitted(view, `${theme}: every part fits on opening without pressing Fit all`);
+    assertFitted(view, `${theme}: readable entry opens without pressing Fit`);
+    assert(await page.$('.pl-camera-map svg'),'the overview contains the complete topology');
     assert.equal(view.diagram.labelPanelOverlaps, 0, `${theme}: opening captions clear panels`);
     await page.setViewport({ width: 1366, height: 800, isMobile: true, hasTouch: true });
     await delay(1000);
@@ -50,5 +55,5 @@ try {
       assert(distance <= 80, `${theme}: overview names stay near their own parts instead of drawing long leaders`);
     }
   }
-  console.log('Large phone diagrams fit automatically on entry and resize in both themes; live captions clear the panels.');
-} finally { await browser.close(); }
+  console.log('Large phone diagrams keep readable headers on entry and resize in both themes. Live captions clear panels.');
+} finally { await browser.close(); await site.close(); }

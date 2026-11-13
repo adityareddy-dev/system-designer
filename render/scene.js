@@ -1,7 +1,7 @@
 // The PixiJS scene: camera, nodes, edges, request particles, glows and effects. The only render file other modules import.
 
 import { resolvePalette, severityColor } from './theme.js';
-import { PAPER, paperPalette, paperPoint, paperGraph } from './paper.js';
+import { PAPER, paperPalette, paperPoint, paperGraph, paperSpread } from './paper.js';
 import { e08Palette } from './e08.js';
 import { createKit } from './textures.js';
 import { createCamera } from './camera.js';
@@ -85,10 +85,11 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const dpr = Math.max(1, Math.min(globalThis.devicePixelRatio || 1, 3));
   const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;
 
-  const displayPoint = (x, y) => look === 'paper' ? paperPoint(x, y) : { x, y };
-  const modelPoint = (x, y) => look === 'paper' ? paperPoint(x, y, true) : { x, y };
+  const displayPoint = (x, y) => look === 'paper' ? paperPoint(x, y, false, modelSpread) : { x, y };
+  const modelPoint = (x, y) => look === 'paper' ? paperPoint(x, y, true, modelSpread) : { x, y };
   const displayGraph = g => look === 'paper' ? paperGraph(g) : g;
   let sourceGraph = null;
+  let modelSpread = PAPER.spread;
   let failureLead = null;
   let captionArea = null;
   let reduced = !!reducedMotion;
@@ -224,7 +225,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     if (!ringNode) { portRing.visible = false; return; }
     portRing.visible = true;
     const k = Math.max(1, 1 / camera.zoom);
-    if(look==='paper'){const x=PAPER.body.width/2+22/camera.zoom;portRing.moveTo(PAPER.body.width/2,0).lineTo(x,0).stroke({width:2*k,color:P.ink});portRing.rect(x-6*k,-6*k,12*k,12*k).fill({color:P.card}).stroke({color:P.ink,width:2*k});return;}
+    if(look==='paper'){const x=(ringNode?.renderWidth/2||PAPER.body.width/2)+22/camera.zoom;portRing.moveTo(ringNode?.renderWidth/2||PAPER.body.width/2,0).lineTo(x,0).stroke({width:2*k,color:P.ink});portRing.rect(x-6*k,-6*k,12*k,12*k).fill({color:P.card}).stroke({color:P.ink,width:2*k});return;}
     const n = 40;
     for (let i = 0; i < n; i += 2) {
       const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2;
@@ -257,10 +258,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const color = ok ? P.blue : P.tomato;
       if(look==='paper') {
         const endX=to?to.x:x,endY=to?to.y:y,sign=endX>=from.x?1:-1;
-        const start=from.x+sign*PAPER.wire.port,end=endX-(to?sign*PAPER.wire.port:0),h=Math.max(30,Math.abs(end-start)*.5);
+        const start=from.x+sign*(from.portHalf||PAPER.wire.port),end=endX-(to?sign*(to.portHalf||PAPER.wire.port):0),h=Math.max(30,Math.abs(end-start)*.5);
         band.moveTo(start,from.y).bezierCurveTo(start+sign*h,from.y,end-sign*h,endY,end,endY).stroke({width:PAPER.wire.width,color:ok?P.ink:P.tomato});
         target.visible=false;
-        if(to)band.roundRect(to.x+PAPER.body.x,to.y+PAPER.body.y,PAPER.body.width,PAPER.body.height,PAPER.body.radius).stroke({width:PAPER.body.stroke,color:ok?P.ink:P.tomato});
+        if(to)band.roundRect(to.x-(to.renderWidth||PAPER.body.width)/2,to.y-(to.renderHeight||PAPER.body.height)/2,to.renderWidth||PAPER.body.width,to.renderHeight||PAPER.body.height,PAPER.body.radius).stroke({width:PAPER.body.stroke,color:ok?P.ink:P.tomato});
         else band.rect(x-5,y-5,10,10).fill({color:P.card}).stroke({width:2,color:P.ink});
         return;
       }
@@ -776,6 +777,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     sync(g, fv) {
       wake();
       sourceGraph = g || null;
+      modelSpread = paperSpread(sourceGraph);
       graph = displayGraph(sourceGraph);
       if (fv !== undefined && fv !== flowVersion) { flowVersion = fv; map = null; }
       const a = nodes.sync(graph);
@@ -922,7 +924,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     fit(padding = 80, animate = true, opts = {}) {
       wake();
       // A minimum chosen for saved coordinates must not crop the spread paper layout.
-      const fitOpts = look === 'paper' && opts.minZ ? { ...opts, minZ: opts.minZ / Math.max(PAPER.spread.x, PAPER.spread.y) } : opts;
+      let fitOpts = look === 'paper' && opts.minZ ? { ...opts, minZ: opts.minZ / Math.max(modelSpread.x, modelSpread.y) } : opts;
+      if(look==='paper'&&(opts.minZ>0||camera.size.w<600)&&!opts.focusId)fitOpts={...fitOpts,minZ:Math.max(fitOpts.minZ||0,nodes.minimumPaperZoom())};
       const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
       const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(opts.nodeIds ? { ...graph, nodes: graph.nodes.filter(n => opts.nodeIds.includes(n.id)) } : graph);
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, fitOpts); return; }
@@ -989,7 +992,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         particles: particles.count, renderMs: rsn ? sum / rsn : 0, renderMsLast: lastRenderMs,
         idle: isIdle, idleFrames, quality: level, qualitySetting, dotScale, effects: fx.count, nodes: nodes.list.length, edges: edges.list.length,
         zoom: camera.zoom, cameraMoving: camera.moving,
-        labelPx: Math.min(...nodes.list.map(v => v.labelT.style.fontSize * v.labelT.scale.x * v.captionC.scale.x * v.c.scale.x * camera.zoom)),
+        labelPx: Math.min(...nodes.list.map(v => look==='paper'?v.paperTitle.style.fontSize*v.paperTitle.scale.x*v.c.scale.x*camera.zoom:v.labelT.style.fontSize*v.labelT.scale.x*v.captionC.scale.x*v.c.scale.x*camera.zoom)),
       };
     },
     async snapshot({ width = 600, height = 315, graph: g2 } = {}) {

@@ -48,7 +48,9 @@ try {
       const point = window.__game.getState().view.screen.find(n => n.id === 'n7'), r = document.querySelector('.pl-stage').getBoundingClientRect();
       return { x: point.x + r.x, y: point.y + r.y };
     });
-    await page.mouse.click(p.x, p.y); await sleep(300);
+    if(width===390)await page.select('.pl-overview select','n7');
+    else await page.mouse.click(p.x,p.y);
+    await sleep(300);
     if (width === 390) {
       await page.$eval('.pl-focus-map .pl-btn', button => button.click());
       const before = await page.$$eval('.pl-focus-map svg path', paths => paths.length);
