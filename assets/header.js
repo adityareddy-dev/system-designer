@@ -2,6 +2,8 @@
 // same account menu for a signed-in player (it loads the game's own account code, so there is one copy). Without an account service
 // (forks, local copies) the plain Sign in link stays and nothing is loaded.
 (function () {
+  // The game mounts its own header and account client.
+  if (document.getElementById('app')) return;
   var SITE = 'https://systemdesigner.io', API = 'https://api.systemdesigner.io';
   var script = document.currentScript;
   var ROOT = script && script.src ? new URL('../', script.src).href : null;
