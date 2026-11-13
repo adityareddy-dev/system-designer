@@ -56,6 +56,30 @@
 .sh-next-tracks .sh-chip { box-shadow: 3px 3px 0 var(--ink); }
 @media (max-width: 719px) { .sh-chapter-art { max-height: none; max-width: none; justify-self: stretch; } }
 .sh-industry-art { border-radius: 10px; }
+/* r4-wide: Learn track header is one compact row with a small picture, lessons sit right under it */
+.sh-chapter { padding: 24px 0; }
+.sh-chapter-toggle { grid-template-columns: minmax(0, 1fr) 112px; gap: 16px; }
+.sh-chapter-art { grid-row: auto; max-width: none; justify-self: end; width: 112px; }
+.sh-chapter .sh-lesson-grid { grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 20px 24px; padding-top: 20px; }
+@media (min-width: 720px) {
+  .sh-chapter-toggle { grid-template-columns: minmax(0, 1fr) auto; }
+  .sh-chapter-copy { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
+  .sh-chapter-art { width: 224px; }
+  .sh-learn-page .sh-h1 { max-width: none; }
+  .sh-learn-page > .sh-page-head { padding-top: 12px; }
+  .sh-learn-page .sh-lead { max-width: 80ch; }
+}
+@media (max-width: 719px) {
+  .sh-chapter-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .sh-chapter h2 { font-size: 32px; }
+  .sh-chapter .sh-track-progress { font-size: 13px; }
+}
+/* r4-wide: Practice group header sits above its cards, the tiny map is dropped */
+.sh-practice-page .sh-industry-art { display: none; }
+.sh-practice-page .sh-group, .sh-practice-page .sh-group:nth-child(even) { grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 28px 0; margin: 0; }
+.sh-practice-page .sh-group:nth-child(even) .sh-group-head, .sh-practice-page .sh-group:nth-child(even) .sh-prob-grid { grid-column: auto; grid-row: auto; }
+.sh-practice-page .sh-group-head { position: static; align-items: start; }
+.sh-practice-page .sh-group-head p { font-size: 15px; }
 .sh-practice-page .sh-group .sh-prob-grid, .sh-practice-page .sh-prob-grid { gap: 24px; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 22px; }
 .sh-practice-page .sh-prob, .sh-practice-page .sh-group .sh-prob-grid > li:first-child .sh-prob, .sh-practice-page .sh-group .sh-prob-grid > li:nth-child(2) .sh-prob { border: var(--line); border-radius: 10px; background: var(--card); box-shadow: var(--hard); padding: 18px 20px; }
 .sh-practice-page .sh-prob:hover { color: var(--ink); }
@@ -64,9 +88,11 @@
 .sh-practice-page .sh-prob-tags .sh-tag { background: var(--paper); }
 .sh-practice-page .sh-upnext, .sh-upnext { border: var(--line); border-left: var(--line); border-radius: 10px; background: var(--accent-soft); box-shadow: var(--hard); padding: 22px 26px; }
 .sh-practice-page .sh-group { border-bottom: 0; }
-@media (min-width: 2200px) and (min-height: 1250px) { .sh-learn-page, .sh-practice-page { zoom: 1.3; } }
-@media (min-width: 2200px) and (min-height: 1600px) { .sh-learn-page, .sh-practice-page { zoom: 1.6; } }
-@media (min-width: 2200px) and (min-height: 1950px) { .sh-learn-page, .sh-practice-page { zoom: 1.9; } }
+/* r4-wide: Learn, Practice and Challenge share one scale, so they share one gutter */
+@media (min-width: 2200px) and (min-height: 1250px) { .sh-learn-page, .sh-practice-page, .sh-challenge-page { zoom: 1.3; } }
+@media (min-width: 3000px) and (min-height: 1250px) and (max-height: 1599px) { .sh-learn-page, .sh-practice-page, .sh-challenge-page { zoom: 1.45; } }
+@media (min-width: 2200px) and (min-height: 1600px) { .sh-learn-page, .sh-practice-page, .sh-challenge-page { zoom: 1.6; } }
+@media (min-width: 2200px) and (min-height: 1950px) { .sh-learn-page, .sh-practice-page, .sh-challenge-page { zoom: 1.9; } }
 /* the hero sizes itself to the screen height (see "home hero" below), so only what follows it is scaled up */
 @media (min-width: 2200px) and (min-height: 1250px) { .sh-home-page > :not(.sh-hero) { zoom: 1.15; } }
 @media (min-width: 2200px) and (min-height: 1600px) { .sh-home-page > :not(.sh-hero) { zoom: 1.4; } }
@@ -134,6 +160,24 @@
   .sh-challenge-page .sh-scenario > * { grid-column: 1; }
   .sh-challenge-page .sh-scenario > .sh-bench-scene { grid-column: 2; grid-row: 1 / span 4; align-self: start; margin: 0; max-height: 220px; }
   .sh-challenge-page .sh-scenario > .sh-bench-scene svg { width: 100%; height: auto; max-height: 220px; }
+}
+/* r4-wide: on wide windows the date and round card share a row, so the play button stays on the first screen */
+@media (min-width: 1200px) {
+  .sh-challenge-page { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); column-gap: 16px; align-items: start; }
+  .sh-challenge-page > .sh-page-head { grid-column: 1 / -1; margin-bottom: 12px; }
+  .sh-challenge-page > .sh-date-nav { grid-column: 1; grid-row: 2; margin: 0 0 12px; justify-self: start; }
+  .sh-challenge-page > .sh-pool-card { grid-column: 2; grid-row: 2; margin: 0 0 12px; padding: 12px 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 20px; align-items: center; }
+  .sh-challenge-page > .sh-pool-card > :nth-child(n+3) { grid-column: 1 / -1; margin: 0; font-size: 14px; }
+  .sh-challenge-page > .sh-pool-card > p:first-child { margin: 0; }
+  .sh-challenge-page > .sh-nudge { grid-column: 1 / -1; grid-row: 3; margin: 0 0 12px; }
+  .sh-challenge-page > .sh-diff-row, .sh-challenge-page > .sh-quickplay { display: none; }
+  .sh-challenge-page > .sh-two-col { display: contents; }
+  .sh-challenge-page .sh-scenario { grid-column: 1; grid-row: 4; padding: 20px 24px; gap: 10px; }
+  .sh-challenge-page .sh-stack { grid-column: 2; grid-row: 4; }
+  .sh-challenge-page .sh-scenario { grid-template-columns: minmax(0, 1fr) minmax(240px, 40%); }
+  .sh-challenge-page .sh-scenario > .sh-bench-scene { max-height: none; }
+  .sh-challenge-page .sh-scenario > .sh-bench-scene svg { max-height: none; }
+  .sh-challenge-page .sh-lead { max-width: 90ch; margin-bottom: 8px; }
 }
 .sh-date-nav { gap: 0; padding: 0; border: var(--line); border-radius: var(--radius-1); background: var(--card); box-shadow: var(--hard); overflow: hidden; }
 .sh-date-nav .sh-icon-btn { width: 44px; height: 44px; border-radius: 0; color: var(--text); }
@@ -318,8 +362,8 @@
 .sh-lesson-page { max-width: min(1280px, 100%); }
 @media (min-width: 1700px) { .sh-lesson-page { max-width: 1560px; } .sh-page--narrow { max-width: 880px; } }
 @media (min-width: 2300px) { .sh-lesson-page { max-width: 1900px; } .sh-page--narrow { max-width: 1040px; } .sh-lp-text { font-size: 22px; } .sh-lead { font-size: 22px; } }
-@media (min-width: 2300px) and (min-height: 1250px) { .sh-lesson-page, .sh-page--narrow, .sh-challenge-page { zoom: 1.25; } }
-@media (min-width: 2300px) and (min-height: 1600px) { .sh-lesson-page, .sh-page--narrow, .sh-challenge-page { zoom: 1.5; } }
+@media (min-width: 2300px) and (min-height: 1250px) { .sh-lesson-page, .sh-page--narrow { zoom: 1.25; } }
+@media (min-width: 2300px) and (min-height: 1600px) { .sh-lesson-page, .sh-page--narrow { zoom: 1.5; } }
 
 .pl-scrim { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
 
