@@ -15,7 +15,7 @@ if(out)fs.mkdirSync(out,{recursive:true});
 try {
  const page=await browser.newPage();await page.setViewport({width:1440,height:1000});
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
- await page.evaluateOnNewDocument(()=>{localStorage.setItem('hotpath.v1.seenIntro','true');localStorage.setItem('hotpath.v1.settings',JSON.stringify({soundMuted:true,reducedMotion:'reduce',quality:'high'}));});
+ await page.evaluateOnNewDocument(()=>{localStorage.setItem('hotpath.v1.seenIntro','true');localStorage.setItem('hotpath.v1.warmups',JSON.stringify({'url-shortener':true}));localStorage.setItem('hotpath.v1.settings',JSON.stringify({soundMuted:true,reducedMotion:'reduce',quality:'high'}));});
  await page.setRequestInterception(true);page.on('request',r=>{
   const url=new URL(r.url()),file=url.pathname.slice(1);
   if(url.origin===new URL(site.base).origin&&(/\.(js|css|html|json|svg)$/.test(file)||file==='')){
