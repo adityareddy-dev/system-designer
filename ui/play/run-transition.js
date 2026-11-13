@@ -39,8 +39,10 @@ export function failureEvidence(result, catalog) {
     }
     if (first.util === null) return { nodeId: first.nodeId, heading: 'The part to inspect', detail: `${name(first.nodeId)}: capacity was unavailable when requests first failed.` };
     const saturated = first.kind === 'capacity' && first.util >= 1 && measure?.failed > 0;
+    // The headline names the part the event hit; this card names the first part to fail. Say so when they are not the same part.
+    const hit = /^Broke.* hit /.test(result.verdict || '') && !(result.verdict || '').toLowerCase().includes(String(name(first.nodeId)).toLowerCase());
     return { nodeId: first.nodeId, heading: saturated ? 'The part that reached its limit' : 'The part to inspect',
-      detail: `${name(first.nodeId)}: ${fmtNum(measure?.failed || 0)} failed requests · peak ${measure?.peakUtil > 5 ? 'over 500' : Math.round((measure?.peakUtil || 0) * 100)}% busy.` };
+      detail: `${name(first.nodeId)}: ${fmtNum(measure?.failed || 0)} failed requests · peak ${measure?.peakUtil > 5 ? 'over 500' : Math.round((measure?.peakUtil || 0) * 100)}% busy.${hit ? ' This part failed first. The headline names the part the event hit.' : ''}` };
   }
   const cost = result.slo?.cost;
   if (cost?.budget > 0 && cost.perMonth > cost.budget) {

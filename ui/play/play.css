@@ -63,6 +63,12 @@
 .pl-insp-more[open] > summary { margin-bottom: 10px; }
 .pl-inspector--focus .pl-knob { margin: 10px 0 4px; }
 .pl-warmup { display: flex; gap: 8px; align-items: center; margin: 12px 0 0; color: var(--text-2); font-size: 13.5px; }
+/* r4-debrief */
+.pl-warmup { flex-wrap: wrap; }
+.pl-warmup > p { margin: 0; flex: 1 1 280px; min-width: 0; }
+.pl-warmup .pl-btn { min-height: 44px; }
+.pl-assist-why { max-width: 56ch; margin-bottom: 8px; }
+.pl-held { margin: 8px 0 0; }
 .pl-badge--best { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 .pl-range { width: 100%; accent-color: var(--accent); height: 28px; margin: 0; }
 .pl-range--unset { opacity: 0.6; filter: grayscale(1); }
