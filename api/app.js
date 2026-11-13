@@ -149,9 +149,8 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
   }
   const nonceCookie = (v, maxAge) => cookie(NONCE_COOKIE, v, { maxAge, path: '/auth/google', secure });
 
-  // survey: true or false when the player chose at sign-in, null when they did not.
-  function signIn(provider, subject, profile, sess, survey = null) {
-    const { userId } = db.signIn({ provider, subject, name: providerName(profile.name), avatar: cleanAvatar(profile.avatar), email: cleanEmail(profile.email), surveyOptIn: survey, currentUserId: sess?.userId ?? null }, now());
+  function signIn(provider, subject, profile, sess) {
+    const { userId } = db.signIn({ provider, subject, name: providerName(profile.name), avatar: cleanAvatar(profile.avatar), email: cleanEmail(profile.email), currentUserId: sess?.userId ?? null }, now());
     return { userId, setCookie: startSession(userId, sess) };
   }
 
@@ -209,7 +208,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
         throw e;
       }
       spendNonce(n);
-      const { userId, setCookie } = signIn('google', p.sub, { name: p.givenName || p.name, avatar: p.picture, email: p.email }, sess, typeof body.surveyOptIn === 'boolean' ? body.surveyOptIn : null);
+      const { userId, setCookie } = signIn('google', p.sub, { name: p.givenName || p.name, avatar: p.picture, email: p.email }, sess);
       return [200, { user: publicUser(userId) }, { 'Set-Cookie': [clear, setCookie] }];
     },
 
@@ -218,8 +217,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       const origin = url.searchParams.get('origin') || config.sites[0];
       const ret = url.searchParams.get('return') || '#/';
       if (!config.github.enabled) return redirect(res, backTo(origin, ret, 'unavailable'));
-      const survey = url.searchParams.get('survey');
-      const { state, cookieValue } = makeState(config.sessionSecret, { ret: RETURN_RE.test(ret) ? ret : '#/', origin: config.sites.includes(origin) ? origin : config.sites[0], survey: survey === '1' ? true : survey === '0' ? false : undefined }, now());
+      const { state, cookieValue } = makeState(config.sessionSecret, { ret: RETURN_RE.test(ret) ? ret : '#/', origin: config.sites.includes(origin) ? origin : config.sites[0] }, now());
       return redirect(res, github.authorizeUrl(state), {
         'Set-Cookie': cookie(STATE_COOKIE, cookieValue, { maxAge: STATE_TTL_SEC, path: '/auth/github', secure }),
         'Cache-Control': 'no-store',
@@ -237,7 +235,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       try { p = await github.profile(url.searchParams.get('code')); } catch {
         return redirect(res, backTo(st.origin, st.ret, 'failed'), { 'Set-Cookie': clear });
       }
-      const { setCookie } = signIn('github', p.id, { name: p.name || p.login, avatar: p.avatar, email: p.email }, sess, st.survey);
+      const { setCookie } = signIn('github', p.id, { name: p.name || p.login, avatar: p.avatar, email: p.email }, sess);
       return redirect(res, backTo(st.origin, st.ret, 'github'), { 'Set-Cookie': [clear, setCookie] });
     },
 
@@ -247,7 +245,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       const body = await readJson(req, BODY.small);
       const id = typeof body.id === 'string' ? body.id : '';
       if (!/^[a-z0-9-]{1,32}$/.test(id)) throw new HttpError(400, 'bad-input', 'id must be 1 to 32 lowercase letters, digits or dashes.');
-      const { userId, setCookie } = signIn('fake', id, { name: safeName(cleanName(body.name)) || 'Test player ' + id, avatar: null, email: body.email }, sess, typeof body.surveyOptIn === 'boolean' ? body.surveyOptIn : null);
+      const { userId, setCookie } = signIn('fake', id, { name: safeName(cleanName(body.name)) || 'Test player ' + id, avatar: null, email: body.email }, sess);
       return [200, { user: publicUser(userId) }, { 'Set-Cookie': setCookie }];
     },
 

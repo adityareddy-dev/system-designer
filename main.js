@@ -106,8 +106,8 @@ async function boot() {
 
   // The readable home page uses a content anchor before the game takes over.
   if (location.hash === '#content') router.replace('#/');
+  // The page's first screen stays until the game's own first view is ready (mountShell swaps it in).
   const appEl = document.getElementById('app');
-  appEl.innerHTML = '';
   const shell = mountShell(appEl, ctx);
   const startAccount = () => import('./account/index.js').then((m) => { ctx.account = m.createAccount(ctx); shell.attachAccount?.(); return ctx.account.ready; }).catch(err => { metrics.reportError(err, 'index.js', true); ctx.account = null; }).finally(() => accountDone());
   if (ctx.gate.required) startAccount();

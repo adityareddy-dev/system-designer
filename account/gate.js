@@ -1,5 +1,5 @@
 // The sign-in page shown in place of a play page on the hosted site. Reading pages never come here.
-import { h, ico } from '../ui/shell/dom.js';
+import { h } from '../ui/shell/dom.js';
 
 const REPO = 'https://github.com/adityareddy-dev/system-designer';
 
@@ -22,17 +22,12 @@ export function renderGate(host, ctx, route) {
   const left = h('div', { class: 'ac-gate-copy' },
     h('p', { class: 'sh-eyebrow', text: 'Free account' }),
     h('h1', { class: 'ac-gate-title', text: 'Sign in to start playing' }),
-    h('p', { class: 'ac-gate-lead', text: 'System Designer is free. A Google or GitHub account lets you open the lessons, practice problems and the sandbox, and keeps your progress on every device.' }),
+    h('p', { class: 'ac-gate-lead', text: 'The account is free and opens the lessons, problems and sandbox.' }),
     t ? h('div', { class: 'ac-gate-target' }, h('span', { class: 'ac-gate-target-kind', text: t.kind }), h('b', { text: t.title }), t.note ? h('span', { class: 'ac-mini', text: t.note }) : null) : null,
     null);
   const extra = h('div', { class: 'ac-gate-extra' },
-    h('ul', { class: 'ac-gate-points' },
-      h('li', null, ico('ui.check', 18), 'Any progress you made on this device is kept and joined to your account.'),
-      h('li', null, ico('ui.check', 18), 'No payment and no password. We store your email with your account, and email you surveys only if you tick the box.'),
-      h('li', null, ico('ui.check', 18), 'Lessons, problems and guides stay open to read without signing in.')),
-    h('p', { class: 'ac-gate-alt' }, 'Rather not sign in? System Designer is open source (MIT). ',
-      h('a', { class: 'ac-link', href: REPO, rel: 'noopener' }, 'Run your own copy'), ' with no account at all. Or ',
-      h('a', { class: 'ac-link', href: 'problems/' }, 'read the problems'), ' first.'));
+    h('p', { class: 'ac-gate-alt' }, 'Rather not sign in? ',
+      h('a', { class: 'ac-link', href: REPO, rel: 'noopener' }, 'Run your own copy'), '.'));
 
   const right = h('div', { class: 'ac-gate-side' });
   const paint = () => {

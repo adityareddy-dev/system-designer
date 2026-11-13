@@ -130,27 +130,26 @@ export function createAccount(ctx) {
       const r = await call('POST', '/auth/google/nonce', {});
       return typeof r?.nonce === 'string' ? r.nonce : null;
     },
-    async signInWithGoogle(credential, surveyOptIn) {
-      const r = await call('POST', '/auth/google', typeof surveyOptIn === 'boolean' ? { credential, surveyOptIn } : { credential });
+    async signInWithGoogle(credential) {
+      const r = await call('POST', '/auth/google', { credential });
       await signedIn(r.user);
       return r.user;
     },
-    githubUrl(surveyOptIn) {
+    githubUrl() {
       const path = location.hash.split('?')[0];
       const ret = RETURN_RE.test(path) ? path : '#/';
       const q = { return: ret, origin: location.origin };
-      if (typeof surveyOptIn === 'boolean') q.survey = surveyOptIn ? '1' : '0';
       return `${base}/auth/github/start?${new URLSearchParams(q)}`;
     },
     isPreview: () => preview,
-    async signInPreview(provider, surveyOptIn = false) {
-      const user = { name: 'Preview player', avatar: null, providers: [provider === 'github' ? 'github' : 'google'], email: 'player@example.com', surveyOptIn: !!surveyOptIn };
+    async signInPreview(provider) {
+      const user = { name: 'Preview player', avatar: null, providers: [provider === 'github' ? 'github' : 'google'], email: 'player@example.com', surveyOptIn: true };
       try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(user)); } catch { /* keep going */ }
       await signedIn(user);
       return user;
     },
-    async signInFake(id = 'tester', name = 'Test player', surveyOptIn) {
-      const r = await call('POST', '/auth/fake', typeof surveyOptIn === 'boolean' ? { id, name, surveyOptIn } : { id, name });
+    async signInFake(id = 'tester', name = 'Test player') {
+      const r = await call('POST', '/auth/fake', { id, name });
       await signedIn(r.user);
       return r.user;
     },

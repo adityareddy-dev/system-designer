@@ -468,11 +468,11 @@ test('/me has the documented shape, with email null until one is known', async (
   const u = (await c.req('GET', '/me')).json.user;
   assert.deepEqual(Object.keys(u).sort(), ['avatar', 'email', 'name', 'providers', 'since', 'surveyOptIn']);
   assert.equal(u.email, null);
-  assert.equal(u.surveyOptIn, false);
+  assert.equal(u.surveyOptIn, true, 'new accounts are subscribed');
   const withMail = client(app.base);
-  const r = await withMail.req('POST', '/auth/fake', { body: { id: 'shape2', name: 'Shape Two', email: 'Shape@Example.com', surveyOptIn: true } });
+  const r = await withMail.req('POST', '/auth/fake', { body: { id: 'shape2', name: 'Shape Two', email: 'Shape@Example.com', surveyOptIn: false } });
   assert.equal(r.json.user.email, 'shape@example.com');
-  assert.equal(r.json.user.surveyOptIn, true);
+  assert.equal(r.json.user.surveyOptIn, true, 'the old field is ignored');
   const junk = client(app.base);
   assert.equal((await junk.req('POST', '/auth/fake', { body: { id: 'shape3', email: 'nope' } })).json.user.email, null);
 });
@@ -481,15 +481,17 @@ test('PATCH /me turns the survey opt-in on and off, records and clears the date,
   const c = client(app.base);
   await signIn(c, 'optin', 'Opt In');
   const at = () => app.db.raw.prepare("SELECT u.survey_optin AS s, u.survey_optin_at AS at FROM users u JOIN identities i ON i.user_id = u.id WHERE i.subject = 'optin'").get();
+  const made = app.clock.t;
+  assert.deepEqual({ ...at() }, { s: 1, at: made }, 'on at account creation');
   app.clock.t = NOW + 5000;
-  const on = await c.req('PATCH', '/me', { body: { surveyOptIn: true } });
-  assert.equal(on.status, 200);
-  assert.equal(on.json.user.surveyOptIn, true);
-  assert.equal(on.json.user.name, 'Opt In', 'name untouched');
-  assert.deepEqual({ ...at() }, { s: 1, at: NOW + 5000 });
   const off = await c.req('PATCH', '/me', { body: { surveyOptIn: false } });
+  assert.equal(off.status, 200);
   assert.equal(off.json.user.surveyOptIn, false);
+  assert.equal(off.json.user.name, 'Opt In', 'name untouched');
   assert.deepEqual({ ...at() }, { s: 0, at: null });
+  const on = await c.req('PATCH', '/me', { body: { surveyOptIn: true } });
+  assert.equal(on.json.user.surveyOptIn, true);
+  assert.deepEqual({ ...at() }, { s: 1, at: NOW + 5000 });
   app.clock.t += 3600_000;   // past the account rate limit
   for (const bad of ['true', 1, 0, null, {}, []]) assert.equal((await c.req('PATCH', '/me', { body: { surveyOptIn: bad } })).status, 400, JSON.stringify(bad));
   assert.equal((await c.req('PATCH', '/me', { body: {} })).json.error, 'bad-input');

@@ -18,6 +18,19 @@ class Element {
   get firstChild() { return this.children[0]; }
   removeChild(c) { this.children = this.children.filter((x) => x !== c); }
   focus() {}
+  // the real home hero is written as HTML text: this stand-in turns each class in it into a child element
+  set innerHTML(html) {
+    const section = Object.assign(new Element(), { tag: 'section' });
+    let into = section;
+    for (const m of String(html).matchAll(/class="([^"]+)"/g)) {
+      const el = Object.assign(new Element(), { className: m[1] });
+      into.append(el);
+      if (m[1] === 'sh-bench') into = el; // the bench holds the elements written after it
+    }
+    this.children = [section];
+    section.parent = this;
+  }
+  get firstElementChild() { return this.children[0]; }
   getBoundingClientRect() { return { bottom: 50, right: 100 }; }
   all() { return [this, ...this.children.flatMap((c) => c instanceof Element ? c.all() : [])]; }
   querySelectorAll(selector) {
@@ -74,4 +87,23 @@ user = null;
 bus.emit('account');
 assert.match(note().textContent, /stays in this browser/);
 view.destroy();
-console.log('Home sign-in wording and open-menu rename passed.');
+
+// Email block: the toggle is on for a subscribed account, off for one that turned it off, and says what it does.
+const words = (e) => e instanceof Element ? [e.textContent || '', ...e.children.map(words)].join(' ') : String(e);
+const ui2 = createAccountUi(ctx, { ...api, state: () => ({ available: true, user: null, sync: 'idle', providers: { fake: true } }) });
+const on = ui2.emailBlock({ email: 'a@example.com', surveyOptIn: true });
+assert.match(words(on), /Email me surveys and product updates/);
+assert.doesNotMatch(words(on), /short surveys/);
+assert.match(words(on), /a@example\.com/);
+assert.equal(on.querySelector('.ac-check').checked, '', 'on for a subscribed account');
+assert.equal(ui2.emailBlock({ email: 'a@example.com', surveyOptIn: false }).querySelector('.ac-check').checked, undefined, 'off when turned off');
+
+// Sign-in card: no opt-in box, no "what we store" copy, one agreement line with the privacy link.
+const card = ui2.signInCard({});
+const cardText = words(card);
+assert.equal(card.querySelector('.ac-check'), null, 'no survey checkbox on sign-in');
+assert.equal(card.querySelector('.ac-stored'), null);
+assert.match(cardText, /By continuing you agree to the/);
+assert.match(cardText, /Privacy policy/);
+for (const bad of [/we store/i, /never sold/i, /nothing is sold/i, /no ads/i, /surveys/i]) assert.doesNotMatch(cardText, bad, String(bad));
+console.log('Home sign-in wording, open-menu rename, email toggle and sign-in card passed.');

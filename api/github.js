@@ -17,14 +17,14 @@ function same(a, b) {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
-// Cookie value: base64url(JSON {s, e, r, o, v?}).hmac: state, expiry (ms), return hash, site origin, survey choice (1 or 0, only when sent).
-export function makeState(secret, { ret, origin, survey }, now = Date.now()) {
+// Cookie value: base64url(JSON {s, e, r, o}).hmac: state, expiry (ms), return hash, site origin.
+export function makeState(secret, { ret, origin }, now = Date.now()) {
   const state = randomBytes(24).toString('base64url');
-  const body = Buffer.from(JSON.stringify({ s: state, e: now + STATE_TTL_SEC * 1000, r: ret, o: origin, ...(survey === true || survey === false ? { v: survey ? 1 : 0 } : {}) })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ s: state, e: now + STATE_TTL_SEC * 1000, r: ret, o: origin })).toString('base64url');
   return { state, cookieValue: body + '.' + mac(secret, body) };
 }
 
-// Returns { ret, origin, survey } (survey is true, false or null for no choice) when the cookie is genuine, unexpired and carries the same state as the query; else null.
+// Returns { ret, origin } when the cookie is genuine, unexpired and carries the same state as the query; else null.
 export function checkState(secret, cookieValue, queryState, now = Date.now()) {
   if (typeof cookieValue !== 'string' || typeof queryState !== 'string' || cookieValue.length > 2048 || !/^[A-Za-z0-9_-]{20,64}$/.test(queryState)) return null;
   const dot = cookieValue.lastIndexOf('.');
@@ -35,7 +35,7 @@ export function checkState(secret, cookieValue, queryState, now = Date.now()) {
   try { v = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')); } catch { return null; }
   if (!v || typeof v.s !== 'string' || typeof v.e !== 'number' || v.e <= now) return null;
   if (!same(v.s, queryState)) return null;
-  return { ret: typeof v.r === 'string' ? v.r : '#/', origin: typeof v.o === 'string' ? v.o : '', survey: v.v === 1 ? true : v.v === 0 ? false : null };
+  return { ret: typeof v.r === 'string' ? v.r : '#/', origin: typeof v.o === 'string' ? v.o : '' };
 }
 
 export function createGithub({ clientId, clientSecret, redirectUri, fetchImpl = globalThis.fetch, timeoutMs = 8000 }) {
