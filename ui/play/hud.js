@@ -22,7 +22,9 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     return [s, b];
   });
   const clock = h('div', { class: 'pl-clock', 'aria-label': 'Simulated time' }, h('span', { class: 'pl-clock-t pl-mono', text: '00:00' }), h('div', { class: 'pl-clock-bar' }, h('i')));
-  const ctl = h('div', { class: 'pl-hud-ctl' }, playBtn, resetBtn, clock, speedPill);
+  // the slow-device note shrinks to this label once its sentence has been shown
+  const slowChip = h('span', { class: 'pl-chip pl-slow-chip', role: 'status', title: 'The day is still correct, it just plays back slower on this device', hidden: '' });
+  const ctl = h('div', { class: 'pl-hud-ctl' }, playBtn, resetBtn, clock, speedPill, slowChip);
 
   // sparklines
   const cvS = h('canvas', { class: 'pl-spark', 'aria-hidden': 'true' });
@@ -335,15 +337,31 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
         else if (warns.length) chip = h('span', { class: 'pl-chip', title: tip }, iconEl('ui.info', 14), 'Capacity snapshot below limit; check warnings');
         else chip = h('span', { class: 'pl-chip', title: tip }, iconEl('ui.info', 14), sp ? `Capacity snapshot below limit, including ${ev}` : 'Capacity snapshot below limit');
       }
+      // the status line itself: on a phone it is the one line that shows, the rest opens from the chevron beside it
+      chip.classList.add('pl-chip--main');
+      const label = h('span', { class: 'pl-chip-t' });
+      label.append(...[...chip.childNodes].filter((n) => !(n.nodeType === 1 && n.classList.contains('pl-ic'))));
+      chip.append(label);
       buildNote.append(chip, h('details', { class: 'pl-preview-limits pl-small' }, h('summary', { text: /already above|above the .*deadline/.test(limits) ? 'Rough capacity check: a speed or deadline risk is already visible' : 'Rough capacity check: deadlines, retries and event recovery are unchecked' }), h('p', { text: limits }))); 
     }
     const errs = list.filter((i) => i.level !== 'info');
     if (errs.length && hasParts) buildNote.append(h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: 'Show the list' }, iconEl('ui.warn', 14), `${errs.length} thing${errs.length > 1 ? 's' : ''} to check`));
+    // phones: one line of status, and a chevron that opens the rest (the capacity note, the count of things to check)
+    if (est && buildNote.children.length > 1) {
+      const open = buildNote.classList.contains('pl-buildnote--open');
+      const more = h('button', { class: 'pl-note-more', type: 'button', 'aria-label': open ? 'Show less status' : 'Show all status details', 'aria-expanded': String(open), onClick: () => {
+        const on = buildNote.classList.toggle('pl-buildnote--open');
+        more.setAttribute('aria-expanded', String(on));
+        more.setAttribute('aria-label', on ? 'Show less status' : 'Show all status details');
+      } }, iconEl('ui.chevron-down', 18));
+      buildNote.append(more);
+    }
   }
 
   setPhase('build'); setSpeed(1);
   return {
     el: root, setPhase, setSpeed, update, showBanner, hideBanner, setBuild,
+    setSlow(text) { if (slowChip.textContent !== text) { slowChip.textContent = text; } slowChip.hidden = !text; },
     // keyboard starts and resumes count as the player running the day
     markRan() { ran = true; if (phase === 'paused') setPhase('paused'); },
     refreshColors() { colors = readColors(); drawn = ''; },
