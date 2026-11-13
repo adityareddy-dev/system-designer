@@ -56,7 +56,7 @@ export function makeMini(PIXI, kit, env, type, { faint = false } = {}) {
   const tex = kit.icons.get('el.' + type, kit.P.ink);
   const icon = new PIXI.Sprite(tex || PIXI.Texture.EMPTY);
   icon.anchor.set(0.5); icon.width = icon.height = kit.look === 'e08' ? e08IconSize : 28; icon.y = kit.look === 'e08' ? 0 : iconOffset(shape);
-  icon.tint = kit.look === 'e08' ? 0xf3eee0 : 0xffffff;
+  icon.tint = kit.look === 'e08' ? kit.P.ink : 0xffffff;
   c.addChild(icon);
   c.__icon = icon; c.__type = type; c.__cat = cat; c.__shape = shape; c.__body = body; c.__faint = faint;
   return c;
@@ -67,7 +67,7 @@ export function refreshMini(kit, c) {
   else { c.__body.texture = kit.bodyTex[c.__cat]; c.__body.width = c.__body.height = BODY_BOX; }
   const tex = kit.icons.get('el.' + c.__type, kit.P.ink);
   if (tex) c.__icon.texture = tex;
-  c.__icon.tint = kit.look === 'e08' ? 0xf3eee0 : 0xffffff;
+  c.__icon.tint = kit.look === 'e08' ? kit.P.ink : 0xffffff;
 }
 
 export function createNodeLayer(PIXI, parent, env) {
@@ -121,7 +121,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.select = new PIXI.Sprite(kit.selectTex[shape]); v.select.anchor.set(0.5); v.select.width = v.select.height = BODY_BOX; v.select.visible = false;
     v.icon = new PIXI.Sprite(kit.icons.get('el.' + n.type, P.ink) || PIXI.Texture.EMPTY);
     v.icon.anchor.set(0.5); v.icon.width = v.icon.height = kit.look === 'e08' ? e08IconSize : 28; v.icon.y = kit.look === 'e08' ? 0 : iconOffset(shape);
-    v.icon.tint = kit.look === 'e08' ? 0xf3eee0 : 0xffffff;
+    v.icon.tint = kit.look === 'e08' ? kit.P.ink : 0xffffff;
     v.busy = new PIXI.Graphics();
     v.pool = new PIXI.Graphics();
     v.poolT = makeText('', 10.5, P.text2, true); v.poolT.anchor.set(.5); v.poolT.y = 15;
@@ -600,7 +600,7 @@ export function createNodeLayer(PIXI, parent, env) {
         v.queue = v.over = 0; v.pileType = -1; v.down = false; v.status = 0; v.recoverUntil = 0; v.isLead = false;
         if (v.live) {
           v.live = false; v.busy.clear(); v.drawnU = -1; v.drawnColor = -1; v.statusG.visible = false;
-          v.pile.visible = false; v.qbar.visible = false; v.icon.alpha = 1; v.body.texture = env.kit().bodyTex[v.cat]; v.icon.tint = env.kit().look === 'e08' ? 0xf3eee0 : 0xffffff; v.rejected.visible = false; v.tu = v.du = 0;
+          v.pile.visible = false; v.qbar.visible = false; v.icon.alpha = 1; v.body.texture = env.kit().bodyTex[v.cat]; v.icon.tint = env.kit().look === 'e08' ? env.kit().P.ink : 0xffffff; v.rejected.visible = false; v.tu = v.du = 0;
         }
         return;
       }
@@ -612,7 +612,7 @@ export function createNodeLayer(PIXI, parent, env) {
         if (env.kit().look !== 'e08') v.statusG.context = env.kit().glyphs.status[Math.min(4, status)];
         v.icon.alpha = 1;
         v.body.texture = env.kit().bodyFor?.(v.cat, status) || (down || status >= 3 ? env.kit().downTex : env.kit().bodyTex[v.cat]);
-        v.icon.tint = env.kit().look === 'e08' ? (down ? 0x7b8798 : 0xf3eee0) : 0xffffff;
+        v.icon.tint = env.kit().look === 'e08' ? (down ? env.kit().P.text3 : env.kit().P.ink) : 0xffffff;
         if (!down && status >= 3 || down) { v.shoveAt = performance.now(); v.shoveDir = -v.shoveDir; }
       }
       v.statusG.visible = env.kit().look === 'e08' || status > 0;
@@ -672,7 +672,7 @@ export function createNodeLayer(PIXI, parent, env) {
         v.icon.texture = kit.icons.get('el.' + v.type, P.ink) || PIXI.Texture.EMPTY;
         v.icon.width = v.icon.height = kit.look === 'e08' ? e08IconSize : 28;
         v.icon.y = kit.look === 'e08' ? 0 : iconOffset(v.shape);
-        v.icon.tint = kit.look === 'e08' ? (v.down ? 0x7b8798 : 0xf3eee0) : 0xffffff;
+        v.icon.tint = kit.look === 'e08' ? (v.down ? kit.P.text3 : kit.P.ink) : 0xffffff;
         v.labelT.style.fontFamily = kit.look === 'e08' ? 'system-ui, sans-serif' : FONT_UI;
         v.labelT.style.fontSize = kit.look === 'e08' ? 14 : 12;
         v.labelT.style.fontWeight = kit.look === 'e08' ? '700' : '600';

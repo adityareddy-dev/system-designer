@@ -16,7 +16,8 @@ await test('e08 supplies every catalog part, category state and traffic kind', a
     assert.match(svg,/viewBox="-12 -12 184 184"/);
     assert(svg.includes(categories[cat].c),`${cat} keeps its colour band`);
     if(status==='over')assert.match(svg,/fill="url\(#hz\d+\)"/,'overload uses the red hatch');
-    if(status==='down')assert.match(svg,/#171f2d/,'down is grey');
+    if(status==='down')assert.match(svg,/#e2e5e9/,'down stays grey on the light canvas');
+    else assert.match(svg,/fill="var\(--card, #fffcf4\)"/,'body uses the site card token');
     if(status==='hot')assert.match(svg,/stroke-dasharray="7 6"/,'hot halo');
     if(status==='warn')assert.match(svg,/#facc15/,'steady warning outline');
   }

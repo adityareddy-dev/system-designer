@@ -1,4 +1,5 @@
 // The selected e08 canvas assets. The editor's CSS and palette are deliberately untouched.
+import { hexStr } from './theme.js';
 import { categories, parts, traffic } from '../assets/e08/manifest.js';
 
 export function e08Palette(base) {
@@ -17,10 +18,12 @@ function svgFile(path) {
   }).catch(error => { svgFiles.delete(path); throw error; }));
   return svgFiles.get(path);
 }
-async function texture(PIXI, file, size) {
+async function texture(PIXI, file, size, P) {
   let svg = (await svgFile(file)).replace(/<svg\b([^>]*)>/, (_, attrs) =>
     `<svg${attrs.replace(/\s(width|height)="[^"]*"/g, '')} width="${size}" height="${size}">`);
-  // Bake glyphs white so Pixi can reproduce both original glyph colours exactly with a tint.
+  // Inline SVGs cannot inherit the page's CSS variables when rasterised.
+  svg = svg.replaceAll('var(--card, #fffcf4)', hexStr(P.card));
+  // Bake glyphs white so the scene can tint them with site ink or muted text.
   if (file.startsWith('glyphs/')) svg = svg.replace('#f3eee0','#ffffff');
   const img = new Image();
   await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error('Invalid e08 SVG: ' + file));
@@ -33,7 +36,7 @@ async function texture(PIXI, file, size) {
 // Reuse the scene's lifecycle, icon fallback and FX resources. Only this kit owns these textures.
 export async function addE08Textures(PIXI, kit) {
   const owned = [];
-  const load = async (file, size) => { const tex = await texture(PIXI, file, size); owned.push(tex); return tex; };
+  const load = async (file, size) => { const tex = await texture(PIXI, file, size, kit.P); owned.push(tex); return tex; };
   try {
     const bodyStates = {};
     await Promise.all(Object.keys(categories).map(async cat => {
@@ -67,14 +70,14 @@ export const e08IconSize = 48 * 1.5 * 100 / 184;
 export function drawE08Load(v, kit, time, reduced) {
   const P = kit.P, g = v.busy, k = 100 / 184;
   const color = v.down ? 0x64748b : v.status === 1 ? P.warn : v.status === 2 ? P.hot : v.status >= 3 ? P.bad : P.cat[v.cat];
-  g.clear().roundRect(-56*k,48*k,112*k,8*k,4*k).fill({color:0x0a1220});
+  g.clear().roundRect(-56*k,48*k,112*k,8*k,4*k).fill({color:P.border});
   const load = v.down ? 0 : Math.max(0,Math.min(1,v.live ? v.du : 0));
   if (load > 0) g.roundRect(-56*k,48*k,112*k*load,8*k,4*k).fill({color});
-  if (v.down) g.moveTo(-28*k,-30*k).lineTo(28*k,26*k).moveTo(28*k,-30*k).lineTo(-28*k,26*k).stroke({color:0x94a3b8,width:4*k,cap:'round'});
+  if (v.down) g.moveTo(-28*k,-30*k).lineTo(28*k,26*k).moveTo(28*k,-30*k).lineTo(-28*k,26*k).stroke({color:0x64748b,width:4*k,cap:'round'});
   v.drawnU = v.du; v.drawnColor = color;
   const mark = v.statusG;
-  mark.clear().circle(0,0,10*k).fill({color:v.status === 0 ? P.ok : color}).stroke({color:0x0c1424,width:3*k});
-  if(v.down) mark.moveTo(-4*k,-4*k).lineTo(4*k,4*k).moveTo(4*k,-4*k).lineTo(-4*k,4*k).stroke({color:0x0c1424,width:2.5*k});
+  mark.clear().circle(0,0,10*k).fill({color:v.status === 0 ? P.ok : color}).stroke({color:P.ink,width:3*k});
+  if(v.down) mark.moveTo(-4*k,-4*k).lineTo(4*k,4*k).moveTo(4*k,-4*k).lineTo(-4*k,4*k).stroke({color:P.ink,width:2.5*k});
   mark.position.set(58*k,-58*k); mark.scale.set(1);
   mark.alpha = !reduced && (v.status === 2 || v.status === 3) && Math.floor(time/450)%2 ? .2 : 1;
   // In p10 the rejected rate is a red pill above the part. Use the engine's actual rate.

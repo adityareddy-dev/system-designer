@@ -40,11 +40,22 @@ await test('URL shortener reference preview uses the same SVG parts', async () =
       const { loadCatalog } = await import('./sim/catalog.js');
       const { problemById } = await import('./content/problems/index.js');
       const p = problemById.get('url-shortener'), catalog = await loadCatalog();
+      document.documentElement.style.setProperty('--card','#faeddb');
+      document.documentElement.style.setProperty('--ink','#252016');
       const svg = designDiagram(p.editorial.designs[0],catalog,'e08');
       const other = designDiagram(problemById.get('chat-app').editorial.designs[0],catalog);
-      return { look:svg.dataset.look, images:svg.querySelectorAll('image').length, nodes:p.editorial.designs[0].graph.nodes.length, classicImages:other.querySelectorAll('image').length };
+      await Promise.all([...svg.querySelectorAll('image')].map(img=>new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(new Error('preview image did not resolve site tokens')),5000);
+        const poll=()=>{if(img.getAttribute('href')?.startsWith('data:')){clearTimeout(timer);resolve();}else setTimeout(poll,20);};poll();
+      })));
+      const sources=await Promise.all([...svg.querySelectorAll('image')].map(img=>fetch(img.getAttribute('href')).then(r=>r.text())));
+      return { sources, look:svg.dataset.look, images:svg.querySelectorAll('image').length, nodes:p.editorial.designs[0].graph.nodes.length, classicImages:other.querySelectorAll('image').length };
     });
     assert.equal(result.look,'e08');
+    for(let i=0;i<result.sources.length;i+=2){
+      assert.match(result.sources[i],/fill="#faeddb"/,'reference body uses the site card');
+      assert.match(result.sources[i+1],/color="#252016"/,'reference glyph uses site ink');
+    }
     assert.equal(result.images,result.nodes*2);
     assert.equal(result.classicImages,0);
   } finally { await browser.close(); await site.close(); }
