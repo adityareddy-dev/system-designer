@@ -228,7 +228,11 @@
 .pl-try--near { background: var(--accent-soft); border-color: var(--ink); }
 .pl-verdict, .pl-day-seal, .pl-victory { border: var(--line); border-radius: var(--radius-3); box-shadow: var(--hard); background: var(--card); }
 .pl-play { box-shadow: 4px 4px 0 var(--ink); }
-.pl-issue { border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); border-radius: 999px; }
+/* r4-visual: a warning is a card, not a pill: the text wraps inside a rounded rectangle */
+.pl-issue { border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); border-radius: var(--radius-1, 8px); box-shadow: 3px 3px 0 var(--ink); }
+.pl-issue .pl-issue-msg { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.35; }
+.pl-issue:hover { background: var(--yellow); filter: brightness(.97); }
+.pl-issue--error:hover { background: #FFD9D0; }
 .pl-issue--error { background: #FFD9D0; }
 .pl-hint { border: var(--line); background: var(--card); border-radius: var(--radius-1); }
 .pl-hud-ctl, .pl-hud-mid { color: var(--text); }

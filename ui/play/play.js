@@ -241,7 +241,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         const g = graph(), nodeIds = [id, ...g.edges.filter(e => e.kind === 'flow' && (e.from === id || e.to === id)).flatMap(e => [e.from,e.to])];
         const a = freeArea(); scene.fit({ l: 36, r: 36, t: a.t + 28, b: a.b + 32 }, true, { nodeIds, minZ: .55, maxZ: .9 });
       } }, h('option', { value: '', text: 'Inspect a branch…' }), graph().nodes.map(n => h('option', { value: n.id, text: `${n.id} · ${catalog.elementById.get(n.type)?.name || n.type}` })));
-      overview.replaceChildren(cameraMap(), choose, h('button', { class: 'pl-btn', type: 'button', onClick: () => { select(null); fitAll(); }, text: 'Fit all' }));
+      overview.replaceChildren(...(graph().nodes.length > 1 ? [cameraMap()] : []), choose, h('button', { class: 'pl-btn', type: 'button', onClick: () => { select(null); fitAll(); }, text: 'Fit all' }));
     }
     overview.hidden = !isPhone();
     updateCameraMap();
@@ -332,12 +332,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!list.length) { issuesBox.hidden = true; return; }
     issuesBox.append(h('div', { class: 'pl-issues-h' }, iconEl('ui.warn', 16), h('b', { text: 'Heads up' }),
       h('button', { class: 'pl-icon-btn', type: 'button', 'aria-label': 'Hide', onClick: () => { issuesBox.hidden = true; } }, iconEl('ui.close', 16))));
+    const rows = h('div', { class: 'pl-issues-list' });
     list.slice(0, 10).forEach((i) => {
-      const row = h('button', { class: 'pl-issue pl-issue--' + i.level, type: 'button', onClick: () => i.nodeId && select(i.nodeId) }, iconEl(i.level === 'error' ? 'ui.error' : i.level === 'warn' ? 'ui.warn' : 'ui.info', 14), i.message);
-      if (!i.fix) { issuesBox.append(row); return; }
+      const row = h('button', { class: 'pl-issue pl-issue--' + i.level, type: 'button', onClick: () => i.nodeId && select(i.nodeId) }, iconEl(i.level === 'error' ? 'ui.error' : i.level === 'warn' ? 'ui.warn' : 'ui.info', 14), h('span', { class: 'pl-issue-msg', text: i.message }));
+      if (!i.fix) { rows.append(row); return; }
       const apply = h('button', { class: 'pl-issue-fix', type: 'button', 'aria-label': i.fix.label, onClick: () => applySizeFix(i.fix) }, i.fix.label);
-      issuesBox.append(h('div', { class: 'pl-issue-wrap' }, row, apply));
+      rows.append(h('div', { class: 'pl-issue-wrap' }, row, apply));
     });
+    issuesBox.append(rows);
   }
 
   // ---- visible canvas area (the parts of the stage not covered by panels)
@@ -742,7 +744,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const g = graph(), minX = Math.min(...g.nodes.map(n => n.x))-70, minY = Math.min(...g.nodes.map(n => n.y))-70;
     const width = Math.max(...g.nodes.map(n => n.x))-minX+70, height = Math.max(...g.nodes.map(n => n.y))-minY+100;
     const byId = new Map(g.nodes.map(n => [n.id,n]));
-    button.innerHTML = `<svg viewBox="${minX} ${minY} ${width} ${height}" aria-hidden="true"><g fill="none" stroke="var(--edge-idle)" stroke-width="8">${g.edges.map(e => { const a=byId.get(e.from),b=byId.get(e.to); return a&&b?`<path d="M${a.x} ${a.y}L${b.x} ${b.y}"/>`:''; }).join('')}</g>${g.nodes.map(n=>`<rect x="${n.x-22}" y="${n.y-22}" width="44" height="44" rx="6" fill="var(--accent)"/>`).join('')}<rect class="pl-camera-window" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+    // Parts and wires are drawn big enough to read at 64 by 44 pixels: a part is about an eighth of the longer side.
+    const unit = Math.max(44, Math.max(width, height) / 8), half = unit / 2;
+    button.innerHTML = `<svg viewBox="${minX} ${minY} ${width} ${height}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g class="pl-cm-wires" stroke-width="${unit / 5}">${g.edges.map(e => { const a=byId.get(e.from),b=byId.get(e.to); return a&&b?`<path d="M${a.x} ${a.y}L${b.x} ${b.y}"/>`:''; }).join('')}</g>${g.nodes.map(n=>`<rect class="pl-cm-part" x="${n.x-half}" y="${n.y-half}" width="${unit}" height="${unit}" rx="${unit / 6}" stroke-width="${unit / 12}"/>`).join('')}<rect class="pl-camera-window" vector-effect="non-scaling-stroke"/></svg>`;
     return button;
   }
   function updateCameraMap() {
@@ -750,6 +754,20 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const a = freeArea(), p = scene.screenToWorld(a.l, a.t), q = scene.screenToWorld(a.w-a.r, a.h-a.b);
     for (const [key,value] of Object.entries({ x:p.x,y:p.y,width:q.x-p.x,height:q.y-p.y })) rect.setAttribute(key,value);
   }
+  // The red badge on a part is a warning, not a Delete button: hovering it says what is wrong.
+  const badgeTip = (e) => {
+    let tip = '';
+    try {
+      if (S.issues?.length && !e.buttons) {
+        const r = stage.getBoundingClientRect(), w = scene.screenToWorld(e.clientX - r.left, e.clientY - r.top);
+        const n = graph().nodes.find((n) => Math.abs(w.x - (n.x + 29)) < 11 && Math.abs(w.y - (n.y - 29)) < 11);
+        const hit = n && S.issues.find((i) => i.nodeId === n.id && i.level === 'error');
+        if (hit) tip = /no route|not connected|no connection/i.test(hit.message) ? 'Not connected. ' + hit.message : hit.message;
+      }
+    } catch { /* a tooltip is a nicety */ }
+    if (stage.title !== tip) stage.title = tip;
+  };
+  stage.addEventListener('pointermove', badgeTip);
   offs.push(scene.on('view', updateCameraMap));
   offs.push(scene.on('view:manual', () => { S.viewManual = true; }));
   function showFocusMap(id, refresh = false) {

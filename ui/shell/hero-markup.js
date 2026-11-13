@@ -21,7 +21,7 @@ function benchSvg(moving) {
   const replica = (i, y) => `<g data-replica="${i}"><rect x="266" y="${y + 4}" width="320" height="82" rx="8" fill="#141414"/><rect class="sh-rep-box" x="260" y="${y}" width="320" height="82" rx="8" fill="#FFFCF4" stroke="#141414" stroke-width="2.5"/>
     <text class="sh-svg-label" x="280" y="${y + 34}">Replica ${i + 1}</text><text class="sh-svg-small" x="560" y="${y + 34}" text-anchor="end" data-spare="${i}">${first.spare[i]}</text>
     <rect x="280" y="${y + 48}" width="${BENCH_W}" height="16" fill="#FFF4E0" stroke="#141414" stroke-width="2"/><rect class="sh-rep-bar" data-bar="${i}" x="280" y="${y + 48}" width="${barWidth(first.bars[i])}" height="16" fill="${barFill(first.bars[i])}"/>
-    <path class="sh-rep-x" data-x="${i}" d="M296 ${y + 22}l16 16m0-16l-16 16" stroke="#B3261E" stroke-width="3" fill="none" opacity="0"/></g>`;
+    <path class="sh-rep-x" data-x="${i}" d="M494 ${y + 22}l12 12m0-12l-12 12" stroke="#B3261E" stroke-width="3" fill="none" opacity="0"/></g>`;
   const link = (d) => `<path class="sh-flow${moving ? ' is-moving' : ''}" d="${d}" fill="none" stroke="#141414" stroke-width="2.5"/>`;
   return `<svg viewBox="0 0 600 400" role="img" aria-labelledby="sh-bench-t sh-bench-d" focusable="false">
     <title id="sh-bench-t">A load balancer splitting traffic across three replicas</title>
