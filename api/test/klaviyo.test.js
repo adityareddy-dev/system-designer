@@ -41,6 +41,11 @@ test('subscription jobs use the list, revision and file key, retry safely and ke
     assert.match(calls[1].url, /\/api\/profile-subscription-bulk-delete-jobs\/$/);
     assert.equal(calls[1].body.data.type, 'profile-subscription-bulk-delete-job');
     assert.equal(calls[1].body.data.attributes.profiles.data[0].attributes.email, 'one@example.com');
+    assert.deepEqual(calls[1].body.data.attributes.profiles.data[0].attributes.subscriptions, { email: { marketing: { consent: 'UNSUBSCRIBED' } } });
+    for (const call of calls) {
+      assert.equal(call.headers['Content-Type'], 'application/vnd.api+json');
+      assert.equal(call.headers.Accept, 'application/vnd.api+json');
+    }
     assert.equal(db.marketingJobs(NOW, true).length, 0);
     db.setMarketingOptIn(userId, true, NOW, 'US');
     await createMarketingSync({ db, keyFile: '', fetchImpl: () => assert.fail('disabled means no network'), log: () => assert.fail('disabled is quiet') }).flush();
