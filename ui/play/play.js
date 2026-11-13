@@ -1595,7 +1595,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       && S.problem.difficulty !== 'Easy' && !S.warm && !gateSeen('checkpoint')) {
       const begin = (answer) => {
         if (answer) S.correctnessAnswer = answer;
-        S.checkpointReady = S.problem.id; gateSeen('checkpoint', true);
+        S.checkpointReady = S.problem.id;
+        // answering marks it seen; skipping does not, so the next run offers it again (it never blocks)
+        if (answer) gateSeen('checkpoint', true);
         if (answer) { try { const all = store.get('gates', {}) || {}; store.set('gates', { ...all, [S.problem.id]: { ...(all[S.problem.id] || {}), checkpointAnswer: answer } }); } catch { /* ignore */ } }
         modal.hidden = true;
         startTraffic();
