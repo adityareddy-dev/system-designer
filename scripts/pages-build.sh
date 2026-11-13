@@ -5,7 +5,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 
-SITE="404.html LICENSE account assets catalog compete content core d guides index.html learn llms-full.txt llms.txt main.js media p privacy.html problems render robots.txt sim sitemap.xml ui"
+SITE="404.html LICENSE account apple-touch-icon.png assets catalog compete content core d favicon.ico guides index.html learn llms-full.txt llms.txt main.js manifest.webmanifest media p privacy.html problems render robots.txt sim sitemap.xml ui"
 
 missing=""
 for p in $SITE _headers; do

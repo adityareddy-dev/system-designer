@@ -132,11 +132,11 @@ export function createNodeLayer(PIXI, parent, env) {
     v.retryG = new PIXI.Graphics();
     v.statusG = new PIXI.Graphics(kit.glyphs.status[0]); v.statusG.position.set(-HALF + 7, -HALF + 7); v.statusG.visible = false;
     v.valid = new PIXI.Graphics(kit.glyphs.valid.warn); v.valid.position.set(HALF - 7, -HALF + 7); v.valid.visible = false;
-    v.lock = new PIXI.Graphics(kit.glyphs.lock); v.lock.position.set(-HALF + 8, HALF - 8); v.lock.visible = false;
-    v.chip = new PIXI.Container(); v.chip.position.set(HALF - 6, -HALF + 6); v.chip.visible = false;
+    v.lock = new PIXI.Graphics(kit.glyphs.lock); v.lock.position.set(-HALF + 9, -HALF + 20); v.lock.visible = false;
+    v.chip = new PIXI.Container(); v.chip.position.set(HALF - 10, -HALF - 8); v.chip.visible = false;
     v.chipBg = new PIXI.Graphics(); v.chip.addChild(v.chipBg);
     v.chipText = null;
-    v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 6, -HALF + 14);
+    v.zonesG = new PIXI.Graphics(); v.zonesG.position.set(HALF - 34, -HALF - 12);
     v.labelT = makeText('', 12, P.ink, false, '600', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
@@ -174,7 +174,7 @@ export function createNodeLayer(PIXI, parent, env) {
       const w = Math.max(18, v.chipText.width + 8);
       v.chipBg.clear().roundRect(-w / 2 + 1.5, -6, w, 15, 3).fill({ color: P.ink }).roundRect(-w / 2, -7.5, w, 15, 3).fill({ color: P.yellow }).stroke({ width: 1.5, color: P.ink });
     }
-    const dots = v.zones > 1 || show ? Math.max(1, Math.min(3, v.zones)) : 0;
+    const dots = v.zones > 1 ? Math.min(3, v.zones) : 0; // a lone zone needs no marker: the stray green square
     v.zonesG.clear();
     for (let i = 0; i < dots; i++) v.zonesG.rect((i - (dots - 1) / 2) * 6 - 2, 2, 4, 4).fill({ color: P.mint }).stroke({ width: 1, color: P.ink });
   }

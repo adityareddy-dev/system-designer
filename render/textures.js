@@ -170,6 +170,11 @@ function glyphContexts(PIXI, P) {
   const over = mk();
   octa(over, 8.2); over.fill({ color: P.tomato }).stroke({ width: 1.8, color: P.ink });
   over.moveTo(-3, -3).lineTo(3, 3).moveTo(3, -3).lineTo(-3, 3).stroke({ ...INK, width: 1.9 });
+  // A part with no working route: a tomato disc with an exclamation mark, never an X (an X reads as Delete).
+  const bad = mk();
+  bad.circle(0, 0, 7.6).fill({ color: P.tomato }).stroke({ width: 1.8, color: P.ink });
+  bad.moveTo(0, -4).lineTo(0, 1).stroke({ ...INK, width: 1.9 });
+  bad.rect(-1, 2.6, 2, 2).fill({ color: P.ink });
   const down = mk();
   down.circle(0, 0, 7).fill({ color: P.card }).stroke({ width: 2, color: P.ink });
   down.moveTo(-4.6, 4.6).lineTo(4.6, -4.6).stroke({ width: 2.2, color: P.tomato });
@@ -181,7 +186,7 @@ function glyphContexts(PIXI, P) {
   lock.rect(-4.4, -1.2, 8.8, 7).fill({ color: P.ink });
   lock.moveTo(-2.7, -1.2).lineTo(-2.7, -3).arc(0, -3, 2.7, Math.PI, Math.PI * 2).lineTo(2.7, -1.2).stroke({ width: 1.6, color: P.ink });
   const status = [ok, warnLike(P.yellow), warnLike(P.yellow), over, down];
-  return { status, valid: { error: over, warn: status[1], info }, lock, all: [ok, status[1], status[2], over, down, info, lock] };
+  return { status, valid: { error: bad, warn: status[1], info }, lock, all: [ok, status[1], status[2], over, down, info, bad, lock] };
 }
 
 // Lazily rasterised SVG icons keyed by icon id and colour.
