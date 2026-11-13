@@ -460,8 +460,14 @@ export function createNodeLayer(PIXI, parent, env) {
           v.evidenceBg.renderable=v.evidenceT.visible&&v.evidenceT.renderable;
         }
       };
+      // Node drawing precedes flows, so rejected pills can change a frame after the readings.
+      // Use the same bounds for cache invalidation and caption clearance.
+      const rejectedBounds = e08 ? list.filter(v => v.rejected.visible).map(v => {
+        const b = v.rejected.getLocalBounds();
+        return { x:v.x+v.rejected.x+b.x, y:v.y+v.rejected.y+b.y, width:b.width, height:b.height };
+      }) : [];
       // Retry missing captions when panning opens space, keeping reserved lanes fixed.
-      const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live},${e08 ? v.evidenceT.text : ''}`)].join('/');
+      const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), JSON.stringify(rejectedBounds), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live},${e08 ? v.evidenceT.text : ''}`)].join('/');
       const origin=camera.worldToScreen(0,0);
       const panned=origin.x!==this.captionOrigin?.x||origin.y!==this.captionOrigin?.y;
       this.captionOrigin=origin;
@@ -491,10 +497,10 @@ export function createNodeLayer(PIXI, parent, env) {
       // The wide readings keep the fuller clearance around every part, so wires still find a way past them; only names pack tighter.
       const roomyParts = tight ? list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.renderHalf*z;return {x:p.x-half-8,y:p.y-half-1,width:half*2+16,height:half*2+2};}) : parts;
       // The p10 rejected pill extends above the body. Keep captions out of its lane too.
-      const rejectedBoxes = e08 ? list.filter(v => v.rejected.visible).map(v => {
-        const p = camera.worldToScreen(v.x, v.y), b = v.rejected.getLocalBounds();
-        return { x:p.x+(v.rejected.x+b.x)*z-3, y:p.y+(v.rejected.y+b.y)*z-3, width:b.width*z+6, height:b.height*z+6 };
-      }) : [];
+      const rejectedBoxes = rejectedBounds.map(b => {
+        const p = camera.worldToScreen(b.x, b.y);
+        return { x:p.x-3, y:p.y-3, width:b.width*z+6, height:b.height*z+6 };
+      });
       const occupied = [...roomyParts, ...rejectedBoxes];
       if(preserve)for(const v of list)for(const box of [v.nameCaption,v.factCaption])if(box)occupied.push(screenBox(v,box));
       const ordered = [...list].sort((a,b)=>a.y-b.y||a.x-b.x);
