@@ -44,7 +44,7 @@ try {
     await pg.setViewport({width,height:844,deviceScaleFactor:1});
     await pg.emulateMediaFeatures([{name:'prefers-color-scheme',value:theme}]);
     await pg.setJavaScriptEnabled(false);
-    for (const route of ['', 'problems/','learn/','guides/','p/url-shortener/','learn/caching/','guides/two-week-system-design-plan/']) {
+    for (const route of ['', 'problems/','learn/','guides/','p/url-shortener/','d/2026-11-07/','learn/caching/','guides/two-week-system-design-plan/']) {
       const response=await pg.goto(BASE+route,{waitUntil:'load'});assert.equal(response.status(),200);
       const state=await pg.evaluate(()=>({text:document.body.innerText,width:document.documentElement.scrollWidth,h1:document.querySelector('h1')?.innerText}));
       assert.ok(state.text.length>400&&state.h1,route);assert.ok(state.width<=width,route+' overflows');
@@ -92,6 +92,9 @@ try {
     assert.ok(text.includes('1000')&&text.includes('Score checked by replay'),'design arrives and its score is verified');
   }
   await pg.goto(BASE+'d/2026-11-07/',{waitUntil:'load'});
+  assert.ok(pg.url().endsWith('d/2026-11-07/'), 'ordinary daily page stays readable');
+  assert.match(await pg.$eval('h1', el => el.textContent), /daily challenge, 2026-11-07/);
+  await pg.click('.site-button');
   await pg.waitForFunction(()=>location.hash==='#/challenge/2026-11-07',{timeout:30000});
   assert.deepEqual(errors,[]);
   console.log('PASS readable browser pages at both widths and themes; full scored day, saved progress, problem and daily beat links');

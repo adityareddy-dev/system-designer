@@ -114,7 +114,7 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
       crumbs:[rootCrumb,['Daily challenge, '+date,file]],preview:`d/${date}/preview.jpg`,
       action:action(file,'challenge/'+date,'Open the challenge'),
       body:`<div class="site-prose">${para(p.brief)}<p>The daily scenario changes the event schedule and pressure. ${link(relative(file,`p/${p.id}/index.html`),'Read the base problem')} for its requirements and concepts, then open this date’s challenge to see the daily variant.</p><section><h2>Related guides</h2>${listLinks([[relative(file,'guides/how-to-practise-system-design/index.html'),'Practise with predictions and measurements'],[relative(file,'guides/two-week-system-design-plan/index.html'),'Follow the two-week interview plan']])}</section></div><section><h2>Related problems</h2>${problemCards(relatedProblems(p,problems),file)}</section>`,
-      script:`(function(){var h=location.hash||'';location.replace(new URL('../../',location.href).href+(h.indexOf('#/beat/')===0?h:'#/challenge/${date}'));})();`,
+      script:beatScript,
       data:[{'@type':'LearningResource',learningResourceType:'Daily challenge',educationalLevel:p.difficulty}]
     }));
   }

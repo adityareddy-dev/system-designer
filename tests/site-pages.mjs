@@ -77,8 +77,8 @@ for (const url of locations) {
       assert.ok(read(toFile(target)).includes(`id="${decodeURIComponent(target.hash.slice(1))}"`), `${file} -> ${m[1]} anchor`);
     }
   }
-  if (file.startsWith('p/')) {
-    assert.match(html, /Play this problem/);
+  if (/^(p|d)\//.test(file)) {
+    assert.match(html, file.startsWith('p/') ? /Play this problem/ : /Open the challenge/);
     assert.doesNotMatch(html, /(?:main\.js|pixi\.js|http-equiv="refresh")/i);
     const js = [...html.replace(themeHead, '').matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n');
     assert.ok(js.length < 600, 'tiny forwarding script');
