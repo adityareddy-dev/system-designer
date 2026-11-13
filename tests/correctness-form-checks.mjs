@@ -30,6 +30,15 @@ for (const id of ['bank-ledger', 'concert-ticket-drop', 'notification-service'])
   all(form).find((el) => el.tag === 'input').value = answer.text;
   form.events.submit({ preventDefault() {} });
   assert.deepEqual(submitted, answer);
+  // A wrong answer shows its explanation first, then the next submit still starts the day. Skip is offered.
+  let late; const wrongForm = renderCheckpointForm(checkpoint, {}, (value) => { late = value; }, () => {});
+  all(wrongForm).filter((el) => el.tag === 'select').forEach((el, i) => { el.value = String(1 - checkpoint.fields[i].correct); });
+  all(wrongForm).find((el) => el.tag === 'input').value = answer.text;
+  wrongForm.events.submit({ preventDefault() {} });
+  assert.equal(late, undefined);
+  wrongForm.events.submit({ preventDefault() {} });
+  assert.ok(late, 'a wrong answer still lets the day start');
+  assert.ok(copy(wrongForm).includes('Skip and start day'));
   const debrief = copy(renderCorrectness(checkpoint, submitted));
   assert.ok(debrief.includes(answer.text));
   assert.ok(debrief.includes(checkpoint.limits));

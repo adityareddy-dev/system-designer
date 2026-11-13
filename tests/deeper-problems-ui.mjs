@@ -59,8 +59,8 @@ try {
       const test=checkFor(p);
       await page.evaluate(({answer,value})=>{
         const form=document.querySelector('.pl-design-check');
-        form.querySelectorAll('.sh-choice')[answer].click();
-        form.querySelector('input').value=String(value);
+        if(form.querySelector('input')){form.querySelectorAll('.sh-choice')[answer].click();
+        form.querySelector('input').value=String(value);}
         form.querySelector('textarea').value='The store needs failure headroom; the protocol checkpoint is separate from its traffic capacity.';
         form.requestSubmit();
       },{answer:test.answer,value:test.value});

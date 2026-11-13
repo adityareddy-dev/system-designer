@@ -13,10 +13,10 @@ const click = text => page.evaluate(text => { const el = [...document.querySelec
 const p = problemById.get('search-autocomplete');
 const gates = async () => {
   if (await page.$('.pl-modal:not([hidden]) .pl-design-check')) await page.evaluate(t => {
-    const f = document.querySelector('.pl-design-check'); f.querySelectorAll('.sh-choice')[t.answer].click(); f.querySelector('input').value = t.value;
+    const f = document.querySelector('.pl-design-check'); if (f.querySelector('input')) { f.querySelectorAll('.sh-choice')[t.answer].click(); f.querySelector('input').value = t.value; }
     f.querySelector('textarea').value = 'Queue delay and duplicate effects need separate checks under the changed traffic conditions.'; f.requestSubmit();
   }, checkFor(p));
-  await page.waitForSelector('.pl-modal:not([hidden]) .pl-checkpoint');
+  if (!(await page.waitForSelector('.pl-modal:not([hidden]) .pl-checkpoint', { timeout: 3000 }).catch(() => null))) return;
   await page.evaluate(choices => { const f = document.querySelector('.pl-checkpoint'); f.querySelectorAll('select').forEach((e,i) => e.value = choices[i]); f.querySelector('input').value = 'Fence ownership, reuse the occurrence key and park permanent failure with a controlled replay policy.'; f.requestSubmit(); }, p.correctness.fields.map(f => f.correct));
 };
 try {

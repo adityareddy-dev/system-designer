@@ -10,26 +10,34 @@ export function checkFor(problem) {
   };
   return workloadTransfer(`problem:${problem.id}`, (problem.concepts || []).find(id => transferFor(id)) || 'back-of-envelope', problem.title);
 }
-export function renderDesignCheck(problem, onReady, onCancel) {
-  const test = checkFor(problem);
+// Only the URL shortener has a hand-written scenario. Every other problem used to get a generic one
+// (numbers made up from the problem id), so those now ask only for the written prediction.
+export function hasScenario(problem) { return problem.id === 'url-shortener'; }
+export function renderDesignCheck(problem, onReady, onCancel, onSkip) {
+  const scenario = hasScenario(problem);
+  const test = scenario ? checkFor(problem) : null;
   let choice = null;
-  const options = h('div', { class: 'sh-choices' });
-  const number = h('input', { class: 'pl-input', type: 'number', required: true, step: 'any', 'aria-label': test.calculation });
-  const reason = h('textarea', { class: 'pl-input', rows: 2, required: true, minlength: 12, maxlength: 500, style: { height: 'auto', padding: '12px' }, 'aria-label': 'Predict the limiting part in your own design and explain why' });
-  const feedback = h('p', { role: 'status', class: 'pl-muted' });
-  test.choices.forEach((text, i) => options.append(h('button', { class: 'sh-choice', type: 'button', 'aria-pressed': 'false', onclick: () => { choice = i; [...options.children].forEach((b,j) => b.setAttribute('aria-pressed', String(i === j))); } }, text)));
-  return h('form', { class: 'pl-modal-card pl-design-check', style: { maxHeight: '100%', overflowY: 'auto', width: 'min(640px, 100%)' }, onsubmit: e => {
+  const options = h('div', { class: 'sh-choices pl-radios', role: 'group', 'aria-label': 'Choose a plan' });
+  const number = scenario ? h('input', { class: 'pl-input', type: 'number', step: 'any', 'aria-label': test.calculation }) : null;
+  const reason = h('textarea', { class: 'pl-input', rows: 2, minlength: 12, maxlength: 500, style: { height: 'auto', padding: '12px' }, 'aria-label': 'Predict the limiting part in your own design and explain why' });
+  const feedback = h('p', { role: 'status', class: 'pl-muted pl-gate-msg' });
+  if (scenario) test.choices.forEach((text, i) => options.append(h('button', { class: 'sh-choice', type: 'button', 'aria-pressed': 'false', onclick: () => { choice = i; [...options.children].forEach((b, j) => b.setAttribute('aria-pressed', String(i === j))); feedback.textContent = ''; } },
+    h('span', { class: 'pl-radio-mark', 'aria-hidden': 'true' }), h('span', { text }))));
+  return h('form', { class: 'pl-modal-card pl-design-check', novalidate: true, style: { maxHeight: '100%', overflowY: 'auto', width: 'min(640px, 100%)' }, onsubmit: e => {
     e.preventDefault();
-    if (!transferCorrect(test, choice, number.value === '' ? NaN : Number(number.value))) {
-      feedback.textContent = choice == null ? 'Choose a plan first.' : choice !== test.answer ? test.why : 'The plan fits. Recheck the calculation before starting.';
+    if (scenario && !transferCorrect(test, choice, number.value === '' ? NaN : Number(number.value))) {
+      feedback.textContent = choice == null ? 'Choose a plan first, or skip and start the day.' : choice !== test.answer ? test.why + ' Pick again, or skip and start the day.' : number.value === '' ? 'Type your number for the calculation, or skip and start the day.' : 'The plan fits. Recheck the calculation, or skip and start the day.';
       return;
     }
-    onReady({ choice, value: Number(number.value), text: reason.value.trim() });
+    if (reason.value.trim().length < 12) { feedback.textContent = 'Write a short prediction of at least 12 characters, or skip and start the day.'; reason.focus(); return; }
+    onReady({ choice, value: scenario ? Number(number.value) : null, text: reason.value.trim() });
   } }, h('h2', { class: 'pl-h2', text: 'Predict before you run' }),
-    h('p', { class: 'pl-muted', text: 'First, apply the idea to a new workload. Then predict what will limit your own design. The traffic day will test that prediction.' }),
-    h('p', { text: test.q }), options,
-    h('label', {}, h('p', { text: test.calculation }), number, h('small', { text: test.unit })),
-    h('label', {}, h('p', { text: 'Which part will limit your own design, and why?' }), reason),
-    h('small', { class: 'pl-muted', text: 'The plan and calculation are checked. Your written prediction is saved for comparison, not automatically graded.' }), feedback,
-    h('div', { class: 'pl-actions' }, h('button', { class: 'pl-btn', type: 'button', onclick: onCancel }, 'Keep drawing'), h('button', { class: 'pl-btn pl-btn--primary', type: 'submit' }, 'Check and start day')));
+    h('p', { class: 'pl-muted', text: scenario ? 'First, apply the idea to a new workload. Then predict what will limit your own design. The traffic day will test that prediction. This is optional.' : 'Predict what will limit your own design. The traffic day will test that prediction. This is optional.' }),
+    scenario ? h('p', { text: test.q }) : null, scenario ? options : null,
+    scenario ? h('label', {}, h('p', { text: test.calculation }), number, h('small', { text: test.unit })) : null,
+    h('label', {}, h('p', { text: 'Which part will limit your own design, and why?' }), reason, h('small', { class: 'pl-muted', text: 'At least 12 characters' })),
+    h('small', { class: 'pl-muted', text: scenario ? 'The plan and calculation are checked. Your written prediction is saved for comparison, not automatically graded.' : 'Your written prediction is saved for comparison, not automatically graded.' }), feedback,
+    h('div', { class: 'pl-actions' }, h('button', { class: 'pl-btn', type: 'button', onclick: onCancel }, 'Keep drawing'),
+      h('button', { class: 'pl-btn', type: 'button', 'data-gate': 'skip', onclick: () => (onSkip || onCancel)() }, 'Skip and start day'),
+      h('button', { class: 'pl-btn pl-btn--primary', type: 'submit' }, 'Check and start day')));
 }

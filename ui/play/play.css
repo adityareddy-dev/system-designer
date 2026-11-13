@@ -424,6 +424,18 @@
 .pl-dg-label { fill: var(--text-2); font: 500 13px var(--font-ui); }
 .pl-modal { position: absolute; inset: 0; z-index: calc(var(--z-modal) + 2); display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 60%, transparent); padding: 16px; }
 .pl-modal-card { width: min(480px, 100%); padding: 20px; box-shadow: var(--shadow-3); }
+/* r4-gates */
+.pl-modal { overflow: auto; place-items: safe center; }
+.pl-modal > .pl-modal-card { max-height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+.pl-design-check .pl-h2, .pl-checkpoint > h3 { margin-top: 0; }
+.pl-design-check label, .pl-checkpoint label { display: block; margin-top: 12px; }
+.pl-design-check label > small { display: block; margin-top: 4px; }
+.pl-gate-msg:not(:empty) { margin: 10px 0 0; padding: 8px 10px; border: 2px solid var(--ink, currentColor); border-radius: 10px; background: color-mix(in srgb, #ffd23f 35%, var(--surface-solid)); color: inherit; }
+.pl-radios .sh-choice { position: relative; min-height: 44px; }
+.pl-radio-mark { flex: none; width: 18px; height: 18px; border: 2px solid currentColor; border-radius: 50%; background: var(--surface-solid); box-sizing: border-box; display: grid; place-items: center; }
+.sh-choice[aria-pressed=true] .pl-radio-mark::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.pl-design-check .pl-actions, .pl-checkpoint .pl-actions { flex-wrap: wrap; }
+.pl-design-check .pl-btn, .pl-checkpoint .pl-btn { min-height: 44px; }
 
 /* connecting mode */
 .pl-connecting .pl-stage { cursor: crosshair; }
