@@ -141,10 +141,11 @@ export function createNodeLayer(PIXI, parent, env) {
     v.chipBg = new PIXI.Graphics(); v.chip.addChild(v.chipBg);
     v.chipText = null;
     v.zonesG = new PIXI.Graphics(); v.chip.addChild(v.zonesG); // r4-follow: the zone dots live inside the ×N chip
-    v.labelT = makeText('', 12, kit.look === 'e08' ? 0xdbe4f2 : P.ink, false, '600', 72); // narrow lines, so neighbours' names do not touch when zoomed out
+    v.labelT = makeText('', 12, kit.look === 'e08' ? P.text : P.ink, false, '600', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
-    v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
+    v.evidenceT.style.wordWrap = kit.look !== 'e08'; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = kit.look === 'e08' ? 'center' : 'left';
+    v.evidenceT.style.fontWeight = kit.look === 'e08' ? '600' : '500';
     v.rejected = new PIXI.Container(); v.rejected.position.set(0,-HALF-14); v.rejected.visible = false;
     v.rejectedG = new PIXI.Graphics();
     v.rejectedT = makeText('', 13, 0xffc9c9, true, '800'); v.rejectedT.anchor.set(.5);
@@ -185,7 +186,7 @@ export function createNodeLayer(PIXI, parent, env) {
       const dw = dots ? dots * 5 + 3 : 0;
       const w = Math.max(18, v.chipText.width + 8) + dw;
       v.chipText.x = dw / 2;
-      v.chipBg.clear().roundRect(-w / 2 + 1.5, -6, w, 15, 3).fill({ color: P.ink }).roundRect(-w / 2, -7.5, w, 15, 3).fill({ color: P.yellow }).stroke({ width: 1.5, color: P.ink });
+      v.chipBg.clear().roundRect(-w / 2 + 1.5, -6, w, 15, 3).fill({ color: P.ink }).roundRect(-w / 2, -7.5, w, 15, 3).fill({ color: env.kit().look === 'e08' ? P.surfaceSolid : P.yellow }).stroke({ width: 1.5, color: P.ink });
       v.zonesG.clear();
       for (let i = 0; i < dots; i++) v.zonesG.circle(-w / 2 + 6 + i * 5, 0, 1.8).fill({ color: P.mint }).stroke({ width: 0.8, color: P.ink });
     }
@@ -443,7 +444,7 @@ export function createNodeLayer(PIXI, parent, env) {
     },
     // Names and failure facts get separate, fixed-width lanes.
     layoutLabels(camera, area) {
-      const z = camera.zoom, P = env.kit().P;
+      const z = camera.zoom, P = env.kit().P, e08 = env.kit().look === 'e08';
       const free = { x:area?.l||8,y:area?.t||8,width:camera.size.w-(area?.l||8)-(area?.r||8),height:camera.size.h-(area?.t||8)-(area?.b||8) };
       const visible=p=>p.x>=free.x && p.x<=free.x+free.width && p.y>=free.y && p.y<=free.y+free.height;
       // Corner panels (a folded card, a button) cover only their own rectangle, not a whole band of the canvas.
@@ -460,7 +461,7 @@ export function createNodeLayer(PIXI, parent, env) {
         }
       };
       // Retry missing captions when panning opens space, keeping reserved lanes fixed.
-      const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live}`)].join('/');
+      const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live},${e08 ? v.evidenceT.text : ''}`)].join('/');
       const origin=camera.worldToScreen(0,0);
       const panned=origin.x!==this.captionOrigin?.x||origin.y!==this.captionOrigin?.y;
       this.captionOrigin=origin;
@@ -489,7 +490,12 @@ export function createNodeLayer(PIXI, parent, env) {
       const screenBox=(v,box)=>{const p=camera.worldToScreen(v.x,v.y);return box?{x:p.x+box.x*z,y:p.y+box.y*z,width:box.width*z,height:box.height*z}:null;};
       // The wide readings keep the fuller clearance around every part, so wires still find a way past them; only names pack tighter.
       const roomyParts = tight ? list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.renderHalf*z;return {x:p.x-half-8,y:p.y-half-1,width:half*2+16,height:half*2+2};}) : parts;
-      const occupied = [...roomyParts];
+      // The p10 rejected pill extends above the body. Keep captions out of its lane too.
+      const rejectedBoxes = e08 ? list.filter(v => v.rejected.visible).map(v => {
+        const p = camera.worldToScreen(v.x, v.y), b = v.rejected.getLocalBounds();
+        return { x:p.x+(v.rejected.x+b.x)*z-3, y:p.y+(v.rejected.y+b.y)*z-3, width:b.width*z+6, height:b.height*z+6 };
+      }) : [];
+      const occupied = [...roomyParts, ...rejectedBoxes];
       if(preserve)for(const v of list)for(const box of [v.nameCaption,v.factCaption])if(box)occupied.push(screenBox(v,box));
       const ordered = [...list].sort((a,b)=>a.y-b.y||a.x-b.x);
       const clear=r=>!occupied.some(o=>intersects(r,o));
@@ -497,7 +503,7 @@ export function createNodeLayer(PIXI, parent, env) {
           // Reserve a local world-space slot for offscreen captions so panning can reveal them without rerouting.
           if(!visible(p))return clear(base)?base:null;
           const close=r=>Math.abs(r.x-base.x)+Math.abs(r.y-base.y)<=maxMove;
-          for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160]){
+          for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy && !e08?[1,-1]:[1])for(const dx of [0,-80,80,-160,160]){
             const r={...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy};
             if(inside(r)&&clear(r)&&close(r)&&(!ok||ok(r)))return r;
           }
@@ -517,14 +523,15 @@ export function createNodeLayer(PIXI, parent, env) {
       const factsById=new Map();
       for(const v of ordered.filter(v=>v.evidenceT.visible).sort((a,b)=>Number(b.evidenceT.text.startsWith('First limit'))-Number(a.evidenceT.text.startsWith('First limit')))){
         const p=camera.worldToScreen(v.x,v.y);
-        const height = v.kind === 'queue' ? 112 : 76;
+        const height = e08 ? v.evidenceT.height*z+8 : v.kind === 'queue' ? 112 : 76;
+        const factWidth = e08 ? v.evidenceT.width*z+12 : 114;
         const reserved=preserve&&v.factCaption;
-        const half=v.renderHalf*z, above={x:p.x-57,y:p.y-half-height-8,width:114,height};
+        const half=v.renderHalf*z, above={x:p.x-factWidth/2,y:e08 ? nameSlot(v).y+nameSlot(v).height+4 : p.y-half-height-8,width:factWidth,height};
         // When the lane above is taken, the readings hug a corner of the part, clear of the ports on its left and right faces.
         const corners=[[-half-124,-14-height],[half+10,-14-height],[-half-124,14],[half+10,14]].map(([dx,dy])=>({...above,x:p.x+dx,y:p.y+dy}));
         // A corner slot must also leave the lanes beside neighbouring parts open, or their wires could not get past it.
         const own=list.indexOf(v), LANE=16, roomy=r=>!roomyParts.some((o,i)=>i!==own&&intersects(r,{x:o.x-LANE,y:o.y-LANE,width:o.width+LANE*2,height:o.height+LANE*2}));
-        const beside=visible(p)?[above,...corners].find((r,i)=>inside(r)&&clear(r)&&(!i||roomy(r))):null;
+        const beside=visible(p)?(e08 ? [above] : [above,...corners]).find((r,i)=>inside(r)&&clear(r)&&(!i||roomy(r))):null;
         // Zoomed far out, the readings box is large beside the parts: it stays near its own part or waits for a closer view.
         // The first limit of the day is always shown.
         const first=v.evidenceT.text.startsWith('First limit');
@@ -554,9 +561,10 @@ export function createNodeLayer(PIXI, parent, env) {
         const facts=factsById.get(v.id);
         v.evidenceT.renderable=!!facts;
         if(facts){
-          v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x)/z,(facts.y-p.y)/z);
-          v.evidenceBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.card}).stroke({width:1.5/z,color:P.ink});
-          lead(v,{x:facts.x,y:facts.y,width:Math.min(114,v.evidenceT.width*z+4),height:Math.min(facts.height,v.evidenceT.height*z+2)},p,z,P);
+          v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x+(e08?6:0))/z,(facts.y-p.y+(e08?4:0))/z);
+          v.evidenceBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,facts.width/z,facts.height/z,3/z).fill({color:e08?P.canvas:P.card});
+          if (!e08) v.evidenceBg.stroke({width:1.5/z,color:P.ink});
+          lead(v,{x:facts.x,y:facts.y,width:e08?facts.width:Math.min(114,v.evidenceT.width*z+4),height:e08?facts.height:Math.min(facts.height,v.evidenceT.height*z+2)},p,z,P);
           boxes.push(facts);
         }
         v.captionBoxes=boxes.map(r=>({x:v.x+(r.x-p.x)/z-4/z,y:v.y+(r.y-p.y)/z-4/z,width:(r.width+8)/z,height:(r.height+8)/z}));
@@ -581,7 +589,7 @@ export function createNodeLayer(PIXI, parent, env) {
       v.evidenceT.text = failRps > .5 ? `× ${count(failRps)}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Requests recovered' : '';
       if (live && v.kind === 'queue' && v.telemetry) v.evidenceT.text = queuePressure(v.telemetry).text;
       else if (live && v.telemetry?.retryRps > .5) v.evidenceT.text += `\n↶ ${count(v.telemetry.retryRps)}/s retry`;
-      v.evidenceT.style.fill = (v.kind === 'queue' && queuePressure(v.telemetry).late) || failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
+      v.evidenceT.style.fill = env.kit().look === 'e08' ? env.kit().P.text2 : (v.kind === 'queue' && queuePressure(v.telemetry).late) || failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
       if (!live) {
         v.queue = v.over = 0; v.pileType = -1; v.down = false; v.status = 0; v.recoverUntil = 0; v.isLead = false;
         if (v.live) {
@@ -664,13 +672,17 @@ export function createNodeLayer(PIXI, parent, env) {
         v.labelT.style.fontWeight = kit.look === 'e08' ? '700' : '600';
         v.labelT.style.wordWrapWidth = kit.look === 'e08' ? 140 : 72;
         v.rejected.visible = false;
+        v.evidenceT.style.wordWrap = kit.look !== 'e08';
+        v.evidenceT.style.align = kit.look === 'e08' ? 'center' : 'left';
+        v.evidenceT.style.fontWeight = kit.look === 'e08' ? '600' : '500';
+        v.evidenceT.style.fill = kit.look === 'e08' ? P.text2 : P.bad;
         v.statusG.context = kit.look === 'e08' ? new PIXI.GraphicsContext() : kit.glyphs.status[Math.min(4, v.status)];
         if (kit.look !== 'e08') v.statusG.position.set(-HALF+7,-HALF+7);
         const lv = validation.get(v.id);
         v.valid.context = kit.glyphs.valid[lv || 'warn'];
         v.lock.context = kit.glyphs.lock;
         for (const s of v.pileSprites) { s.texture = kit.atlas.textures[Math.max(0, v.pileType)]; s.scale.set(8 / P_SHAPE); }
-        v.labelT.style.fill = kit.look === 'e08' ? 0xdbe4f2 : P.ink;
+        v.labelT.style.fill = kit.look === 'e08' ? P.text : P.ink;
         v.poolT.style.fill = P.text2;
         drawChip(v); drawRegion(v);
         if (v.event) v.event.color = v.event.severity ? severityColor(P, v.event.severity) : v.event.color;

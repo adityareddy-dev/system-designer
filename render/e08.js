@@ -2,11 +2,9 @@
 import { categories, parts, traffic } from '../assets/e08/manifest.js';
 
 export function e08Palette(base) {
-  return { ...base, look: 'e08', dark: true, canvas: 0x0e1828, gridDot: 0x1c2a3e, gridDotAlpha: 1,
-    ink: 0xece6d6, card: 0x121c2c, surfaceSolid: 0x14233a, text: 0xece6d6, text2: 0xb9c4d6, text3: 0x8f9bb0,
+  return { ...base, look: 'e08',
     blue: 0x60a5fa, accent: 0xf5c451, yellow: 0xfbbf24, mint: 0x4ade80, tomato: 0xef4444,
     ok: 0x4ade80, warn: 0xfacc15, hot: 0xfb923c, bad: 0xef4444,
-    edgeIdle: 0x6b7a90, edgeFlow: 0xe9e4d4,
     cat: Object.fromEntries(Object.entries(categories).map(([k,v]) => [k, Number.parseInt(v.c.slice(1),16)])),
     req: Object.fromEntries(traffic.filter((t,i) => traffic.findIndex(first => first.family === t.family) === i).map(t => [t.family, Number.parseInt(t.color.slice(1),16)])) };
 }
@@ -83,7 +81,8 @@ export function drawE08Load(v, kit, time, reduced) {
   v.rejected.visible = v.live && v.status === 3;
   if(v.rejected.visible) {
     v.rejectedT.text = `${Math.round(v.failRps || 0)}/s`;
+    v.rejectedT.style.fill = P.text;
     const w = Math.max(48,v.rejectedT.width+16);
-    v.rejectedG.clear().roundRect(-w/2,-10,w,20,10).fill({color:0x3d1212}).stroke({color:0xef4444,width:1.5});
+    v.rejectedG.clear().roundRect(-w/2,-10,w,20,10).fill({color:P.surfaceSolid}).stroke({color:0xef4444,width:1.5});
   }
 }
