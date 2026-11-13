@@ -201,6 +201,11 @@ console.log('\nDebrief dial');
     window.__game.startTraffic();
     const s = window.__game.step(86400000);
     await new Promise((res) => setTimeout(res, 1400));
+    // the warm-up shows no points: play the full day to see the score ring
+    await new Promise((res) => setTimeout(res, 1500));
+    const full = document.querySelector('[data-act=run-full-day]') || [...document.querySelectorAll('.pl-actions .pl-btn')].find((b) => /Retry/.test(b.textContent));
+    if (full) { full.click(); await new Promise((res) => setTimeout(res, 1500)); window.__game.startTraffic(); window.__game.setSpeed(8); window.__game.step(86400000); await new Promise((res) => setTimeout(res, 2500)); }
+    document.querySelector('.pl-score-details')?.setAttribute('open', '');
     const num = document.querySelector('.pl-dial-n');
     return { total: s.score?.total, numW: num?.getBoundingClientRect().width || 0, text: num?.textContent, inspector: !!document.querySelector('.pl-inspector:not([hidden])') };
   });

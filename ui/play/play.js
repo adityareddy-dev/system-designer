@@ -17,7 +17,7 @@ import { createToolbar } from './toolbar.js';
 import { createInspector } from './inspector.js';
 import { createHud } from './hud.js';
 import { createHints } from './hints.js';
-import { renderDebrief } from './debrief.js';
+import { renderDebrief, predictionVerdict } from './debrief.js';
 import { renderEditorial } from './editorial.js';
 import { createTrafficPanel, DEFAULT_TRAFFIC, trafficInput } from './traffic-panel.js';
 import { queueDrainAdvice } from './lesson-queue.js';
@@ -637,9 +637,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     snd('ui.tap', { intensity: 0.4 });
     note('knob', { knob, nodeId, value: knob === 'units' ? Number(value) : value });
   }
+  // Help that counts as assistance, with the plain reason the debrief shows.
+  function assist(why) { S.workedRepair = true; (S.assistWhy ||= []).includes(why) || S.assistWhy.push(why); }
   // One tap from a heads-up: more units, and a higher autoscale floor when autoscaling is on.
   function applySizeFix(fix) {
-    if (S.problem.difficulty === 'Easy') S.workedRepair = true;
+    if (S.problem.difficulty === 'Easy') assist('you used the one-click fix');
     if (interview) return;
     const n = graph().nodes.find((x) => x.id === fix.nodeId);
     if (!n) return;
@@ -707,7 +709,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     } catch { return null; }
   }
   function loadDesign(design, { run = false } = {}) {
-    S.workedRepair = true;
+    assist('you loaded the editorial design');
     closeEditorial();
     if (S.sim.phase !== 'build' && resetToDraw() === false) return;
     S.sim.loadGraph(designToGraph(design));
@@ -1590,12 +1592,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const list = ctx.content?.problems || [];
     const idx = list.findIndex((p) => p.id === S.problem.id);
     renderDebrief(debriefWrap, {
-      result: S.result, problem: S.problem, catalog, ctx, hintsUsed: hints.used(), prevBest: S.prevBest, reduced: ctx.reducedMotion(), correctnessAnswer: mode === 'practice' ? S.correctnessAnswer : null,
+      result: S.result, problem: S.problem, catalog, ctx, hintsUsed: hints.used(), assistWhy: S.assistWhy || [], prevBest: S.prevBest, reduced: ctx.reducedMotion(), correctnessAnswer: mode === 'practice' ? S.correctnessAnswer : null,
       opponent: mode === 'beat' && opts.overlay ? opts.overlay : null,
       hasNext: mode === 'practice' && idx >= 0 && idx < list.length - 1,
       handlers: {
         onRetry: () => transitionScreen(reset, { direction: 'back', reduced: ctx.reducedMotion() }),
-        onIndependentRetry: () => transitionScreen(() => { hints.reset(); S.workedRepair = false; S.correctnessAnswer = undefined; S.checkpointReady = null; reset(); }, { direction: 'back', reduced: ctx.reducedMotion() }),
+        onIndependentRetry: () => transitionScreen(() => { hints.reset(); S.workedRepair = false; S.assistWhy = []; S.correctnessAnswer = undefined; S.checkpointReady = null; reset(); }, { direction: 'back', reduced: ctx.reducedMotion() }),
         onBack: () => transitionScreen(reset, { direction: 'back', reduced: ctx.reducedMotion() }),
         onHints: () => { hints.open(); hints.el.focus?.(); },
         onEditorial: () => openEditorial(),
@@ -1611,11 +1613,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         }, { direction: 'back', reduced: ctx.reducedMotion() }) : null,
         onShowNext: (ns) => transitionScreen(() => { reset(); if (ns.nodeId) select(ns.nodeId); if (ns.elementId) toolbar.pulse(ns.elementId); }, { direction: 'back', reduced: ctx.reducedMotion() }),
         nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; const fix = rn && ['units', 'autoscale'].includes(ns?.knob) && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; if (fix && ns.sizing) { fix.units = ns.sizing.units; fix.label = `Set ${fix.word.toLowerCase()} to ${fix.units}`; } return fix; },
-        onAssisted: () => { S.workedRepair = true; },
+        onAssisted: () => assist('you needed the worked arithmetic in the repair step'),
         onSetNext: (fix) => transitionScreen(() => { reset(); applySizeFix(fix); select(fix.nodeId); }, { direction: 'back', reduced: ctx.reducedMotion() }),
       },
     });
-    if (S.prediction) debriefWrap.querySelector('.pl-verdict-sec')?.append(h('p', { class: 'pl-prediction' }, h('b', { text: 'Your prediction before this run: ' }), S.prediction, ' Compare it with the measured cause below.'));
+    if (S.prediction) debriefWrap.querySelector('.pl-verdict-sec')?.append(h('p', { class: 'pl-prediction' }, h('b', { text: 'Your prediction before this run: ' }), S.prediction, ' ', h('b', { text: 'What was measured: ' }), predictionVerdict(S.prediction, S.result, catalog)));
     if (S.result.passed && !S.problem.warmUp && creditForVictory()) showVictory(debriefWrap, { result: S.result, before: S.winBefore, original: S.winOriginal, catalog, reduced: ctx.reducedMotion() });
     debriefWrap.hidden = false;
     debriefWrap.scrollTop = 0;
@@ -1629,7 +1631,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!S.result && !(ctx.progress?.get?.(S.problem.id)?.attempts > 0)) { toast('The editorial unlocks after one finished traffic day.', 'info'); return; }
     renderEditorial(editorialWrap, {
       problem: S.problem, catalog, passed: !!(S.result?.passed || ctx.progress?.get?.(S.problem.id)?.stars > 0),
-      onClose: closeEditorial, onLoad: loadDesign, onShown: () => { S.workedRepair = true; },
+      onClose: closeEditorial, onLoad: loadDesign, onShown: () => assist('you opened the editorial answer'),
     });
     editorialWrap.hidden = false; editorialWrap.scrollTop = 0;
   }
@@ -2236,7 +2238,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function resetHostForProblem({ preserveReference = false } = {}) {
     S.twist = false;
     if (!preserveReference) S.refSig = null;
-    S.correctnessAnswer = undefined; S.checkpointReady = null; S.workedRepair = false; S.prediction = null; hints.reset();
+    S.correctnessAnswer = undefined; S.checkpointReady = null; S.workedRepair = false; S.assistWhy = []; S.prediction = null; hints.reset();
     S.revealed.clear(); S.guesses = {}; S.selected = null; inspector.hide(); debriefWrap.hidden = true; editorialWrap.hidden = true;
     hud.hideBanner(); hud.resetHistory();
   }
