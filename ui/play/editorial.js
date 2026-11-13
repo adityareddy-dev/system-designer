@@ -1,4 +1,5 @@
 // Editorial: reference designs with reasoning, worked numbers, cost, trade-offs. Spoiler gate until solved.
+import { paperDesignDiagram } from '../../render/paper-preview.js';
 import { e08DesignDiagram } from '../../render/e08-preview.js';
 import { estimateUnit } from './estimate-units.js';
 import { h, iconEl, fmtNum, fmtUsd, approx } from './util.js';
@@ -11,6 +12,7 @@ const s = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); fo
 
 // Read-only wiring at the reference design's own spacing.
 export function designDiagram(design, catalog, look = 'classic') {
+  if (look === 'paper') return paperDesignDiagram(design, catalog);
   if (look === 'e08') return e08DesignDiagram(design, catalog);
   const nodes = design.graph.nodes;
   const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);

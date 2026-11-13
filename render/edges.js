@@ -1,5 +1,6 @@
 // Edge views: ink curves between ports, load-scaled width, blocky direction marks, dashed links, flat highlight bands on hot paths.
 
+import { PAPER, drawPaperEdge, paperRoute, cardLook } from './paper.js';
 import { drawE08Edge } from './e08-edges.js';
 import { createRouter, routedLut, inkPath } from './routing.js';
 import { makeLut, edgeSides, lutAt, distToLut, LUT_SEGS } from './geom.js';
@@ -50,6 +51,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
   }
 
   function draw(v, P) {
+    if (env.kit().look === 'paper') return drawPaperEdge(v, env, highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id));
     if (env.kit().look === 'e08') return drawE08Edge(v, env, highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id));
     const g = v.g;
     const lut = v.lut;
@@ -111,7 +113,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
   }
 
   function wantsRedraw(v, P) {
-    if (env.kit().look === 'e08') return v.dirty || (!env.reduced() && (v.rps > .01 || !v.carries) && v.drawnTime !== env.visualTime()) || (highlight === v.id || !!env.pathEdge?.(v.id) || trace.has(v.id)) !== v.drawnHi || v.rps !== v.drawnRps || v.band !== v.drawnBand;
+    if (cardLook(env.kit().look)) return v.dirty || (!env.reduced() && (v.rps > .01 || !v.carries) && v.drawnTime !== env.visualTime()) || (highlight === v.id || !!env.pathEdge?.(v.id) || trace.has(v.id)) !== v.drawnHi || v.rps !== v.drawnRps || v.band !== v.drawnBand;
     if (v.dirty) return true;
     const hi = highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id);
     if (hi !== v.drawnHi) return true;
@@ -194,7 +196,10 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
         const [start, end] = endpoints.get(v.id);
         // Endpoint bodies are obstacles too, apart from their own port stubs.
         const points = router.route(start, end);
-        routedLut(v.lut, [[a.x + sign * (a.portHalf||36), start[1]], ...points, [b.x - sign * (b.portHalf||36), end[1]]]);
+        const paper = env.kit().look === 'paper';
+        const route = [[a.x + sign * (paper ? PAPER.wire.port : a.portHalf||36), start[1]], ...points, [b.x - sign * (paper ? PAPER.wire.port : b.portHalf||36), end[1]]];
+        if (paper) paperRoute(v.lut, route, obstacles, v.from, v.to);
+        else routedLut(v.lut, route);
         const { lut } = v;
         v.minX = Math.min(...lut.xs) - 16; v.maxX = Math.max(...lut.xs) + 16;
         v.minY = Math.min(...lut.ys) - 16; v.maxY = Math.max(...lut.ys) + 16;
@@ -224,6 +229,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
     },
     // [{ v, strength 0..1 }], busiest first, at most 12
     setGlows(items, time) {
+      if (env.kit().look === 'paper') { for (const r of ropes) r.rope.visible = false; return; }
       ensureRopes();
       const P = env.kit().P;
       const reduced = env.reduced();
@@ -274,6 +280,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
       return best;
     },
     applyKit(kit) {
+      structDirty = true;
       for (const r of ropes) r.rope.texture = kit.fx.strip;
       for (const v of list) v.dirty = true;
     },

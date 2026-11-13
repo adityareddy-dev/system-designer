@@ -1,6 +1,7 @@
 // The PixiJS scene: camera, nodes, edges, request particles, glows and effects. The only render file other modules import.
 
 import { resolvePalette, severityColor } from './theme.js';
+import { paperPalette } from './paper.js';
 import { e08Palette } from './e08.js';
 import { createKit } from './textures.js';
 import { createCamera } from './camera.js';
@@ -99,7 +100,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   };
   const bakeRes = Math.min(dpr, coarse ? 3 : 2);
 
-  const paletteFor = (p, t) => look === 'e08' ? e08Palette(resolvePalette(p, t)) : resolvePalette(p, t);
+  const paletteFor = (p, t) => look === 'paper' ? paperPalette(resolvePalette(p, t)) : look === 'e08' ? e08Palette(resolvePalette(p, t)) : resolvePalette(p, t);
   let P = paletteFor(palette, theme);
   let kit = null;
   let nodes = null;
@@ -630,7 +631,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     particleLayer.visible = !pathFocus;
     glowLayer.visible = !pathFocus;
     fxLayer.visible = !pathFocus;
-    if (reduced) {
+    if (reduced || kit.look === 'paper') {
       if (particles.count) particles.clear();
     } else {
       particles.update(dt, {
@@ -839,7 +840,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       flashDirty = true;
     },
     setLook(nextLook) {
-      const next = nextLook === 'e08' ? 'e08' : 'classic';
+      const next = ['paper', 'e08'].includes(nextLook) ? nextLook : 'classic';
       if (next === look) return Promise.resolve();
       look = next;
       return api.setTheme(palette, theme);

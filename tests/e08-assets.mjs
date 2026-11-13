@@ -27,7 +27,7 @@ await test('e08 supplies every catalog part, category state and traffic kind', a
 
 await test('canvas look includes the mode and only opts URL shortener Practice in', async () => {
   const {canvasLook}=await import('../render/look.js');
-  assert.equal(canvasLook('practice',{id:'url-shortener'}),'e08');
+  assert.equal(canvasLook('practice',{id:'url-shortener'}),'paper');
   for(const mode of ['challenge','sandbox','lesson','intro'])assert.equal(canvasLook(mode,{id:'url-shortener'}),'classic');
   assert.equal(canvasLook('practice',{id:'chat-app'}),'classic');
   assert.equal(canvasLook('practice',null),'classic');

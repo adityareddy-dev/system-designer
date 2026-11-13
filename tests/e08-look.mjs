@@ -8,7 +8,7 @@ const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: true,
   args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 try {
-  for (const [id, look] of [['url-shortener', 'e08'], ['chat-app', 'classic']]) {
+  for (const [id, look] of [['url-shortener', 'paper'], ['chat-app', 'classic']]) {
     await test(`${id} uses ${look} canvas`, async () => {
       const page = await browser.newPage();
       const errors = [];
@@ -22,7 +22,7 @@ try {
         // Reusing the same Practice host must also change the look.
         const next = id === 'url-shortener' ? 'chat-app' : 'url-shortener';
         await page.evaluate(id => window.__game.loadProblem(id), next);
-        await page.waitForFunction(expected => document.querySelector('.pl-stage canvas')?.dataset.look === expected, {}, look === 'e08' ? 'classic' : 'e08');
+        await page.waitForFunction(expected => document.querySelector('.pl-stage canvas')?.dataset.look === expected, {}, look === 'paper' ? 'classic' : 'paper');
         assert.deepEqual(errors, []);
       } finally { await page.close(); }
     });
@@ -74,17 +74,17 @@ await test('a reused scene restores classic and discards stale look loads',async
       const {loadCatalog}=await import('./sim/catalog.js');
       const {createScene}=await import('./render/scene.js');
       const host=document.createElement('div');host.style.cssText='width:400px;height:300px';document.body.append(host);
-      const scene=await createScene(host,{catalog:await loadCatalog(),look:'e08',reducedMotion:true});
+      const scene=await createScene(host,{catalog:await loadCatalog(),look:'paper',reducedMotion:true});
       try {
         scene.sync({nodes:[{id:'app',type:'vm-fleet',x:0,y:0,units:3}],edges:[]});
         const looks=[host.querySelector('canvas').dataset.look];
         await scene.setLook('classic');looks.push(host.querySelector('canvas').dataset.look);
-        await Promise.all([scene.setLook('e08'),scene.setLook('classic'),scene.setLook('e08')]);
+        await Promise.all([scene.setLook('e08'),scene.setLook('classic'),scene.setLook('paper')]);
         looks.push(host.querySelector('canvas').dataset.look);
         await scene.setLook('classic');looks.push(host.querySelector('canvas').dataset.look);
         scene.renderNow(0);return looks;
       } finally {scene.destroy();host.remove();}
     });
-    assert.deepEqual(result,['e08','classic','e08','classic']);assert.deepEqual(errors,[]);
+    assert.deepEqual(result,['paper','classic','paper','classic']);assert.deepEqual(errors,[]);
   } finally {await browser.close();await site.close();}
 });

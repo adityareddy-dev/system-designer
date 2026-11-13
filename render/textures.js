@@ -2,6 +2,7 @@
 
 import { hexStr } from './theme.js';
 import { iconImage } from './icons.js';
+import { addPaperTextures } from './paper.js';
 import { addE08Textures } from './e08.js';
 
 export const P_CELL = 48;   // atlas cell, px
@@ -272,5 +273,5 @@ export async function createKit(PIXI, P, catalog, res, onIconLoad) {
       icons.destroy();
     },
   };
-  return P.look === 'e08' ? addE08Textures(PIXI, kit) : kit;
+  return P.look === 'paper' ? addPaperTextures(PIXI, kit) : P.look === 'e08' ? addE08Textures(PIXI, kit) : kit;
 }
