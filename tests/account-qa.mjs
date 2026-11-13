@@ -183,15 +183,21 @@ try {
   await p1.waitForSelector('.ac-me-btn', { visible: true, timeout: 8000 }).catch(() => {});
   check('fake-provider sign-in shows the profile button', await visible(p1, '.ac-me-btn'));
   const me1 = await api(p1, 'GET', '/me');
-  check('a new account is subscribed to surveys and product updates', me1.json?.user?.surveyOptIn === true, me1.json);
-  // the account menu shows the email state and lets the player turn surveys off
+  check('a new account has an unticked marketing choice for an unknown country', me1.json?.user?.marketingOptIn === false && me1.json?.user?.marketingPromptPending === true, me1.json);
+  await p1.waitForSelector('#ac-marketing-title', { visible: true });
+  await p1.click('.ac-pop .ac-email .ac-check');
+  await p1.evaluate(() => [...document.querySelectorAll('.ac-pop button')].find(button => button.textContent === 'Save choice').click());
+  await p1.waitForFunction(() => !document.querySelector('#ac-marketing-title'));
+  const chosen = await api(p1, 'GET', '/me');
+  check('saving the first marketing choice clears the prompt', chosen.json?.user?.marketingOptIn === true && chosen.json?.user?.marketingPromptPending === false, chosen.json);
+  // the account menu shows the email state and lets the player turn email updates off
   await p1.click('.ac-me-btn');
   await p1.waitForSelector('.ac-pop .ac-email .ac-check', { visible: true, timeout: 4000 }).catch(() => {});
-  check('the account menu toggle is on and labelled plainly', await p1.evaluate(() => document.querySelector('.ac-pop .ac-email .ac-check').checked && /Email me surveys and product updates/.test(document.querySelector('.ac-pop .ac-email').innerText)));
+  check('the account menu toggle is on and labelled plainly', await p1.evaluate(() => document.querySelector('.ac-pop .ac-email .ac-check').checked && /Email me new problems, tips and product news/.test(document.querySelector('.ac-pop .ac-email').innerText)));
   await p1.evaluate(() => document.querySelector('.ac-pop .ac-email .ac-check').click());
   await sleep(800);
   const meOff = await api(p1, 'GET', '/me');
-  check('turning surveys off in the account menu is saved', meOff.json?.user?.surveyOptIn === false, meOff.json);
+  check('turning email updates off in the account menu is saved', meOff.json?.user?.marketingOptIn === false, meOff.json);
   await p1.keyboard.press('Escape');
   await sleep(1500);
   const srv1 = await api(p1, 'GET', '/progress');

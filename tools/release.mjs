@@ -48,6 +48,8 @@ copy(path.join(root, 'assets'), path.join(dist, 'assets'), (f) => /\.(js|css)$/.
 copy(path.join(root, 'assets/fonts.css'), path.join(dist, 'assets/fonts.css'));
 copy(path.join(root, 'assets/site.css'), path.join(dist, 'assets/site.css'));
 copy(path.join(root, 'assets/header.js'), path.join(dist, 'assets/header.js'));
+for (const file of ['analytics.js', 'analytics.css', 'consent-region.js']) copy(path.join(root, 'assets', file), path.join(dist, 'assets', file));
+copy(path.join(root, '_headers'), path.join(dist, '_headers'));
 copy(path.join(root, 'assets/palette.css'), path.join(dist, 'assets/palette.css'));
 for (const f of ['privacy.html', '404.html', 'd', 'p', 'problems', 'learn', 'guides', 'sitemap.xml', 'robots.txt', 'llms.txt', 'llms-full.txt', 'LICENSE', 'CNAME', '.nojekyll']) if (fs.existsSync(path.join(root, f))) copy(path.join(root, f), path.join(dist, f));
 

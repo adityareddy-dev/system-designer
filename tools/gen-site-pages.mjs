@@ -121,7 +121,7 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
     breadcrumb([rootCrumb]),faqData
   ]};
   const headBlock = `  <!-- site:head:start -->\n  <link rel="canonical" href="${SITE}">\n  <link rel="stylesheet" href="assets/site.css">\n  <script type="application/ld+json">${json(homeData)}</script>\n  <!-- site:head:end -->\n`;
-  const earlyTheme = html => html.replace(/<!-- theme:start -->[\s\S]*?<!-- theme:end -->|<script src="assets\/theme.js"><\/script>/, () => themeHead);
+  const earlyTheme = html => html.replace(/<!-- theme:start -->[\s\S]*?<!-- theme:end -->|<script src="assets\/theme.js"><\/script>/, () => themeHead).replace('</head>', html.includes('assets/analytics.js') ? '</head>' : '<script type="module" src="assets/analytics.js"></script>\n</head>');
   let home = earlyTheme(read('index.html'));
   home = HOME_HEAD.test(home) ? home.replace(HOME_HEAD,()=>headBlock) : home.replace('  <meta name="theme-color"',headBlock+'  <meta name="theme-color"');
   // The first screen is the game's own hero (same markup as ui/shell/home.js), inside the same frame the game draws, so the game
@@ -138,7 +138,7 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
   add('privacy.html',privacy);
   let notFound = earlyTheme(read('404.html'));
   notFound = notFound.replace(/<!-- site:header:start -->[\s\S]*?<!-- site:header:end -->/,()=>`<!-- site:header:start -->\n${navigation('404.html',{absolute:true})}\n<!-- site:header:end -->`);
-  outputs.set('404.html', notFound);
+  outputs.set('404.html', notFound.replace('src="assets/analytics.js"', 'src="/assets/analytics.js"'));
   outputs.set('assets/site.css',read('assets/palette.css')+'\n'+read('assets/header.css')+'\n'+read('tools/site-styles.css'));
   const publicFiles = Object.keys(manifest).filter(f=>!f.startsWith('d/')).sort();
   outputs.set('sitemap.xml',`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${publicFiles.map(f=>`  <url><loc>${SITE+f.replace(/index\.html$/,'')}</loc><lastmod>${manifest[f].lastmod}</lastmod></url>`).join('\n')}\n</urlset>\n`);

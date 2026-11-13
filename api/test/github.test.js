@@ -200,20 +200,23 @@ test('GitHub sign-in works when the emails call fails, and keeps the stored emai
   } finally { emailsReply = keep; }
 });
 
-test('new GitHub accounts are subscribed, a later sign-in leaves the choice alone and the old survey parameter is ignored', async () => {
-  const run = async (ip, query) => {
-    const c = client(app.base, { ip });
-    const s = await c.req('GET', '/auth/github/start' + query);
-    const state = new URL(s.headers.get('location')).searchParams.get('state');
-    await c.req('GET', `/auth/github/callback?code=good-code&state=${state}`);
-    return c;
-  };
-  const first = await run('10.0.2.1', '?survey=0');
-  const me = (await first.req('GET', '/me')).json.user;
-  assert.equal(me.surveyOptIn, true, 'survey=0 from an old client is ignored');
-  assert.equal(me.email, 'octo@example.com');
-  assert.equal(app.db.user(app.db.raw.prepare('SELECT user_id AS u FROM identities WHERE provider = ?').get('github').u).surveyOptInAt, NOW);
-  assert.equal((await first.req('PATCH', '/me', { body: { surveyOptIn: false } })).json.user.surveyOptIn, false);
-  const same = await run('10.0.2.2', '?survey=1');
-  assert.equal((await same.req('GET', '/me')).json.user.surveyOptIn, false, 'signing in again does not turn it back on');
+test('GitHub accounts get a country default once and later sign-ins preserve the saved choice', async () => {
+  const app = await startApp({ env: { GITHUB_CLIENT_ID: 'Ov23liTestClient01', GITHUB_CLIENT_SECRET: 'testsecret0123456789abcdefghij' }, github: { authorizeUrl: state => 'https://github.com/login/oauth/authorize?state=' + state, profile: async () => ({ id: 'new-github-player', name: 'New player', email: 'octo@example.com' }) } });
+  try {
+    const run = async (ip, query, country) => {
+      const c = client(app.base, { ip });
+      const s = await c.req('GET', '/auth/github/start' + query);
+      const state = new URL(s.headers.get('location')).searchParams.get('state');
+      await c.req('GET', `/auth/github/callback?code=good-code&state=${state}`, { headers: { 'CF-IPCountry': country } });
+      return c;
+    };
+    const first = await run('10.0.2.1', '?survey=0', 'US');
+    const me = (await first.req('GET', '/me')).json.user;
+    assert.equal(me.marketingOptIn, true, 'survey=0 from an old client is ignored');
+    assert.equal(me.email, 'octo@example.com');
+    assert.equal(app.db.user(app.db.raw.prepare('SELECT user_id AS u FROM identities WHERE provider = ?').get('github').u).marketingOptInAt, null);
+    assert.equal((await first.req('PATCH', '/me', { body: { marketingOptIn: false } })).json.user.marketingOptIn, false);
+    const same = await run('10.0.2.2', '?survey=1', 'CA');
+    assert.equal((await same.req('GET', '/me')).json.user.marketingOptIn, false, 'signing in again does not turn it back on');
+  } finally { await app.close(); }
 });

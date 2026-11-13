@@ -52,7 +52,13 @@
       if (location.origin === SITE) {
         fetch(API + '/me', { credentials: 'include', headers: { Accept: 'application/json' } })
           .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (d) { if (d && d.user && d.user.name) plainInitial(d.user); })
+          .then(function (d) {
+            if (d && d.consent) {
+              globalThis.sdConsentDefaults = d.consent;
+              globalThis.dispatchEvent(new CustomEvent('sd:consent-defaults', { detail: d.consent }));
+            }
+            if (d && d.user && d.user.name) plainInitial(d.user);
+          })
           .catch(function () { /* the service is not reachable: stay as is */ });
       } else if (sessionStorage.getItem('sd.preview') === 'hosted') {
         var u = JSON.parse(sessionStorage.getItem('sd.preview.user') || 'null');

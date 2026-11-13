@@ -105,7 +105,7 @@ test('a session is an httpOnly, Secure, SameSite=Lax cookie for 30 days, stored 
 
 test('signed out: /me says null; sign-out ends the session', async () => {
   const c = client(app.base);
-  assert.deepEqual((await c.req('GET', '/me')).json, { user: null });
+  assert.deepEqual((await c.req('GET', '/me')).json, { user: null, consent: { country: 'XX', marketingDefault: false, analyticsDefault: false } });
   assert.equal((await c.req('GET', '/progress')).status, 401);
   await signIn(c, 'leaver', 'Leaver');
   const token = c.jar.get('sd_session');
@@ -113,7 +113,7 @@ test('signed out: /me says null; sign-out ends the session', async () => {
   assert.equal(c.jar.has('sd_session'), false);
   const stale = client(app.base);
   stale.jar.set('sd_session', token);
-  assert.deepEqual((await stale.req('GET', '/me')).json, { user: null }, 'old token is dead');
+  assert.equal((await stale.req('GET', '/me')).json.user, null, 'old token is dead');
 });
 
 test('names are cleaned, and renaming works', async () => {
@@ -466,38 +466,38 @@ test('/me has the documented shape, with email null until one is known', async (
   const c = client(app.base);
   await signIn(c, 'shape', 'Shape');
   const u = (await c.req('GET', '/me')).json.user;
-  assert.deepEqual(Object.keys(u).sort(), ['avatar', 'email', 'name', 'providers', 'since', 'surveyOptIn']);
+  assert.deepEqual(Object.keys(u).sort(), ['avatar', 'email', 'marketingCountry', 'marketingOptIn', 'marketingOptInAt', 'marketingPromptPending', 'name', 'providers', 'since']);
   assert.equal(u.email, null);
-  assert.equal(u.surveyOptIn, true, 'new accounts are subscribed');
+  assert.equal(u.marketingOptIn, false, 'unknown country starts unticked');
+  assert.equal(u.marketingPromptPending, true);
   const withMail = client(app.base);
   const r = await withMail.req('POST', '/auth/fake', { body: { id: 'shape2', name: 'Shape Two', email: 'Shape@Example.com', surveyOptIn: false } });
   assert.equal(r.json.user.email, 'shape@example.com');
-  assert.equal(r.json.user.surveyOptIn, true, 'the old field is ignored');
+  assert.equal(r.json.user.marketingOptIn, false, 'the old field is ignored');
   const junk = client(app.base);
   assert.equal((await junk.req('POST', '/auth/fake', { body: { id: 'shape3', email: 'nope' } })).json.user.email, null);
 });
 
-test('PATCH /me turns the survey opt-in on and off, records and clears the date, and checks its input', async () => {
+test('PATCH /me saves the marketing choice and decision time and checks its input', async () => {
   const c = client(app.base);
   await signIn(c, 'optin', 'Opt In');
-  const at = () => app.db.raw.prepare("SELECT u.survey_optin AS s, u.survey_optin_at AS at FROM users u JOIN identities i ON i.user_id = u.id WHERE i.subject = 'optin'").get();
-  const made = app.clock.t;
-  assert.deepEqual({ ...at() }, { s: 1, at: made }, 'on at account creation');
-  app.clock.t = NOW + 5000;
-  const off = await c.req('PATCH', '/me', { body: { surveyOptIn: false } });
-  assert.equal(off.status, 200);
-  assert.equal(off.json.user.surveyOptIn, false);
-  assert.equal(off.json.user.name, 'Opt In', 'name untouched');
+  const at = () => app.db.raw.prepare("SELECT u.marketing_optin AS s, u.marketing_optin_at AS at FROM users u JOIN identities i ON i.user_id = u.id WHERE i.subject = 'optin'").get();
   assert.deepEqual({ ...at() }, { s: 0, at: null });
-  const on = await c.req('PATCH', '/me', { body: { surveyOptIn: true } });
-  assert.equal(on.json.user.surveyOptIn, true);
+  app.clock.t = NOW + 5000;
+  const off = await c.req('PATCH', '/me', { body: { marketingOptIn: false } });
+  assert.equal(off.status, 200);
+  assert.equal(off.json.user.marketingOptIn, false);
+  assert.equal(off.json.user.name, 'Opt In');
+  assert.deepEqual({ ...at() }, { s: 0, at: NOW + 5000 });
+  const on = await c.req('PATCH', '/me', { body: { marketingOptIn: true } });
+  assert.equal(on.json.user.marketingOptIn, true);
   assert.deepEqual({ ...at() }, { s: 1, at: NOW + 5000 });
-  app.clock.t += 3600_000;   // past the account rate limit
-  for (const bad of ['true', 1, 0, null, {}, []]) assert.equal((await c.req('PATCH', '/me', { body: { surveyOptIn: bad } })).status, 400, JSON.stringify(bad));
+  app.clock.t += 3600_000;
+  for (const bad of ['true', 1, 0, null, {}, []]) assert.equal((await c.req('PATCH', '/me', { body: { marketingOptIn: bad } })).status, 400, JSON.stringify(bad));
   assert.equal((await c.req('PATCH', '/me', { body: {} })).json.error, 'bad-input');
-  const both = await c.req('PATCH', '/me', { body: { name: 'Opt Two', surveyOptIn: true } });
-  assert.deepEqual([both.json.user.name, both.json.user.surveyOptIn], ['Opt Two', true]);
-  assert.equal((await c.req('PATCH', '/me', { body: { name: 'Opt Two', surveyOptIn: 'x' } })).status, 400);
+  const both = await c.req('PATCH', '/me', { body: { name: 'Opt Two', marketingOptIn: true } });
+  assert.deepEqual([both.json.user.name, both.json.user.marketingOptIn], ['Opt Two', true]);
+  assert.equal((await c.req('PATCH', '/me', { body: { name: 'Opt Two', marketingOptIn: 'x' } })).status, 400);
   app.clock.t = NOW;
 });
 
@@ -548,11 +548,11 @@ test('an old database gains the new user columns on start and keeps its rows', (
     try {
       const cols = db.raw.prepare('PRAGMA table_info(users)').all().map((r) => r.name);
       for (const c of ['email', 'survey_optin', 'survey_optin_at']) assert.ok(cols.includes(c), c);
-      assert.deepEqual(db.user(1), { id: 1, name: 'Veteran', avatar: null, createdAt: 1234, providers: [], email: null, surveyOptIn: false, surveyOptInAt: null });
+      assert.deepEqual(db.user(1), { id: 1, name: 'Veteran', avatar: null, createdAt: 1234, providers: [], email: null, surveyOptIn: false, surveyOptInAt: null, marketingOptIn: false, marketingOptInAt: null, marketingCountry: 'XX', marketingPromptPending: false });
       db.setEmail(1, 'v@example.com');
-      db.setSurveyOptIn(1, true, 99);
+      db.setMarketingOptIn(1, true, 99, 'US');
       assert.equal(db.user(1).email, 'v@example.com');
-      assert.equal(db.user(1).surveyOptInAt, 99);
+      assert.equal(db.user(1).marketingOptInAt, 99);
     } finally { db.close(); }
     const again = openDb(file);   // a second start is harmless
     try { assert.equal(again.user(1).email, 'v@example.com'); } finally { again.close(); }

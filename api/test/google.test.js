@@ -226,7 +226,8 @@ test('POST /auth/google signs in with a valid token and refuses a bad one', asyn
     assert.equal((await again.req('POST', '/auth/google', { body: { credential: stolen } })).status, 401);
     assert.deepEqual(ok.json.user.providers, ['google']);
     assert.equal(ok.json.user.email, null, 'this token had no email');
-    assert.equal(ok.json.user.surveyOptIn, true);
+    assert.equal(ok.json.user.marketingOptIn, false);
+    assert.equal(ok.json.user.marketingPromptPending, true);
     assert.equal(ok.json.user.name, 'Ada', 'first name only on leaderboards');
     assert.equal(ok.json.user.avatar, 'https://lh3.googleusercontent.com/a/x');
     assert.ok(c.jar.has('sd_session'));
@@ -243,29 +244,30 @@ test('POST /auth/google stores the email, updates it on a later sign-in and igno
   const { startApp, client } = await import('./helpers.js');
   const app = await startApp({ env: { GOOGLE_CLIENT_ID: CLIENT, AUTH_FAKE: '0' }, google: createGoogleVerifier({ clientId: CLIENT, fetchImpl: jwksFetch([[K1.jwk]]), now: () => NOW }) });
   try {
-    const signIn = async (claims, body = {}) => {
+    const signIn = async (claims, body = {}, country = 'US') => {
       const c = client(app.base);
       const n = await c.req('POST', '/auth/google/nonce', { body: {} });
-      const r = await c.req('POST', '/auth/google', { body: { credential: token({ nonce: n.json.nonce, ...claims }), ...body } });
+      const r = await c.req('POST', '/auth/google', { headers: { 'CF-IPCountry': country }, body: { credential: token({ nonce: n.json.nonce, ...claims }), ...body } });
       assert.equal(r.status, 200);
       return r;
     };
     const first = await signIn({ email: 'Ada@Example.com' }, { surveyOptIn: false });
     assert.equal(first.json.user.email, 'ada@example.com');
-    assert.equal(first.json.user.surveyOptIn, true);
-    const row = () => app.db.raw.prepare('SELECT email, survey_optin AS s, survey_optin_at AS at FROM users').get();
-    assert.deepEqual({ ...row() }, { email: 'ada@example.com', s: 1, at: NOW });
+    assert.equal(first.json.user.marketingOptIn, true);
+    const row = () => app.db.raw.prepare('SELECT email, marketing_optin AS s, marketing_optin_at AS at FROM users').get();
+    assert.deepEqual({ ...row() }, { email: 'ada@example.com', s: 1, at: null });
     // no choice and no email: both stay
-    const second = await signIn({});
+    const second = await signIn({}, {}, 'CA');
+    assert.equal(second.json.user.marketingCountry, 'US', 'a later sign-in keeps the original country');
     assert.equal(second.json.user.email, 'ada@example.com');
-    assert.equal(second.json.user.surveyOptIn, true);
+    assert.equal(second.json.user.marketingOptIn, true);
     // a new address replaces the old one
     assert.equal((await signIn({ email: 'new@example.com' })).json.user.email, 'new@example.com');
     // the old field never changes the choice, only the account setting does
-    assert.equal((await signIn({}, { surveyOptIn: false })).json.user.surveyOptIn, true);
-    app.db.setSurveyOptIn(1, false, NOW);
-    assert.equal((await signIn({}, { surveyOptIn: true })).json.user.surveyOptIn, false);
-    assert.equal(row().at, null);
+    assert.equal((await signIn({}, { surveyOptIn: false })).json.user.marketingOptIn, true);
+    app.db.setMarketingOptIn(1, false, NOW, 'CA');
+    assert.equal((await signIn({}, { surveyOptIn: true })).json.user.marketingOptIn, false);
+    assert.equal(row().at, NOW);
     assert.equal(app.db.raw.prepare('SELECT COUNT(*) AS n FROM users').get().n, 1);
   } finally { await app.close(); }
 });

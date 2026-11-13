@@ -7,6 +7,8 @@ import { TokenError, cleanEmail } from './google.js';
 import { makeState, checkState, STATE_COOKIE, STATE_TTL_SEC } from './github.js';
 import { ReplayError, NOT_LISTED, prepare } from './replay-core.js';
 import { sanitizeProgress, mergeProgress, emptyProgress } from '../account/merge.js';
+import { countryDefaults } from '../assets/consent-region.js';
+import { createMarketingSync } from './marketing.js';
 import { createObservation } from './observation.js';
 
 export const SESSION_COOKIE = 'sd_session';
@@ -57,9 +59,10 @@ export function dailyOpen(date, t) {
   return Number.isFinite(start) && t >= start - 14 * HOUR && t < start + 24 * HOUR + 12 * HOUR + HOUR;
 }
 
-export function createApp({ config, db, google, github, replayer, game, limiter, now = Date.now, log = () => {} }) {
+export function createApp({ config, db, google, github, replayer, game, limiter, now = Date.now, log = () => {}, marketingFetch = fetch, marketingSync }) {
   // Secure even in DEV: browsers keep Secure cookies from http://localhost and http://127.0.0.1.
   const secure = true;
+  const marketing = marketingSync || createMarketingSync({ db, keyFile: config.klaviyoKeyFile, fetchImpl: marketingFetch, now, log });
   const hashToken = (t) => createHmac('sha256', config.sessionSecret).update('session\n' + t).digest('hex');
   const nonceMac = (body) => createHmac('sha256', config.sessionSecret).update('g-nonce\n' + body).digest('base64url');
   const usedNonces = new Map();   // nonce -> expiry: each one signs in once
@@ -112,7 +115,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
     const u = db.user(id);
     if (!u) return null;
     // The player's own address is shown to them here and nowhere else.
-    return { name: u.name, avatar: u.avatar, providers: u.providers, since: utcDate(u.createdAt), email: u.email, surveyOptIn: u.surveyOptIn };
+    return { name: u.name, avatar: u.avatar, providers: u.providers, since: utcDate(u.createdAt), email: u.email, marketingOptIn: u.marketingOptIn, marketingOptInAt: u.marketingOptInAt, marketingCountry: u.marketingCountry, marketingPromptPending: u.marketingPromptPending };
   }
 
   // Creates a session for the user (dropping the caller's old one) and returns its Set-Cookie line.
@@ -149,8 +152,9 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
   }
   const nonceCookie = (v, maxAge) => cookie(NONCE_COOKIE, v, { maxAge, path: '/auth/google', secure });
 
-  function signIn(provider, subject, profile, sess) {
-    const { userId } = db.signIn({ provider, subject, name: providerName(profile.name), avatar: cleanAvatar(profile.avatar), email: cleanEmail(profile.email), currentUserId: sess?.userId ?? null }, now());
+  function signIn(provider, subject, profile, sess, req) {
+    const { userId } = db.signIn({ provider, subject, name: providerName(profile.name), avatar: cleanAvatar(profile.avatar), email: cleanEmail(profile.email), country: req.headers['cf-ipcountry'], currentUserId: sess?.userId ?? null }, now());
+    void marketing.flush();
     return { userId, setCookie: startSession(userId, sess) };
   }
 
@@ -208,7 +212,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
         throw e;
       }
       spendNonce(n);
-      const { userId, setCookie } = signIn('google', p.sub, { name: p.givenName || p.name, avatar: p.picture, email: p.email }, sess);
+      const { userId, setCookie } = signIn('google', p.sub, { name: p.givenName || p.name, avatar: p.picture, email: p.email }, sess, req);
       return [200, { user: publicUser(userId) }, { 'Set-Cookie': [clear, setCookie] }];
     },
 
@@ -235,7 +239,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       try { p = await github.profile(url.searchParams.get('code')); } catch {
         return redirect(res, backTo(st.origin, st.ret, 'failed'), { 'Set-Cookie': clear });
       }
-      const { setCookie } = signIn('github', p.id, { name: p.name || p.login, avatar: p.avatar, email: p.email }, sess);
+      const { setCookie } = signIn('github', p.id, { name: p.name || p.login, avatar: p.avatar, email: p.email }, sess, req);
       return redirect(res, backTo(st.origin, st.ret, 'github'), { 'Set-Cookie': [clear, setCookie] });
     },
 
@@ -245,7 +249,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       const body = await readJson(req, BODY.small);
       const id = typeof body.id === 'string' ? body.id : '';
       if (!/^[a-z0-9-]{1,32}$/.test(id)) throw new HttpError(400, 'bad-input', 'id must be 1 to 32 lowercase letters, digits or dashes.');
-      const { userId, setCookie } = signIn('fake', id, { name: safeName(cleanName(body.name)) || 'Test player ' + id, avatar: null, email: body.email }, sess);
+      const { userId, setCookie } = signIn('fake', id, { name: safeName(cleanName(body.name)) || 'Test player ' + id, avatar: null, email: body.email }, sess, req);
       return [200, { user: publicUser(userId) }, { 'Set-Cookie': setCookie }];
     },
 
@@ -256,15 +260,15 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       return [200, { ok: true }, { 'Set-Cookie': endSessionCookie() }];
     },
 
-    'GET /me': async ({ sess }) => [200, { user: sess ? publicUser(sess.userId) : null }],
+    'GET /me': async ({ req, sess }) => [200, { user: sess ? publicUser(sess.userId) : null, consent: countryDefaults(req.headers['cf-ipcountry']) }],
 
     'PATCH /me': async ({ req, ip, sess }) => {
       const userId = needUser(sess);
       limit('account', ip, userId);
       const body = await readJson(req, BODY.small);
-      const hasName = body.name !== undefined, hasSurvey = body.surveyOptIn !== undefined;
-      if (!hasName && !hasSurvey) throw new HttpError(400, 'bad-input', 'Send { name } or { surveyOptIn }.');
-      if (hasSurvey && typeof body.surveyOptIn !== 'boolean') throw new HttpError(400, 'bad-input', 'surveyOptIn must be true or false.');
+      const hasName = body.name !== undefined, hasMarketing = body.marketingOptIn !== undefined;
+      if (!hasName && !hasMarketing) throw new HttpError(400, 'bad-input', 'Send { name } or { marketingOptIn }.');
+      if (hasMarketing && typeof body.marketingOptIn !== 'boolean') throw new HttpError(400, 'bad-input', 'marketingOptIn must be true or false.');
       let name = null;
       if (hasName) {
         if (typeof body.name === 'string' && /[<>]/.test(body.name)) throw new HttpError(400, 'bad-name', 'Names cannot contain < or >.');
@@ -277,8 +281,9 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       }
       db.tx(() => {
         if (hasName) db.setName(userId, name);
-        if (hasSurvey) db.setSurveyOptIn(userId, body.surveyOptIn, now());
+        if (hasMarketing) db.setMarketingOptIn(userId, body.marketingOptIn, now(), req.headers['cf-ipcountry']);
       });
+      if (hasMarketing) void marketing.flush(true);
       return [200, { user: publicUser(userId) }];
     },
 
@@ -286,6 +291,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       const userId = needUser(sess);
       limit('account', ip, userId);
       db.deleteUser(userId);
+      void marketing.flush();
       log(`account deleted (${utcDate(now())})`);
       return [200, { ok: true }, { 'Set-Cookie': endSessionCookie() }];
     },

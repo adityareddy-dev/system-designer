@@ -10,6 +10,7 @@ class Element {
   dataset = {};
   classList = { add() {}, contains() { return false; }, toggle() {} };
   setAttribute(k, v) { this[k] = v; }
+  removeAttribute(k) { delete this[k]; }
   append(...kids) { for (const c of kids) { if (c instanceof Element) c.parent = this; this.children.push(c); } }
   replaceChildren(...kids) { this.children = []; this.append(...kids); }
   replaceWith(el) { const i = this.parent.children.indexOf(this); this.parent.children[i] = el; el.parent = this.parent; }
@@ -91,12 +92,12 @@ view.destroy();
 // Email block: the toggle is on for a subscribed account, off for one that turned it off, and says what it does.
 const words = (e) => e instanceof Element ? [e.textContent || '', ...e.children.map(words)].join(' ') : String(e);
 const ui2 = createAccountUi(ctx, { ...api, state: () => ({ available: true, user: null, sync: 'idle', providers: { fake: true } }) });
-const on = ui2.emailBlock({ email: 'a@example.com', surveyOptIn: true });
-assert.match(words(on), /Email me surveys and product updates/);
+const on = ui2.emailBlock({ email: 'a@example.com', marketingOptIn: true });
+assert.match(words(on), /Email me new problems, tips and product news. Unsubscribe any time./);
 assert.doesNotMatch(words(on), /short surveys/);
 assert.match(words(on), /a@example\.com/);
 assert.equal(on.querySelector('.ac-check').checked, '', 'on for a subscribed account');
-assert.equal(ui2.emailBlock({ email: 'a@example.com', surveyOptIn: false }).querySelector('.ac-check').checked, undefined, 'off when turned off');
+assert.equal(ui2.emailBlock({ email: 'a@example.com', marketingOptIn: false }).querySelector('.ac-check').checked, undefined, 'off when turned off');
 
 // Sign-in card: no opt-in box, no "what we store" copy, one agreement line with the privacy link.
 const card = ui2.signInCard({});

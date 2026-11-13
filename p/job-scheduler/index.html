@@ -10,6 +10,7 @@
   if (bar) bar.content = '#FFF4E0';
 })();
 </script><!-- theme:end -->
+<script type="module" src="../../assets/analytics.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scheduled job service: system design practice | System Designer</title>
 <meta name="description" content="Customers register jobs: &quot;call my web address every night at 02:00&quot; or &quot;every hour on the hour&quot;. Aim to fire within 5 seconds; work still waiting after 60 seconds counts as failed. Retry safely after a crash. One external effect requires the customer endpoint to honor a stable job occurrence key. Half the world picks the top of the hour, so a huge crowd of jobs comes due in the same second. Practise this hard system design problem for free with a Google or GitHub account.">

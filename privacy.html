@@ -38,6 +38,7 @@
     .pv p.pv-fine { margin-top: 36px; font: 400 14px/1.5 var(--font-mono); color: var(--text-3); }
   </style>
 <!-- site:privacy:start --><link rel="canonical" href="https://systemdesigner.io/privacy.html"><script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://systemdesigner.io/index.html"},{"@type":"ListItem","position":2,"name":"Privacy","item":"https://systemdesigner.io/privacy.html"}]}</script><!-- site:privacy:end -->
+<script type="module" src="assets/analytics.js"></script>
 </head>
 <body class="site">
   <!-- site:header:start -->
@@ -48,13 +49,18 @@
     <p class="pv-lead">To play on systemdesigner.io you sign in with a free Google or GitHub account. Reading the problems, lessons and guides needs no account. If you run your own copy of the code, no account is needed at all.</p>
     <div class="pv-card"><p><strong>What you share to play here:</strong> the sign-in provider’s id for you, your email address, a display name, your avatar's web address, and the progress and scores you make. Details are below. Nothing is sold and there are no ad trackers.</p></div>
 
-    <div class="pv-card"><p>Progress, drafts and settings live in your browser. The game's own usage counts and error reports are disabled on public sites.</p></div>
+    <div class="pv-card"><p>Progress, drafts and settings live in your browser. The game's own usage counts and error reports are disabled on public sites. Google Analytics uses a separate cookie choice, described below.</p></div>
+
+    <h2>Analytics and cookie choices</h2>
+    <p>We use Google Analytics to understand page visits and how people use the site. When analytics cookies are allowed, Google Analytics can store cookies in your browser and collect information about your browser, device and pages visited. We do not send it your account email or sign-in id. Advertising storage, advertising user data and ad personalisation stay off everywhere.</p>
+    <p>Analytics cookies start off in the EU and EEA, the UK, Switzerland, Canada and Brazil. A small banner lets you Accept or Decline. Elsewhere they start on. We use the country Cloudflare gives our account service when it is available, otherwise your browser time zone. If the account service reports an unknown country, analytics cookies stay off. Your Accept or Decline choice is saved in this browser and overrides the regional default. Google may receive basic measurements without analytics cookies while consent is denied.</p>
+    <p><button type="button" class="sh-btn" data-cookie-choices>Cookie choices</button> lets you change your choice any time. It does not change your email choice or your ability to play.</p>
 
     <h2>Anonymous counts and feedback</h2>
     <p>The game itself sends us no automatic usage counts or error reports, including when an older saved setting enabled them.</p>
     <p>Pages are served through Cloudflare, which counts page visits and load speed with its Web Analytics script. Cloudflare says the script uses no cookies or browser storage and doesn't fingerprint visitors. Our own server keeps no log of page requests.</p>
     <p>Feedback is your choice. We keep your 1 to 5 rating, optional comment, the page or problem, game version and date. It is anonymous, even when you are signed in, unless you agree to be quoted. Please leave personal details out of comments you do not want attributed to you. Counts are kept for 13 months and feedback for 2 years, then cleanup removes them from the database and retained backups.</p>
-    <p>The form also asks optional questions about whether the game helped, what you used it for, your country and your role. We keep those answers with your feedback. You choose your country. We never infer it from your IP address or browser. If you agree to be quoted, we also keep your name, role and permission. We may quote your comment with that name and role on this site and in documents about System Designer and our work. Only then can you add an email for a follow-up about your quote. We keep quotes for 2 years and email for 12 months. To request removal, <a href="https://github.com/adityareddy-dev/system-designer/issues" rel="noopener">open a GitHub issue</a> without posting your email or other private details. Backups expire within 7 days.</p>
+    <p>The form also asks optional questions about whether the game helped, what you used it for, your country and your role. We keep those answers with your feedback. You choose your country. That feedback answer is separate from the country Cloudflare gives us for email and cookie defaults. If you agree to be quoted, we also keep your name, role and permission. We may quote your comment with that name and role on this site and in documents about System Designer and our work. Only then can you add an email for a follow-up about your quote. We keep quotes for 2 years and email for 12 months. To request removal, <a href="https://github.com/adityareddy-dev/system-designer/issues" rel="noopener">open a GitHub issue</a> without posting your email or other private details. Backups expire within 7 days.</p>
 
     <h2>What we store when you sign in</h2>
     <ul>
@@ -64,7 +70,7 @@
       <li><strong>Your progress</strong>: solved problems, best scores, finished lessons and the days you played (for your streak).</li>
       <li><strong>Your scores</strong>: your best score on each problem, with its stars.</li>
       <li><strong>Your email address</strong>: the verified address Google gives us, or the primary verified address on your GitHub account. If your GitHub account has no verified address, we store none and sign-in still works. We keep it to have a way to contact you about your account. It is updated each time you sign in.</li>
-      <li><strong>Your survey choice</strong>: a yes or no, and the date it was set. It starts as yes, because we email short surveys and product updates to everyone who signs up. Every email has an unsubscribe link, and you can turn it off in Settings (under Email) at any time.</li>
+      <li><strong>Your marketing email choice</strong>: yes or no, the time you saved it and the country Cloudflare supplied when you decided. You see the choice when your account is created. The box starts unticked in the EU and EEA, the UK, Switzerland, Canada and Brazil, and when the country is unknown. It starts ticked elsewhere. You save it with one tap and can change it in Settings under Email. Existing choices for product updates are kept.</li>
       <li><strong>A sign-in cookie</strong> that keeps you signed in for 30 days. The server keeps only a scrambled (hashed) copy of it.</li>
       <li><strong>A one-time sign-in code</strong>, only while you sign in with Google: a cookie that lasts at most 10 minutes and is deleted as soon as you are signed in. It makes sure the sign-in really came from your browser.</li>
     </ul>
@@ -73,23 +79,23 @@
     <ul>
       <li>Your password. We never see it.</li>
       <li>A GitHub access token. GitHub sign-in asks only to read your email addresses (the user:email permission) and your public profile. The one-time token is thrown away right after we read them.</li>
-      <li>Your email in a list we sell, rent or give to anyone. It is not shown on leaderboards, in shared links or in feedback. The only other email address we ever keep is the optional one you add to a quote.</li>
+      <li>Your email in a list we sell or rent. It is not shown on leaderboards, in shared links or in feedback. The only other email address we ever keep is the optional one you add to a quote.</li>
       <li>Advertising trackers, an identity attached to usage counts, or your sign-in identity attached to feedback. A quote keeps only the name and role you choose to give, plus an optional email.</li>
     </ul>
 
-    <h2>Why we keep your email, and how to stop surveys</h2>
-    <p>Two reasons. It is a way to reach you about your account. And we use it to send short surveys and product updates to everyone who signs up. We do not send anything else. Every message has an unsubscribe link. You can also turn surveys and product updates off in <strong>Settings</strong> (under Email) at any time. It takes effect at once. Deleting your account removes the address as well.</p>
+    <h2>Marketing emails and how to unsubscribe</h2>
+    <p>We keep your email to contact you about your account. If you save a yes to marketing emails, we also use Klaviyo to email you new problems, tips and product news. We share your email and subscription choice with Klaviyo to send those emails. Every marketing email has an unsubscribe link. You can also turn email updates off in <strong>Settings</strong> under Email. Your saved choice changes at once. If Klaviyo is unavailable, the change waits in a queue and is retried. Deleting your account also queues an unsubscribe.</p>
 
     <h2>Who sees what</h2>
-    <p>Anyone can see the leaderboards: display name, score, stars and rank. Your progress and your email address are visible only to you and to the person running this site. Nothing is sold or rented. If you agree to be quoted, your comment, name and role may be shared as described above. Your quote email is used only for a follow-up.</p>
+    <p>Anyone can see the leaderboards: display name, score, stars and rank. Your progress is visible only to you and the person running this site. Your email is also shared with Klaviyo for email delivery when you subscribe, or to process an unsubscribe. Nothing is sold or rented. If you agree to be quoted, your comment, name and role may be shared as described above. Your quote email is used only for a follow-up.</p>
 
     <h2>Delete it anytime</h2>
-    <p>Open the account menu in the top bar and choose <strong>Delete my account</strong>. Your name, email address, avatar address, survey choice, synced progress and scores are removed from the server at once. Nightly backups roll off within 7 days. Progress saved on your own device stays there until you clear it in Settings. Deleting your account does not remove a quote, because quotes are not linked to your account. Request quote removal through the <a href="https://github.com/adityareddy-dev/system-designer/issues" rel="noopener">GitHub issues link</a> below.</p>
+    <p>Open the account menu in the top bar and choose <strong>Delete my account</strong>. Your account details, synced progress and scores are removed at once. Your email stays in the delivery queue until Klaviyo accepts the unsubscribe. Nightly backups roll off within 7 days. Progress saved on your own device stays there until you clear it in Settings. Deleting your account does not remove a quote, because quotes are not linked to your account. Request quote removal through the <a href="https://github.com/adityareddy-dev/system-designer/issues" rel="noopener">GitHub issues link</a> below.</p>
 
     <h2>Questions</h2>
     <p>System Designer is free and open source. Ask anything by opening an issue at <a href="https://github.com/adityareddy-dev/system-designer/issues" rel="noopener">github.com/adityareddy-dev/system-designer</a>.</p>
 
-    <p class="pv-fine">Last updated November 12, 2026: surveys and product updates go to everyone who signs up, with an unsubscribe link in every email and a switch in Settings.</p>
+    <p class="pv-fine">Last updated November 13, 2026: marketing email choices, Klaviyo delivery, Google Analytics and cookie choices.</p>
   </main>
 </body>
 </html>

@@ -46,6 +46,7 @@ export function loadConfig(env = process.env) {
     warnings,
     config: {
       production, dev, fake, host, port, replayWorkers,
+      klaviyoKeyFile: env.KLAVIYO_KEY_FILE || '',
       dbPath: env.DB_PATH || new URL('./data/systemdesigner.db', import.meta.url).pathname,
       sessionSecret,
       sites: dev ? [SITE, ...DEV_SITES] : [SITE],
