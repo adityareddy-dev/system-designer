@@ -3,6 +3,7 @@ import { mountFeedback } from '../shell/feedback.js';
 export const duration = sec => sec < 60 ? `${Math.round(sec)} ${Math.round(sec) === 1 ? 'second' : 'seconds'}` : `${Math.round(sec / 6) / 10} ${sec === 60 ? 'minute' : 'minutes'}`;
 // The debrief: verdict, score dial, four SLO cards, timeline, event stories, trade-offs, one thing to try next.
 import { renderRepair } from './repair.js';
+import { failureEvidence } from './run-transition.js';
 import { gateTransfer } from './transfer-reflection.js';
 import { completionState } from './completion.js';
 import { loadSummary } from './load-labels.js';
@@ -278,7 +279,54 @@ function versusCard(result, opp, handlers) {
     handlers?.onShare ? h('button', { class: 'pl-btn pl-btn--small', type: 'button', onClick: () => handlers.onShare() }, 'Send my design back') : null);
 }
 
-export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed = 0, prevBest = null, opponent = null, hasNext = false, reduced = false, handlers = {}, correctnessAnswer = null }) {
+// Plain words for where the day stood: how busy a part got at its worst.
+const busyWords = (u) => (u > 5 ? 'over 500%' : `${Math.round((u || 0) * 100)}%`);
+const partLabel = (n, catalog) => n?.label || catalog?.elementById?.get(n?.type)?.name || n?.type || 'a part';
+// The busiest part of the day that carried traffic (sources and idle parts are left out).
+function busiestPart(result, catalog) {
+  let best = null;
+  for (const m of result.nodes || []) {
+    const g = (result.graph?.nodes || []).find((n) => n.id === m.id);
+    if (!g || !(m.peakRequests > 0) || catalog?.elementById?.get(g.type)?.kind === 'source') continue;
+    if (!best || m.peakUtil > best.m.peakUtil) best = { g, m, name: partLabel(g, catalog) };
+  }
+  return best;
+}
+// One plain line that answers the player's prediction with what was measured.
+export function predictionVerdict(prediction, result, catalog) {
+  const text = String(prediction || '').toLowerCase();
+  const STOP = new Set(['primary', 'replica', 'service', 'services']);
+  let said = null, score = 0;
+  for (const g of result.graph?.nodes || []) {
+    const m = (result.nodes || []).find((x) => x.id === g.id);
+    if (!m || !(m.peakRequests > 0) || catalog?.elementById?.get(g.type)?.kind === 'source') continue;
+    const clean = partLabel(g, catalog).toLowerCase().replace(/\s*\(.*?\)\s*/g, ' ').trim();
+    const words = clean.split(/[^a-z0-9]+/).filter((w) => w.length >= 5 && !STOP.has(w));
+    const hit0 = clean && text.includes(clean) ? clean.length + 100 : Math.max(0, ...words.filter((w) => text.includes(w.replace(/s$/, ''))).map((w) => w.length));
+    const el = catalog?.elementById?.get(g.type), isDb = /\b(database|databases|db|datastore|data store)\b/.test(text) && el?.category === 'data' && !/cache|search|object|archive|file/.test(g.type);
+    const hit = Math.max(hit0, isDb ? 5 : 0);
+    if (hit > score || (hit === score && hit > 0 && m.peakUtil > said.m.peakUtil)) { said = { g, m, name: partLabel(g, catalog) }; score = hit; }
+  }
+  const busy = busiestPart(result, catalog);
+  if (result.passed) {
+    if (!busy) return 'Nothing reached its limit.';
+    if (said && said.g.id !== busy.g.id) return `${said.name} peaked at ${busyWords(said.m.peakUtil)} busy and held. The busiest part was ${busy.name}, at ${busyWords(busy.m.peakUtil)}. Nothing reached its limit.`;
+    return `The busiest part was ${busy.name}, at ${busyWords(busy.m.peakUtil)} busy, and it held. Nothing reached its limit.`;
+  }
+  const ev = failureEvidence(result, catalog);
+  const lim = (result.graph?.nodes || []).find((n) => n.id === ev.nodeId);
+  const limM = (result.nodes || []).find((x) => x.id === ev.nodeId);
+  if (!lim) return `Measured cause: ${ev.detail}`;
+  const limName = partLabel(lim, catalog);
+  const first = ev.heading === 'The part that reached its limit' ? 'The first limit was' : 'The first part to fail was';
+  const tail = `${first} ${limName}${limM ? ` (peak ${busyWords(limM.peakUtil)} busy)` : ''}.`;
+  if (!said) return tail;
+  if (said.g.id === lim.id) return `You named ${said.name}. It peaked at ${busyWords(said.m.peakUtil)} busy, and it is where the day broke, so your prediction held.`;
+  if (said.m.peakUtil >= 1) return `${said.name} also reached its limit (peak ${busyWords(said.m.peakUtil)} busy), but it was not the first. ${tail}`;
+  return `${said.name} peaked at ${busyWords(said.m.peakUtil)} busy, so it was not the limit. ${tail}`;
+}
+
+export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed = 0, prevBest = null, opponent = null, hasNext = false, reduced = false, handlers = {}, correctnessAnswer = null, assistWhy = [] }) {
   host.replaceChildren();
   const sc = result.score;
   const slo = result.slo;
@@ -288,6 +336,8 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   // 1 + 2: verdict, dial, stars
   const stars = h('div', { class: 'pl-stars', role: 'img', 'aria-label': `${result.stars} of 3 stars` },
     [1, 2, 3].map((n) => iconEl(n <= result.stars ? 'ui.star' : 'ui.star-empty', 28, 'pl-ic pl-star' + (n <= result.stars ? ' pl-star--on' : ''))));
+  // The warm-up is a practice run: it shows no stars or points and says plainly that the full day is next.
+  const warm = !!problem?.warmUp && !problem.twistDay;
   const isBest = prevBest == null || sc.total > prevBest;
   const bestBadge = result.warmUp
     ? h('span', { class: 'pl-badge' }, iconEl('ui.info', 14), result.twistDay ? 'New twist: mastery check, traffic best unchanged' : 'Warm-up: not saved')
@@ -306,7 +356,13 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const { traceChecked, assisted, message: learningMessage } = completion;
   root.dataset.credit = !traceChecked ? 'trace-open' : assisted ? 'assisted' : 'checked';
   root.dataset.completion = completion.key;
-  const passBadge = result.passed
+  const assistParts = [...(hintsUsed >= 3 ? [`you used ${hintsUsed} hints`] : []), ...assistWhy];
+  const assistNote = result.passed && assisted && !warm && !result.reference
+    ? h('span', { class: 'pl-muted pl-small pl-assist-why', text: `Passed with assistance: ${assistParts.length ? assistParts.join(' and ') : 'you used a worked answer'}.` })
+    : null;
+  const passBadge = warm && result.passed
+    ? h('span', { class: 'pl-badge' }, iconEl('ui.info', 14), 'Practice run: not saved')
+    : result.passed
     ? h('span', { class: 'pl-badge pl-badge--ok' }, iconEl('ui.check', 14), completion.label)
     : near
     ? h('span', { class: 'pl-badge pl-badge--near', 'data-near': missedKeys[0] }, iconEl('ui.info', 14), `Almost there: one bar missed (${CHECK_NAME[missedKeys[0]]})`)
@@ -327,19 +383,22 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     : null;
   root.append(h('section', { class: 'pl-verdict-sec' + (near ? ' pl-verdict-sec--near' : '') },
     h('div', { class: 'pl-kicker', text: 'Step 5 · Debrief' }),
-    h('h2', { class: 'pl-verdict-line', text: `${result.passed ? 'Passed' : 'Not passed'}: ${verdictLine(result, catalog, problem)}` }),
-    h('div', { class: 'pl-score-row' }, dial(Math.round(sc.total)),
-      h('div', { class: 'pl-score-side' }, stars,
+    h('h2', { class: 'pl-verdict-line', text: warm && result.passed ? 'Warm-up passed. Now run the full day.' : `${result.passed ? 'Passed' : 'Not passed'}: ${verdictLine(result, catalog, problem)}` }),
+    h('div', { class: 'pl-score-row' + (warm ? ' pl-score-row--practice' : '') }, warm ? null : dial(Math.round(sc.total)),
+      h('div', { class: 'pl-score-side' }, warm ? null : stars,
         passBadge,
-        bestBadge,
+        warm ? null : bestBadge,
         result.reference || result.warmUp ? null : h('button', { class: 'pl-btn pl-btn--primary pl-challenge-friend', type: 'button', 'data-act': 'challenge-friend', onClick: () => handlers.onShare?.() }, iconEl('ui.share', 16), 'Challenge a friend'),
-        h('span', { class: 'pl-muted pl-small', text: `Hints used: ${hintsUsed}. Hints are free and never lower the score.` }))),
+        h('span', { class: 'pl-muted pl-small', text: `Hints used: ${hintsUsed}. Hints are free and never lower the score.` }),
+        assistNote)),
     result.passed && problem?.correctness && !problem?.warmUp ? h('p', { class: 'pl-learning-status', role: 'status', text: learningMessage }) : null,
     result.passed && completion.next === 'twist' && handlers.onTwist ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', 'data-act': 'mastery-twist', onClick: handlers.onTwist, text: 'Next: New twist without hints' }) : null,
     result.passed && ['original','retry'].includes(completion.next) ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: completion.next === 'original' ? handlers.onTwist : handlers.onIndependentRetry, text: completion.next === 'original' ? 'Next: Pass the original day with its trace' : 'Next: Retry twist without hints' }) : null,
     result.passed && completion.next === 'practice' ? h('a', { class: 'pl-btn pl-btn--primary', href: '#/practice/' + problem.id, text: 'Next: Check the trace in Practice' }) : null,
     tryNext,
-    problem?.warmUp ? h('p', { class: 'pl-warmup', 'data-act': 'warm-up' }, iconEl('ui.info', 16), 'Warm-up done, now play the real day. This first day had no traffic spike, so its score is practice only: it is not saved, not posted and not shared. Retry plays the full day, spike included.') : null));
+    problem?.warmUp ? h('div', { class: 'pl-warmup', 'data-act': 'warm-up' }, iconEl('ui.info', 16),
+      h('p', { text: result.passed ? 'This first day had no traffic spike, so it is practice only: no stars or points, and it is not saved, posted or shared. The full day adds the spike.' : 'This first day had no traffic spike, so it is practice only: no stars or points, and it is not saved, posted or shared. Retry plays the full day, spike included.' }),
+      warm && result.passed ? h('button', { class: 'pl-btn pl-btn--primary', type: 'button', 'data-act': 'run-full-day', onClick: () => handlers.onRetry?.() }, iconEl('ui.restart', 16), 'Run the full day') : null) : null));
   const reflection = renderReflection(result, catalog);
   if (reflection) root.append(reflection);
   if (result.efficiency?.length) {
@@ -347,7 +406,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     const reason = h('textarea', { class: 'pl-input', rows: 2, 'aria-label': 'Reason to keep spare capacity', placeholder: 'Name a burst, failure or recovery requirement, and how you would test it.' });
     const feedback = h('p', { role: 'status', class: 'pl-muted' });
     root.append(h('section', { class: 'pl-sec', 'aria-label': 'Capacity tradeoff' }, h('h3', { text: 'Choose what the spare capacity buys' }),
-      result.efficiency.map(item => h('p', { text: demanding ? `${item.label}: ${item.units} units at about ${Math.round(item.peakUtil * 100)}% peak busy. Work out a trial size at 70% utilization, round up and check the failure floor. Then compare the full day and cost.` : `${item.label} used about ${Math.round(item.peakUtil * 100)}% of its capacity at peak. Testing ${item.suggestedUnits} instead of ${item.units} units could save about $${item.savingPerMonth.toLocaleString('en-US')}/month. This estimate keeps 30% headroom for the measured peak; rerun to verify recovery and dependencies.` })),
+      result.efficiency.map(item => h('p', { text: demanding ? `${item.label}: ${item.units} units at ${item.peakUtil > 5 ? 'over 500%' : 'about ' + Math.round(item.peakUtil * 100) + '%'} peak busy. Work out a trial size at 70% utilization, round up and check the failure floor. Then compare the full day and cost.` : `${item.label} used about ${Math.round(item.peakUtil * 100)}% of its capacity at peak. Testing ${item.suggestedUnits} instead of ${item.units} units could save about $${item.savingPerMonth.toLocaleString('en-US')}/month. This estimate keeps 30% headroom for the measured peak; rerun to verify recovery and dependencies.` })),
       h('p', { text: 'Idle capacity reduces Cost points even below budget. A stated reason records your tradeoff; only testing the workload can establish whether it is worth paying for.' }), choice, reason,
       h('button', { class: 'pl-btn', type: 'button', text: 'Record decision', onclick: () => {
         if (!choice.value || (choice.value === 'keep' && reason.value.trim().length < 20)) { feedback.textContent = 'Choose an experiment, or give a concrete requirement and test for keeping the spare capacity.'; return; }
@@ -384,6 +443,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const worst = Object.entries(l.byType || {});
   const compNames = (s.compliance?.failed || []).map((id) => wld.complianceChecks.find((x) => x.id === id)?.name || id);
   const topCost = [...(c.lines || [])].sort((x, y) => y.usd - x.usd).slice(0, 2);
+  const costNote = 'Each amount is the part\'s monthly price for the units you set, plus storage and usage at your traffic, so it can be above the price in the parts list.';
   const checks = result.checks || {};
   const LAT_BAR = latBarOf(problem);
   const okLat = checks.latency ?? l.shareOk >= LAT_BAR;
@@ -416,7 +476,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
       lines: none ? ['Not measured: nothing was served, so no data was kept to score. Safety points are only awarded for served requests.'] : [thinNote, s.lostWrites ? `${fmtNum(s.lostWrites)} acknowledged writes were lost.` : 'No acknowledged write was lost.', s.duplicates ? `${fmtNum(s.duplicates)} duplicate effects (such as a double charge).` : 'No duplicate effects.',
         s.staleReads ? `${fmtNum(s.staleReads)} stale reads.` : null, compNames.length ? `Missing proof: ${compNames.join(', ')}.` : null, ...safeWhy, servedNote].filter(Boolean) }),
     sloCard({ key: 'cost', title: 'Cost', iconId: 'ui.cost', pts: sc.cost, max: 200, ok: okCost, flag: none || thin ? 'none' : null, target: `≤ ${fmtUsd(c.budget)} a month`, actual: `≈ ${fmtUsd(c.perMonth)} a month`,
-      lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`)] : [thinNote, c.perMonth <= c.budget ? (result.efficiency?.length ? 'Under budget, with avoidable idle capacity. See the capacity decision above.' : a.actual < a.target ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), servedNote].filter(Boolean) }));
+      lines: none ? ['Not measured: nothing was served, so the money bought nothing to score.', ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), costNote] : [thinNote, c.perMonth <= c.budget ? (result.efficiency?.length ? 'Under budget, with avoidable idle capacity. See the capacity decision above.' : a.actual < a.target ? 'At or under budget.' : 'At or under budget: full points.') : `${Math.round((c.perMonth / c.budget - 1) * 100)}% over budget.`, ...topCost.map((x) => `${x.label}: ≈ ${fmtUsd(x.usd)}`), topCost.length ? costNote : null, servedNote].filter(Boolean) }));
   root.append(cards, h('p', { class: 'pl-footnote' }, approx('Every dollar and millisecond here is a sensible real-world approximation, not a quote.')));
   const checkpoint = renderCorrectness(problem?.correctness, correctnessAnswer, completion);
   if (checkpoint) root.append(checkpoint);
@@ -430,7 +490,11 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
 
   // 5: what happened
   stories.append(h('h3', { text: 'What happened' }));
-  if (!(result.events || []).length) stories.append(h('p', { class: 'pl-muted', text: 'No events hit this day. Smooth traffic is the easy part.' }));
+  if (!(result.events || []).length) {
+    const busy = busiestPart(result, catalog);
+    stories.append(h('p', { class: 'pl-muted', text: 'No events hit this day. Smooth traffic is the easy part.' }));
+    if (result.passed && busy) stories.append(h('p', { class: 'pl-muted pl-held', text: `Everything held. The busiest part was ${busy.name}, at ${busyWords(busy.m.peakUtil)} busy at its peak.` }));
+  }
   (result.events || []).forEach((ev, i) => stories.append(eventStory(ev, i, result, catalog, demanding)));
   root.append(stories);
   const evidence = root.querySelector('.pl-sec:has(.pl-tl)');
@@ -442,7 +506,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
   const details = h('details', { class: 'pl-score-details' }, h('summary', { text: 'Score details and calculations' }), cards);
   root.querySelector('.pl-learn')?.after(details);
   if (!details.isConnected) root.append(details);
-  if (!result.passed) { const row = root.querySelector('.pl-score-row'); if (row) details.append(row); summary.append(h('p', { class: 'pl-small pl-muted', text: `Traffic score: ${Math.round(sc.total).toLocaleString('en-US')} / 1,000. Full score details below.` })); }
+  if (!result.passed && !warm) { const row = root.querySelector('.pl-score-row'); if (row) details.append(row); summary.append(h('p', { class: 'pl-small pl-muted', text: `Traffic score: ${Math.round(sc.total).toLocaleString('en-US')} / 1,000. Full score details below.` })); }
 
   // 6: trade-offs
   const tr = h('section', { class: 'pl-sec' }, h('h3', { text: 'Trade-offs you made' }));

@@ -31,7 +31,7 @@ const sim = createSim({ catalog: createCatalog(Object.fromEntries(data)), proble
 const specs = intro.steps[0].beats.filter(b => b.waitFor).map(b => b.waitFor);
 const ready = () => specs.every(spec => introPathHolds(sim.getGraph(), spec));
 const lb = sim.addNode('regional-lb', 0, 100), cache = sim.addNode('cache', 100, 100);
-sim.setKnob('app', 'units', 3);
+sim.setKnob('app', 'units', 5);
 sim.setKnob('app', 'autoscale', { on: true });
 assert.equal(ready(), false, 'Clicking loose parts must not unlock victory');
 for (const [from, mid, to] of [['users', lb, 'app'], ['app', cache, 'db']]) {

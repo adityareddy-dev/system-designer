@@ -40,7 +40,7 @@ const effectFact = ({op,params:p}, catalog) => {
     const types = p.types?.map(id => catalog.requestById.get(id)?.name || id);
     out.push(`${types ? 'Traffic for ' + types.join(', ') : 'Traffic'} reaches ${num(p.factor)} times the scheduled load; rises over ${num(p.rampSec)} seconds, holds for ${num(p.holdSec)} seconds and eases over ${num(p.decaySec)} seconds.${types ? ' Other request types keep their scheduled load.' : ''}`);
   }
-  if (op==='attack') out.push(`Extra attack traffic is ${num(p.factorOfPeak)} times the configured peak.`);
+  if (op==='attack') out.push(`Extra attack traffic is ${p.factorOfPeak === 1 ? 'equal to' : p.factorOfPeak === 0.5 ? 'half of' : num(p.factorOfPeak) + ' times'} the configured peak.`);
   if (op==='fail' && p.errorRate != null) out.push(`Failed calls: ${pct(p.errorRate)}.`);
   if (op==='fail' && p.addLatencyMs != null) out.push(`Added response time: ≈ ${num(p.addLatencyMs)} ms.`);
   if (['fanout','costMultiplier','capacity'].includes(op)) out.push(`${op==='fanout' ? 'Work' : op==='costMultiplier' ? 'Billed usage' : 'Available capacity'} multiplier: ${num(p.factor)}.`);
@@ -51,7 +51,7 @@ const effectFact = ({op,params:p}, catalog) => {
   if (p.rpsCapFactor != null) out.push(`Provider capacity falls to ${pct(p.rpsCapFactor)} of its configured quota.`);
   if (p.lagSec != null) out.push(`Copy lag: ≈ ${num(p.lagSec)} seconds.`);
   if (p.recoverSec != null) out.push(`Recovery window: ≈ ${num(p.recoverSec)} seconds.`);
-  if (p.durationSec != null) out.push(p.durationSec === 'untilFixed' ? 'Lasts until detected and repaired.' : `Duration: ≈ ${num(p.durationSec)} seconds.`);
+  if (p.durationSec != null) out.push(p.durationSec === 'untilFixed' ? 'Lasts until detected and repaired.' : `${op === 'retryAmplify' ? 'Retries keep adding load for' : op === 'fail' ? 'The failure lasts' : 'Duration:'} ≈ ${num(p.durationSec)} seconds.`);
   return out.join(' ');
 };
 // Quantities belong to the merged effect facts, not the catalog's default story.

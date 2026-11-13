@@ -18,7 +18,7 @@ export default {
       "figure": "requests-and-latency",
       "view": "main",
       "title": "p50 and p99",
-      "text": "Move the two slow waits and compare p50 with p99. The number of requests on a page changes how often someone meets a slow answer."
+      "text": "p50 is the typical wait: half of requests are faster than it. p99 is the slow end: 1 request in 100 is slower than it. Move the two slow waits and compare p50 with p99. The number of requests on a page changes how often someone meets a slow answer."
     },
     {
       "kind": "demo",

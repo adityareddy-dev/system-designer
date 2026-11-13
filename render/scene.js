@@ -218,6 +218,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const n = 40;
     for (let i = 0; i < n; i += 2) {
       const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2;
+      // The part's name sits right under it: the dashes leave that stretch of the ring open so none cross the text.
+      const mid = (a0 + a1) / 2;
+      if (Math.abs(mid - Math.PI / 2) < 0.9) continue;
       portRing.moveTo(Math.cos(a0) * PORT_R, Math.sin(a0) * PORT_R).arc(0, 0, PORT_R, a0, a1);
     }
     portRing.stroke({ width: ringHot ? 3 : 2.5, color: P.blue, cap: 'butt' });

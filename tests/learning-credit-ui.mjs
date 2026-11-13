@@ -13,10 +13,10 @@ const click = text => page.evaluate(text => { const el = [...document.querySelec
 const p = problemById.get('search-autocomplete');
 const gates = async () => {
   if (await page.$('.pl-modal:not([hidden]) .pl-design-check')) await page.evaluate(t => {
-    const f = document.querySelector('.pl-design-check'); f.querySelectorAll('.sh-choice')[t.answer].click(); f.querySelector('input').value = t.value;
+    const f = document.querySelector('.pl-design-check'); if (f.querySelector('input')) { f.querySelectorAll('.sh-choice')[t.answer].click(); f.querySelector('input').value = t.value; }
     f.querySelector('textarea').value = 'Queue delay and duplicate effects need separate checks under the changed traffic conditions.'; f.requestSubmit();
   }, checkFor(p));
-  await page.waitForSelector('.pl-modal:not([hidden]) .pl-checkpoint');
+  if (!(await page.waitForSelector('.pl-modal:not([hidden]) .pl-checkpoint', { timeout: 3000 }).catch(() => null))) return;
   await page.evaluate(choices => { const f = document.querySelector('.pl-checkpoint'); f.querySelectorAll('select').forEach((e,i) => e.value = choices[i]); f.querySelector('input').value = 'Fence ownership, reuse the occurrence key and park permanent failure with a controlled replay policy.'; f.requestSubmit(); }, p.correctness.fields.map(f => f.correct));
 };
 try {
@@ -38,7 +38,8 @@ try {
   await page.waitForSelector('.pl-learning-status');
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /trace is still open/);
   assert.equal(await page.$('.pl-victory'), null);
-  assert.match(await page.$eval('.sh-toast', e => e.textContent), /Traffic passed.*trace is still open/);
+  // The debrief states the open trace in full; no second toast repeats it.
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('.sh-toast')].some(e => /trace/.test(e.textContent))), false);
   await click('Retry'); await click('Start day'); await gates();
   await page.evaluate(() => window.__game.step(86400000));
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /responsibility trace passed/);

@@ -1,9 +1,9 @@
 // One vocabulary for saved progress and the current run's learning credit.
-import { checkpointCorrect } from './correctness.js';
+import { checkpointCorrect, checkpointOwed } from './correctness.js';
 export function completionState(problem = {}, result = {}, answer, saved = {}) {
   saved ||= {};
   const credit = result.learning || {};
-  const traceChecked = credit.traceChecked ?? (!problem.correctness || checkpointCorrect(problem.correctness, answer));
+  const traceChecked = credit.traceChecked ?? (!checkpointOwed(problem) || checkpointCorrect(problem.correctness, answer));
   const assisted = !!credit.assisted;
   let key = 'new', label = 'New', message = 'Finish a traffic day to check this design.';
   if (saved.attempts) { key = 'tried'; label = 'Tried'; }
@@ -11,7 +11,7 @@ export function completionState(problem = {}, result = {}, answer, saved = {}) {
   if (saved.learning?.assistedAt) { key = 'assisted'; label = 'Passed with assistance'; }
   if (result.passed) {
     key = 'checked'; label = assisted ? 'Passed with assistance' : 'Traffic passed'; message = 'Traffic and responsibility trace passed. Next: pass New twist without hints for full mastery.';
-    if (!traceChecked) { key = 'trace-open'; message = 'Traffic passed, but the central responsibility trace is still open. Complete it on your next run before a clean sweep or mastery counts.'; }
+    if (!traceChecked) { key = 'trace-open'; message = answer ? 'Traffic passed, but the responsibility trace answer was not right. Check it against the debrief. It will be asked again on your next run.' : 'Traffic passed, but the central responsibility trace is still open. Complete it on your next run before a clean sweep or mastery counts.'; }
     else if (credit.needsOriginal) { key = 'needs-original'; message = 'Traffic and trace passed on the twist. Pass the original day with its trace first, then return for an unhinted twist to earn full mastery.'; }
     else if (problem.twistDay && !credit.independentTwist) { key = 'twist-assisted'; message = 'Traffic and trace passed, but this twist used help. Retry the twist without hints or worked repairs for full mastery.'; }
     else if (assisted) { key = 'assisted'; label = 'Passed with assistance'; message = 'Traffic passed with assistance. Your trace is checked. Next: pass New twist with no hints for full mastery.'; }

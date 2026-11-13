@@ -1,9 +1,8 @@
 // App shell: top bar, section navigation, route to view switching, toasts, progress wiring.
 import { metrics } from '../../core/metrics.js';
 import { h, ico, clear, lessonOf } from './dom.js';
-import { setOverlayHost, toast, closeAllModals } from './overlay.js';
+import { setOverlayHost, toast, clearToasts, closeAllModals } from './overlay.js';
 import { transitionScreen } from './motion.js';
-import { completionState } from '../play/completion.js';
 import { isPlayRoute } from '../../account/config.js';
 
 const TABS = [
@@ -224,6 +223,7 @@ export function mountShell(rootEl, ctx) {
     if ((signedIn && view?.gate) || (!signedIn && view && !view.gate && viewId !== null)) show(r, { force: true, focus: false });
   }));
   offs.push(bus.on('toast', (t) => toast(t)));
+  offs.push(bus.on('toast:clear', () => clearToasts()));
   offs.push(bus.on('lesson:done', ({ lessonId }) => { if (lessonId) ctx.progress.lessonDone(lessonId); }));
   offs.push(bus.on('play:day-end', (e) => onDayEnd(e)));
 
@@ -231,8 +231,8 @@ export function mountShell(rootEl, ctx) {
     if (!result) return;
     if (mode === 'practice' && problemId) {
       const r = ctx.progress.record(problemId, result, hintsUsed || 0);
-      const completion = completionState(ctx.content.problemById.get(problemId), result, null, ctx.progress.get(problemId));
-      if (result.passed && result.learning && (!result.learning.traceChecked || result.learning.assisted)) toast({ text: completion.message, level: 'info' });
+      // An open trace or an assisted pass is explained in full on the debrief, so no second message pops up here.
+      if (result.passed && result.learning && (!result.learning.traceChecked || result.learning.assisted)) { /* the debrief says it */ }
       else if (r.first && (result.stars || 0) > 0) toast({ text: `Solved with ${result.stars || 0} star${result.stars === 1 ? '' : 's'}. Nicely done.`, level: 'ok', ms: 4200 });
       else if (r.improved && r.previousBest != null && (result.stars || 0) > 0) toast({ text: 'New personal best on this problem.', level: 'ok' });
     }

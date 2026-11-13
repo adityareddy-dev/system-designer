@@ -17,14 +17,14 @@ import { createToolbar } from './toolbar.js';
 import { createInspector } from './inspector.js';
 import { createHud } from './hud.js';
 import { createHints } from './hints.js';
-import { renderDebrief } from './debrief.js';
+import { renderDebrief, predictionVerdict } from './debrief.js';
 import { renderEditorial } from './editorial.js';
 import { createTrafficPanel, DEFAULT_TRAFFIC, trafficInput } from './traffic-panel.js';
 import { queueDrainAdvice } from './lesson-queue.js';
 import { createRouteTrace } from './route-trace.js';
 import { learningCredit } from './mastery.js';
 import { previewLimits } from './capacity-preview.js';
-import { renderCheckpointForm } from './correctness.js';
+import { renderCheckpointForm, checkpointCorrect } from './correctness.js';
 import { introPathHolds, repairInsertion } from './intro-path.js';
 import { showVictory } from './victory.js';
 import { carryRunIntoReport } from './run-transition.js';
@@ -114,13 +114,19 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const kbLive = h('div', { class: 'pl-sr', 'aria-live': 'polite' });
   const skip = h('button', { class: 'pl-skip', type: 'button', onClick: () => kb.focus() }, 'Skip to the diagram');
   if (interview) root.dataset.interview = 'true';
-  root.append(skip, stage, kb, kbLive, scrim, top, left, right, panel, issuesBox, goalChip, caption, slowNote, menu, debriefWrap, editorialWrap, modal);
+  const looseNote = h('div', { class: 'pl-loose', hidden: '', role: 'status' });
+  root.append(skip, stage, kb, kbLive, scrim, top, left, right, panel, issuesBox, goalChip, caption, slowNote, looseNote, menu, debriefWrap, editorialWrap, modal);
   hostEl.append(root);
 
   // ---- scene
   const scene = await createScene(stage, { catalog, palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
   const routeTrace = createRouteTrace(root, catalog, scene);
-  function refreshTrace() { routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && !interview && S.step === 'draw' && S.sim?.phase === 'build', adviceReady() && (mode !== 'practice' || S.problem?.difficulty === 'Easy')); }
+  let traceOptBtn = null;
+  function refreshTrace() {
+    routeTrace.update(S.sim, S.problem?.requirements?.mix, !isLesson && !interview && S.step === 'draw' && S.sim?.phase === 'build', adviceReady() && (mode !== 'practice' || S.problem?.difficulty === 'Easy'));
+    // on a phone the trace folds into the Diagram tools list while it is shut, so it does not take a row of the canvas
+    if (traceOptBtn) traceOptBtn.hidden = !!root.querySelector('.pl-trace')?.hidden;
+  }
 
   // ---- sim
   function makeSim(problem, graph) {
@@ -179,10 +185,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     else { inspector.refresh(); if (S.selected) inspector.update(S.sim.state().nodes.find(n => n.id === S.selected)); }
     if (isPhone() && S.selected) showFocusMap(S.selected, true);
     syncUndoButtons();
+    syncLoose();
     releaseHold();
   }
   function releaseHold() {
     if (!S.hold || !S.booted || S.destroyed) return;
+    // a part that is on no line would make the day run without it: the day waits until it is placed or the player presses Run
+    if (mode === 'lesson' && looseNode()) return;
     if (isLesson && !ctx.reducedMotion()) {
       if (S.releasePending) return;
       S.releasePending = true;
@@ -230,7 +239,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.nodeStates = S.sim.state().nodes;
     try { scene.setValidation(issues); } catch { /* render optional */ }
     let sizes = []; try { sizes = riskyIssues().filter((i) => i.fix); } catch { /* optional */ }
-    hud.setBuild(est, diagnosticIssues(), interview ? [] : sizes, { advice: !interview && adviceReady(), limits: previewLimits(S.problem, graph(), est, catalog) });
+    hud.setBuild(est, diagnosticIssues(), interview ? [] : sizes, { advice: !interview && adviceReady(), limits: previewLimits(S.problem, graph(), est, catalog), targets: S.problem?.requirements });
     paintIssues();
     let overview = root.querySelector('.pl-overview');
     if (!overview) { overview = h('div', { class: 'pl-overview' }); root.append(overview); }
@@ -241,9 +250,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         const g = graph(), nodeIds = [id, ...g.edges.filter(e => e.kind === 'flow' && (e.from === id || e.to === id)).flatMap(e => [e.from,e.to])];
         const a = freeArea(); scene.fit({ l: 36, r: 36, t: a.t + 28, b: a.b + 32 }, true, { nodeIds, minZ: .55, maxZ: .9 });
       } }, h('option', { value: '', text: 'Inspect a branch…' }), graph().nodes.map(n => h('option', { value: n.id, text: `${n.id} · ${catalog.elementById.get(n.type)?.name || n.type}` })));
-      overview.replaceChildren(cameraMap(), choose, h('button', { class: 'pl-btn', type: 'button', onClick: () => { select(null); fitAll(); }, text: 'Fit all' }));
+      overview.replaceChildren(...(graph().nodes.length > 1 ? [cameraMap()] : []), choose, h('button', { class: 'pl-btn', type: 'button', onClick: () => { select(null); fitAll(); }, text: 'Fit all' }));
     }
-    overview.hidden = !isPhone();
+    // a handful of parts is all in view: the strip (map, branch picker, Fit all) is for bigger diagrams, and Fit is in the tools row
+    overview.hidden = !isPhone() || graph().nodes.length < 6;
     updateCameraMap();
     refreshTrace();
   }
@@ -332,19 +342,26 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!list.length) { issuesBox.hidden = true; return; }
     issuesBox.append(h('div', { class: 'pl-issues-h' }, iconEl('ui.warn', 16), h('b', { text: 'Heads up' }),
       h('button', { class: 'pl-icon-btn', type: 'button', 'aria-label': 'Hide', onClick: () => { issuesBox.hidden = true; } }, iconEl('ui.close', 16))));
+    const rows = h('div', { class: 'pl-issues-list' });
     list.slice(0, 10).forEach((i) => {
-      const row = h('button', { class: 'pl-issue pl-issue--' + i.level, type: 'button', onClick: () => i.nodeId && select(i.nodeId) }, iconEl(i.level === 'error' ? 'ui.error' : i.level === 'warn' ? 'ui.warn' : 'ui.info', 14), i.message);
-      if (!i.fix) { issuesBox.append(row); return; }
+      const row = h('button', { class: 'pl-issue pl-issue--' + i.level, type: 'button', onClick: () => i.nodeId && select(i.nodeId) }, iconEl(i.level === 'error' ? 'ui.error' : i.level === 'warn' ? 'ui.warn' : 'ui.info', 14), h('span', { class: 'pl-issue-msg', text: i.message }));
+      if (!i.fix) { rows.append(row); return; }
       const apply = h('button', { class: 'pl-issue-fix', type: 'button', 'aria-label': i.fix.label, onClick: () => applySizeFix(i.fix) }, i.fix.label);
-      issuesBox.append(h('div', { class: 'pl-issue-wrap' }, row, apply));
+      rows.append(h('div', { class: 'pl-issue-wrap' }, row, apply));
     });
+    issuesBox.append(rows);
   }
 
   // ---- visible canvas area (the parts of the stage not covered by panels)
   const isPhone = () => !!globalThis.matchMedia?.('(max-width: 719px)').matches;
+  // r4-lesson: a page that is scaled up with CSS zoom (lessons on a big screen) reports rectangles in screen pixels while the
+  // canvas and its camera work in the page's own pixels. Every measurement here is brought into the canvas's pixels.
+  const stageScale = () => { const w = stage.getBoundingClientRect().width; return w > 0 && stage.clientWidth > 0 ? w / stage.clientWidth : 1; };
+  const inStage = (b, k = stageScale()) => ({ left: b.left / k, top: b.top / k, right: b.right / k, bottom: b.bottom / k, width: b.width / k, height: b.height / k });
   function freeArea() {
-    const r = stage.getBoundingClientRect();
-    const box = (el) => (el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null);
+    const k = stageScale();
+    const r = inStage(stage.getBoundingClientRect(), k);
+    const box = (el) => (el && !el.hidden && el.offsetParent ? inStage(el.getBoundingClientRect(), k) : null);
     let l = 0, t = 0, rr = 0, b = 0;
     // a small panel in a corner (a folded card, the Add component button) covers only itself, not a band of the canvas
     const blocks = [];
@@ -368,11 +385,18 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (hb) b = Math.max(b, r.bottom - hb.top);
       const goalBox = box(goalChip);
       if (goalBox) t = Math.max(t, goalBox.bottom - r.top + 8);
+      const bannerBox = isLesson ? box(bannerEl()) : null;
+      if (bannerBox) t = Math.max(t, bannerBox.bottom - r.top + 8);
       const lb = box(toolbar.el);
       // a folded parts list that is only a button (small tablets) takes a corner of the top, not the whole left side
       if (lb && lb.width && lb.height < r.height * 0.3) corner(lb);
       else if (lb && lb.width) l = Math.max(l, lb.right - r.left);
+      // r4-lesson: the Heads up box and the note beside a loose part are not free canvas either
+      const ib = box(issuesBox);
+      if (isLesson && ib) corner(ib);
       if (isLesson) { const cb = box(caption); if (cb) b = Math.max(b, r.bottom - cb.top + 12); }
+      // r4-lesson: the note under a part that is on no line keeps its own room below the diagram
+      if (isLesson) { const nb = box(looseNote); if (nb) b += nb.height + 16; }
       const rightKids = [...right.children].map(box).filter(Boolean);
       // a short stack of panels (a folded traffic panel) only takes the top corner; a tall one takes the whole right side
       const rightLow = rightKids.length ? Math.max(...rightKids.map((x) => x.bottom)) - r.top : 0;
@@ -480,7 +504,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const w = scene.screenToWorld(cx, cy);
     // a tap places the part in the nearest free spot; on a phone the settings sheet stays closed so the part is visible
     const id = placeComponent(type, w.x, w.y, null, { select: !isPhone(), autoPlace: true });
-    if (id) { announce(`${catalog.elementById.get(type)?.name || type} placed. Press C on the diagram to connect it.`);  }
+    if (id) { announce(`${catalog.elementById.get(type)?.name || type} placed. ${isCoarse() ? 'Tap it, then Connect to…, to wire it.' : 'Press C on the diagram to connect it.'}`);  }
     return id;
   }
 
@@ -521,7 +545,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         later(() => { if (!S.destroyed && !S.connectFrom) { try { scene.reveal(x, y, insets, { l: edge, r: edge, t: 36 * zoom + 44, b: 36 * zoom + 56 }); } catch { /* optional */ } } }, 60);
         return;
       }
-      if (sp.x < a.l + 30 || sp.x > a.w - a.r - 30 || sp.y < a.t + 30 || sp.y > a.h - a.b - 30) later(() => {
+      // the part, its name under it and a little air must sit clear of the sheet and the bars
+      const zoom = scene.worldToScreen(1, 0).x - scene.worldToScreen(0, 0).x, half = 36 * zoom;
+      if (sp.x - half < a.l + 4 || sp.x + half > a.w - a.r - 4 || sp.y - half < a.t + 4 || sp.y + half + 28 > a.h - a.b - 6) later(() => {
         if (S.destroyed || S.connectFrom || performance.now() < (S.editUntil || 0)) return;
         if (S.selected) {
           const area = freeArea();
@@ -563,7 +589,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       commit();
       snd('place', { category: el.category });
       note('place', type);
-      if (!edgeId && !opt.autoPlace) showCaption('Placed here. Select the part and use "Connect to…" to wire it. Drag it to leave room for its name.', 7000);
+      if (!edgeId && !opt.autoPlace && mode !== 'lesson') showCaption('Placed here. Select the part and use "Connect to…" to wire it. Drag it to leave room for its name.', 7000);
       if (opt.select !== false && mode !== 'lesson') { select(id); if (isLesson && isPhone()) setTimeout(() => { if (S.selected === id) select(null); }, 1400); }
       connectCoach(id, el);
       revealIfHidden(at.x, at.y);
@@ -601,6 +627,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function connectCoach(id, el) {
     if (opts.lesson?.id === 'replication-lag' && el.id === 'sql-replica') { showCaption(replicaWiringAdvice); return; }
     if (waiters.some(w => w.spec.path && w.spec.type === el.id)) { S.insertionRetry?.(); return; }
+    if (mode === 'lesson') { syncLoose(); return; }
     const g = graph();
     if (g.edges.some((e) => e.from === id || e.to === id)) return;
     if (!isLesson && (connectTipShown || store.get('seenConnectHandle', false))) return;
@@ -610,6 +637,76 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const touch = isPhone() || !!globalThis.matchMedia?.('(pointer: coarse)').matches;
     showCaption((touch ? `${lessonTip} Tap the part, then "Connect to…", then tap the next part.` : `${lessonTip} Drag from the arrow dot on a part's edge to the next part, or select it and press "Connect to…".`).trim(), 7000);
   }
+  // r4-lesson: a part that is on no line is named right beside it, with the fix, so a day is never run by accident without it.
+  let looseKey = '', looseAt = '';
+  const looseNode = () => { const g = graph(); return g.nodes.find((n) => !n.locked && !g.edges.some((e) => e.from === n.id || e.to === n.id)) || null; };
+  function lineFor(n) {
+    const g = graph(), w = S.problem?.goal?.between;
+    const ids = (k) => g.nodes.filter((q) => q.id === k || q.type === k).map((q) => q.id);
+    const fits = g.edges.filter((e) => canSplice(n.type, e.id));
+    if (!fits.length) return null;
+    const at = new Map(g.nodes.map((q) => [q.id, q]));
+    const dist = (e) => Math.hypot((at.get(e.from).x + at.get(e.to).x) / 2 - n.x, (at.get(e.from).y + at.get(e.to).y) / 2 - n.y);
+    const asked = w ? fits.filter((e) => ids(w.from).includes(e.from) && ids(w.to).includes(e.to)) : [];
+    return (asked.length ? asked : fits).sort((a, b) => dist(a) - dist(b))[0];
+  }
+  function putOnLine(id) {
+    const n = graph().nodes.find((q) => q.id === id);
+    const e = n && lineFor(n);
+    if (!e) { toast('No line fits this part. Select it and press "Connect to…".', 'warn'); return; }
+    const at = new Map(graph().nodes.map((q) => [q.id, q]));
+    const a = at.get(e.from), b = at.get(e.to);
+    try { S.sim.removeNode(id); } catch { return; }
+    placeComponent(n.type, (a.x + b.x) / 2, (a.y + b.y) / 2, e.id);
+  }
+  function syncLoose() {
+    const n = mode === 'lesson' && !S.destroyed ? looseNode() : null;
+    if (!n) {
+      if (!looseNote.hidden) { looseNote.hidden = true; refitForNote(); }
+      // the part is on the line now: the warning that it was not is out of date
+      if (S.looseAck) for (const t of document.querySelectorAll('.sh-toast')) if ((t.dataset.text || '').includes('so the day would run without it')) t.remove();
+      looseKey = ''; S.looseAck = false; return;
+    }
+    const line = lineFor(n);
+    const key = `${n.id}|${line ? line.id : ''}|${isCoarse()}`;
+    if (key !== looseKey) {
+      looseKey = key; looseAt = '';
+      const w = S.problem?.goal?.between;
+      const asked = w && (w.type === n.type || (w.types || []).includes(n.type));
+      const where = asked ? ` on the line between ${plainName(w.from)} and ${plainName(w.to)}` : ' on a line';
+      const how = isCoarse() ? `Tap "Put it on the line"${asked ? ` between ${plainName(w.from)} and ${plainName(w.to)}` : ''}.` : `Drop it${where}.`;
+      looseNote.replaceChildren(
+        h('span', { class: 'pl-loose-t' }, h('b', { text: `${nameOf(n.id)} is not connected.` }), ` The day would run without it. ${line ? how : 'Select it and press "Connect to…".'}`),
+        ...(line ? [h('button', { class: 'pl-btn pl-btn--primary', type: 'button', onClick: () => putOnLine(n.id) }, 'Put it on the line')] : []));
+    }
+    const wasHidden = looseNote.hidden;
+    looseNote.hidden = false;
+    if (wasHidden) refitForNote();
+    placeLoose(n);
+  }
+  let noteFitT = 0;
+  function refitForNote() {
+    clearTimeout(noteFitT); timers.delete(noteFitT);
+    noteFitT = later(() => { if (!S.destroyed && S.booted && !S.viewManual && !S.connectFrom && isLesson) { try { syncHud(); } catch { /* not laid out yet */ } fitView(true); } }, 120);
+  }
+  // Under the part and its name; above it when there is no room below, beside it when there is none above.
+  function placeLoose(n) {
+    try {
+      const k = stageScale(), z = Math.min(2, Math.max(1, parseFloat(globalThis.getComputedStyle(root).getPropertyValue('--z')) || 1));
+      const p = scene.worldToScreen(n.x, n.y), cz = scene.worldToScreen(1, 0).x - scene.worldToScreen(0, 0).x;
+      const box = inStage(looseNote.getBoundingClientRect(), k), a = freeArea();
+      const W = stage.clientWidth, H = stage.clientHeight, half = 36 * cz, gap = 12;
+      let x = Math.min(Math.max(p.x - box.width / 2, 8), Math.max(8, W - box.width - 8)), y = p.y + half + gap + Math.max(22, 38 * cz);
+      // the free area already keeps this note's own room below the diagram, so the limit is the status bar's top
+      if (y + box.height > H - (a.b - box.height - 16) + 4) {
+        y = p.y - half - gap - box.height;
+        if (y < a.t) { x = Math.min(p.x + half + 96 * cz, Math.max(8, W - box.width - 8)); y = Math.min(Math.max(p.y - box.height / 2, a.t), H - a.b - box.height); }
+      }
+      const at = `translate(${(x / z).toFixed(1)}px, ${(y / z).toFixed(1)}px)`;
+      if (at !== looseAt) { looseAt = at; looseNote.style.transform = at; }
+    } catch { /* optional */ }
+  }
+  offs.push(scene.onFrame(() => { if (!looseNote.hidden) { const n = looseNode(); if (n) placeLoose(n); } }));
   // Side calls return to the caller and keep its delivery route.
   function spliceInto(id, type, edgeId) {
     const plan = wiringFor(type, edgeId);
@@ -635,9 +732,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     snd('ui.tap', { intensity: 0.4 });
     note('knob', { knob, nodeId, value: knob === 'units' ? Number(value) : value });
   }
+  // Help that counts as assistance, with the plain reason the debrief shows.
+  function assist(why) { S.workedRepair = true; (S.assistWhy ||= []).includes(why) || S.assistWhy.push(why); }
   // One tap from a heads-up: more units, and a higher autoscale floor when autoscaling is on.
   function applySizeFix(fix) {
-    if (S.problem.difficulty === 'Easy') S.workedRepair = true;
+    if (S.problem.difficulty === 'Easy') assist('you used the one-click fix');
     if (interview) return;
     const n = graph().nodes.find((x) => x.id === fix.nodeId);
     if (!n) return;
@@ -705,7 +804,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     } catch { return null; }
   }
   function loadDesign(design, { run = false } = {}) {
-    S.workedRepair = true;
+    assist('you loaded the editorial design');
     closeEditorial();
     if (S.sim.phase !== 'build' && resetToDraw() === false) return;
     S.sim.loadGraph(designToGraph(design));
@@ -742,7 +841,9 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const g = graph(), minX = Math.min(...g.nodes.map(n => n.x))-70, minY = Math.min(...g.nodes.map(n => n.y))-70;
     const width = Math.max(...g.nodes.map(n => n.x))-minX+70, height = Math.max(...g.nodes.map(n => n.y))-minY+100;
     const byId = new Map(g.nodes.map(n => [n.id,n]));
-    button.innerHTML = `<svg viewBox="${minX} ${minY} ${width} ${height}" aria-hidden="true"><g fill="none" stroke="var(--edge-idle)" stroke-width="8">${g.edges.map(e => { const a=byId.get(e.from),b=byId.get(e.to); return a&&b?`<path d="M${a.x} ${a.y}L${b.x} ${b.y}"/>`:''; }).join('')}</g>${g.nodes.map(n=>`<rect x="${n.x-22}" y="${n.y-22}" width="44" height="44" rx="6" fill="var(--accent)"/>`).join('')}<rect class="pl-camera-window" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+    // Parts and wires are drawn big enough to read at 64 by 44 pixels: a part is about an eighth of the longer side.
+    const unit = Math.max(44, Math.max(width, height) / 8), half = unit / 2;
+    button.innerHTML = `<svg viewBox="${minX} ${minY} ${width} ${height}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g class="pl-cm-wires" stroke-width="${unit / 5}">${g.edges.map(e => { const a=byId.get(e.from),b=byId.get(e.to); return a&&b?`<path d="M${a.x} ${a.y}L${b.x} ${b.y}"/>`:''; }).join('')}</g>${g.nodes.map(n=>`<rect class="pl-cm-part" x="${n.x-half}" y="${n.y-half}" width="${unit}" height="${unit}" rx="${unit / 6}" stroke-width="${unit / 12}"/>`).join('')}<rect class="pl-camera-window" vector-effect="non-scaling-stroke"/></svg>`;
     return button;
   }
   function updateCameraMap() {
@@ -750,6 +851,20 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const a = freeArea(), p = scene.screenToWorld(a.l, a.t), q = scene.screenToWorld(a.w-a.r, a.h-a.b);
     for (const [key,value] of Object.entries({ x:p.x,y:p.y,width:q.x-p.x,height:q.y-p.y })) rect.setAttribute(key,value);
   }
+  // The red badge on a part is a warning, not a Delete button: hovering it says what is wrong.
+  const badgeTip = (e) => {
+    let tip = '';
+    try {
+      if (S.issues?.length && !e.buttons) {
+        const r = stage.getBoundingClientRect(), w = scene.screenToWorld(e.clientX - r.left, e.clientY - r.top);
+        const n = graph().nodes.find((n) => Math.abs(w.x - (n.x + 29)) < 11 && Math.abs(w.y - (n.y - 29)) < 11);
+        const hit = n && S.issues.find((i) => i.nodeId === n.id && i.level === 'error');
+        if (hit) tip = /no route|not connected|no connection/i.test(hit.message) ? 'Not connected. ' + hit.message : hit.message;
+      }
+    } catch { /* a tooltip is a nicety */ }
+    if (stage.title !== tip) stage.title = tip;
+  };
+  stage.addEventListener('pointermove', badgeTip);
   offs.push(scene.on('view', updateCameraMap));
   offs.push(scene.on('view:manual', () => { S.viewManual = true; }));
   function showFocusMap(id, refresh = false) {
@@ -783,25 +898,16 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function syncFocusMap() {
     const map = root.querySelector('.pl-focus-map');
     if (!map || !isPhone()) return;
-    const r = root.getBoundingClientRect();
-    let top = hud.el.getBoundingClientRect().bottom;
-    for (const el of [caption, goalChip]) {
-      if (!el.hidden && el.offsetParent) top = Math.max(top, el.getBoundingClientRect().bottom);
-    }
-    map.classList.remove('is-compact');
-    if (map.parentElement !== root) root.append(map);
-    const bottom = parseFloat(getComputedStyle(right).bottom) || 0;
-    const compact = r.bottom - bottom - (top + 10 + map.offsetHeight + 8) < 148;
-    root.style.setProperty('--pl-focus-top', Math.ceil(top - r.top + 10) + 'px');
-    root.style.setProperty('--pl-focus-end', Math.ceil(top - r.top + 10 + map.offsetHeight + 8) + 'px');
-    if (compact) { map.classList.add('is-compact'); right.prepend(map); }
+    // the map and its button sit in the sheet column, in one row, so they never cover the diagram the sheet is about
+    if (!map.classList.contains('is-compact')) map.classList.add('is-compact');
+    if (map.parentElement !== right || right.firstElementChild !== map) right.prepend(map);
   }
   function startConnect(from) {
     S.connectFrom = from;
     // Clear the target area and stop any fit already moving the phone diagram.
     scene.stopCamera();
     root.classList.add('pl-connecting');
-    showCaption('Now tap the part it should send requests to. Esc cancels.', 0);
+    showCaption(isCoarse() ? 'Now tap the part it should send requests to. Tap empty space to cancel.' : 'Now tap the part it should send requests to. Esc cancels.', 0);
   }
   function cancelModes() {
     S.connectFrom = null; root.classList.remove('pl-connecting');
@@ -902,8 +1008,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   stage.addEventListener('pointermove', (ev) => {
     const armed = toolbar.armed();
     if (!armed || ev.pointerType === 'touch') return;
-    const r = stage.getBoundingClientRect();
-    const w = scene.screenToWorld(ev.clientX - r.left, ev.clientY - r.top);
+    const r = stage.getBoundingClientRect(), k = stageScale();
+    const w = scene.screenToWorld((ev.clientX - r.left) / k, (ev.clientY - r.top) / k);
     try { scene.setGhost(armed, w.x, w.y); } catch { /* optional */ }
   });
 
@@ -911,7 +1017,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     menu.replaceChildren();
     items.forEach(([label, fn, ic]) => menu.append(h('button', { class: 'pl-menu-b', type: 'button', role: 'menuitem', onClick: () => { closeMenu(); fn(); } }, iconEl(ic, 16), label)));
     menu.hidden = false;
-    const r = stage.getBoundingClientRect();
+    const r = inStage(stage.getBoundingClientRect());
     const x = pos ? clamp(pos.x, 8, r.width - 190) : r.width / 2 - 90;
     const y = pos ? clamp(pos.y, 8, r.height - 150) : r.height / 2 - 40;
     menu.style.transform = `translate(${x}px, ${y}px)`;
@@ -926,6 +1032,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const touchWords = (t) => (isCoarse()
     ? String(t).replace(/\bDrag (?:the |a |an )?(.+?) (?:onto|to|into) the line\b/i, (m, part) => `Tap the ${part.toLowerCase()}, then tap the line`)
         .replace(/\bDrag (?:the |a |an )?(.+?) between\b/i, (m, part) => `Tap the ${part.toLowerCase()}, then tap the line between`)
+        .replace(/ \(or click it, then click the line\)/, '')
     : t);
   function showCaption(text, ms = 0, actions = []) {
     text = touchWords(text);
@@ -955,6 +1062,28 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     };
     tick();
     return () => { stopped = true; try { inspector.setFocus(null); } catch { /* gone */ } right.querySelectorAll('.pl-knob--point').forEach((n) => n.classList.remove('pl-knob--point')); };
+  }
+
+  // r4-lesson: a soft ring on the part of the diagram that the tip is talking about (the parts list is for parts not placed yet)
+  function pointAtPart(type) {
+    const ring = h('div', { class: 'pl-point', 'aria-hidden': 'true' });
+    root.append(ring);
+    let at = '';
+    const place = () => {
+      const n = graph().nodes.find((q) => q.type === type);
+      if (!n) { ring.hidden = true; return; }
+      ring.hidden = false;
+      try {
+        const p = scene.worldToScreen(n.x, n.y), cz = scene.worldToScreen(1, 0).x - scene.worldToScreen(0, 0).x, r = 46 * cz;
+        const next = `translate(${(p.x - r).toFixed(1)}px, ${(p.y - r).toFixed(1)}px)`;
+        ring.style.width = ring.style.height = (2 * r).toFixed(1) + 'px';
+        if (next !== at) { at = next; ring.style.transform = next; }
+      } catch { /* optional */ }
+    };
+    place();
+    const off = scene.onFrame(place);
+    offs.push(off);
+    return () => { try { off(); } catch { /* gone */ } ring.remove(); };
   }
 
   // intro script: beats that wait for an action
@@ -1014,7 +1143,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     let held = false;
     // the day runs slowly behind the first cards, so dots are moving from the first second; it speeds up once the player acts
     if (mode === 'intro' && S.sim.phase === 'running') { try { setSpeed(0.5); } catch { pause(); held = true; } }
+    let stopPoint = null;
     for (const b of beats) {
+      stopPoint?.(); stopPoint = null;
+      // a new tip closes the settings the last tip asked for, so the sheet never covers what the new tip names
+      if (mode === 'intro' && b.waitFor?.action !== 'knob' && S.selected) select(null);
       if (S.destroyed) return;
       if (typeof b.at === 'number') { if (b.at > 0) await sleep(b.at * 1000); }
       else if (b.at === 'trigger:event-start') { if (!S.activeEvents.size) await waitTrigger({ action: 'event-start' }, b.waitCaption); }
@@ -1027,7 +1160,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         text = text.replace('{pct}', String(Math.round(S.lastDay.availability * 1000) / 10));
         if (S.lastDay.cost != null) text += ' Running it costs about $' + Math.round(S.lastDay.cost).toLocaleString('en-US') + ' a month (approx.), against a $' + Number(S.problem.requirements?.budgetPerMonth || 0).toLocaleString('en-US') + ' budget.';
       }
-      if (b.highlight) toolbar.pulse(b.highlight);
+      if (b.highlight && graph().nodes.some((n) => n.type === b.highlight)) { toolbar.pulse(null); stopPoint = pointAtPart(b.highlight); }
+      else if (b.highlight) toolbar.pulse(b.highlight);
       if (isPhone() && b.waitFor?.action === 'knob') {
         const part = graph().nodes.find(n => n.type === (b.waitFor.type || 'vm-fleet'));
         if(part) { const a=freeArea(); scene.fit({l:42,r:42,t:a.t+24,b:a.b+36},true,{focusId:part.id,maxZ:.9}); }
@@ -1038,7 +1172,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         if (paused) pause();
         held = false;
         const showInstruction = () => showCaption(b.waitFor.path && graph().nodes.some(n => n.type === b.waitFor.type) && !alreadyHolds(b.waitFor)
-          ? `${text} This part is not on the path yet. Drag it onto the line, or connect both sides and remove the original line.` : text, 0, b.waitFor.path ? [{ label: 'Retry insertion', onClick: () => {
+          ? `${text} This part is not on the path yet. Drag it onto the line, or connect both sides and remove the original line.` : text, 0, b.waitFor.path ? [{ label: 'Try again', onClick: () => {
           const spec = b.waitFor;
           const id = repairInsertion(S.sim, spec, makeRoomOnEdge);
           if (id) { commit(); note('place', spec.type); select(id); }
@@ -1064,6 +1198,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       }
       toolbar.pulse(null);
     }
+    stopPoint?.();
     if (mode === 'intro') {
       let missing;
       // Recheck the built path; autoscaling may have reduced the earlier server count.
@@ -1172,7 +1307,32 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     return `${what}: ${fmt(v)} now, the goal is ${word} ${fmt(goal.value)}.`;
   }
   // In a lesson the page above already states the goal, so the chip on the canvas only reports progress.
-  const goalLabel = () => (mode === 'lesson' ? 'Lesson goal: hold the current state' : S.problem.brief || 'Reach the goal');
+  // r4-lesson: the goal chip says what to do in plain words, not the name of the check behind it.
+  const plainName = (k) => {
+    const n = graph().nodes.find((q) => q.id === k || q.type === k);
+    const t = n ? (n.label || catalog.elementById.get(n.type)?.name || n.type) : (catalog.elementById.get(k)?.name || String(k));
+    return t.split('(')[0].trim();
+  };
+  function lessonGoalText(goal) {
+    const pct = (v) => Math.round(v * 1000) / 10 + '%';
+    const b = goal?.between;
+    if (b) {
+      const part = (catalog.elementById.get(b.type || (b.types || [])[0])?.name || 'part').toLowerCase();
+      return `Put ${/^[aeiou]/.test(part) ? 'an' : 'a'} ${part} between ${plainName(b.from)} and ${plainName(b.to)}, then run the day`;
+    }
+    switch (goal?.metric) {
+      case 'availability': return `Serve at least ${pct(goal.value)} of requests, then run the day`;
+      case 'p99': return `Get the slowest requests (p99) ${goal.op === '>=' || goal.op === '>' ? 'over' : 'under'} ${goal.value} ms, then run the day`;
+      case 'errors': return `Keep failed requests under ${pct(goal.value)}, then run the day`;
+      case 'cost': return `Keep the cost under $${Math.round(goal.value).toLocaleString('en-US')} a month, then run the day`;
+      case 'duplicates': return 'Make sure no request is handled twice, then run the day';
+      case 'compliance': return 'Meet every rule the lesson lists, then run the day';
+      case 'util': return `Keep ${plainName(goal.node || 'the part')} under ${pct(goal.value)} busy, then run the day`;
+      case 'hitRate': return `Get the cache to answer at least ${pct(goal.value)} of reads, then run the day`;
+      default: return 'Reach the lesson goal, then run the day';
+    }
+  }
+  const goalLabel = () => (mode === 'lesson' ? lessonGoalText(S.problem?.goal) : S.problem.brief || 'Reach the goal');
   function checkGoal(st) {
     const goal = S.problem?.goal;
     if (!goal || S.goalMet) return;
@@ -1222,8 +1382,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const gap = !spare ? `Leave at least ${Math.round((1 - goal.maxUtil) * 100)}% spare app capacity at peak. Serving every request at full capacity is fragile.` : !fresh ? `Answers may be at most ${goal.maxTtlSec} seconds old. Shorten the cache TTL and measure again.` : !ok ? goalGap(goal, st, v) : '';
     goalChip.title = gap;
     goalChip.replaceChildren(iconEl(S.goalMs > 0 ? 'ui.check' : 'ui.hint', 16),
-      h('span', { text: gap ? `${goalLabel()}. ${gap}` : ok ? goalPassed(goal, v, nameOf(goal.node) || 'The part') : goalLabel() }),
-      ...(need ? [h('span', { class: 'pl-goal-bar' }, h('i', { style: { width: clamp(S.goalMs / need, 0, 1) * 100 + '%' } }))] : []));
+      h('span', { text: gap && !(mode === 'lesson' && gap === goal.between?.note) ? `${goalLabel()}. ${gap}` : ok ? goalPassed(goal, v, nameOf(goal.node) || 'The part') : goalLabel() }),
+      ...(need && S.goalMs > 0 ? [h('span', { class: 'pl-goal-bar' }, h('i', { style: { width: clamp(S.goalMs / need, 0, 1) * 100 + '%' } }))] : []));
     if (ok && S.goalMs >= need) {
       S.goalMet = true;
       if (opts.lesson?.id === 'replication-lag') hideCaption();
@@ -1275,6 +1435,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       top.classList.remove('pl-top--tools-open');
       openEditorial();
     } }, 'Editorial'));
+    // the request trace sits in this list on a phone: it opens as a card under the status bar and its heading closes it
+    traceOptBtn = h('button', { class: 'pl-btn pl-btn--small pl-opt--phone', type: 'button', hidden: '', onClick: () => {
+      inspection.open = false;
+      top.classList.remove('pl-top--tools-open');
+      const t = root.querySelector('.pl-trace');
+      if (t && !t.hidden) { t.open = true; t.scrollIntoView?.({ block: 'nearest' }); }
+    } }, 'Trace a request');
+    options.append(traceOptBtn);
     const toggle = (label, action) => {
       let on = false;
       const button = h('button', { class: 'pl-btn pl-btn--small', type: 'button', 'aria-pressed': 'false', onClick: () => {
@@ -1376,14 +1544,23 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       return list.charAt(0).toUpperCase() + list.slice(1) + g.rest;
     });
   }
+  // Each gate (the prediction, the checkpoint) is asked once per problem. Answering or skipping it counts as seen.
+  function gateSeen(kind, set) {
+    const id = S.problem?.id; if (!id) return false;
+    try {
+      const all = store.get('gates', {}) || {};
+      if (set) { store.set('gates', { ...all, [id]: { ...(all[id] || {}), [kind]: true } }); return true; }
+      return !!all[id]?.[kind];
+    } catch { return !!(S.gateMem ||= {})[id + kind] || (set && ((S.gateMem[id + kind] = true))); }
+  }
   // Start from the screen: a design where some request type has nowhere to go gets one question first.
   function startFromUi() {
-    if (!interview && mode === 'practice' && S.sim.phase === 'build' && !S.designChecked) {
+    if (!interview && mode === 'practice' && S.sim.phase === 'build' && !gateSeen('predict')) {
       modal.replaceChildren(renderDesignCheck(S.problem, answer => {
-        S.designChecked = true; S.prediction = answer.text; modal.hidden = true; startFromUi();
-      }, () => { modal.hidden = true; }));
+        gateSeen('predict', true); S.prediction = answer.text; modal.hidden = true; startFromUi();
+      }, () => { modal.hidden = true; }, () => { gateSeen('predict', true); modal.hidden = true; startFromUi(); }));
       modal.hidden = false;
-      modal.querySelector('button')?.focus();
+      modal.querySelector('.sh-choice, textarea, button')?.focus();
       return getState();
     }
     if (S.sim.phase === 'build' && stepped) {
@@ -1404,23 +1581,41 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         return getState();
       }
     }
+    // a lesson part that is on no line: say so before the day starts; a second press runs the day anyway
+    if (mode === 'lesson' && S.sim.phase === 'build' && S.problem.goal && looseNode() && !S.looseAck) {
+      S.looseAck = true;
+      syncLoose();
+      toast(`${nameOf(looseNode().id)} is not connected, so the day would run without it. Put it on the line, or press Run again to run anyway.`, 'warn', 6000);
+      return getState();
+    }
     return startTraffic();
   }
   function startTraffic(testHook = false) {
     if (interview && (interviewState.stage !== 'ready' || (interviewState.run && S.sim.phase === 'build'))) return getState();
-    if (!testHook && !interview && mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id) {
-      modal.replaceChildren(renderCheckpointForm(S.problem.correctness, S.correctnessAnswer, (answer) => {
-        S.correctnessAnswer = answer;
+    // the checkpoint is asked once per problem, so a later run (a retry, a twist, another visit) reuses the answer given then
+    if (!testHook && mode === 'practice' && S.correctnessAnswer == null && S.problem?.correctness && gateSeen('checkpoint')) {
+      try { const kept = (store.get('gates', {}) || {})[S.problem.id]?.checkpointAnswer; if (kept) S.correctnessAnswer = kept; } catch { /* ignore */ }
+    }
+    if (!testHook && !interview && mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id
+      && S.problem.difficulty !== 'Easy' && !S.warm && !gateSeen('checkpoint')) {
+      const begin = (answer) => {
+        if (answer) S.correctnessAnswer = answer;
         S.checkpointReady = S.problem.id;
+        // answering marks it seen; skipping does not, so the next run offers it again (it never blocks)
+        // only a right answer closes it: skipped or wrong, the next run offers it again
+        if (answer && checkpointCorrect(S.problem.correctness, answer)) gateSeen('checkpoint', true);
+        if (answer) { try { const all = store.get('gates', {}) || {}; store.set('gates', { ...all, [S.problem.id]: { ...(all[S.problem.id] || {}), checkpointAnswer: answer } }); } catch { /* ignore */ } }
         modal.hidden = true;
         startTraffic();
-      }, () => { modal.hidden = true; }));
+      };
+      modal.replaceChildren(renderCheckpointForm(S.problem.correctness, S.correctnessAnswer, begin, () => { modal.hidden = true; }, () => begin(null)));
       modal.hidden = false;
       modal.querySelector('select, input')?.focus();
       return getState();
     }
     const wasHeld = S.hold;
     S.hold = false;
+    bus.emit('toast:clear');
     if (S.sim.phase !== 'build') { if (S.sim.phase === 'paused') resume(); return getState(); }
     if (stepped && S.step !== 'draw') go('draw');
     cancelModes();
@@ -1481,7 +1676,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     refreshChecks();
     refitForStep();
   }
-  function reset() { if (resetToDraw() !== false && stepped) go('draw'); }
+  function reset() { bus.emit('toast:clear'); if (resetToDraw() !== false && stepped) go('draw'); }
 
   function bestOf(x) {
     if (x == null) return null;
@@ -1560,12 +1755,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     const list = ctx.content?.problems || [];
     const idx = list.findIndex((p) => p.id === S.problem.id);
     renderDebrief(debriefWrap, {
-      result: S.result, problem: S.problem, catalog, ctx, hintsUsed: hints.used(), prevBest: S.prevBest, reduced: ctx.reducedMotion(), correctnessAnswer: mode === 'practice' ? S.correctnessAnswer : null,
+      result: S.result, problem: S.problem, catalog, ctx, hintsUsed: hints.used(), assistWhy: S.assistWhy || [], prevBest: S.prevBest, reduced: ctx.reducedMotion(), correctnessAnswer: mode === 'practice' ? S.correctnessAnswer : null,
       opponent: mode === 'beat' && opts.overlay ? opts.overlay : null,
       hasNext: mode === 'practice' && idx >= 0 && idx < list.length - 1,
       handlers: {
         onRetry: () => transitionScreen(reset, { direction: 'back', reduced: ctx.reducedMotion() }),
-        onIndependentRetry: () => transitionScreen(() => { hints.reset(); S.workedRepair = false; S.correctnessAnswer = undefined; S.checkpointReady = null; reset(); }, { direction: 'back', reduced: ctx.reducedMotion() }),
+        onIndependentRetry: () => transitionScreen(() => { hints.reset(); S.workedRepair = false; S.assistWhy = []; S.correctnessAnswer = undefined; S.checkpointReady = null; reset(); }, { direction: 'back', reduced: ctx.reducedMotion() }),
         onBack: () => transitionScreen(reset, { direction: 'back', reduced: ctx.reducedMotion() }),
         onHints: () => { hints.open(); hints.el.focus?.(); },
         onEditorial: () => openEditorial(),
@@ -1581,11 +1776,11 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         }, { direction: 'back', reduced: ctx.reducedMotion() }) : null,
         onShowNext: (ns) => transitionScreen(() => { reset(); if (ns.nodeId) select(ns.nodeId); if (ns.elementId) toolbar.pulse(ns.elementId); }, { direction: 'back', reduced: ctx.reducedMotion() }),
         nextFix: (ns) => { const rn = ns?.nodeId != null ? (S.result?.nodes || []).find((x) => x.id === ns.nodeId) : null; const fix = rn && ['units', 'autoscale'].includes(ns?.knob) && editableKnobs() ? sizeFixFor(ns.nodeId, rn.peakUtil) : null; if (fix && ns.sizing) { fix.units = ns.sizing.units; fix.label = `Set ${fix.word.toLowerCase()} to ${fix.units}`; } return fix; },
-        onAssisted: () => { S.workedRepair = true; },
+        onAssisted: () => assist('you needed the worked arithmetic in the repair step'),
         onSetNext: (fix) => transitionScreen(() => { reset(); applySizeFix(fix); select(fix.nodeId); }, { direction: 'back', reduced: ctx.reducedMotion() }),
       },
     });
-    if (S.prediction) debriefWrap.querySelector('.pl-verdict-sec')?.append(h('p', { class: 'pl-prediction' }, h('b', { text: 'Your prediction before this run: ' }), S.prediction, ' Compare it with the measured cause below.'));
+    if (S.prediction) debriefWrap.querySelector('.pl-verdict-sec')?.append(h('p', { class: 'pl-prediction' }, h('b', { text: 'Your prediction before this run: ' }), S.prediction, ' ', h('b', { text: 'What was measured: ' }), predictionVerdict(S.prediction, S.result, catalog)));
     if (S.result.passed && !S.problem.warmUp && creditForVictory()) showVictory(debriefWrap, { result: S.result, before: S.winBefore, original: S.winOriginal, catalog, reduced: ctx.reducedMotion() });
     debriefWrap.hidden = false;
     debriefWrap.scrollTop = 0;
@@ -1599,7 +1794,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!S.result && !(ctx.progress?.get?.(S.problem.id)?.attempts > 0)) { toast('The editorial unlocks after one finished traffic day.', 'info'); return; }
     renderEditorial(editorialWrap, {
       problem: S.problem, catalog, passed: !!(S.result?.passed || ctx.progress?.get?.(S.problem.id)?.stars > 0),
-      onClose: closeEditorial, onLoad: loadDesign, onShown: () => { S.workedRepair = true; },
+      onClose: closeEditorial, onLoad: loadDesign, onShown: () => assist('you opened the editorial answer'),
     });
     editorialWrap.hidden = false; editorialWrap.scrollTop = 0;
   }
@@ -1669,7 +1864,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const toolbar = createToolbar(left, {
     catalog,
     palette: null,
-    onArm: (type) => { toolbar.armedType = type; if (!type) { try { scene.setGhost(null); } catch { /* optional */ } } else showCaption(`Click the canvas to place "${catalog.elementById.get(type)?.name}". Esc cancels.`, 4000); },
+    onArm: (type) => { toolbar.armedType = type; if (!type) { try { scene.setGhost(null); } catch { /* optional */ } } else showCaption(isCoarse() ? `Tap the canvas to place "${catalog.elementById.get(type)?.name}".` : `Click the canvas to place "${catalog.elementById.get(type)?.name}". Esc cancels.`, 4000); },
     onPlace: (type) => {
       // touch, lesson step asking for a part on a line: pick the part, then tap the line (the sheet closes after the pick)
       if (isLesson && isCoarse() && waiters.some((w) => w.spec.action === 'place' && (!w.spec.type || w.spec.type === type))) {
@@ -1684,14 +1879,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (S.selected && (isLesson || isPhone())) select(null);
       const r = stage.getBoundingClientRect();
       if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom) { try { scene.setGhost(null); } catch { /* optional */ } return; }
-      const w = scene.screenToWorld(cx - r.left, cy - r.top);
+      const k = stageScale(), w = scene.screenToWorld((cx - r.left) / k, (cy - r.top) / k);
       try { scene.setGhost(type, w.x, w.y); } catch { /* optional */ }
     },
     onDrop: (type, cx, cy) => {
       try { scene.setGhost(null); } catch { /* optional */ }
       const r = stage.getBoundingClientRect();
       if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom) return;
-      const w = scene.screenToWorld(cx - r.left, cy - r.top);
+      const k = stageScale(), w = scene.screenToWorld((cx - r.left) / k, (cy - r.top) / k);
       placeComponent(type, w.x, w.y, edgeAt(w.x, w.y, type));
     },
     onDragEnd: () => { try { scene.setGhost(null); } catch { /* optional */ } },
@@ -1850,12 +2045,15 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (perf.droppedTicks !== (S.dropSeen || 0)) S.slowAt = performance.now();
     // the note waits while a coaching caption is up, so it never covers the caption's first line
     const slowOn = S.slowAt > 0 && performance.now() - S.slowAt < 2500 && sim.phase === 'running' && caption.hidden;
-    if (!slowNote.hidden !== slowOn) {
-      const on = slowOn;
-      slowNote.hidden = !on;
+    // the sentence shows once, for its first few seconds; after that a small label in the run bar says it for as long as it lasts
+    if (slowOn && !S.slowBannerAt) S.slowBannerAt = performance.now();
+    const bannerOn = slowOn && performance.now() - S.slowBannerAt < 5000;
+    if (!slowNote.hidden !== bannerOn) {
+      slowNote.hidden = !bannerOn;
       // the phone shows the short form beside the clock, wider screens the whole sentence
-      if (on) slowNote.replaceChildren(h('span', { class: 'pl-slow-long', text: `Running slower than ${effectiveSpeed()}x on this device: the day is still correct, it just plays back slower.` }), h('span', { class: 'pl-slow-short', 'aria-hidden': 'true', text: `Slower than ${effectiveSpeed()}x on this device` }));
+      if (bannerOn) slowNote.replaceChildren(h('span', { class: 'pl-slow-long', text: `Running slower than ${effectiveSpeed()}x on this device: the day is still correct, it just plays back slower.` }), h('span', { class: 'pl-slow-short', 'aria-hidden': 'true', text: `Slower than ${effectiveSpeed()}x on this device` }));
     }
+    hud.setSlow(slowOn && !bannerOn ? `Slower than ${effectiveSpeed()}x` : '');
     const dropped = perf.droppedTicks - (S.dropSeen || 0);
     S.dropSeen = perf.droppedTicks;
     if (interviewClock && !interviewState.complete) {
@@ -2041,18 +2239,59 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   later(() => { if (!S.destroyed) fitEntry(); }, 60);
   // Panels keep the canvas clear: their edges follow the HUD's real height.
   let hudObs = null, toolbarObs = null, hudSyncFrame = 0;
+  // The status bar keeps the height it has while a day runs, so pressing Run does not push the panels and the diagram.
+  // On a phone the bar sits at the top and its height follows what it shows, so only wider screens reserve.
+  let hudRunH = 0, hudRunW = 0;
+  const reserveHud = () => {
+    const el = hud.el;
+    if (isPhone()) { if (el.style.minHeight) el.style.minHeight = ''; hudRunH = 0; return; }
+    if (root.clientWidth !== hudRunW) { hudRunW = root.clientWidth; hudRunH = 0; el.style.minHeight = ''; }
+    if (S.sim?.phase === 'build') {
+      // measured in place, between two frames: the bar as it would be with the live meters and their detail lines showing
+      const was = el.dataset.phase, blanks = [...el.querySelectorAll('.pl-m-sub')].filter((x) => !x.textContent);
+      el.style.minHeight = '';
+      const own = el.offsetHeight;
+      el.dataset.phase = 'running';
+      for (const x of blanks) x.textContent = '\u00a0';
+      const run = el.offsetHeight;
+      for (const x of blanks) x.textContent = '';
+      el.dataset.phase = was;
+      hudRunH = Math.max(hudRunH, run, own);
+    } else hudRunH = Math.max(hudRunH, el.offsetHeight);
+    const want = hudRunH ? hudRunH + 'px' : '';
+    if (el.style.minHeight !== want) el.style.minHeight = want;
+  };
   const syncHud = () => {
     if (S.destroyed) return;
-    const r = hud.el.getBoundingClientRect(), rr = root.getBoundingClientRect();
+    reserveHud();
+    const k = stageScale(), sr = (el) => inStage(el.getBoundingClientRect(), k);
+    const r = sr(hud.el), rr = sr(root);
     root.style.setProperty('--pl-hud-h', Math.round(r.height) + 'px');
     root.style.setProperty('--pl-hud-end', Math.round(r.bottom - rr.top) + 'px');
-    const tb = top.getBoundingClientRect();
+    const tb = sr(top);
     root.style.setProperty('--pl-top-end', Math.round(tb.bottom - rr.top) + 'px');
     const coachBlocks = [root.querySelector('.pl-trace'), goalChip].filter(el => el && !el.hidden && el.offsetParent);
-    const coachTop = Math.max(r.bottom, ...coachBlocks.map(el => el.getBoundingClientRect().bottom));
+    const coachTop = Math.max(r.bottom, ...coachBlocks.map(el => sr(el).bottom));
     root.style.setProperty('--pl-coach-top', Math.ceil(coachTop - rr.top + 8) + 'px');
-    const toolsBox = tools.getBoundingClientRect();
-    const slotL = Math.max(tb.left, ...[...top.children].filter((el) => el !== tools && !el.hidden && el.offsetParent).map((el) => el.getBoundingClientRect().right)) + 12;
+    const toolsBox = sr(tools);
+    // r4-lesson: on a wide screen the goal line sits in the top row, between the parts button and the undo and fit buttons
+    if (isLesson && !isPhone()) {
+      const grab = toolbar.el.querySelector('.pl-tb-grab');
+      if (grab && grab.offsetParent && sr(toolbar.el).height <= 120) { const gb = sr(grab); S.goalSlot = { l: gb.right - rr.left + 12, t: gb.top - rr.top }; }
+      if (S.goalSlot) {
+        const right = toolsBox.width > 0 ? toolsBox.left - rr.left - 12 : rr.width - 12;
+        // an open parts list is wider than its button: the goal line moves to its right
+        const tbr = toolbar.el.offsetParent ? sr(toolbar.el) : null;
+        const l = tbr && tbr.height > 120 ? Math.max(S.goalSlot.l, tbr.right - rr.left + 12) : S.goalSlot.l;
+        S.goalSlot.w = Math.max(200, Math.round(right - l));
+        root.style.setProperty('--pl-goal-l', Math.round(l) + 'px');
+        root.style.setProperty('--pl-goal-t', Math.round(S.goalSlot.t) + 'px');
+        root.style.setProperty('--pl-goal-w', S.goalSlot.w + 'px');
+        const gc = goalChip.hidden || !goalChip.offsetParent ? null : sr(goalChip);
+        root.style.setProperty('--pl-goal-b', Math.round(gc ? gc.bottom - rr.top : S.goalSlot.t + 70) + 'px');
+      }
+    }
+    const slotL = Math.max(tb.left, ...[...top.children].filter((el) => el !== tools && !el.hidden && el.offsetParent).map((el) => sr(el).right)) + 12;
     const slotW = toolsBox.left - 12 - slotL;
     const slot = !isPhone() && !isLesson && toolsBox.width > 0 && slotW >= 300;
     root.classList.toggle('pl-slot', slot);
@@ -2106,12 +2345,14 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         syncHud();
         if (resized) refreshChecks();
         refitSoon(resized);
-        if (!resized && stepped && S.booted && !S.viewManual && S.step === 'day' && diagramCovered()) fitView(true);
+        if (!resized && S.booted && !S.viewManual && ((stepped && S.step === 'day') || (isSandbox && isPhone() && S.sim.phase !== 'build')) && diagramCovered()) fitView(true);
+        // r4-lesson: a caption, goal line or panel that lands on the diagram moves the view, never the other way round
+        if (!resized && isLesson && S.booted && !S.viewManual && !S.connectFrom && performance.now() > (S.editUntil || 0) && !root.querySelector('.pl-dragchip:not([hidden])') && diagramCovered()) fitView(true);
       });
     });
     hudObs.observe(hud.el); hudObs.observe(root); hudObs.observe(top);
     hudObs.observe(right);
-    hudObs.observe(caption); hudObs.observe(goalChip);
+    hudObs.observe(caption); hudObs.observe(goalChip); hudObs.observe(looseNote); hudObs.observe(toolbar.el);
     const traceEl = root.querySelector('.pl-trace');
     if (traceEl) hudObs.observe(traceEl);
     // on phones the diagram is fitted above the parts drawer whenever it opens or closes
@@ -2120,6 +2361,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       const on = toolbar.el.classList.contains('pl-toolbar--open');
       if (on === drawerWas) return;
       drawerWas = on;
+      if (isLesson && !isPhone()) { try { syncHud(); } catch { /* not laid out yet */ } }
       if (isPhone() && !S.destroyed && !S.booted) later(() => { if (!S.destroyed) fitView(true, null, true); }, 340);
     });
     toolbarObs.observe(toolbar.el, { attributes: true, attributeFilter: ['class'] });
@@ -2151,7 +2393,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.hold = mode === 'lesson' && stepNow?.kind === 'demo' && !!S.problem.goal;
     if (S.hold) {
       goalChip.hidden = false;
-      goalChip.replaceChildren(iconEl('ui.hint', 16), h('span', { text: 'The day starts at your first change.' }));
+      goalChip.replaceChildren(iconEl('ui.hint', 16), h('span', { text: `${goalLabel()}. The day starts at your first change.` }));
     } else startTraffic();
     // the intro opens at dawn, so the first thing to do comes within seconds
     if (mode === 'intro') { try { S.sim.advance(6 * 3600000); } catch { /* keep the plain start */ } S.lastClock = S.sim.clockMs; }
@@ -2206,7 +2448,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   function resetHostForProblem({ preserveReference = false } = {}) {
     S.twist = false;
     if (!preserveReference) S.refSig = null;
-    S.correctnessAnswer = undefined; S.checkpointReady = null; S.workedRepair = false; S.prediction = null; hints.reset();
+    S.correctnessAnswer = undefined; S.checkpointReady = null; S.workedRepair = false; S.assistWhy = []; S.prediction = null; hints.reset();
     S.revealed.clear(); S.guesses = {}; S.selected = null; inspector.hide(); debriefWrap.hidden = true; editorialWrap.hidden = true;
     hud.hideBanner(); hud.resetHistory();
   }

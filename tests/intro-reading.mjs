@@ -56,12 +56,12 @@ try {
       await page.evaluate(text => [...document.querySelectorAll('.pl-caption-acts button')].find(b => b.textContent === text).click(), text);
     };
     await clickCaption('Next');
-    await page.waitForFunction(() => document.querySelector('.pl-caption-t')?.textContent.includes('3 servers'));
-    await page.evaluate(() => window.__game.setKnob('app', 'units', 3));
+    await page.waitForFunction(() => document.querySelector('.pl-caption-t')?.textContent.includes('5 servers'));
+    await page.evaluate(() => window.__game.setKnob('app', 'units', 5));
     await clickCaption('Next');
-    await clickCaption('Retry insertion');
+    await clickCaption('Try again');
     await clickCaption('Next');
-    await clickCaption('Retry insertion');
+    await clickCaption('Try again');
     await page.waitForFunction(() => document.querySelector('.pl-caption-t')?.textContent.includes('switch on Autoscale'));
     if (width === 1366) {
       // Finish the event and day before the script has registered either trigger.

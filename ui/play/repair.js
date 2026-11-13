@@ -1,5 +1,17 @@
 // Repairs require a mechanism, a prediction and arithmetic before applying a player's count.
-import { h } from './util.js';
+import { h, fmtInt, fmtNum } from './util.js';
+
+// The peak the full day is tested at: the stated peak (a quarter of it on a drop day), times the biggest traffic surge the day schedules.
+export function testedPeak(problem, catalog) {
+  const base = (problem.requirements?.peakRps || 0) * (problem.traffic?.curve === 'drop' ? 0.1 : 1);
+  let factor = 1;
+  for (const ev of problem.events || []) {
+    const effect = catalog?.eventById?.get(ev.id)?.effects?.find(e => e.op === 'traffic' && !e.params?.types);
+    const f = Number(ev.params?.factor ?? effect?.params?.factor);
+    if (effect && Number.isFinite(f) && f > factor) factor = f;
+  }
+  return { normal: base, event: base * factor, factor, rate: Math.round(base * factor * 100) / 100 };
+}
 
 function recoveryCase(result, ns, placed, node, el, catalog) {
   const event = result.events?.find(e => e.id === ns.eventId);
@@ -15,7 +27,7 @@ function recoveryCase(result, ns, placed, node, el, catalog) {
     : region ? 'Requests can move outside the failed region; recheck recovery delay and data guarantees'
     : incident ? 'Shorter detection and repair can reduce the interruption; remeasure the recovery interval'
     : 'The diagnosed event may cause fewer failures; remeasure its impact and downstream limits';
-  const measured = placed ? `${name}: ${placed.zones || 1} zone${placed.zones > 1 ? 's' : ''}, ≈ ${Math.round((node?.peakUtil || 0) * 100)}% peak busy and ≈ ${Math.round(node?.failed || 0)} failed operations.` : '';
+  const measured = placed ? `${name}: ${placed.zones || 1} zone${placed.zones > 1 ? 's' : ''}, ${node?.peakUtil > 5 ? 'over 500%' : '≈ ' + Math.round((node?.peakUtil || 0) * 100) + '%'} peak busy and ≈ ${fmtInt(node?.failed || 0)} failed operations.` : '';
   return {
     kind: 'recovery',
     choices: [plan, 'Add capacity in the same failure boundary without changing recovery', 'Retry failures immediately'],
@@ -51,12 +63,12 @@ function rawRepairCase(result, problem, catalog) {
       arithmetic: `ceil(peak work ÷ (effective capacity per active unit × 0.7)) = ${activeNeeded} active units. Then ceil(${activeNeeded} × ${installed} ÷ ${active}), bounded to ${floor}…${el.units.max} = ${value} installed units. Calculations use unrounded measurements. This is a trial size, not a recovery guarantee.`, unit: el.units.label };
   }
   const type = Object.entries(problem.requirements.mix).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1])[0];
-  const rate = problem.requirements.peakRps, percent = Math.round(type[1] * 10000) / 100;
+  const tested = testedPeak(problem, catalog), rate = tested.rate, percent = Math.round(type[1] * 10000) / 100;
   const manual = { kind: 'manual', value: rate * percent / 100,
     choices: route ? ['Restore a complete path for the unserved request type', 'Increase an unrelated pool', 'Retry requests without a destination'] : safety ? ['Fix acknowledgement, uniqueness or proof at the failed safety boundary', 'Increase app capacity without changing the commit rule', 'Retry failed operations through a durable queue'] : cost ? ['Reduce the largest measured cost driver and test the resulting tradeoff', 'Raise retries to reduce the bill', 'Trim durability copies before checking the loss requirement'] : latency ? ['Reduce network travel, synchronous hops or processing time on the slow request path', 'Restore a complete path for the unserved request type', 'Increase timeout and retry allowances without shortening response time'] : ['Reduce work or add capacity at the measured limiting boundary', 'Move work to an unbounded queue', 'Retry failures immediately'], answer: 0,
     effects: route ? ['Completion becomes possible; newly reached parts receive more load', 'A complete route guarantees latency and durability', 'Traffic disappears from the source'] : safety ? ['The failed invariant is protected; throughput alone cannot prove it', 'More throughput with the same duplicate-effect risk', 'Only the monthly bill changes'] : cost ? ['Cost may fall while headroom or freshness changes', 'Reliability is guaranteed to improve', 'Less stored history with unchanged recovery coverage'] : latency ? ['Lower p99 latency for served requests; recheck availability and data guarantees', 'Completion becomes possible; newly reached parts receive more load', 'Longer timeouts make the same response arrive sooner'] : ['Pressure at the limiting boundary may fall; measure deadlines and downstream load', 'Queue acceptance proves completion', 'Retries remove external quotas'], effect: 0,
-    evidence: `Your day served ${(result.slo.availability.actual * 100).toFixed(2)}% against ${(result.slo.availability.target * 100).toFixed(2)}%. ${latency ? `Worst p99 was ≈ ${result.slo.latency.worstP99Ms} ms against a target of ≈ ${result.slo.latency.targetMs} ms. ` : ''}Stated peak is ${rate} requests/s, of which ${percent}% are ${type[0]}.`,
-    calculation: `How many ${type[0]} operations/s must your next experiment account for at the stated peak?`,
+    evidence: `Your day served ${(result.slo.availability.actual * 100).toFixed(2)}% against ${(result.slo.availability.target * 100).toFixed(2)}%. ${latency ? `Worst p99 was ≈ ${result.slo.latency.worstP99Ms} ms against a target of ≈ ${result.slo.latency.targetMs} ms. ` : ''}${tested.factor > 1 ? `The day was tested at a peak of ${fmtNum(rate)} requests/s (${fmtNum(tested.normal)} normal, ${tested.factor} times that in the surge), of which ${percent}% are ${type[0]}.` : `The day was tested at a peak of ${fmtNum(rate)} requests/s, of which ${percent}% are ${type[0]}.`}`,
+    calculation: `How many ${type[0]} operations/s must your next experiment account for at the tested peak?`,
     arithmetic: `${rate} × ${percent} ÷ 100 = ${rate * percent / 100} operations/s.`, unit: 'operations/s' };
   if (!route && ['reliability', 'latency'].includes(kind) && (ns.knob === 'zones' || ns.eventId && !['units', 'autoscale', 'tier'].includes(ns.knob))) {
     const recovery = recoveryCase(result, ns, placed, node, el, catalog);

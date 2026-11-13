@@ -58,13 +58,22 @@ await sleep(600);
   await sleep(400);
   const r = await ev(async () => {
     const st = window.__game.getState();
-    const id = window.__game.placeComponent('regional-lb', -390, 0);
+    // a loose part (not on a line) does not start the day
+    const loose = window.__game.placeComponent('regional-lb', -390, 0);
+    await new Promise(resolve => setTimeout(resolve, 260));
+    const afterLoose = window.__game.getState();
+    await window.__game.loadLesson('load-balancing');
+    await new Promise(resolve => setTimeout(resolve, 600));
+    const g = window.__game.getState();
+    const edge = g.edges.find(e => e.kind === 'flow') || g.edges[0];
+    // a part placed ON the line is connected and starts the day
+    const id = window.__game.placeComponent('regional-lb', 0, 0, edge.id);
     await new Promise(resolve => setTimeout(resolve, 260));
     const after = window.__game.getState();
-    return { phase: st.phase, after: after.phase, id, n0: st.nodes.length, n1: after.nodes.length };
+    return { phase: st.phase, looseAfter: afterLoose.phase, after: after.phase, id, n0: st.nodes.length, n1: after.nodes.length };
   });
-  // the lesson clock is held until the first edit, so the day starts with the placement
-  check('load-balancing lesson: the clock waits for the first edit, then placing a part starts the day', r.phase === 'build' && r.after === 'running' && r.n1 === r.n0 + 1, JSON.stringify(r));
+  // the lesson clock is held until the first edit that connects: a loose part waits, a part on the line starts the day
+  check('load-balancing lesson: the clock waits for the first edit, then placing a part on the line starts the day', r.phase === 'build' && r.looseAfter === 'build' && r.after === 'running' && r.n1 >= r.n0 + 1, JSON.stringify(r));
 }
 
 console.log('\nLesson goals wait for their event');
@@ -201,6 +210,11 @@ console.log('\nDebrief dial');
     window.__game.startTraffic();
     const s = window.__game.step(86400000);
     await new Promise((res) => setTimeout(res, 1400));
+    // the warm-up shows no points: play the full day to see the score ring
+    await new Promise((res) => setTimeout(res, 1500));
+    const full = document.querySelector('[data-act=run-full-day]') || [...document.querySelectorAll('.pl-actions .pl-btn')].find((b) => /Retry/.test(b.textContent));
+    if (full) { full.click(); await new Promise((res) => setTimeout(res, 1500)); window.__game.startTraffic(); window.__game.setSpeed(8); window.__game.step(86400000); await new Promise((res) => setTimeout(res, 2500)); }
+    document.querySelector('.pl-score-details')?.setAttribute('open', '');
     const num = document.querySelector('.pl-dial-n');
     return { total: s.score?.total, numW: num?.getBoundingClientRect().width || 0, text: num?.textContent, inspector: !!document.querySelector('.pl-inspector:not([hidden])') };
   });

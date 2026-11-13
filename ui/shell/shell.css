@@ -208,6 +208,8 @@
 .sh-back { display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); font-weight: 500; border-radius: var(--radius-2); padding: 4px 8px 4px 2px; }
 .sh-back:hover { color: var(--text); }
 .sh-lp-head .sh-back { justify-self: start; }
+/* r4-lesson: on a lesson's build step the page scrolls to the canvas; the way back stays in view at the top right */
+.sh-lesson-page:has(.sh-demo-stage) .sh-lp-head .sh-back { position: sticky; top: 8px; z-index: 6; justify-self: end; padding: 6px 12px 6px 8px; background: var(--card, var(--surface-solid)); border: 2px solid var(--ink, var(--border)); border-radius: 999px; }
 .sh-dots { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; }
 .sh-dot { flex: 1; height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--text) 10%, transparent); transition: background var(--dur-3) var(--ease-out); }
 .sh-dot.is-done { background: var(--accent); }
@@ -301,6 +303,8 @@
 .sh-intro { position: relative; height: 100%; }
 .sh-intro .sh-play-host { height: 100%; }
 .sh-intro-skip { position: absolute; right: 14px; top: 14px; z-index: var(--z-hud); }
+/* r4-lesson: the way back to the lessons, top left, like the other lesson screens */
+.sh-intro-back { position: absolute; left: 14px; top: 14px; z-index: var(--z-hud); }
 
 /* ---------- challenge ---------- */
 .sh-date-nav { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 18px; padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-strong); }
@@ -458,8 +462,9 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
   .sh-lp-card { padding: 20px; }
   .sh-demo-stage { height: max(500px, 56vh); min-height: 500px; }
   .sh-btn { min-height: 44px; }
-  .sh-toasts { bottom: calc(var(--sh-nav-h) + 16px + env(safe-area-inset-bottom)); }
-  [data-immersive="1"] > .sh-toasts { bottom: 16px; }
+  /* r4-follow: on a phone page a note hangs under the top bar, narrower, so it never lies across the cards being read */
+  .sh-toasts { top: calc(var(--sh-bar-h) + 8px); bottom: auto; width: min(340px, calc(100vw - 32px)); }
+  [data-immersive="1"] > .sh-toasts { top: auto; bottom: 16px; }
   .sh-slot { grid-template-columns: auto 1fr; }
   .sh-slot-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .sh-row { align-items: flex-start; }
@@ -854,20 +859,16 @@ a.sh-hist-row:hover { background: color-mix(in srgb, var(--text) 4%, transparent
 
 @media(max-width:719px){
 }
-/* Capture titles and evidence tokens while controls remain live. */
+/* Capture evidence tokens while controls remain live. */
+/* r4-follow: a page change is a short plain fade of the new page. Titles are not captured, so the old title never morphs or scales behind the new one. */
 :root {view-transition-name:none}
-.sh-view {animation:sh-screen-in 280ms cubic-bezier(.2,.8,.2,1) both}
+.sh-view {animation:sh-screen-in 150ms ease-out both}
 .sh-view--native {animation:none}
-.sh-view--native>.sh-page>:not(:has(h1)):not(h1) {animation:sh-screen-in 280ms cubic-bezier(.2,.8,.2,1) both}
-.sh-view h1 {view-transition-name:screen-title}
-:root[data-transition-kind=run] .sh-view h1 {view-transition-name:none}
+.sh-view--native>.sh-page>* {animation:sh-screen-in 150ms ease-out both}
 ::view-transition,::view-transition-group(*),::view-transition-image-pair(*),::view-transition-old(*),::view-transition-new(*) {pointer-events:none}
-::view-transition-group(screen-title) {animation-duration:280ms;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
-::view-transition-old(screen-title) {animation:sh-screen-out 180ms ease-out both}
-::view-transition-new(screen-title) {animation:sh-screen-in 280ms ease-out both}
 :root[data-navigation=back] {--screen-enter:-48px;--screen-exit:32px}
 :root[data-navigation=forward] {--screen-enter:48px;--screen-exit:-32px}
-@keyframes sh-screen-in {from {opacity:0;transform:translateX(var(--screen-enter,48px))}to {opacity:1;transform:translateX(0)}}
+@keyframes sh-screen-in {from {opacity:0}to {opacity:1}}
 @keyframes sh-screen-out {to {opacity:0;transform:translateX(var(--screen-exit,-32px))}}
 :root[data-motion=reduce] .sh-view,:root[data-motion=reduce] .sh-view--native>.sh-page>* {animation:none}
 :root[data-motion=reduce]::view-transition-group(*),:root[data-motion=reduce]::view-transition-old(*),:root[data-motion=reduce]::view-transition-new(*) {animation:none!important}

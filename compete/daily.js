@@ -98,7 +98,7 @@ export function poolStatus(dateStr, playedMap = {}, problems = []) {
   }
   const todayId = cycleOrder(pool, round)[((dn % n) + n) % n];
   const earlier = ((playedMap || {})[todayId] || []).filter((d) => isDateStr(d) && Math.floor(dayNumber(d) / n) < round).sort();
-  return { poolSize: n, round, positionInRound: ((dn % n) + n) % n + 1, doneInRound: done, repeats: earlier.length > 0, lastPlayed: earlier.length ? earlier[earlier.length - 1] : null };
+  return { poolSize: n, totalProblems: problems.length, round, positionInRound: ((dn % n) + n) % n + 1, doneInRound: done, repeats: earlier.length > 0, lastPlayed: earlier.length ? earlier[earlier.length - 1] : null };
 }
 
 const MUL = new Set(['factor', 'factorOfPeak', 'addLatencyMs', 'addMs', 'lagSec']);

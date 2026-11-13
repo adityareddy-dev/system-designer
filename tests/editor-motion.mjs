@@ -118,13 +118,14 @@ try {
     await page.$eval('.pl-play', button => button.click());
     await page.evaluate(test => {
       const form = document.querySelector('.pl-design-check');
-      form.querySelectorAll('.sh-choice')[test.answer].click(); form.querySelector('input').value = test.value;
+      if (!form) return; // optional and asked once per problem: later runs go straight on
+      if (form.querySelector('input')) { form.querySelectorAll('.sh-choice')[test.answer].click(); form.querySelector('input').value = test.value; }
       form.querySelector('textarea').value = 'Check measured peak demand against surviving capacity and verify retry safety.'; form.requestSubmit();
     }, checkFor(problemById.get('shopping-cart')));
     await page.evaluate(choices => {
       const form = document.querySelector('.pl-checkpoint');
-      form.querySelectorAll('select').forEach((e,i) => e.value = choices[i]);
-      form.querySelector('input').value = 'Commit the operation and result atomically and test recovery against a completed durable copy.'; form.requestSubmit();
+      if (form) { form.querySelectorAll('select').forEach((e,i) => e.value = choices[i]);
+      form.querySelector('input').value = 'Commit the operation and result atomically and test recovery against a completed durable copy.'; form.requestSubmit(); }
       window.__game.pause();
     }, problemById.get('shopping-cart').correctness.fields.map(f => f.correct));
     await page.evaluate(() => window.__game.step(86400000));

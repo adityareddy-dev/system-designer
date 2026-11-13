@@ -22,7 +22,9 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     return [s, b];
   });
   const clock = h('div', { class: 'pl-clock', 'aria-label': 'Simulated time' }, h('span', { class: 'pl-clock-t pl-mono', text: '00:00' }), h('div', { class: 'pl-clock-bar' }, h('i')));
-  const ctl = h('div', { class: 'pl-hud-ctl' }, playBtn, resetBtn, clock, speedPill);
+  // the slow-device note shrinks to this label once its sentence has been shown
+  const slowChip = h('span', { class: 'pl-chip pl-slow-chip', role: 'status', title: 'The day is still correct, it just plays back slower on this device', hidden: '' });
+  const ctl = h('div', { class: 'pl-hud-ctl' }, playBtn, resetBtn, clock, speedPill, slowChip);
 
   // sparklines
   const cvS = h('canvas', { class: 'pl-spark', 'aria-hidden': 'true' });
@@ -115,6 +117,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     phase = p;
     if (p === 'build') ran = false;
     root.dataset.phase = p;
+    if (p === 'build') buildMeters(null);
     const lab = playBtn.querySelector('.pl-play-l');
     const ico = playBtn.querySelector('.pl-ic');
     const set = (id, text, aria) => { ico.innerHTML = iconEl(id, 20).innerHTML; lab.textContent = text; playBtn.setAttribute('aria-label', aria); };
@@ -303,8 +306,29 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     }
     return risky.length === 1 ? `${el?.name || 'One part'} may not hold at the normal peak` : `${risky.length} parts may not hold at the normal peak`;
   }
+  // Before the day runs the meters show dashes, the targets, and the projected bill, so the bar looks the way it will while the day runs.
+  function buildMeters(cost, targets) {
+    const t = targets || {};
+    const dash = { text: '—', frac: 0, status: 'ok' };
+    if (sandbox) {
+      meterSet('avail', { ...dash, sub: 'starts when the day runs' });
+      meterSet('lat', { ...dash, sub: 'for 99 of 100 requests' });
+      meterSet('busy', { ...dash, sub: 'starts when the day runs' });
+      if (cost == null) meterSet('cost', { text: '—', sub: 'approx. per month', frac: 0, status: 'ok' });
+    } else {
+      const lt = t.latencyP99Ms?.default;
+      meterSet('avail', { ...dash, sub: t.availability != null ? `target ${fmtPct(t.availability)}` : 'starts when the day runs', tick: t.availability ?? null });
+      meterSet('lat', { ...dash, sub: lt != null ? `target ${fmtMs(lt)}` : 'starts when the day runs' });
+      meterSet('safe', { ...dash, sub: 'starts when the day runs' });
+      if (cost == null) meterSet('cost', { text: '—', sub: t.budgetPerMonth != null ? `budget ${fmtUsd(t.budgetPerMonth)}` : 'approx. per month', frac: 0, status: 'ok' });
+    }
+    if (cost != null) {
+      const bud = t.budgetPerMonth;
+      meterSet('cost', { text: fmtUsd(cost), sub: sandbox || !bud ? 'projected, before usage' : `projected · budget ${fmtUsd(bud)}`, frac: sandbox || !bud ? Math.log10(1 + cost) / 7 : cost / bud / 2, tick: sandbox || !bud ? null : 0.5, status: 'ok' });
+    }
+  }
   // Build-step status: a green "holds" only for a design that serves every request type at peak with no open warnings.
-  function setBuild(est, issues, sizes, { advice = true, limits = 'Rough capacity check. Deadlines, retries and event recovery are unchecked.' } = {}) {
+  function setBuild(est, issues, sizes, { advice = true, limits = 'Rough capacity check. Deadlines, retries and event recovery are unchecked.', targets = null } = {}) {
     buildNote.replaceChildren();
     const list = issues || [];
     lastIssues = list;
@@ -314,6 +338,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
       const arr = Array.isArray(est.nodes) ? est.nodes : [];
       const built = arr.some((n) => catalog.elementById.get(n.type)?.kind !== 'source');
       const cost = est.perMonth ?? est.cost?.perMonth ?? est.costPerMonth;
+      if (phase === 'build') buildMeters(built && cost != null ? cost : null, targets);
       if (built && cost != null) buildNote.append(h('span', { class: 'pl-chip pl-chip--cost', title: 'Fixed monthly cost of the parts; pay-per-use charges are added as the day runs (approx.)' }, iconEl('ui.cost', 14), 'Projected ', approx(fmtUsd(cost) + '/mo'), ' + usage'));
       const risky = arr.filter((n) => n.holds === false || n.ok === false || (n.util ?? n.peakUtil ?? 0) > 1);
       const share = est.successAtPeak ?? 1;
@@ -335,15 +360,31 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
         else if (warns.length) chip = h('span', { class: 'pl-chip', title: tip }, iconEl('ui.info', 14), 'Capacity snapshot below limit; check warnings');
         else chip = h('span', { class: 'pl-chip', title: tip }, iconEl('ui.info', 14), sp ? `Capacity snapshot below limit, including ${ev}` : 'Capacity snapshot below limit');
       }
+      // the status line itself: on a phone it is the one line that shows, the rest opens from the chevron beside it
+      chip.classList.add('pl-chip--main');
+      const label = h('span', { class: 'pl-chip-t' });
+      label.append(...[...chip.childNodes].filter((n) => !(n.nodeType === 1 && n.classList.contains('pl-ic'))));
+      chip.append(label);
       buildNote.append(chip, h('details', { class: 'pl-preview-limits pl-small' }, h('summary', { text: /already above|above the .*deadline/.test(limits) ? 'Rough capacity check: a speed or deadline risk is already visible' : 'Rough capacity check: deadlines, retries and event recovery are unchecked' }), h('p', { text: limits }))); 
     }
     const errs = list.filter((i) => i.level !== 'info');
     if (errs.length && hasParts) buildNote.append(h('button', { class: 'pl-chip pl-chip--warn pl-chip--btn', type: 'button', title: 'Show the list' }, iconEl('ui.warn', 14), `${errs.length} thing${errs.length > 1 ? 's' : ''} to check`));
+    // phones: one line of status, and a chevron that opens the rest (the capacity note, the count of things to check)
+    if (est && buildNote.children.length > 1) {
+      const open = buildNote.classList.contains('pl-buildnote--open');
+      const more = h('button', { class: 'pl-note-more', type: 'button', 'aria-label': open ? 'Show less status' : 'Show all status details', 'aria-expanded': String(open), onClick: () => {
+        const on = buildNote.classList.toggle('pl-buildnote--open');
+        more.setAttribute('aria-expanded', String(on));
+        more.setAttribute('aria-label', on ? 'Show less status' : 'Show all status details');
+      } }, iconEl('ui.chevron-down', 18));
+      buildNote.append(more);
+    }
   }
 
   setPhase('build'); setSpeed(1);
   return {
     el: root, setPhase, setSpeed, update, showBanner, hideBanner, setBuild,
+    setSlow(text) { if (slowChip.textContent !== text) { slowChip.textContent = text; } slowChip.hidden = !text; },
     // keyboard starts and resumes count as the player running the day
     markRan() { ran = true; if (phase === 'paused') setPhase('paused'); },
     refreshColors() { colors = readColors(); drawn = ''; },

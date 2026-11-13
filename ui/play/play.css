@@ -63,6 +63,12 @@
 .pl-insp-more[open] > summary { margin-bottom: 10px; }
 .pl-inspector--focus .pl-knob { margin: 10px 0 4px; }
 .pl-warmup { display: flex; gap: 8px; align-items: center; margin: 12px 0 0; color: var(--text-2); font-size: 13.5px; }
+/* r4-debrief */
+.pl-warmup { flex-wrap: wrap; }
+.pl-warmup > p { margin: 0; flex: 1 1 280px; min-width: 0; }
+.pl-warmup .pl-btn { min-height: 44px; }
+.pl-assist-why { max-width: 56ch; margin-bottom: 8px; }
+.pl-held { margin: 8px 0 0; }
 .pl-badge--best { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 .pl-range { width: 100%; accent-color: var(--accent); height: 28px; margin: 0; }
 .pl-range--unset { opacity: 0.6; filter: grayscale(1); }
@@ -116,6 +122,11 @@
 .pl-cattabs { display: none; gap: 4px; padding: 0 10px 6px; overflow-x: auto; }
 .pl-cattab { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--radius-2); border: 1px solid var(--border); background: var(--surface-solid); color: var(--tint); cursor: pointer; }
 .pl-tb-body { flex: 1; overflow-y: auto; padding: 0 8px 8px; overscroll-behavior: contain; }
+/* r4-phone: the lists that scroll fade out at the bottom edge, so a row cut off there reads as "more below", not as a mistake */
+.pl-tb-body { padding-bottom: 30px; }
+/* the traffic panel scrolls as a whole, so its fade is a strip that stays at the bottom of the visible part */
+.pl-traffic:not(.pl-traffic--closed)::after { content: ""; position: sticky; bottom: -16px; display: block; height: 30px; margin: -30px -14px -16px; background: linear-gradient(to bottom, transparent, var(--card, var(--surface-solid))); pointer-events: none; }
+.pl-tb-body, .pl-insp-scroll { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }
 .pl-tb-note { padding: 4px 14px 12px; font-size: 13px; color: var(--text-3); }
 .pl-tb-note:empty { display: none; }
 .pl-cat { margin-top: 4px; }
@@ -134,6 +145,9 @@
 .pl-item-name { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-item-sub { font-size: 11.5px; color: var(--text-3); }
 .pl-item--pulse { animation: pl-pulse 1.2s var(--ease-in-out) infinite; border-color: var(--accent); }
+/* r4-lesson: the ring on the part of the diagram a tip names */
+.pl-point { position: absolute; left: 0; top: 0; z-index: calc(var(--z-canvas, 0) + 1); box-sizing: border-box; border: 3px solid var(--accent, var(--blue)); border-radius: 18px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, var(--blue)) 25%, transparent); pointer-events: none; animation: pl-pulse 1.2s var(--ease-in-out) infinite; }
+.pl-point[hidden] { display: none; }
 @keyframes pl-pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); } 50% { box-shadow: 0 0 0 6px var(--accent-soft); } }
 .pl-dragchip { position: fixed; left: 0; top: 0; z-index: var(--z-toast); display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 999px; background: var(--surface-solid); border: 1px solid var(--accent); box-shadow: var(--shadow-3); font: 600 13px var(--font-ui); color: var(--text); pointer-events: none; }
 .pl-dragchip[hidden] { display: none; }
@@ -227,8 +241,12 @@
 .pl-m-sub { display: block; font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-sparks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .pl-spark-l { font-size: 11.5px; color: var(--text-3); }
-.pl-spark { display: block; width: 100%; height: 34px; }
-.pl-hud[data-phase="build"] .pl-sparks, .pl-hud[data-phase="build"] .pl-meters { display: none; }
+.pl-spark { display: block; width: 100%; height: 28px; } /* r4-phone: a little lower, so the bar stays near the height it has before the day runs */
+/* r4-follow: before the day starts, the bar shows the same four meters as while it runs (with dashes and projected values), so pressing Run changes numbers, not the shape of the bar. Phones keep the short bar. */
+.pl-hud[data-phase="build"] .pl-sparks { display: none; }
+@media (max-width: 719px) { .pl-hud[data-phase="build"] .pl-meters { display: none; } }
+.pl-hud[data-phase="build"] .pl-m-v { color: var(--text-2); }
+.pl-hud[data-phase="build"] .pl-buildnote { min-height: 28px; }
 .pl-hud:not([data-phase="build"]) .pl-buildnote { display: none; }
 .pl-buildnote { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 28px; }
 .pl-buildnote:empty::after { content: "Drag parts from the left, then connect them. Press Start day when ready."; color: var(--text-3); font-size: 13px; }
@@ -259,7 +277,14 @@
 .pl-slow { position: absolute; top: calc(var(--pl-hud-end, 150px) + 8px); left: 16px; right: 16px; margin-inline: auto; width: fit-content; z-index: var(--z-drawer); max-width: min(520px, calc(100% - 32px)); padding: 6px 14px; font-size: 13px; line-height: 1.35; text-align: center; border-radius: 14px; background: var(--surface-solid); border: 1px solid var(--border-strong); color: var(--text-2); pointer-events: none; }
 .pl-slow[hidden] { display: none; }
 .pl-slow-short { display: none; }
-.pl-issues { position: absolute; left: 304px; bottom: calc(var(--pl-hud-h, 126px) + 24px); z-index: var(--z-drawer); width: 340px; max-height: 40%; overflow: auto; padding: 8px; display: grid; gap: 4px; }
+/* r4-visual: the panel itself does not scroll (a scrolling, zoomed panel painted a blank box above it); only the list does */
+.pl-issues { position: absolute; left: 304px; bottom: calc(var(--pl-hud-h, 126px) + 24px); z-index: var(--z-drawer); width: 340px; max-height: 40%; overflow: visible; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.pl-issues[hidden] { display: none; }
+.pl-issues-list { display: grid; gap: 8px; min-height: 0; overflow-y: auto; padding: 2px 4px 6px 2px; }
+/* r4-phone: after its sentence has shown once, the slow-device note is a small label hanging on the run bar's top edge */
+.pl-slow-chip { position: absolute; right: 16px; top: -15px; z-index: 2; min-height: 26px; padding: 0 10px; border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pl-note-more { display: none; }
+@media (max-width: 719px) { .pl-slow-chip { top: auto; bottom: -15px; right: 10px; } }
 .pl-issues-h { display: flex; align-items: center; gap: 8px; padding: 2px 4px; }
 .pl-issues-h b { flex: 1; }
 .pl-issue { display: flex; gap: 8px; align-items: flex-start; text-align: left; padding: 8px; border: 0; border-radius: var(--radius-2); background: transparent; color: var(--text-2); font: 400 13px var(--font-ui); cursor: pointer; }
@@ -278,6 +303,11 @@
 /* the action row stays in view while the card scrolls; its top edge shows there is more above */
 .pl-panel > .pl-panel-foot { position: sticky; bottom: -24px; z-index: 1; margin: 20px -24px -24px; padding: 12px 24px; background: var(--surface-solid); border-top: 1px solid var(--border); border-radius: 0 0 var(--radius-3) var(--radius-3); }
 .pl-panel { background: var(--surface-strong); }
+/* r4-phone: on wide screens the step card (clarify, numbers) ends above the status bar, in line with the parts list, and scrolls inside. The card is zoomed
+   on big screens while the bar's height is measured in real pixels, so the bar's share is divided by the zoom. */
+@media (min-width: 720px) {
+  .pl-panel { max-height: calc(100% - 100px - var(--pl-hud-h, 126px) / var(--z, 1)); }
+}
 .pl-panel-foot > .pl-muted { margin-right: auto; }
 .pl-qlist { display: grid; gap: 8px; margin: 14px 0 0; }
 .pl-qcard { border: 1px solid var(--border-strong); border-radius: var(--radius-2); background: var(--surface-solid); overflow: hidden; }
@@ -424,6 +454,18 @@
 .pl-dg-label { fill: var(--text-2); font: 500 13px var(--font-ui); }
 .pl-modal { position: absolute; inset: 0; z-index: calc(var(--z-modal) + 2); display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 60%, transparent); padding: 16px; }
 .pl-modal-card { width: min(480px, 100%); padding: 20px; box-shadow: var(--shadow-3); }
+/* r4-gates */
+.pl-modal { overflow: auto; place-items: safe center; }
+.pl-modal > .pl-modal-card { max-height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+.pl-design-check .pl-h2, .pl-checkpoint > h3 { margin-top: 0; }
+.pl-design-check label, .pl-checkpoint label { display: block; margin-top: 12px; }
+.pl-design-check label > small { display: block; margin-top: 4px; }
+.pl-gate-msg:not(:empty) { margin: 10px 0 0; padding: 8px 10px; border: 2px solid var(--ink, currentColor); border-radius: 10px; background: color-mix(in srgb, #ffd23f 35%, var(--surface-solid)); color: inherit; }
+.pl-radios .sh-choice { position: relative; min-height: 44px; }
+.pl-radio-mark { flex: none; width: 18px; height: 18px; border: 2px solid currentColor; border-radius: 50%; background: var(--surface-solid); box-sizing: border-box; display: grid; place-items: center; }
+.sh-choice[aria-pressed=true] .pl-radio-mark::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.pl-design-check .pl-actions, .pl-checkpoint .pl-actions { flex-wrap: wrap; }
+.pl-design-check .pl-btn, .pl-checkpoint .pl-btn { min-height: 44px; }
 
 /* connecting mode */
 .pl-connecting .pl-stage { cursor: crosshair; }
@@ -452,9 +494,17 @@
   .pl-root[data-mode="lesson"] .pl-meters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; }
   .pl-root[data-mode="lesson"] .pl-m-v { font-size: 15px; }
   .pl-root[data-mode="lesson"] .pl-goal { top: 8px; max-width: calc(100% - 400px); }
+  /* r4-lesson: the device-speed note is a small line under the tool bar, like the other modes, not a card across the diagram */
+  .pl-root[data-mode="lesson"] .pl-slow { top: calc(var(--pl-top-end, 56px) + 16px); left: auto; right: 18px; margin: 0; width: 112px; max-width: none; padding: 0; border: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; font-size: 11px; line-height: 1.25; text-align: right; z-index: calc(var(--z-hud) + 1); }
+  .pl-root[data-mode="lesson"] .pl-slow-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .pl-root[data-mode="lesson"] .pl-slow-short { display: inline; }
   .pl-root[data-mode="lesson"] .pl-banner { top: 54px; padding: 6px 12px 6px 8px; max-width: min(360px, calc(100% - 420px)); animation: none; }
   .pl-root[data-mode="lesson"] .pl-banner-txt span { display: none; }
   .pl-root[data-mode="lesson"] .pl-caption { max-width: min(420px, calc(100% - 440px)); font-size: 14px; }
+  /* r4-lesson: the intro tip keeps its sentence and its Next button on one row, with no empty band above the button */
+  .pl-root[data-mode="intro"] .pl-caption { display: flex; align-items: center; justify-content: center; gap: 16px; text-align: left; max-width: min(620px, calc(100% - 32px)); }
+  .pl-root[data-mode="intro"] .pl-caption-t { flex: 0 1 auto; min-width: 0; }
+  .pl-root[data-mode="intro"] .pl-caption-acts { margin: 0; flex: none; }
 }
 
 /* phones */
@@ -586,6 +636,12 @@
 
 /* captions: the sentence, then its buttons in their own right-aligned row */
 .pl-caption { padding: 12px 18px; }
+/* r4-lesson: the note beside a part that is on no line */
+.pl-loose { position: absolute; left: 0; top: 0; z-index: var(--z-drawer); display: flex; align-items: center; gap: 14px; width: max-content; max-width: min(560px, calc(100% - 16px)); box-sizing: border-box; padding: 10px 14px; font-size: 14px; line-height: 1.35; text-align: left; background: var(--card); border: var(--line, 2px solid var(--ink)); border-radius: var(--radius-3); box-shadow: var(--hard, 3px 3px 0 var(--ink)); }
+.pl-loose[hidden] { display: none; }
+.pl-loose b { font-weight: 700; }
+.pl-loose .pl-btn { min-height: 36px; flex: none; }
+.pl-loose-t { min-width: 0; }
 .pl-caption-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .pl-modal-card .pl-ed-top { margin-bottom: 10px; }
 .pl-reset { min-height: 36px; padding: 0 10px; gap: 6px; white-space: nowrap; }
@@ -768,6 +824,49 @@
   .pl-root.pl-connecting .pl-caption-t { display: block; overflow: visible; -webkit-line-clamp: unset; }
 }
 
+/* r4-phone: the phone workbench keeps the middle of the screen for the diagram.
+   Top: the tools row (step picker, undo, fit, a "more" button) and one status row (Run and one line of status). The request trace
+   lives in the more-list. Bottom: Add component and the folded brief or traffic bar share one row, the overview strip only shows for bigger diagrams. */
+@media (max-width: 719px) {
+  .pl-diagram-options > summary { font-size: 0; width: 44px; min-width: 44px; padding: 0; position: relative; list-style: none; }
+  .pl-diagram-options > summary::-webkit-details-marker { display: none; }
+  .pl-diagram-options > summary::before { content: "\22EF"; position: absolute; inset: 0; display: grid; place-items: center; font: 700 24px/1 var(--font-ui); color: var(--ink); }
+  .pl-root .pl-trace:not([open]) { display: none; }
+  .pl-root .pl-trace[open] summary::after { content: "Close"; margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text-3); }
+
+  .pl-root:not([data-mode=lesson]):not([data-mode=intro]) .pl-hud[data-phase=build] { grid-template-columns: auto minmax(0, 1fr); gap: 8px; padding: 6px 8px; align-items: start; }
+  .pl-root:not([data-mode=lesson]):not([data-mode=intro]) .pl-hud[data-phase=build] .pl-hud-ctl { flex-wrap: nowrap; }
+  .pl-root:not([data-mode=lesson]):not([data-mode=intro]) .pl-hud[data-phase=build] .pl-buildnote { position: relative; flex-wrap: nowrap; overflow: hidden; align-items: center; min-height: 44px; padding-right: 46px; gap: 6px; }
+  .pl-root .pl-hud[data-phase=build] .pl-buildnote > .pl-chip--main { flex: 1 1 auto; min-width: 0; min-height: 44px; max-width: 100%; white-space: nowrap; }
+  .pl-root .pl-hud[data-phase=build] .pl-buildnote > .pl-chip--main .pl-chip-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl-root .pl-hud[data-phase=build] .pl-buildnote:not(.pl-buildnote--open) > :not(.pl-chip--main):not(.pl-note-more) { display: none; }
+  .pl-note-more { display: inline-flex; align-items: center; justify-content: center; position: absolute; right: 0; top: 0; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; }
+  .pl-note-more .pl-ic { transition: transform var(--dur-2) var(--ease-out); }
+  .pl-buildnote--open .pl-note-more .pl-ic { transform: rotate(180deg); }
+  .pl-root .pl-hud[data-phase=build] .pl-buildnote.pl-buildnote--open { flex-wrap: wrap; overflow: visible; }
+  .pl-root .pl-hud[data-phase=build] .pl-buildnote--open > .pl-chip--main { flex: 1 1 100%; white-space: normal; }
+  .pl-root .pl-hud[data-phase=build] .pl-buildnote--open > .pl-chip--main .pl-chip-t { white-space: normal; overflow: visible; }
+  .pl-root:not([data-mode=lesson]):not([data-mode=intro]) .pl-hud[data-phase=build] .pl-buildnote:empty::after { font-size: 12px; }
+
+  /* bottom row: the folded brief or traffic bar sits beside Add component, not under it */
+  .pl-root:not([data-mode=lesson]):not([data-mode=intro]) .pl-right:not(:has(> .pl-inspector:not([hidden]))):not(:has(> .pl-focus-map)):not(:has(> .pl-req:not(.pl-req--closed))):not(:has(> .pl-traffic:not(.pl-traffic--closed))) { left: auto; right: 8px; width: calc(100% - 196px); bottom: 12px; max-height: none; top: auto; }
+  .pl-root:not([data-mode=lesson]):not([data-mode=intro]):has(.pl-overview:not([hidden])) .pl-right:not(:has(> .pl-inspector:not([hidden]))):not(:has(> .pl-focus-map)):not(:has(> .pl-req:not(.pl-req--closed))):not(:has(> .pl-traffic:not(.pl-traffic--closed))) { bottom: 68px; }
+  .pl-root:not([data-mode=lesson]):not([data-mode=intro]):has(.pl-overview:not([hidden])) .pl-right { bottom: 118px; }
+  .pl-root:not([data-mode=lesson]):not([data-mode=intro]).pl-has-selection .pl-right { bottom: 0; max-height: min(38%, 320px); }
+  .pl-root:not([data-mode=lesson]):not([data-mode=intro]).pl-has-selection:has(.pl-overview:not([hidden])) .pl-right { bottom: 72px; }
+  .pl-root .pl-req-title, .pl-root .pl-tp-head b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl-root .pl-focus-map .pl-btn { min-height: 44px; }
+  .pl-seg-b { min-width: 44px; }
+  .pl-root .pl-focus-map.is-compact { padding: 6px 8px; justify-content: space-between; background: var(--surface-solid); border: 2px solid var(--ink); border-radius: 12px; }
+
+}
+.pl-insp-grip { display: none; }
+@media (max-width: 899px) {
+  /* the sheet's grip */
+  .pl-insp-head { position: relative; padding-top: 18px; }
+  .pl-insp-grip { display: block; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 96px; height: 44px; padding: 0; border: 0; background: transparent; cursor: grab; touch-action: none; }
+  .pl-insp-grip::before { content: ""; position: absolute; left: 50%; top: 8px; width: 44px; height: 5px; margin-left: -22px; border-radius: 999px; background: var(--border-strong); }
+}
 /* Requested help stays above the debrief. */
 .pl-hints{z-index:45!important}
 /* Calibrated workbench surfaces and complete phone controls. */
@@ -1075,6 +1174,10 @@
 }
 .pl-camera-map {flex:none;width:64px;height:44px;padding:3px;border:1px solid var(--border-strong);border-radius:6px;background:var(--canvas);cursor:pointer;overflow:hidden}
 .pl-camera-map svg {width:100%;height:100%;overflow:hidden}
+/* r4-visual */
+.pl-cm-wires {fill:none;stroke:var(--edge-idle);stroke-linecap:round}
+.pl-cm-part {fill:var(--accent);stroke:var(--ink)}
+.pl-camera-window {fill:none;stroke:var(--tomato,var(--accent));stroke-width:1.5}
 .pl-camera-window {transition:opacity 120ms}
 @media(max-width:719px) {
  .pl-root:has(.pl-overview:not([hidden])) .pl-tb-grab {top:-112px}
@@ -1085,6 +1188,9 @@
  .pl-root[data-mode=lesson] .pl-goal {top:72px;left:12px;right:12px;max-width:none;width:auto;transform:none;text-align:left}
  .pl-root[data-mode=lesson] .pl-banner {top:64px;left:196px;right:160px;max-width:none;transform:none;min-height:36px}
  .pl-root[data-mode=lesson]:has(.pl-banner:not([hidden])) .pl-goal {top:112px}
+ /* r4-lesson: the goal line sits in the top row between the parts button and the undo and fit buttons, and the event note right under it, so neither lies across the diagram */
+ .pl-root[data-mode=lesson] .pl-goal, .pl-root[data-mode=lesson]:has(.pl-banner:not([hidden])) .pl-goal {top:calc(var(--pl-goal-t,12px) / var(--z,1));left:calc(var(--pl-goal-l,220px) / var(--z,1));right:auto;transform:none;width:auto;max-width:calc(var(--pl-goal-w,600px) / var(--z,1));box-sizing:border-box}
+ .pl-root[data-mode=lesson] .pl-banner {top:calc((var(--pl-goal-b,100px) + 8px) / var(--z,1));left:calc(var(--pl-goal-l,220px) / var(--z,1));right:auto;transform:none;width:auto;max-width:calc(var(--pl-goal-w,600px) / var(--z,1))}
 }
 /* Opening a workbench drawer reveals its controls with the same short settling motion. */
 .pl-toolbar--open .pl-tb-body,.pl-toolbar--open .pl-tb-head,.pl-traffic:not(.pl-traffic--closed) .pl-tp-pane {animation:pl-panel-settle 200ms cubic-bezier(.2,.8,.2,1) both}

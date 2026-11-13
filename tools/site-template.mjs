@@ -53,6 +53,9 @@ ${themeHead}
 <meta name="description" content="${esc(opts.description)}">
 <link rel="canonical" href="${url}">
 <link rel="icon" href="${relative(file,'assets/favicon.svg')}" type="image/svg+xml">
+<link rel="icon" href="${relative(file,'favicon.ico')}" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="${relative(file,'apple-touch-icon.png')}">
+<link rel="manifest" href="${relative(file,'manifest.webmanifest')}">
 <link rel="stylesheet" href="${relative(file,'assets/fonts.css')}">
 <link rel="stylesheet" href="${css}">
 <meta property="og:title" content="${esc(title)}">

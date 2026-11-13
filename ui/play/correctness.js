@@ -6,25 +6,33 @@ export function checkpointComplete(checkpoint, answer) {
   return !!answer?.text?.trim() && (checkpoint.fields || []).every((field, i) => Number.isInteger(answer.choices?.[i]) && !!field.options[answer.choices[i]]);
 }
 
+// The checkpoint is not asked on Easy problems or the warm-up, so those owe no trace.
+export function checkpointOwed(problem) { return !!problem?.correctness && problem.difficulty !== 'Easy' && !problem.warmUp; }
+
 export function checkpointCorrect(checkpoint, answer) {
   return checkpointComplete(checkpoint, answer) && checkpoint.fields?.length >= 2 && checkpoint.fields.every((field, i) => answer.choices[i] === field.correct);
 }
 
-export function renderCheckpointForm(checkpoint, answer = {}, onSubmit, onCancel) {
+export function renderCheckpointForm(checkpoint, answer = {}, onSubmit, onCancel, onSkip) {
   answer ||= {};
-  const selects = (checkpoint.fields || []).map((field, i) => h('select', { class: 'pl-input', required: true },
+  const selects = (checkpoint.fields || []).map((field, i) => h('select', { class: 'pl-input' },
     h('option', { value: '', text: 'Choose an answer' }), field.options.map((text, j) => h('option', { value: j, selected: answer.choices?.[i] === j, text }))));
-  const line = h('input', { class: 'pl-input', type: 'text', required: true, maxlength: 500, value: answer.text || '' });
+  const line = h('input', { class: 'pl-input', type: 'text', maxlength: 500, value: answer.text || '' });
   const feedback = h('p', { class: 'pl-muted', role: 'status' });
-  const form = h('form', { class: 'pl-modal-card pl-checkpoint', style: { maxHeight: '100%', overflowY: 'auto' }, onSubmit: (event) => {
+  let shown = false;
+  const submitBtn = h('button', { class: 'pl-btn pl-btn--primary', type: 'submit', text: 'Check choices and start day' });
+  const form = h('form', { class: 'pl-modal-card pl-checkpoint', novalidate: true, style: { maxHeight: '100%', overflowY: 'auto' }, onSubmit: (event) => {
     event.preventDefault();
     const value = { choices: selects.map((select) => select.value === '' ? null : Number(select.value)), text: line.value.trim() };
-    if (checkpointCorrect(checkpoint, value)) onSubmit(value);
-    else if (checkpointComplete(checkpoint, value)) feedback.textContent = checkpoint.fields.filter((field, i) => value.choices[i] !== field.correct).map(field => field.explanation).join(' ') + ' Walk through the failure again before starting.';
-    else { line.setCustomValidity('Write one line explaining your choice.'); line.reportValidity(); }
+    if (shown) { onSubmit(value); return; }
+    if (!checkpointComplete(checkpoint, value)) { feedback.textContent = 'Pick an answer for each step and write one line, or skip and start the day.'; return; }
+    if (checkpointCorrect(checkpoint, value)) { onSubmit(value); return; }
+    shown = true;
+    feedback.textContent = checkpoint.fields.filter((field, i) => value.choices[i] !== field.correct).map(field => field.explanation).join(' ') + ' Read that, then start the day when you are ready.';
+    submitBtn.textContent = 'Start day';
   } }, h('h3', { text: 'Correctness checkpoint' }),
   checkpoint.responsibility ? h('p', {}, h('b', { text: 'Central responsibility: ' }), checkpoint.responsibility) : null,
-  h('p', { text: 'Trace the failure before the day. Each step is checked. Traffic success and a completed trace are separate requirements. Your explanation is saved for comparison.' }),
+  h('p', { text: 'Optional. Trace the failure before the day. Each step is checked, but a wrong answer never stops the day. Your explanation is saved for comparison.' }),
   selects.map((select, i) => {
     const reason = h('p', { class: 'pl-trace-reason pl-muted', role: 'status' });
     select.addEventListener('change', () => { reason.textContent = select.value === '' ? '' : 'Your choice: ' + checkpoint.fields[i].options[Number(select.value)] + '. ' + (Number(select.value) === checkpoint.fields[i].correct ? 'Checked. ' : 'Revisit this step. ') + checkpoint.fields[i].explanation; });
@@ -33,8 +41,7 @@ export function renderCheckpointForm(checkpoint, answer = {}, onSubmit, onCancel
   h('label', {}, h('p', { text: checkpoint.prompt }), line),
   feedback,
   h('div', { class: 'pl-actions' }, h('button', { class: 'pl-btn', type: 'button', onClick: onCancel, text: 'Keep drawing' }),
-    h('button', { class: 'pl-btn pl-btn--primary', type: 'submit', text: 'Check choices and start day' })));
-  line.addEventListener('input', () => line.setCustomValidity(''));
+    h('button', { class: 'pl-btn', type: 'button', 'data-gate': 'skip', onClick: () => (onSkip || onCancel)(), text: 'Skip and start day' }), submitBtn));
   return form;
 }
 
