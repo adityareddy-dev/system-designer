@@ -39,6 +39,7 @@ export function createInput(canvas, host, d) {
     if (!v) return false;
     // The visible side port and the arrow share one finger-sized target.
     const px = (w.x - v.x) * camera.zoom, py = (w.y - v.y) * camera.zoom;
+    if(v.renderWidth)return px>=v.renderWidth/2*camera.zoom+4&&px<=v.renderWidth/2*camera.zoom+44&&Math.abs(py)<=22;
     if (px >= Math.max(HALF * camera.zoom - 12, HALF * camera.zoom * .6) &&
       px <= HALF * camera.zoom + 44 && Math.abs(py) <= 22) return true;
     const dd = Math.hypot(w.x - v.x, w.y - v.y);

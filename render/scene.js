@@ -1,7 +1,7 @@
 // The PixiJS scene: camera, nodes, edges, request particles, glows and effects. The only render file other modules import.
 
 import { resolvePalette, severityColor } from './theme.js';
-import { paperPalette } from './paper.js';
+import { PAPER, paperPalette } from './paper.js';
 import { e08Palette } from './e08.js';
 import { createKit } from './textures.js';
 import { createCamera } from './camera.js';
@@ -220,6 +220,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     if (!ringNode) { portRing.visible = false; return; }
     portRing.visible = true;
     const k = Math.max(1, 1 / camera.zoom);
+    if(look==='paper'){const x=PAPER.body.width/2+22/camera.zoom;portRing.moveTo(PAPER.body.width/2,0).lineTo(x,0).stroke({width:2*k,color:P.ink});portRing.rect(x-6*k,-6*k,12*k,12*k).fill({color:P.card}).stroke({color:P.ink,width:2*k});return;}
     const n = 40;
     for (let i = 0; i < n; i += 2) {
       const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2;
@@ -250,6 +251,15 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       band.visible = true;
       band.clear();
       const color = ok ? P.blue : P.tomato;
+      if(look==='paper') {
+        const endX=to?to.x:x,endY=to?to.y:y,sign=endX>=from.x?1:-1;
+        const start=from.x+sign*PAPER.wire.port,end=endX-(to?sign*PAPER.wire.port:0),h=Math.max(30,Math.abs(end-start)*.5);
+        band.moveTo(start,from.y).bezierCurveTo(start+sign*h,from.y,end-sign*h,endY,end,endY).stroke({width:PAPER.wire.width,color:ok?P.ink:P.tomato});
+        target.visible=false;
+        if(to)band.roundRect(to.x+PAPER.body.x,to.y+PAPER.body.y,PAPER.body.width,PAPER.body.height,PAPER.body.radius).stroke({width:PAPER.body.stroke,color:ok?P.ink:P.tomato});
+        else band.rect(x-5,y-5,10,10).fill({color:P.card}).stroke({width:2,color:P.ink});
+        return;
+      }
       if (to) {
         edgeCurve(bandLut, from.x, from.y, to.x, to.y);
         band.moveTo(bandLut.p0x, bandLut.p0y).bezierCurveTo(bandLut.c1x, bandLut.c1y, bandLut.c2x, bandLut.c2y, bandLut.p3x, bandLut.p3y)
@@ -501,6 +511,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (!v || v.removing) continue;
       let fail = 0, inn = 0, pile = -1, pileR = 0;
       const b = i * T;
+      if(look==='paper')v.outRps=nodeOut.subarray(b,b+T).reduce((sum,r)=>sum+r,0);
       for (let t = 0; t < T; t++) {
         const f = nf[b + t] || 0;
         if (F.typeIds[t] !== 'attack') fail += f; inn += nodeIn[b + t];
@@ -670,7 +681,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       else portRing.position.set(ringNode.x, ringNode.y);
     }
     portHint.visible = !!ringNode && ringNode.id === selected && editable && !flow && input.mode !== 'connect';
-    if (portHint.visible) { portHint.position.set(ringNode.x, ringNode.y - PORT_R - 16 / camera.zoom); portHint.scale.set(1 / camera.zoom); portHint.style.fill = P.accent; }
+    if (portHint.visible) { portHint.position.set(ringNode.x, ringNode.y - (look==='paper'?PAPER.body.height/2:PORT_R) - 16 / camera.zoom); portHint.scale.set(1 / camera.zoom); portHint.style.fill = P.accent; }
     if (viewChanged && ringNode) drawPortRing();
     if (!editable && ringNode) ui.setPortRing(null);
     else if (editable && !ringNode && selected && input.mode === 'idle' && !nodes.hovered) {
@@ -942,7 +953,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const labels = nodes.list.flatMap(v => [v.labelT, v.evidenceT].filter(t => t.visible && t.renderable && t.text && v.c.visible).map(t => {
         const b = t.getBounds(); return { id: v.id, kind: t === v.labelT ? 'name' : 'failure', text: t.text, x: b.x, y: b.y, width: b.width, height: b.height };
       }));
-      const parts = nodes.list.map(v => { const p = camera.worldToScreen(v.x, v.y); return { id: v.id, x: p.x - (v.renderHalf||36)*z, y: p.y - (v.renderHalf||36)*z, width: 2*(v.renderHalf||36)*z, height: 2*(v.renderHalf||36)*z }; });
+      const parts = nodes.list.map(v => { const p = camera.worldToScreen(v.x, v.y); return { id: v.id, x: p.x - (v.renderHalf||36)*z, y: p.y - (v.renderHeight/2||v.renderHalf||36)*z, width: (v.renderWidth||2*(v.renderHalf||36))*z, height: (v.renderHeight||2*(v.renderHalf||36))*z }; });
       const wires = edges.list.map(v => ({ id: v.id, from: v.from, to: v.to, points: Array.from({ length: (v.lut.segs || 24) + 1 }, (_, i) => camera.worldToScreen(v.lut.xs[i], v.lut.ys[i])) }));
       let labelOverlaps = 0, wirePartCrossings = 0, wireLabelCrossings = 0, labelPartOverlaps = 0, labelPanelOverlaps = 0;
       const area=captionArea||{l:0,t:0,r:0,b:0}, right=camera.size.w-area.r, bottom=camera.size.h-area.b;

@@ -1,6 +1,6 @@
 // Node views: cream card with a hard shadow, icon, label, load bar, status glyphs, chips; spring placement.
 
-import { PAPER, cardLook, drawPaperLoad } from './paper.js';
+import { PAPER, cardLook, drawPaperLoad, layoutPaperLabels } from './paper.js';
 import { drawE08Load, e08IconSize } from './e08.js';
 import { poolCells } from './pool.js';
 import { outline, HALF } from './geom.js';
@@ -52,13 +52,14 @@ export function makeMini(PIXI, kit, env, type, { faint = false } = {}) {
   const c = new PIXI.Container();
   let body;
   if (faint && kit.look !== 'paper') body = new PIXI.Graphics(kit.faint[cat]);
-  else { body = new PIXI.Sprite(kit.bodyTex[cat]); body.anchor.set(0.5); body.width = body.height = BODY_BOX; }
+  else { body = new PIXI.Sprite(kit.bodyTex[cat]); body.anchor.set(0.5); body.width = body.height = kit.look==='paper'?PAPER.body.textureSize:BODY_BOX; }
   if (faint && kit.look === 'paper') body.alpha = .45;
   c.addChild(body);
   const tex = kit.icons.get('el.' + type, kit.P.ink);
   const icon = new PIXI.Sprite(tex || PIXI.Texture.EMPTY);
   icon.anchor.set(0.5); icon.width = icon.height = kit.look === 'paper' ? PAPER.icon.size : cardLook(kit.look) ? e08IconSize : 28; icon.y = cardLook(kit.look) ? 0 : iconOffset(shape);
   icon.tint = cardLook(kit.look) ? kit.P.ink : 0xffffff;
+  if(kit.look==='paper'){body.texture=kit.bodyFor(cat,0,type);icon.position.set(PAPER.icon.x,PAPER.icon.y);icon.tint=type.endsWith('-lb')?kit.P.ink:kit.P.card;}
   c.addChild(icon);
   c.__icon = icon; c.__type = type; c.__cat = cat; c.__shape = shape; c.__body = body; c.__faint = faint && kit.look !== 'paper';
   return c;
@@ -66,10 +67,11 @@ export function makeMini(PIXI, kit, env, type, { faint = false } = {}) {
 
 export function refreshMini(kit, c) {
   if (c.__faint) c.__body.context = kit.faint[c.__cat];
-  else { c.__body.texture = kit.bodyTex[c.__cat]; c.__body.width = c.__body.height = BODY_BOX; }
+  else { c.__body.texture = kit.bodyTex[c.__cat]; c.__body.width = c.__body.height = kit.look==='paper'?PAPER.body.textureSize:BODY_BOX; }
   const tex = kit.icons.get('el.' + c.__type, kit.P.ink);
   if (tex) c.__icon.texture = tex;
   c.__icon.tint = cardLook(kit.look) ? kit.P.ink : 0xffffff;
+  if(kit.look==='paper'){c.__body.texture=kit.bodyFor(c.__cat,0,c.__type);c.__icon.position.set(PAPER.icon.x,PAPER.icon.y);c.__icon.tint=c.__type.endsWith('-lb')?kit.P.ink:kit.P.card;}
 }
 
 export function createNodeLayer(PIXI, parent, env) {
@@ -80,7 +82,7 @@ export function createNodeLayer(PIXI, parent, env) {
   let compact = false;
   let detailZoom = true;
   let tiny = false;
-  const showLabel = (v) => { v.labelT.visible = true; v.labelT.text = compact ? shortName(v) : v.label; };
+  const showLabel = (v) => { v.labelT.visible = env.kit().look !== 'paper'; v.labelT.text = compact ? shortName(v) : v.label; };
   const shortName = v => SHORT[v.type] || firstWord(v.label) || v.type;
   let labelK = 1; // label scale that keeps names readable when zoomed out
   let multiRegion = false;
@@ -119,7 +121,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.c = c;
     v.pulse = new PIXI.Sprite(kit.fx.ring); v.pulse.anchor.set(0.5); v.pulse.visible = false;
     v.lead = new PIXI.Sprite(kit.leadTex[shape]); v.lead.anchor.set(0.5); v.lead.width = v.lead.height = BODY_BOX; v.lead.visible = false;
-    v.body = new PIXI.Sprite(kit.bodyTex[cat]); v.body.anchor.set(0.5); v.body.width = v.body.height = BODY_BOX;
+    v.body = new PIXI.Sprite(kit.bodyTex[cat]); v.body.anchor.set(0.5); v.body.width = v.body.height = kit.look==='paper'?PAPER.body.textureSize:BODY_BOX;
     v.select = new PIXI.Sprite(kit.selectTex[shape]); v.select.anchor.set(0.5); v.select.width = v.select.height = BODY_BOX; v.select.visible = false;
     v.icon = new PIXI.Sprite(kit.icons.get('el.' + n.type, P.ink) || PIXI.Texture.EMPTY);
     v.icon.anchor.set(0.5); v.icon.width = v.icon.height = cardLook(kit.look) ? e08IconSize : 28; v.icon.y = cardLook(kit.look) ? 0 : iconOffset(shape);
@@ -155,6 +157,9 @@ export function createNodeLayer(PIXI, parent, env) {
     if (cardLook(kit.look)) { v.labelT.style.fontFamily = kit.look === 'paper' ? PAPER.type.label : 'system-ui, sans-serif'; v.labelT.style.fontSize = 14; v.labelT.style.fontWeight = '700'; v.labelT.style.wordWrapWidth = 140; }
     v.paperTitle = makeText('', PAPER.title.size, P.ink, false, PAPER.type.weight, PAPER.title.width); v.paperTitle.anchor.set(.5, 0); v.paperTitle.position.set(PAPER.title.x, PAPER.title.y); v.paperTitle.style.fontFamily = PAPER.type.label; v.paperTitle.visible = false;
     v.paperStatus = makeText('', PAPER.status.size, P.text2, true, PAPER.type.weight); v.paperStatus.anchor.set(.5); v.paperStatus.position.set(PAPER.status.x, PAPER.status.y); v.paperStatus.style.fontFamily = PAPER.type.mono; v.paperStatus.visible = false;
+    v.paperReading = makeText('', PAPER.status.size, P.ink, true, PAPER.type.weight);
+    v.paperOutline = new PIXI.Graphics();
+    v.paperWaiting = makeText('', 11, P.ink, true, PAPER.type.weight);v.paperWaiting.anchor.set(0,.5);
     v.leader = new PIXI.Graphics();
     v.captionC = new PIXI.Container();
     v.captionC.addChild(v.leader, v.labelBg, v.labelT, v.evidenceBg, v.evidenceT);
@@ -166,7 +171,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
     c.addChild(v.pulse, v.body, v.lead, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
-      v.chip, v.regionC, v.badge, v.captionC, v.rejected, v.paperTitle, v.paperStatus);
+      v.chip, v.regionC, v.badge, v.captionC, v.rejected, v.paperTitle, v.paperStatus, v.paperReading, v.paperOutline, v.paperWaiting);
     c.alpha = 0;
     c.scale.set(v.s);
     v.captionC.scale.set(1 / v.s);
@@ -260,7 +265,7 @@ export function createNodeLayer(PIXI, parent, env) {
   }
 
   function drawRetries(v,P,time,reduced) {
-    const rate=v.telemetry?.retryRps||0,g=v.retryG;g.clear();
+    const rate=v.telemetry?.retryRps||0,g=v.retryG;g.clear();if(env.kit().look==='paper')return;
     if(!v.live||rate<.5)return;
     g.moveTo(38,6).bezierCurveTo(64,-54,-64,-54,-38,6).stroke({width:2.5,color:P.bad});
     g.poly([-38,6,-46,1,-38,-3]).fill({color:P.bad});
@@ -366,7 +371,7 @@ export function createNodeLayer(PIXI, parent, env) {
     drawRetries(v,P,time,reduced);
     // Flat markers only: an event gets a still ring in its colour, the first failing part a yellow frame with an ink edge.
     v.lead.visible = v.isLead && !isSelNow(v);
-    if (v.event) {
+    if (v.event && env.kit().look !== 'paper') {
       v.pulse.visible = true; v.pulse.tint = v.event.color; v.pulse.alpha = 1;
       v.pulse.width = v.pulse.height = 104;
     } else v.pulse.visible = false;
@@ -434,8 +439,8 @@ export function createNodeLayer(PIXI, parent, env) {
         v.statusG.visible = e08 || (v.live && v.status > 0);
         if (!e08 && !detailZoom) { v.statusG.context = env.kit().glyphs.status[v.status]; v.statusG.scale.set(Math.max(1, labelK * .7)); }
         else v.statusG.scale.set(1);
-        if (env.kit().look === 'paper') drawPaperLoad(v, env.kit());
-        else if (e08) drawE08Load(v, env.kit(), time, reduced);
+        if (env.kit().look === 'paper') {v.paperShortName=shortName(v);v.paperCompact=(env.zoom?.()||1)<.5;v.paperSelected=selected===v.id;drawPaperLoad(v, env.kit());v.select.visible=false;}
+        else {v.paperReading.visible=v.paperWaiting.visible=false;v.paperOutline.clear();if (e08) drawE08Load(v, env.kit(), time, reduced);}
 
       }
       for (let i = dying.length - 1; i >= 0; i--) {
@@ -450,6 +455,7 @@ export function createNodeLayer(PIXI, parent, env) {
     },
     // Names and failure facts get separate, fixed-width lanes.
     layoutLabels(camera, area) {
+      if(env.kit().look==='paper')return layoutPaperLabels(list,camera,area,env.kit().P);
       const z = camera.zoom, P = env.kit().P, e08 = cardLook(env.kit().look);
       const free = { x:area?.l||8,y:area?.t||8,width:camera.size.w-(area?.l||8)-(area?.r||8),height:camera.size.h-(area?.t||8)-(area?.b||8) };
       const visible=p=>p.x>=free.x && p.x<=free.x+free.width && p.y>=free.y && p.y<=free.y+free.height;
@@ -671,11 +677,14 @@ export function createNodeLayer(PIXI, parent, env) {
       this.captionKey = null;
       const P = kit.P;
       for (const v of [...list, ...dying]) {
+        v.renderWidth=kit.look==='paper'?PAPER.body.width:null;v.renderHeight=kit.look==='paper'?PAPER.body.height:null;
+        v.valid.position.set(HALF-7,-HALF+7);v.lock.position.set(-HALF+9,-HALF+20);v.regionC.position.set(0,-HALF-12);
+        v.labelT.visible=kit.look!=='paper';
         v.paperTitle.visible = v.paperStatus.visible = kit.look === 'paper';
         v.icon.x = 0;
         v.pulse.texture = kit.fx.ring;
         v.lead.texture = kit.leadTex[v.shape]; v.lead.width = v.lead.height = BODY_BOX;
-        v.body.texture = kit.bodyFor?.(v.cat, v.status) || (v.down || v.status >= 3 ? kit.downTex : kit.bodyTex[v.cat]); v.body.width = v.body.height = BODY_BOX;
+        v.body.texture = kit.bodyFor?.(v.cat, v.status) || (v.down || v.status >= 3 ? kit.downTex : kit.bodyTex[v.cat]); v.body.width = v.body.height = kit.look==='paper'?PAPER.body.textureSize:BODY_BOX;
         v.select.texture = kit.selectTex[v.shape]; v.select.width = v.select.height = BODY_BOX;
         v.icon.texture = kit.icons.get('el.' + v.type, P.ink) || PIXI.Texture.EMPTY;
         v.icon.width = v.icon.height = cardLook(kit.look) ? e08IconSize : 28;
@@ -708,7 +717,7 @@ export function createNodeLayer(PIXI, parent, env) {
     redrawAll() { for (const v of list) { v.drawnU = -1; v.drawnColor = -1; } },
     // Hides nodes outside the world rectangle (cheap culling; their state keeps updating).
     cull(x0, y0, x1, y1) {
-      for (const v of list) v.c.visible = v.x + 90 > x0 && v.x - 90 < x1 && v.y + 90 > y0 && v.y - 90 < y1;
+      for (const v of list) v.c.visible = v.x + (env.kit().look==='paper'?PAPER.body.textureSize/2:90) > x0 && v.x - (env.kit().look==='paper'?PAPER.body.textureSize/2:90) < x1 && v.y + 90 > y0 && v.y - 90 < y1;
     },
     // Keep names readable through zoom and part entry motion.
     setLabelScale(z) {
@@ -764,6 +773,7 @@ export function createNodeLayer(PIXI, parent, env) {
       if (!nodes || !nodes.length) return null;
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const n of nodes) {
+        if(env.kit().look==='paper'){minX=Math.min(minX,n.x-PAPER.body.textureSize/2);maxX=Math.max(maxX,n.x+PAPER.body.textureSize/2);minY=Math.min(minY,n.y-PAPER.fit.top);maxY=Math.max(maxY,n.y+PAPER.fit.bottom);continue;}
         minX = Math.min(minX, n.x - HALF); maxX = Math.max(maxX, n.x + HALF);
         minY = Math.min(minY, n.y - HALF - 14); maxY = Math.max(maxY, n.y + HALF + 30);
       }

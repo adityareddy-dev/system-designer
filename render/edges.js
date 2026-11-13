@@ -156,7 +156,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
       if (!moved) return false;
       structDirty = false;
       const obstacles = [...nodeViews.values()].flatMap(n => [
-        { id: n.id, body: true, x: n.x - (n.renderHalf||44), y: n.y - (n.renderHalf||44), width: 2*(n.renderHalf||44), height: 2*(n.renderHalf||44) },
+        { id: n.id, body: true, x: n.x - (n.renderWidth/2||n.renderHalf||44), y: n.y - (n.renderHeight/2||n.renderHalf||44), width: n.renderWidth||2*(n.renderHalf||44), height: n.renderHeight||2*(n.renderHalf||44) },
         ...(n.captionBoxes || []),
       ]);
       const sides = new Map();

@@ -7,13 +7,15 @@ import { routedLut } from './routing.js';
 export const PAPER = Object.freeze({
   card: 0xfffcf4, paper: 0xfff4e0, ink: 0x141414, blue: 0x2d5bff, yellow: 0xffc93c,
   mint: 0x7fd9a8, tomato: 0xff5b3a, bad: 0xb3261e, down: 0xe2e5e9,
-  body: { x: -44, y: -38, width: 88, height: 76, radius: 8, stroke: 2.5, shadowX: 6, shadowY: 4 },
-  bar: { x: -34, y: 21, width: 68, height: 9, stroke: 2 },
-  wire: { width: 2.5, dash: 6, gap: 10, travel: 32, period: 1200, radius: 16, port: 46, arrowLength: 9, arrowHalf: 4.5 },
+  body: { textureSize: 250, x: -115, y: -59, width: 230, height: 118, radius: 8, stroke: 2.5, shadowX: 6, shadowY: 4 },
+  bar: { x: -100, y: 1, width: 200, height: 16, stroke: 2 },
+  wire: { width: 2.5, dash: 6, gap: 10, travel: 32, period: 1200, radius: 16, port: 117, arrowLength: 9, arrowHalf: 4.5 },
   type: { label: 'Space Grotesk, Arial, sans-serif', mono: 'Space Mono, monospace', weight: '700', captionSize: 14 },
-  title: { x: 0, y: -33, size: 8.5, width: 76 },
-  status: { x: 12, y: 2, size: 6.8 },
-  icon: { x: -23, y: 0, size: 24 },
+  title: { x: -72, y: -38, size: 16, width: 174 },
+  status: { x: -100, y: 37, size: 11 },
+  fit: { top: 125, bottom: 90 },
+  preview: { x: 1.8, y: 1.2, padX: 135, padY: 80, widthPad: 280, heightPad: 180, scale: .8 },
+  icon: { x: -96, y: -38, size: 22 },
 });
 export const cardLook = look => look === 'e08' || look === 'paper';
 export function paperPalette(base) {
@@ -23,12 +25,12 @@ export function paperPalette(base) {
 }
 export const paperBarColor = load => load > 1 ? PAPER.tomato : load >= .9 ? PAPER.yellow : PAPER.blue;
 export function paperStatus(live, down, load) {
-  return down ? 'down' : !live ? 'ready' : load > 1 ? 'overloaded' : `${Math.max(0,Math.round((1-load)*100))}% spare`;
+  return down ? 'down' : !live ? 'ready' : load > 1 ? 'overloaded' : 'healthy';
 }
-// Narrow category band uses the site's category colours. The cream body and load bar stay distinct.
+// Full category header, cream body and hard shadow use the approved mock's proportions.
 export function paperBodySvg(P, category, down = false) {
-  const b=PAPER.body, ink=hexStr(P.ink), fill=hexStr(down ? PAPER.down : P.card);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100"><rect x="${b.x+b.shadowX}" y="${b.y+b.shadowY}" width="${b.width}" height="${b.height}" rx="${b.radius}" fill="${ink}"/><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${b.radius}" fill="${fill}" stroke="${ink}" stroke-width="${b.stroke}"/><path d="M-34 -15H34" stroke="${hexStr(down ? P.text3 : P.cat[category])}" stroke-width="5"/></svg>`;
+  const b=PAPER.body, ink=hexStr(P.ink), fill=hexStr(down ? PAPER.down : P.card), band=hexStr(down ? P.text3 : category==='balancer'?P.yellow:P.cat[category]);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-125 -125 250 250"><defs><clipPath id="card"><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${b.radius}"/></clipPath></defs><rect x="${b.x+b.shadowX}" y="${b.y+b.shadowY}" width="${b.width}" height="${b.height}" rx="${b.radius}" fill="${ink}"/><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${b.radius}" fill="${fill}"/><path d="M-115 -59H115V-17H-115Z" fill="${band}" clip-path="url(#card)"/><path d="M-115 -17H115" stroke="${ink}" stroke-width="${b.stroke}"/><rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" rx="${b.radius}" fill="none" stroke="${ink}" stroke-width="${b.stroke}"/></svg>`;
 }
 async function raster(PIXI, svg, size) {
   const img=new Image();
@@ -47,10 +49,10 @@ export async function addPaperTextures(PIXI,kit) {
   const owned=[];
   const bake=async(svg,size)=>{const t=await raster(PIXI,svg,size);owned.push(t);return t;};
   try {
-    const states=Object.fromEntries(await Promise.all(CATEGORY_IDS.map(async cat=>[cat,await Promise.all([false,true].map(d=>bake(paperBodySvg(kit.P,cat,d),Math.round(200*kit.res))))])));
+    const states=Object.fromEntries(await Promise.all([...CATEGORY_IDS,'balancer'].map(async cat=>[cat,await Promise.all([false,true].map(d=>bake(paperBodySvg(kit.P,cat,d),Math.round(200*kit.res))))])));
     const glyphs=new Map(await Promise.all(parts.map(async p=>[p.id,await bake((await paperGlyph(p.id)).replace('#f3eee0','#ffffff'),Math.round(96*kit.res))])));
     const icons=kit.icons,destroy=kit.destroy;
-    kit.look='paper';kit.bodyFor=(cat,status=0)=>states[cat]?.[status===4?1:0]||states.compute[0];
+    kit.look='paper';kit.bodyFor=(cat,status=0,type='')=>states[type.endsWith('-lb')?'balancer':cat]?.[status===4?1:0]||states.compute[0];
     kit.bodyTex=Object.fromEntries(CATEGORY_IDS.map(cat=>[cat,states[cat][0]]));
     kit.icons={...icons,get:(id,color)=>id.startsWith('el.')?glyphs.get(id.slice(3)):icons.get(id,color)};
     kit.destroy=()=>{owned.forEach(t=>t.destroy(true));destroy();};
@@ -59,20 +61,68 @@ export async function addPaperTextures(PIXI,kit) {
 }
 export function drawPaperLoad(v,kit) {
   const P=kit.P,b=PAPER.bar,g=v.busy,load=v.live&&!v.down?Math.max(0,Math.min(1,v.du)):0;
-  g.clear().rect(b.x,b.y,b.width,b.height).fill({color:P.paper});
-  if(load>0)g.rect(b.x,b.y,b.width*load,b.height).fill({color:paperBarColor(v.du)});
-  g.rect(b.x,b.y,b.width,b.height).stroke({color:P.ink,width:b.stroke});
-  if(v.down)g.moveTo(18,-6).lineTo(30,6).moveTo(30,-6).lineTo(18,6).stroke({color:P.bad,width:3});
+  const compact=v.paperCompact, headerInk=v.type.endsWith('-lb') ? P.ink : P.card;
+  v.body.width=v.body.height=PAPER.body.textureSize;v.body.texture=kit.bodyFor(v.cat,v.status,v.type);
+  g.clear().roundRect(b.x,b.y,b.width,b.height,3).fill({color:P.paper});
+  if(load>0)g.roundRect(b.x,b.y,b.width*load,b.height,3).fill({color:paperBarColor(v.du)});
+  g.roundRect(b.x,b.y,b.width,b.height,3).stroke({color:P.ink,width:b.stroke});
+  if(v.down)g.moveTo(86,27).lineTo(99,43).moveTo(99,27).lineTo(86,43).stroke({color:P.bad,width:3});
   v.drawnU=v.du;v.drawnColor=paperBarColor(v.du);
-  v.statusG.clear();
-  v.paperTitle.visible=v.paperStatus.visible=true;
-  v.paperTitle.text=v.label;v.paperTitle.style.fill=P.ink;
-  v.paperStatus.text=paperStatus(v.live,v.down,v.du);v.paperStatus.style.fill=v.down?P.bad:P.text2;
-  v.icon.position.set(PAPER.icon.x,PAPER.icon.y);v.icon.width=v.icon.height=PAPER.icon.size;
-  v.rejected.visible=v.live&&v.status===3;
-  if(v.rejected.visible){v.rejectedT.text=`${Math.round(v.failRps||0)}/s`;v.rejectedT.style.fill=P.ink;
-    const w=Math.max(48,v.rejectedT.width+16);
-    v.rejectedG.clear().roundRect(-w/2,-10,w,20,6).fill({color:P.card}).stroke({color:P.bad,width:2});}
+  // Paper replaces the old decoration layers, including the duplicated outside label.
+  for(const key of ['labelT','labelBg','leader','statusG','retryG','pile','pulse','lead','rejected','chip','badge','pool','poolT'])v[key].visible=false;
+  v.paperTitle.visible=true;v.paperStatus.visible=v.paperReading.visible=!compact;
+  v.paperTitle.anchor.set(0,.5);v.paperTitle.position.set(PAPER.title.x,PAPER.title.y);
+  v.paperTitle.scale.set(1);v.paperTitle.style.wordWrap=!compact;
+  v.paperTitle.text=compact?v.paperShortName:v.label;v.paperTitle.style.fill=headerInk;
+  v.paperTitle.style.fontSize=compact?30:PAPER.title.size;v.paperTitle.style.lineHeight=compact?32:18;
+  v.paperTitle.style.wordWrapWidth=PAPER.title.width;
+  if(v.paperTitle.height>38)v.paperTitle.text=v.paperShortName;
+  if(v.paperTitle.width>PAPER.title.width)v.paperTitle.scale.set(PAPER.title.width/v.paperTitle.width);else v.paperTitle.scale.set(1);
+  v.paperStatus.anchor.set(0,.5);v.paperStatus.position.set(PAPER.status.x,PAPER.status.y);
+  v.paperStatus.text=v.cat==='clients'&&v.live?'sending':v.type.endsWith('-lb')&&v.live&&!v.down&&v.du<=1?'routing':paperStatus(v.live,v.down,v.du);
+  v.paperStatus.style.fill=v.down||v.du>1?P.bad:P.ink;
+  v.paperReading.anchor.set(1,.5);v.paperReading.position.set(100,PAPER.status.y);
+  v.paperReading.text=v.down?'':v.live&&v.failRps>.5?`${Math.round(v.failRps).toLocaleString('en-US')}/s rejected`:v.cat==='clients'&&v.live?`${countRate(v.outRps||0)}/s`:v.units>1?`×${v.units}`:v.live?`${Math.max(0,Math.round((1-v.du)*100))}% headroom`:'';
+  v.paperReading.scale.set(1);const room=192-v.paperStatus.width-8;v.paperReading.scale.set(Math.min(1,Math.max(0,room)/Math.max(1,v.paperReading.width)));
+  v.paperReading.style.fill=P.ink;
+  v.icon.position.set(PAPER.icon.x,PAPER.icon.y);v.icon.width=v.icon.height=PAPER.icon.size;v.icon.tint=headerInk;
+  v.valid.position.set(124,37);v.lock.position.set(-132,37);v.regionC.position.set(0,-74);
+  const o=v.paperOutline;o.clear();
+  if(v.status>=3||v.paperSelected)o.roundRect(-115,-59,230,118,8).stroke({color:v.paperSelected?P.ink:P.tomato,width:3});
+  v.paperWaiting.visible=!compact&&v.live&&v.queue>1;
+  if(v.paperWaiting.visible){v.paperWaiting.text=`${Math.round(v.queue).toLocaleString('en-US')} waiting`;v.paperWaiting.position.set(-100,75);const w=v.paperWaiting.width+12;o.roundRect(-106,64,w,22,4).fill({color:P.card}).stroke({color:P.ink,width:2});}
+}
+function countRate(n){return n>=1000?`${(n/1000).toFixed(1)}K`:String(Math.round(n));}
+
+// Only the first-limit reading needs an outside caption. Reserve its full ink box for wires.
+export function layoutPaperLabels(list,camera,area,P) {
+  const z=camera.zoom,free={x:area?.l||8,y:area?.t||8,right:camera.size.w-(area?.r||8),bottom:camera.size.h-(area?.b||8)};
+  const bodies=list.map(v=>{const p=camera.worldToScreen(v.x,v.y);return{x:p.x-119*z,y:p.y-63*z,width:240*z,height:(v.queue>1&&!v.paperCompact?151:126)*z};});
+  const occupied=[...bodies,...(area?.blocks||[])];let changed=false;
+  for(const v of list){
+    const previous=JSON.stringify(v.captionBoxes),p=camera.worldToScreen(v.x,v.y);
+    v.renderHalf=PAPER.body.width/2;v.renderWidth=PAPER.body.width;v.renderHeight=PAPER.body.height;v.portHalf=PAPER.wire.port;
+    v.labelT.visible=false;v.nameCaption=null;v.captionBoxes=[];v.factCaption=null;v.evidenceBg.clear();v.leader.clear();
+    const t=v.evidenceT;t.visible=v.live&&(v.isLead||t.text.startsWith('First limit'));t.renderable=false;
+    if(t.visible){
+      const text=t.text.replace(/^First limit(?:[.\n]\s*)?/,'').replace(/[×↶]/g,'').trim().split('\n').map(s=>s.trim());
+      t.text='First limit. '+text.join(', ');t.style.fontSize=12;t.style.fill=P.ink;t.style.wordWrap=true;t.style.wordWrapWidth=Math.min(350,free.right-free.x-24);t.style.align='left';t.style.lineHeight=16;t.scale.set(1/z);t.anchor.set(0,0);
+      const width=t.width*z+20,height=t.height*z+14;
+      const base={x:Math.max(free.x,Math.min(free.right-width,p.x-115*z)),y:p.y-59*z-height-14,width,height};
+      const xs=[base.x,free.x,free.right-width,...occupied.flatMap(b=>[b.x-width-8,b.x+b.width+8])];
+      const ys=[base.y,...occupied.flatMap(b=>[b.y-height-12,b.y+b.height+12]),free.y];
+      let box=null,best=Infinity;
+      for(const y of ys)for(const x of xs){const r={x,y,width,height},d=Math.abs(y-base.y)+Math.abs(x-base.x);if(x>=free.x&&y>=free.y&&x+width<=free.right&&y+height<=free.bottom&&!occupied.some(b=>x<b.x+b.width&&x+width>b.x&&y<b.y+b.height&&y+height>b.y)&&d<best){box=r;best=d;}}
+      if(box){
+        t.renderable=true;t.position.set((box.x-p.x+10)/z,(box.y-p.y+7)/z);
+        const x=(box.x-p.x)/z,y=(box.y-p.y)/z,w=width/z,h=height/z;
+        v.evidenceBg.roundRect(x+3/z,y+2/z,w,h,6/z).fill({color:P.ink}).roundRect(x,y,w,h,6/z).fill({color:P.tomato}).stroke({color:P.ink,width:2/z});v.evidenceBg.visible=true;
+        v.factCaption={x,y,width:w,height:h};v.captionBoxes=[{id:v.id,x:v.x+x-3/z,y:v.y+y-3/z,width:w+6/z,height:h+6/z}];occupied.push(box);
+      }
+    }
+    if(previous!==JSON.stringify(v.captionBoxes))changed=true;
+  }
+  return changed;
 }
 
 // Round the existing obstacle route, using a sampled quadratic at each bend. All consumers
