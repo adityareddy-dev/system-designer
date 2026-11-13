@@ -64,6 +64,8 @@ export function mountShell(rootEl, ctx) {
     const old = [...rootEl.querySelectorAll('.sh-flow')].map((el) => el.getAnimations?.()[0]?.currentTime);
     rootEl.replaceChildren(shell);
     if (!overlayEl.isConnected) rootEl.append(overlayEl);
+    // the page head hides the first screen on deep links until the game's own view is in place; it is in place now
+    document.documentElement.classList.remove('sd-booting');
     if (old.some((t) => t != null)) shell.querySelectorAll('.sh-flow').forEach((el, i) => { const a = el.getAnimations?.()[0]; if (a && old[i] != null) a.currentTime = old[i]; });
   }
 

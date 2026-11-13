@@ -23,6 +23,7 @@ addEventListener('error', (e) => runtimeErrors.push({ code: 'runtime', message: 
 addEventListener('unhandledrejection', (e) => runtimeErrors.push({ code: 'runtime', message: String(e.reason?.message || e.reason || 'rejection') }));
 
 function fatal(msg) {
+  document.documentElement.classList.remove('sd-booting');
   const app = document.getElementById('app');
   if (!app) return;
   app.innerHTML = '';
