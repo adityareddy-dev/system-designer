@@ -7,6 +7,7 @@ import { pathLayout } from '../../render/layout.js';
 import { fitInsets } from '../../render/fit.js';
 import { renderDesignCheck } from './design-check.js';
 import { createSim } from '../../sim/engine.js';
+import { canvasLook } from '../../render/look.js';
 import { createScene } from '../../render/scene.js';
 import { h, iconEl, clamp, clockLabel, snd as sndRaw, debounce, STATUS_NAMES, fmtMs, fmtPct } from './util.js';
 import { createSteps } from './steps.js';
@@ -119,7 +120,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   hostEl.append(root);
 
   // ---- scene
-  const scene = await createScene(stage, { catalog, palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
+  const scene = await createScene(stage, { catalog, look: canvasLook(mode, opts.problem), palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
   const routeTrace = createRouteTrace(root, catalog, scene);
   let traceOptBtn = null;
   function refreshTrace() {
@@ -1793,7 +1794,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!stepped || interview) return;
     if (!S.result && !(ctx.progress?.get?.(S.problem.id)?.attempts > 0)) { toast('The editorial unlocks after one finished traffic day.', 'info'); return; }
     renderEditorial(editorialWrap, {
-      problem: S.problem, catalog, passed: !!(S.result?.passed || ctx.progress?.get?.(S.problem.id)?.stars > 0),
+      problem: S.problem, catalog, look: canvasLook(mode, S.problem), passed: !!(S.result?.passed || ctx.progress?.get?.(S.problem.id)?.stars > 0),
       onClose: closeEditorial, onLoad: loadDesign, onShown: () => assist('you opened the editorial answer'),
     });
     editorialWrap.hidden = false; editorialWrap.scrollTop = 0;
@@ -1971,6 +1972,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     // a twist day plays the same problem on its other event list (content/problems/twists.js); it is practice only
     const base = S.twist && problem.twist ? twistProblem(problem) : problem;
     S.problem = withSource(spreadClients(warmUpOf(base)));
+    scene.setLook(canvasLook(mode, S.problem)).catch(e => toast('Could not load the canvas look: ' + e.message, 'bad'));
     S.result = null;
     S.pendingTransfer = null;
     S.undo.length = 0; S.redo.length = 0;

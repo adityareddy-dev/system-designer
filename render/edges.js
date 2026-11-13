@@ -1,5 +1,6 @@
 // Edge views: ink curves between ports, load-scaled width, blocky direction marks, dashed links, flat highlight bands on hot paths.
 
+import { drawE08Edge } from './e08-edges.js';
 import { createRouter, routedLut, inkPath } from './routing.js';
 import { makeLut, edgeSides, lutAt, distToLut, LUT_SEGS } from './geom.js';
 
@@ -49,6 +50,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
   }
 
   function draw(v, P) {
+    if (env.kit().look === 'e08') return drawE08Edge(v, env, highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id));
     const g = v.g;
     const lut = v.lut;
     g.clear();
@@ -109,6 +111,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
   }
 
   function wantsRedraw(v, P) {
+    if (env.kit().look === 'e08') return v.dirty || (!env.reduced() && v.rps > .01) || (highlight === v.id || !!env.pathEdge?.(v.id) || trace.has(v.id)) !== v.drawnHi || v.rps !== v.drawnRps || v.band !== v.drawnBand;
     if (v.dirty) return true;
     const hi = highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id);
     if (hi !== v.drawnHi) return true;
@@ -240,7 +243,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
         r.rope.visible = true;
         r.rope.tint = it.strength >= 1 ? P.tomato : P.yellow;
         r.rope.blendMode = 'normal';
-        r.rope.alpha = 1;
+        r.rope.alpha = env.kit().look === 'e08' ? .4 : 1;
       }
     },
     redrawAll() { for (const v of list) v.dirty = true; },

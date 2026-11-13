@@ -1,4 +1,5 @@
 // Editorial: reference designs with reasoning, worked numbers, cost, trade-offs. Spoiler gate until solved.
+import { e08DesignDiagram } from '../../render/e08-preview.js';
 import { estimateUnit } from './estimate-units.js';
 import { h, iconEl, fmtNum, fmtUsd, approx } from './util.js';
 import { iconInner } from '../../assets/icons/index.js';
@@ -9,7 +10,8 @@ const NS = 'http://www.w3.org/2000/svg';
 const s = (tag, attrs = {}) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
 
 // Read-only wiring at the reference design's own spacing.
-export function designDiagram(design, catalog) {
+export function designDiagram(design, catalog, look = 'classic') {
+  if (look === 'e08') return e08DesignDiagram(design, catalog);
   const nodes = design.graph.nodes;
   const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -58,8 +60,8 @@ export function designDiagram(design, catalog) {
   return svg;
 }
 
-function referencePreview(design, catalog, homeRegion) {
-  const svg = designDiagram(design, catalog);
+function referencePreview(design, catalog, homeRegion, look) {
+  const svg = designDiagram(design, catalog, look);
   const width = svg.viewBox.baseVal.width;
   const viewport = h('div', { class: 'pl-dg-wrap', tabindex: '0', role: 'region', 'aria-label': 'Reference diagram. Scroll to inspect the wiring.', style: { maxHeight: '420px', overflow: 'auto' } }, svg);
   let zoom = 0.8;
@@ -86,7 +88,7 @@ function referencePreview(design, catalog, homeRegion) {
         h('td', { text: referenceSettings(node, catalog, homeRegion) }))))));
 }
 
-export function renderEditorial(host, { problem, catalog, passed, onLoad, onClose, onShown }) {
+export function renderEditorial(host, { problem, catalog, passed, onLoad, onClose, onShown, look = 'classic' }) {
   host.replaceChildren();
   const ed = problem.editorial;
   const root = h('div', { class: 'pl-editorial' });
@@ -114,7 +116,7 @@ export function renderEditorial(host, { problem, catalog, passed, onLoad, onClos
         holds ? null : h('p', { class: 'pl-ed-warn' }, iconEl('ui.warn', 16),
           h('span', {}, h('b', { text: 'Does not pass this day. ' }), `Measured in the game: ${d.expect.verdict || 'it misses at least one target.'} It is shown to teach the pattern and where it stops, not as an answer to copy.`)),
         d.why ? h('p', { class: 'pl-ed-why', text: d.why }) : null,
-        referencePreview(d, catalog, problem.requirements?.homeRegion),
+        referencePreview(d, catalog, problem.requirements?.homeRegion, look),
         h('div', { class: 'pl-ed-expect' },
           h('span', { class: 'pl-chip ' + (holds ? 'pl-chip--ok' : 'pl-chip--warn') }, iconEl(holds ? 'ui.check' : 'ui.warn', 14), holds ? 'Passes the day' : 'Does not pass'),
           d.expect?.score != null ? h('span', { class: 'pl-chip' }, iconEl('ui.trophy', 14), 'Score ', approx(Math.round(d.expect.score).toLocaleString('en-US'))) : null,

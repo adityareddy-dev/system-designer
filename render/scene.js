@@ -1,6 +1,7 @@
 // The PixiJS scene: camera, nodes, edges, request particles, glows and effects. The only render file other modules import.
 
 import { resolvePalette, severityColor } from './theme.js';
+import { e08Palette } from './e08.js';
 import { createKit } from './textures.js';
 import { createCamera } from './camera.js';
 import { createNodeLayer, makeMini, refreshMini } from './nodes.js';
@@ -75,7 +76,7 @@ function createEmitter() {
   };
 }
 
-export async function createScene(hostEl, { catalog, palette, theme = 'light', reducedMotion = false, quality = 'auto', dotsPerSec = MAX_DOTS_PER_SEC } = {}) {
+export async function createScene(hostEl, { catalog, palette, theme = 'light', reducedMotion = false, quality = 'auto', dotsPerSec = MAX_DOTS_PER_SEC, look = 'classic' } = {}) {
   const PIXI = globalThis.PIXI;
   if (!PIXI || !PIXI.Application) throw new Error('PixiJS is not loaded');
   const cat = normalizeCatalog(catalog);
@@ -98,7 +99,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   };
   const bakeRes = Math.min(dpr, coarse ? 3 : 2);
 
-  let P = resolvePalette(palette, theme);
+  const paletteFor = (p, t) => look === 'e08' ? e08Palette(resolvePalette(p, t)) : resolvePalette(p, t);
+  let P = paletteFor(palette, theme);
   let kit = null;
   let nodes = null;
   let overlayMinis = [];
@@ -141,6 +143,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   canvas.style.webkitTouchCallout = 'none';
   canvas.setAttribute('aria-label', 'System design canvas');
   canvas.setAttribute('role', 'img');
+  canvas.dataset.look = look;
   hostEl.appendChild(canvas);
 
   // layers
@@ -834,17 +837,26 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       });
       flashDirty = true;
     },
+    setLook(nextLook) {
+      const next = nextLook === 'e08' ? 'e08' : 'classic';
+      if (next === look) return Promise.resolve();
+      look = next;
+      return api.setTheme(palette, theme);
+    },
     setTheme(palette2, theme2) {
+      palette = palette2; theme = theme2;
       const token = ++themeToken;
       governor.settle(performance.now());
-      const nextP = resolvePalette(palette2, theme2);
+      const nextP = paletteFor(palette2, theme2);
       return createKit(PIXI, nextP, { categories: cat.categories, requests: cat.requests }, bakeRes, onIcon).then(nextKit => {
         if (destroyed || token !== themeToken) { nextKit.destroy(); return; }
         const old = kit;
         P = nextP; kit = nextKit;
+        canvas.dataset.look = kit.look || 'classic';
         app.renderer.background.color = P.canvas;
         grid.invalidate();
         nodes.applyKit(kit);
+        nodes.setLabelScale(camera.zoom);
         edges.applyKit(kit);
         particles.applyKit(kit);
         fx.applyKit(kit);

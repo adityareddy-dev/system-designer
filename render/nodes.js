@@ -1,5 +1,6 @@
 // Node views: cream card with a hard shadow, icon, label, load bar, status glyphs, chips; spring placement.
 
+import { drawE08Load, e08IconSize } from './e08.js';
 import { poolCells } from './pool.js';
 import { outline, HALF } from './geom.js';
 import { barColor, severityColor } from './theme.js';
@@ -54,7 +55,8 @@ export function makeMini(PIXI, kit, env, type, { faint = false } = {}) {
   c.addChild(body);
   const tex = kit.icons.get('el.' + type, kit.P.ink);
   const icon = new PIXI.Sprite(tex || PIXI.Texture.EMPTY);
-  icon.anchor.set(0.5); icon.width = icon.height = 28; icon.y = iconOffset(shape);
+  icon.anchor.set(0.5); icon.width = icon.height = kit.look === 'e08' ? e08IconSize : 28; icon.y = kit.look === 'e08' ? 0 : iconOffset(shape);
+  icon.tint = kit.look === 'e08' ? 0xf3eee0 : 0xffffff;
   c.addChild(icon);
   c.__icon = icon; c.__type = type; c.__cat = cat; c.__shape = shape; c.__body = body; c.__faint = faint;
   return c;
@@ -65,6 +67,7 @@ export function refreshMini(kit, c) {
   else { c.__body.texture = kit.bodyTex[c.__cat]; c.__body.width = c.__body.height = BODY_BOX; }
   const tex = kit.icons.get('el.' + c.__type, kit.P.ink);
   if (tex) c.__icon.texture = tex;
+  c.__icon.tint = kit.look === 'e08' ? 0xf3eee0 : 0xffffff;
 }
 
 export function createNodeLayer(PIXI, parent, env) {
@@ -117,7 +120,8 @@ export function createNodeLayer(PIXI, parent, env) {
     v.body = new PIXI.Sprite(kit.bodyTex[cat]); v.body.anchor.set(0.5); v.body.width = v.body.height = BODY_BOX;
     v.select = new PIXI.Sprite(kit.selectTex[shape]); v.select.anchor.set(0.5); v.select.width = v.select.height = BODY_BOX; v.select.visible = false;
     v.icon = new PIXI.Sprite(kit.icons.get('el.' + n.type, P.ink) || PIXI.Texture.EMPTY);
-    v.icon.anchor.set(0.5); v.icon.width = v.icon.height = 28; v.icon.y = iconOffset(shape);
+    v.icon.anchor.set(0.5); v.icon.width = v.icon.height = kit.look === 'e08' ? e08IconSize : 28; v.icon.y = kit.look === 'e08' ? 0 : iconOffset(shape);
+    v.icon.tint = kit.look === 'e08' ? 0xf3eee0 : 0xffffff;
     v.busy = new PIXI.Graphics();
     v.pool = new PIXI.Graphics();
     v.poolT = makeText('', 10.5, P.text2, true); v.poolT.anchor.set(.5); v.poolT.y = 15;
@@ -130,17 +134,22 @@ export function createNodeLayer(PIXI, parent, env) {
     });
     v.qbar = new PIXI.Graphics(); v.qbar.visible = false;
     v.retryG = new PIXI.Graphics();
-    v.statusG = new PIXI.Graphics(kit.glyphs.status[0]); v.statusG.position.set(-HALF + 7, -HALF + 7); v.statusG.visible = false;
+    v.statusG = new PIXI.Graphics(kit.look === 'e08' ? undefined : kit.glyphs.status[0]); v.statusG.position.set(-HALF + 7, -HALF + 7); v.statusG.visible = false;
     v.valid = new PIXI.Graphics(kit.glyphs.valid.warn); v.valid.position.set(HALF - 7, -HALF + 7); v.valid.visible = false;
     v.lock = new PIXI.Graphics(kit.glyphs.lock); v.lock.position.set(-HALF + 9, -HALF + 20); v.lock.visible = false;
     v.chip = new PIXI.Container(); v.chip.position.set(HALF - 10, -HALF - 8); v.chip.visible = false;
     v.chipBg = new PIXI.Graphics(); v.chip.addChild(v.chipBg);
     v.chipText = null;
     v.zonesG = new PIXI.Graphics(); v.chip.addChild(v.zonesG); // r4-follow: the zone dots live inside the ×N chip
-    v.labelT = makeText('', 12, P.ink, false, '600', 72); // narrow lines, so neighbours' names do not touch when zoomed out
+    v.labelT = makeText('', 12, kit.look === 'e08' ? 0xdbe4f2 : P.ink, false, '600', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
     v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
+    v.rejected = new PIXI.Container(); v.rejected.position.set(0,-HALF-14); v.rejected.visible = false;
+    v.rejectedG = new PIXI.Graphics();
+    v.rejectedT = makeText('', 13, 0xffc9c9, true, '800'); v.rejectedT.anchor.set(.5);
+    v.rejected.addChild(v.rejectedG,v.rejectedT);
+    if (kit.look === 'e08') { v.labelT.style.fontFamily = 'system-ui, sans-serif'; v.labelT.style.fontSize = 14; v.labelT.style.fontWeight = '700'; v.labelT.style.wordWrapWidth = 140; }
     v.leader = new PIXI.Graphics();
     v.captionC = new PIXI.Container();
     v.captionC.addChild(v.leader, v.labelBg, v.labelT, v.evidenceBg, v.evidenceT);
@@ -152,7 +161,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
     c.addChild(v.pulse, v.body, v.lead, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
-      v.chip, v.regionC, v.badge, v.captionC);
+      v.chip, v.regionC, v.badge, v.captionC, v.rejected);
     c.alpha = 0;
     c.scale.set(v.s);
     v.captionC.scale.set(1 / v.s);
@@ -221,6 +230,7 @@ export function createNodeLayer(PIXI, parent, env) {
   }
 
   function drawBusy(v, P) {
+    if (env.kit().look === 'e08') return drawE08Load(v, env.kit(), 0, true);
     const g = v.busy;
     const u = Math.min(1, Math.max(0, v.du));
     const color = barColor(P, v.status, v.down);
@@ -258,6 +268,7 @@ export function createNodeLayer(PIXI, parent, env) {
   }
 
   function drawPool(v, P, now, reduced, time) {
+    if (env.kit().look === 'e08') { v.pool.visible = v.poolT.visible = false; v.icon.visible = true; return; }
     const show = detailZoom && v.kind === 'compute' && (v.units > 1 || v.fleetUnits > 1) &&
       (selected === v.id || v.live || now < (v.recoverUntil || 0));
     v.pool.visible = v.poolT.visible = show;
@@ -330,7 +341,7 @@ export function createNodeLayer(PIXI, parent, env) {
         const k = 0.5 + 0.5 * Math.sin(time * 0.001 * Math.PI * 2 * 1.2);
         v.busy.alpha = 1;
       } else v.busy.alpha = 1;
-      if (v.kind === 'queue') drawQueue(v, P, dt, reduced);
+      if (v.kind === 'queue' && env.kit().look !== 'e08') drawQueue(v, P, dt, reduced);
       // waiting pile at the input of an overloaded element
       const count = v.over > 0.01 ? Math.min(6, Math.ceil(v.over * 6)) : 0;
       v.pile.visible = count > 0;
@@ -345,7 +356,7 @@ export function createNodeLayer(PIXI, parent, env) {
     }
 
     drawPool(v, P, now, reduced, time);
-    if(v.live && v.kind==='queue') v.icon.visible=false;
+    if(v.live && v.kind==='queue' && env.kit().look !== 'e08') v.icon.visible=false;
     drawRetries(v,P,time,reduced);
     // Flat markers only: an event gets a still ring in its colour, the first failing part a yellow frame with an ink edge.
     v.lead.visible = v.isLead && !isSelNow(v);
@@ -407,15 +418,17 @@ export function createNodeLayer(PIXI, parent, env) {
         const detail = detailZoom || selected === v.id;
         v.chip.visible = detail && v.units > 1;
         v.chip.scale.set(detailZoom ? 1 : labelK * 1.1);
-        v.busy.visible = detailZoom;
-        v.qbar.visible = v.live && v.kind === 'queue';
+        const e08 = env.kit().look === 'e08';
+        v.busy.visible = e08 || detailZoom;
+        v.qbar.visible = v.live && v.kind === 'queue' && env.kit().look !== 'e08';
         v.qbar.scale.set(Math.max(1,.85/(env.zoom?.()||1)));
         v.pile.visible = detailZoom && v.over > .01;
         v.lock.visible = detailZoom && v.locked;
         v.regionC.visible = detailZoom && multiRegion && v.region !== mainRegion && !v.event;
-        v.statusG.visible = v.live && v.status > 0;
-        if (!detailZoom) { v.statusG.context = env.kit().glyphs.status[v.status]; v.statusG.scale.set(Math.max(1, labelK * .7)); }
+        v.statusG.visible = e08 || (v.live && v.status > 0);
+        if (!e08 && !detailZoom) { v.statusG.context = env.kit().glyphs.status[v.status]; v.statusG.scale.set(Math.max(1, labelK * .7)); }
         else v.statusG.scale.set(1);
+        if (e08) drawE08Load(v, env.kit(), time, reduced);
 
       }
       for (let i = dying.length - 1; i >= 0; i--) {
@@ -564,7 +577,7 @@ export function createNodeLayer(PIXI, parent, env) {
       if (recovering) v.recoverUntil = performance.now() + 1000;
       v.failRps = failRps;
       const recovered = performance.now() < (v.recoverUntil || 0);
-      v.evidenceT.visible = live && (failRps > .5 || queue > 1 || recovered || v.kind === 'queue' || v.telemetry?.retryRps > .5);
+      v.evidenceT.visible = live && ((env.kit().look !== 'e08' && failRps > .5) || queue > 1 || recovered || v.kind === 'queue' || v.telemetry?.retryRps > .5);
       v.evidenceT.text = failRps > .5 ? `× ${count(failRps)}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Requests recovered' : '';
       if (live && v.kind === 'queue' && v.telemetry) v.evidenceT.text = queuePressure(v.telemetry).text;
       else if (live && v.telemetry?.retryRps > .5) v.evidenceT.text += `\n↶ ${count(v.telemetry.retryRps)}/s retry`;
@@ -573,22 +586,23 @@ export function createNodeLayer(PIXI, parent, env) {
         v.queue = v.over = 0; v.pileType = -1; v.down = false; v.status = 0; v.recoverUntil = 0; v.isLead = false;
         if (v.live) {
           v.live = false; v.busy.clear(); v.drawnU = -1; v.drawnColor = -1; v.statusG.visible = false;
-          v.pile.visible = false; v.qbar.visible = false; v.icon.alpha = 1; v.body.texture = env.kit().bodyTex[v.cat]; v.tu = v.du = 0;
+          v.pile.visible = false; v.qbar.visible = false; v.icon.alpha = 1; v.body.texture = env.kit().bodyTex[v.cat]; v.icon.tint = env.kit().look === 'e08' ? 0xf3eee0 : 0xffffff; v.rejected.visible = false; v.tu = v.du = 0;
         }
         return;
       }
-      if (!v.live) { v.live = true; v.qbar.visible = v.kind === 'queue'; v.drawnQ = -1; v.statusG.visible = status > 0; }
+      if (!v.live) { v.live = true; v.qbar.visible = v.kind === 'queue'; v.drawnQ = -1; v.statusG.visible = env.kit().look === 'e08' || status > 0; }
       v.tu = util;
       const down = status === 4;
       if (status !== v.status || down !== v.down) {
         v.status = status; v.down = down; v.statusAt = nowForStatus();
-        v.statusG.context = env.kit().glyphs.status[Math.min(4, status)];
+        if (env.kit().look !== 'e08') v.statusG.context = env.kit().glyphs.status[Math.min(4, status)];
         v.icon.alpha = 1;
-        v.body.texture = down || status >= 3 ? env.kit().downTex : env.kit().bodyTex[v.cat];
+        v.body.texture = env.kit().bodyFor?.(v.cat, status) || (down || status >= 3 ? env.kit().downTex : env.kit().bodyTex[v.cat]);
+        v.icon.tint = env.kit().look === 'e08' ? (down ? 0x7b8798 : 0xf3eee0) : 0xffffff;
         if (!down && status >= 3 || down) { v.shoveAt = performance.now(); v.shoveDir = -v.shoveDir; }
       }
-      v.statusG.visible = status > 0;
-      v.statusG.alpha = 1;
+      v.statusG.visible = env.kit().look === 'e08' || status > 0;
+      if (env.kit().look !== 'e08') v.statusG.alpha = 1;
       v.queue = queue; v.over = over; v.pileType = pileType;
     },
     // The first failing part gets a yellow frame instead of the rest of the canvas being dimmed.
@@ -625,7 +639,7 @@ export function createNodeLayer(PIXI, parent, env) {
       for (const v of list) {
         if (!id || id === 'el.' + v.type) {
           const t = kit.icons.get('el.' + v.type, kit.P.ink);
-          if (t) { v.icon.texture = t; v.icon.width = v.icon.height = 28; }
+          if (t) { v.icon.texture = t; v.icon.width = v.icon.height = kit.look === 'e08' ? e08IconSize : 28; }
         }
         if (v.event && (!id || id === v.event.iconId)) {
           const t = kit.icons.get(v.event.iconId, v.event.color);
@@ -639,16 +653,24 @@ export function createNodeLayer(PIXI, parent, env) {
       for (const v of [...list, ...dying]) {
         v.pulse.texture = kit.fx.ring;
         v.lead.texture = kit.leadTex[v.shape]; v.lead.width = v.lead.height = BODY_BOX;
-        v.body.texture = v.down || v.status >= 3 ? kit.downTex : kit.bodyTex[v.cat]; v.body.width = v.body.height = BODY_BOX;
+        v.body.texture = kit.bodyFor?.(v.cat, v.status) || (v.down || v.status >= 3 ? kit.downTex : kit.bodyTex[v.cat]); v.body.width = v.body.height = BODY_BOX;
         v.select.texture = kit.selectTex[v.shape]; v.select.width = v.select.height = BODY_BOX;
         v.icon.texture = kit.icons.get('el.' + v.type, P.ink) || PIXI.Texture.EMPTY;
-        v.icon.width = v.icon.height = 28;
-        v.statusG.context = kit.glyphs.status[Math.min(4, v.status)];
+        v.icon.width = v.icon.height = kit.look === 'e08' ? e08IconSize : 28;
+        v.icon.y = kit.look === 'e08' ? 0 : iconOffset(v.shape);
+        v.icon.tint = kit.look === 'e08' ? (v.down ? 0x7b8798 : 0xf3eee0) : 0xffffff;
+        v.labelT.style.fontFamily = kit.look === 'e08' ? 'system-ui, sans-serif' : FONT_UI;
+        v.labelT.style.fontSize = kit.look === 'e08' ? 14 : 12;
+        v.labelT.style.fontWeight = kit.look === 'e08' ? '700' : '600';
+        v.labelT.style.wordWrapWidth = kit.look === 'e08' ? 140 : 72;
+        v.rejected.visible = false;
+        v.statusG.context = kit.look === 'e08' ? new PIXI.GraphicsContext() : kit.glyphs.status[Math.min(4, v.status)];
+        if (kit.look !== 'e08') v.statusG.position.set(-HALF+7,-HALF+7);
         const lv = validation.get(v.id);
         v.valid.context = kit.glyphs.valid[lv || 'warn'];
         v.lock.context = kit.glyphs.lock;
         for (const s of v.pileSprites) { s.texture = kit.atlas.textures[Math.max(0, v.pileType)]; s.scale.set(8 / P_SHAPE); }
-        v.labelT.style.fill = P.ink;
+        v.labelT.style.fill = kit.look === 'e08' ? 0xdbe4f2 : P.ink;
         v.poolT.style.fill = P.text2;
         drawChip(v); drawRegion(v);
         if (v.event) v.event.color = v.event.severity ? severityColor(P, v.event.severity) : v.event.color;
@@ -665,9 +687,9 @@ export function createNodeLayer(PIXI, parent, env) {
     // Keep names readable through zoom and part entry motion.
     setLabelScale(z) {
       detailZoom = z >= 1.05;
-      for (const v of list) { v.icon.width = v.icon.height = detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z)); v.evidenceT.scale.set(1 / Math.max(.01, z)); }
+      for (const v of list) { v.icon.width = v.icon.height = env.kit().look === 'e08' ? e08IconSize : detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z)); v.evidenceT.scale.set(1 / Math.max(.01, z)); }
       const px = 13;
-      const k = Math.max(1, px / (12 * Math.max(0.01, z)));
+      const k = Math.max(1, px / ((env.kit().look === 'e08' ? 14 : 12) * Math.max(0.01, z)));
       if ((z < .65) !== compact) { compact = z < .65; for (const v of list) showLabel(v); }
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
       if (Math.abs(k - labelK) < 0.0001) return;

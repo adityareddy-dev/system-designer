@@ -20,6 +20,7 @@ export function createGrid(PIXI, parent, env) {
 
   // Dot spacing in world units: 20, 40, 80 ... so dots stay at least 18 px apart on screen.
   function stepFor(z) {
+    if (env.kit().look === 'e08') return 20 / Math.max(.01, z);
     let step = GRID;
     while (step * z < 18) step *= 2;
     return step;
@@ -61,7 +62,7 @@ export function createGrid(PIXI, parent, env) {
     // Called whenever the camera changed.
     update(cx, cy, w, h, z) {
       const P = env.kit().P;
-      const fade = Math.max(0, Math.min(1, (z - 0.3) / 0.25));
+      const fade = env.kit().look === 'e08' ? 1 : Math.max(0, Math.min(1, (z - 0.3) / 0.25));
       pc.visible = fade > 0;
       pc.alpha = Math.min(1, P.gridDotAlpha * 1.6) * fade;
       pc.tint = P.gridDot;
