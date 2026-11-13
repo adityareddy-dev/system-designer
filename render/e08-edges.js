@@ -13,7 +13,7 @@ export function drawE08Edge(v, env, highlighted) {
   inkPath(g,lut).stroke({color,width,cap:'round',join:'round'});
   const a={},b={};
   if (!highlighted && (flowing || !v.carries) && !env.reduced()) {
-    const offset = (performance.now()/800*18)%18;
+    const offset = (env.visualTime()/800*18)%18;
     for(let s=-18+offset;s<lut.len;s+=18) {
       lutAt(lut,Math.max(0,s),a);lutAt(lut,Math.min(lut.len,s+10),b);
       g.moveTo(a.x,a.y).lineTo(b.x,b.y);
@@ -27,5 +27,6 @@ export function drawE08Edge(v, env, highlighted) {
     const nx=-a.ty,ny=a.tx;
     g.poly([a.x,a.y,a.x-a.tx*9+nx*4.5,a.y-a.ty*9+ny*4.5,a.x-a.tx*9-nx*4.5,a.y-a.ty*9-ny*4.5]).fill({color});
   }
+  v.drawnTime=env.visualTime();
   v.drawnHi=highlighted;v.drawnRps=v.rps;v.drawnBand=v.band;
 }

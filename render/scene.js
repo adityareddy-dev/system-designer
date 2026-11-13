@@ -110,6 +110,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     dotScale: () => dotScale,
     zoom: () => camera.zoom,
     reduced: () => reduced,
+    visualTime: () => visualTime,
     highContrast: () => highContrast,
     pathEdge: id => !!pathFocus?.edges.has(id),
     element: type => cat.elementById.get(type),

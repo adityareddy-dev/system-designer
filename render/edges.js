@@ -111,7 +111,7 @@ export function createEdgeLayer(PIXI, parent, glowParent, env) {
   }
 
   function wantsRedraw(v, P) {
-    if (env.kit().look === 'e08') return v.dirty || (!env.reduced() && v.rps > .01) || (highlight === v.id || !!env.pathEdge?.(v.id) || trace.has(v.id)) !== v.drawnHi || v.rps !== v.drawnRps || v.band !== v.drawnBand;
+    if (env.kit().look === 'e08') return v.dirty || (!env.reduced() && (v.rps > .01 || !v.carries) && v.drawnTime !== env.visualTime()) || (highlight === v.id || !!env.pathEdge?.(v.id) || trace.has(v.id)) !== v.drawnHi || v.rps !== v.drawnRps || v.band !== v.drawnBand;
     if (v.dirty) return true;
     const hi = highlight === v.id || env.pathEdge?.(v.id) || trace.has(v.id);
     if (hi !== v.drawnHi) return true;
