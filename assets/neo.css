@@ -355,7 +355,7 @@
 @media (min-width: 2200px) and (min-height: 1600px) { .pl-root { --z: 1.7; } }
 @media (min-width: 2200px) and (min-height: 1950px) { .pl-root { --z: 2; } }
 @media (min-width: 2200px) and (min-height: 1250px) {
-  .pl-top, .pl-hud, .pl-toolbar, .pl-req, .pl-inspector, .pl-traffic, .pl-hints, .pl-issues, .pl-caption, .pl-banner, .pl-goal, .pl-slow, .pl-panel { zoom: var(--z); }
+  .pl-top, .pl-hud, .pl-toolbar, .pl-req, .pl-inspector, .pl-traffic, .pl-hints, .pl-issues, .pl-caption, .pl-loose, .pl-banner, .pl-goal, .pl-slow, .pl-panel { zoom: var(--z); }
   .pl-left { width: calc(280px * var(--z)); }
   .pl-right { width: calc(320px * var(--z)); }
   .pl-left, .pl-right { top: calc(64px * var(--z)); }
@@ -448,6 +448,7 @@
 .pl-root.pl-slot .pl-trace { padding: 0 14px; }
 .pl-root.pl-slot .pl-trace[open] { padding-bottom: 12px; }
 /* the intro's Skip button sits under the zoomed tool bar on big screens */
+@media (min-width: 2200px) and (min-height: 1250px) { .sh-intro-back { zoom: 1.35; } }
 @media (min-width: 2200px) and (min-height: 1250px) { .sh-intro-skip { zoom: 1.35; top: 100px; } }
 @media (min-width: 2200px) and (min-height: 1600px) { .sh-intro-skip { zoom: 1.7; top: 120px; } }
 @media (min-width: 2200px) and (min-height: 1950px) { .sh-intro-skip { zoom: 2; top: 140px; } }

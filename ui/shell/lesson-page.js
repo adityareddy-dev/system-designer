@@ -409,8 +409,10 @@ export function renderIntro(host, ctx) {
   const markSeen = () => ctx.store.set('seenIntro', true);
 
   const skip = h('a', { class: 'sh-btn sh-intro-skip', href: '#/' }, 'Skip intro', ico('ui.chevron-right', 18));
+  // r4-lesson: the same way back the other lesson screens have
+  const back = h('a', { class: 'sh-btn sh-intro-back', href: '#/learn' }, ico('ui.chevron-left', 18), 'Lessons');
   const play = mountPlayHost(wrap, ctx, { mode: 'intro', lesson: touchWording(lesson), stepIndex: 0, seed: 'intro', placeholder: introSketch() });
-  wrap.append(skip);
+  wrap.append(skip, back);
 
   const off = ctx.bus.on('lesson:done', async (e) => {
     if (finished || !e || e.lessonId !== 'intro') return;

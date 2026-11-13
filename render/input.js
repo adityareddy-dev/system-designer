@@ -24,7 +24,8 @@ export function createInput(canvas, host, d) {
   let samples = [];
   let hoverWorld = null;
 
-  const local = e => ({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  // A page scaled up with CSS zoom reports client coordinates in screen pixels; the camera works in the canvas's own pixels.
+  const local = e => { const k = rect.width > 0 && canvas.clientWidth > 0 ? rect.width / canvas.clientWidth : 1; return { x: (e.clientX - rect.left) / k, y: (e.clientY - rect.top) / k }; };
   const slopFor = type => (type === 'touch' ? 9 : 4);
   const tolFor = type => (type === 'touch' ? 10 : 4) / camera.zoom;
 
