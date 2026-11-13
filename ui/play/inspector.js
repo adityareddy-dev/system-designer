@@ -151,6 +151,14 @@ export function createInspector(host, { catalog, getNode, getHome, getProblem, o
       h('div', { class: 'pl-insp-title' }, h('b', { text: node.label || el.name }), h('span', { class: 'pl-muted pl-small', text: cat?.name || '' })),
       h('button', { class: 'pl-icon-btn pl-insp-fold', type: 'button', 'aria-label': folded ? 'Show the part settings' : 'Fold the part settings', 'aria-expanded': String(!folded), onClick: () => api.fold(!folded) }, iconEl('ui.chevron-down', 18)),
       h('button', { class: 'pl-icon-btn', type: 'button', 'aria-label': 'Close inspector', onClick: () => onClose?.() }, iconEl('ui.close', 18)));
+    // phones and small tablets: a grip on the sheet's top edge. A tap, or a drag down, folds the sheet to its title row so the part shows; a drag up opens it again.
+    let gripY = null;
+    const grip = h('button', { class: 'pl-insp-grip', type: 'button', 'aria-label': folded ? 'Show the part settings' : 'Fold the part settings',
+      onPointerdown: (e) => { gripY = e.clientY; try { grip.setPointerCapture(e.pointerId); } catch { /* optional */ } },
+      onPointerup: (e) => { const dy = gripY == null ? 0 : e.clientY - gripY; gripY = null; if (dy > 24) api.fold(true); else if (dy < -24) api.fold(false); else api.fold(!folded); },
+      onPointercancel: () => { gripY = null; },
+      onKeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); api.fold(!folded); } } });
+    head.prepend(grip);
     const actions = h('div', { class: 'pl-insp-actions' },
       h('button', { class: 'pl-btn pl-btn--small', type: 'button', onClick: () => onConnect?.(node.id) }, iconEl('ui.connect', 16), 'Connect to…'),
       h('button', { class: 'pl-btn pl-btn--small', type: 'button', disabled: locked || !editable ? '' : null, onClick: () => onDuplicate?.(node.id) }, iconEl('ui.duplicate', 16), 'Duplicate'),
