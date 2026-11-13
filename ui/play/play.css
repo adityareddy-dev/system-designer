@@ -134,6 +134,9 @@
 .pl-item-name { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-item-sub { font-size: 11.5px; color: var(--text-3); }
 .pl-item--pulse { animation: pl-pulse 1.2s var(--ease-in-out) infinite; border-color: var(--accent); }
+/* r4-lesson: the ring on the part of the diagram a tip names */
+.pl-point { position: absolute; left: 0; top: 0; z-index: calc(var(--z-canvas, 0) + 1); box-sizing: border-box; border: 3px solid var(--accent, var(--blue)); border-radius: 18px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent, var(--blue)) 25%, transparent); pointer-events: none; animation: pl-pulse 1.2s var(--ease-in-out) infinite; }
+.pl-point[hidden] { display: none; }
 @keyframes pl-pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); } 50% { box-shadow: 0 0 0 6px var(--accent-soft); } }
 .pl-dragchip { position: fixed; left: 0; top: 0; z-index: var(--z-toast); display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 999px; background: var(--surface-solid); border: 1px solid var(--accent); box-shadow: var(--shadow-3); font: 600 13px var(--font-ui); color: var(--text); pointer-events: none; }
 .pl-dragchip[hidden] { display: none; }
@@ -452,9 +455,17 @@
   .pl-root[data-mode="lesson"] .pl-meters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; }
   .pl-root[data-mode="lesson"] .pl-m-v { font-size: 15px; }
   .pl-root[data-mode="lesson"] .pl-goal { top: 8px; max-width: calc(100% - 400px); }
+  /* r4-lesson: the device-speed note is a small line under the tool bar, like the other modes, not a card across the diagram */
+  .pl-root[data-mode="lesson"] .pl-slow { top: calc(var(--pl-top-end, 56px) + 16px); left: auto; right: 18px; margin: 0; width: 112px; max-width: none; padding: 0; border: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; font-size: 11px; line-height: 1.25; text-align: right; z-index: calc(var(--z-hud) + 1); }
+  .pl-root[data-mode="lesson"] .pl-slow-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .pl-root[data-mode="lesson"] .pl-slow-short { display: inline; }
   .pl-root[data-mode="lesson"] .pl-banner { top: 54px; padding: 6px 12px 6px 8px; max-width: min(360px, calc(100% - 420px)); animation: none; }
   .pl-root[data-mode="lesson"] .pl-banner-txt span { display: none; }
   .pl-root[data-mode="lesson"] .pl-caption { max-width: min(420px, calc(100% - 440px)); font-size: 14px; }
+  /* r4-lesson: the intro tip keeps its sentence and its Next button on one row, with no empty band above the button */
+  .pl-root[data-mode="intro"] .pl-caption { display: flex; align-items: center; justify-content: center; gap: 16px; text-align: left; max-width: min(620px, calc(100% - 32px)); }
+  .pl-root[data-mode="intro"] .pl-caption-t { flex: 0 1 auto; min-width: 0; }
+  .pl-root[data-mode="intro"] .pl-caption-acts { margin: 0; flex: none; }
 }
 
 /* phones */
@@ -586,6 +597,12 @@
 
 /* captions: the sentence, then its buttons in their own right-aligned row */
 .pl-caption { padding: 12px 18px; }
+/* r4-lesson: the note beside a part that is on no line */
+.pl-loose { position: absolute; left: 0; top: 0; z-index: var(--z-drawer); display: flex; align-items: center; gap: 14px; width: max-content; max-width: min(560px, calc(100% - 16px)); box-sizing: border-box; padding: 10px 14px; font-size: 14px; line-height: 1.35; text-align: left; background: var(--card); border: var(--line, 2px solid var(--ink)); border-radius: var(--radius-3); box-shadow: var(--hard, 3px 3px 0 var(--ink)); }
+.pl-loose[hidden] { display: none; }
+.pl-loose b { font-weight: 700; }
+.pl-loose .pl-btn { min-height: 36px; flex: none; }
+.pl-loose-t { min-width: 0; }
 .pl-caption-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 .pl-modal-card .pl-ed-top { margin-bottom: 10px; }
 .pl-reset { min-height: 36px; padding: 0 10px; gap: 6px; white-space: nowrap; }
@@ -1085,6 +1102,9 @@
  .pl-root[data-mode=lesson] .pl-goal {top:72px;left:12px;right:12px;max-width:none;width:auto;transform:none;text-align:left}
  .pl-root[data-mode=lesson] .pl-banner {top:64px;left:196px;right:160px;max-width:none;transform:none;min-height:36px}
  .pl-root[data-mode=lesson]:has(.pl-banner:not([hidden])) .pl-goal {top:112px}
+ /* r4-lesson: the goal line sits in the top row between the parts button and the undo and fit buttons, and the event note right under it, so neither lies across the diagram */
+ .pl-root[data-mode=lesson] .pl-goal, .pl-root[data-mode=lesson]:has(.pl-banner:not([hidden])) .pl-goal {top:calc(var(--pl-goal-t,12px) / var(--z,1));left:calc(var(--pl-goal-l,220px) / var(--z,1));right:auto;transform:none;width:auto;max-width:calc(var(--pl-goal-w,600px) / var(--z,1));box-sizing:border-box}
+ .pl-root[data-mode=lesson] .pl-banner {top:calc((var(--pl-goal-b,100px) + 8px) / var(--z,1));left:calc(var(--pl-goal-l,220px) / var(--z,1));right:auto;transform:none;width:auto;max-width:calc(var(--pl-goal-w,600px) / var(--z,1))}
 }
 /* Opening a workbench drawer reveals its controls with the same short settling motion. */
 .pl-toolbar--open .pl-tb-body,.pl-toolbar--open .pl-tb-head,.pl-traffic:not(.pl-traffic--closed) .pl-tp-pane {animation:pl-panel-settle 200ms cubic-bezier(.2,.8,.2,1) both}
