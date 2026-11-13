@@ -5,6 +5,8 @@ import puppeteer from 'puppeteer-core';
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 try {
   const page = await browser.newPage();
+  // Leave room for the failure label alongside the workbench controls.
+  await page.setViewport({ width: 1366, height: 900 });
   await page.evaluateOnNewDocument(() => localStorage.setItem('hotpath.v1.seenIntro', 'true'));
   await page.goto((process.argv[2] || 'http://localhost:8765/') + '#/settings');
   await page.waitForFunction(() => !!window.__game);

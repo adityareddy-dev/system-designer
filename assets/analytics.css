@@ -1,0 +1,8 @@
+#sd-cookie-banner { position: fixed; inset: auto 16px 16px; z-index: 30; max-width: 720px; margin: auto; padding: 18px; border: 2px solid #141414; border-radius: 8px; background: #fff4e0; color: #141414; box-shadow: 4px 4px 0 #141414; font: 16px/1.5 var(--font-ui, sans-serif); }
+#sd-cookie-banner p { margin: 0 0 12px; }
+#sd-cookie-banner div { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+#sd-cookie-banner button { min-height: 44px; padding: 8px 20px; border: 2px solid #141414; border-radius: 4px; background: #fff4e0; color: #141414; font: inherit; font-weight: 700; cursor: pointer; }
+#sd-cookie-banner button:hover { background: #ffc93c; }
+#sd-cookie-banner a { color: #141414; padding: 10px; }
+#sd-cookie-banner :focus-visible { outline: 3px solid #2d5bff; outline-offset: 3px; }
+@media (max-width: 480px) { #sd-cookie-banner { inset: auto 10px 10px; padding: 14px; } }

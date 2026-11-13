@@ -11,6 +11,15 @@ For backend engineers, students and interview candidates. Clarify requirements, 
 - [Lessons](https://systemdesigner.io/learn/): Every lesson in track order.
 - [Guides](https://systemdesigner.io/guides/): Practice advice, a day-by-day plan and classic walkthroughs.
 
+## Interview preparation
+
+- [System design interview practice](https://systemdesigner.io/interview/system-design-interview-practice/): Practise system design interviews by building and testing architectures. Start with a URL shortener, then use timed Interview mode on harder problems.
+- [System design interview questions](https://systemdesigner.io/interview/system-design-interview-questions/): Explore six system design interview questions with real game requirements, clarification answers and design decisions. Play each matching problem.
+- [Design a URL shortener](https://systemdesigner.io/interview/design-a-url-shortener/): Design a URL shortener with durable links and fast redirects. Work through reads, cache misses and traffic spikes, then play the matching problem.
+- [Design a rate limiter](https://systemdesigner.io/interview/design-a-rate-limiter/): Design a rate limiter for a public API. Reason about caller limits, shared counters and failure policies, then test the matching game scenario.
+- [Design a chat system](https://systemdesigner.io/interview/design-a-chat-system/): Design a chat system around durable messages, retries and reconnects. Work through the trade-offs, then build and test the chat app problem.
+- [Design a notification system](https://systemdesigner.io/interview/design-a-notification-system/): Design a notification system with queues, provider limits and safe retries. Understand acceptance and expiry, then play the notification problem.
+
 ## Guides
 
 - [Build the system. Survive the day. See why it held.](https://systemdesigner.io/guides/introducing-system-designer/): Meet System Designer: a free browser game with 82 system design problems, 41 lessons and a traffic day that puts your decisions to work.
@@ -156,4 +165,4 @@ For backend engineers, students and interview candidates. Clarify requirements, 
 
 - [Full text](https://systemdesigner.io/llms-full.txt): Full guides and a compact catalogue of every problem and lesson.
 - [Sitemap](https://systemdesigner.io/sitemap.xml): Canonical pages and last modification dates.
-- [Privacy](https://systemdesigner.io/privacy.html): Optional sign-in and stored progress.
+- [Privacy](https://systemdesigner.io/privacy.html): Sign-in, stored progress and data deletion.

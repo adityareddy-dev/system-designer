@@ -2,6 +2,8 @@
 // same account menu for a signed-in player (it loads the game's own account code, so there is one copy). Without an account service
 // (forks, local copies) the plain Sign in link stays and nothing is loaded.
 (function () {
+  // The game mounts its own header and account client.
+  if (document.getElementById('app')) return;
   var SITE = 'https://systemdesigner.io', API = 'https://api.systemdesigner.io';
   var script = document.currentScript;
   var ROOT = script && script.src ? new URL('../', script.src).href : null;
@@ -50,7 +52,13 @@
       if (location.origin === SITE) {
         fetch(API + '/me', { credentials: 'include', headers: { Accept: 'application/json' } })
           .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (d) { if (d && d.user && d.user.name) plainInitial(d.user); })
+          .then(function (d) {
+            if (d && d.consent) {
+              globalThis.sdConsentDefaults = d.consent;
+              globalThis.dispatchEvent(new CustomEvent('sd:consent-defaults', { detail: d.consent }));
+            }
+            if (d && d.user && d.user.name) plainInitial(d.user);
+          })
           .catch(function () { /* the service is not reachable: stay as is */ });
       } else if (sessionStorage.getItem('sd.preview') === 'hosted') {
         var u = JSON.parse(sessionStorage.getItem('sd.preview.user') || 'null');

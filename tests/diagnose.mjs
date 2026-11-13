@@ -4,6 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+if (!process.argv[2]) {
+  console.log('Skipped: diagnose needs a problem ID. Run node tests/diagnose.mjs <problemId> [designIndex].');
+  process.exit(0);
+}
+
 const J = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 const imp = (f) => import(pathToFileURL(path.resolve(f)).href);
 const { createCatalog } = await imp('sim/catalog.js');

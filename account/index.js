@@ -143,7 +143,7 @@ export function createAccount(ctx) {
     },
     isPreview: () => preview,
     async signInPreview(provider) {
-      const user = { name: 'Preview player', avatar: null, providers: [provider === 'github' ? 'github' : 'google'], email: 'player@example.com', surveyOptIn: true };
+      const user = { name: 'Preview player', avatar: null, providers: [provider === 'github' ? 'github' : 'google'], email: 'player@example.com', marketingOptIn: false, marketingOptInAt: null, marketingCountry: 'XX', marketingPromptPending: true };
       try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(user)); } catch { /* keep going */ }
       await signedIn(user);
       return user;
@@ -170,7 +170,7 @@ export function createAccount(ctx) {
       S.sync = 'idle';
       S.lastJson = '';
       emit();
-      toast('Account deleted. Everything about it is gone from the server.', 'ok', 4200);
+      toast('Account deleted. Progress saved on this device stays here.', 'ok', 4200);
     },
     async rename(name) {
       const r = preview ? { user: { ...S.user, name } } : await call('PATCH', '/me', { name });
@@ -179,10 +179,10 @@ export function createAccount(ctx) {
       emit();
       return r.user;
     },
-    // The player turns survey and product update emails on or off. Saved at once.
-    async setSurveyOptIn(on) {
-      const surveyOptIn = !!on;
-      const r = preview ? { user: { ...S.user, surveyOptIn } } : await call('PATCH', '/me', { surveyOptIn });
+    // The player chooses marketing emails. Saved at once.
+    async setMarketingOptIn(on) {
+      const marketingOptIn = !!on;
+      const r = preview ? { user: { ...S.user, marketingOptIn, marketingOptInAt: Date.now(), marketingPromptPending: false } } : await call('PATCH', '/me', { marketingOptIn });
       S.user = r.user;
       if (preview) { try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(S.user)); } catch { /* ignore */ } }
       emit();
@@ -326,7 +326,14 @@ export function createAccount(ctx) {
       if (!cfg) throw new Error('unreachable');
       S.config = { google: typeof cfg?.google?.clientId === 'string' ? cfg.google.clientId : null, github: cfg?.github === true, fake: cfg?.fake === true };
       S.status = 'ready';
-      if (available()) S.user = (await call('GET', '/me', undefined, 5000))?.user || null;
+      if (available()) {
+        const me = await call('GET', '/me', undefined, 5000);
+        S.user = me?.user || null;
+        if (me?.consent) {
+          globalThis.sdConsentDefaults = me.consent;
+          globalThis.dispatchEvent?.(new CustomEvent('sd:consent-defaults', { detail: me.consent }));
+        }
+      }
     } catch {
       S.status = 'unreachable';
       S.config = null;

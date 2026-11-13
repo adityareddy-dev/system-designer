@@ -29,8 +29,11 @@ try {
     await settle();
     const later = { hash: location.hash, path: router.current().path, routes: [...routes] };
     routes.length = 0;
-    router.back();
-    await settle();
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Back did not change the route')), 5000);
+      addEventListener('hashchange', () => { clearTimeout(timeout); resolve(); }, { once: true });
+      router.back();
+    });
     return { replaced, later, back: { hash: location.hash, path: router.current().path, routes } };
   });
   assert.deepEqual(observed.replaced, { hash: '#/settings', path: '/settings', routes: ['/settings'] });

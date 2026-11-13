@@ -8,6 +8,7 @@ import { createGoogleVerifier } from './google.js';
 import { createGithub } from './github.js';
 import { createLimiter } from './ratelimit.js';
 import { createReplayer } from './replay.js';
+import { createMarketingSync } from './marketing.js';
 import { loadGame } from './replay-core.js';
 
 const log = (msg) => process.stdout.write(`${new Date().toISOString()} ${msg}\n`);
@@ -25,8 +26,9 @@ export async function start(env = process.env) {
   const game = await loadGame();
   const limiter = createLimiter();
   const replayer = createReplayer({ workers: config.replayWorkers });
+  const marketing = createMarketingSync({ db, keyFile: config.klaviyoKeyFile, log });
   const app = createApp({
-    config, db, game, limiter, replayer, log,
+    config, db, game, limiter, replayer, log, marketingSync: marketing,
     google: createGoogleVerifier({ clientId: config.google.clientId }),
     github: createGithub(config.github),
   });
@@ -44,6 +46,10 @@ export async function start(env = process.env) {
     return null;
   }
 
+  const marketingTimer = setInterval(() => { void marketing.flush(); }, 60_000);
+  marketingTimer.unref();
+  void marketing.flush();
+
   const sweep = setInterval(() => { try { db.expireSessions(Date.now()); db.cleanupObservation(Date.now()); limiter.sweep(); } catch { /* next round */ } }, 3600_000);
   sweep.unref();
   db.expireSessions(Date.now());
@@ -57,6 +63,8 @@ export async function start(env = process.env) {
     if (closing) return;
     closing = true;
     clearInterval(sweep);
+    clearInterval(marketingTimer);
+    await marketing.flush();
     await new Promise((r) => server.close(r));
     await replayer.close();
     db.close();

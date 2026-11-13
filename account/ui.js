@@ -67,6 +67,7 @@ export function createAccountUi(ctx, api) {
   let popKind = null;
   let gisFor = null;
   let scrim = null;
+  let marketingShown = false;
   let nonce = null;      // { value, at }: one-time value for Google's token request, from the service
 
   // ---- popover plumbing: panels live in #overlay (above the play screen, below dialogs), pinned under the top-bar button
@@ -212,27 +213,40 @@ export function createAccountUi(ctx, api) {
   }
 
   function signInPanel() {
-    const el = signInCard({ headingId: 'ac-signin-title', showClose: true, onDone: () => closePop(false) });
+    const el = signInCard({ headingId: 'ac-signin-title', showClose: true, onDone: () => { if (popKind === 'signin') closePop(false); } });
     el.classList.add('ac-pop', 'ac-pop--modal');
     return el;
   }
 
-  // The email we hold and the survey choice, with the switch to change it. Used in the account menu and in Settings.
-  function emailBlock(u) {
+  // The email we hold and the marketing choice, with the switch to change it. Used in the account menu and in Settings.
+  function emailBlock(u, { firstChoice = false } = {}) {
     const id = 'ac-sv-' + Math.random().toString(36).slice(2, 7);
-    const box = h('input', { type: 'checkbox', class: 'ac-check', id, checked: u?.surveyOptIn ? true : undefined });
+    const box = h('input', { type: 'checkbox', class: 'ac-check', id, checked: u?.marketingOptIn ? true : undefined });
     const msg = h('span', { class: 'ac-mini ac-sv-msg', role: 'status' });
-    box.addEventListener('change', async () => {
+    if (!firstChoice) box.addEventListener('change', async () => {
       box.disabled = true;
-      try { await api.setSurveyOptIn(box.checked); msg.dataset.state = 'ok'; msg.textContent = box.checked ? 'Saved. Surveys are on.' : 'Saved. Surveys are off.'; }
+      try { await api.setMarketingOptIn(box.checked); msg.dataset.state = 'ok'; msg.textContent = box.checked ? 'Saved. Email updates are on.' : 'Saved. Email updates are off.'; }
       catch { box.checked = !box.checked; msg.dataset.state = 'bad'; msg.textContent = 'Could not save that. Try again.'; }
       box.disabled = false;
     });
+    const save = h('button', { type: 'button', class: 'ac-btn ac-btn--primary', text: 'Save choice', onclick: async () => {
+      save.disabled = true;
+      box.disabled = true;
+      try { await api.setMarketingOptIn(box.checked); closePop(true); trigger?.focus(); }
+      catch { msg.dataset.state = 'bad'; msg.textContent = 'Could not save that. Try again.'; save.disabled = false; box.disabled = false; }
+    } });
     return h('div', { class: 'ac-email' },
       h('p', { class: 'ac-label', text: 'Email on your account' }),
       h('p', { class: 'ac-email-addr', text: u?.email || 'None. Your sign-in did not give us a verified address.' }),
-      h('label', { class: 'ac-optin', for: id }, box, h('span', { text: 'Email me surveys and product updates' })),
-      msg);
+      h('label', { class: 'ac-optin', for: id }, box, h('span', { text: 'Email me new problems, tips and product news. Unsubscribe any time.' })),
+      msg, firstChoice ? save : null);
+  }
+
+  function marketingPanel() {
+    return h('div', { class: 'ac-pop ac-pop--modal ac-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'ac-marketing-title' },
+      head('ac-marketing-title', 'Email updates'),
+      h('p', { class: 'ac-text', text: 'Choose whether you want email updates. You can change this in Settings.' }),
+      emailBlock(api.state().user, { firstChoice: true }));
   }
 
   // ---- profile menu
@@ -273,7 +287,7 @@ export function createAccountUi(ctx, api) {
       h('div', { class: 'ac-actions' },
         h('button', { type: 'button', class: 'ac-btn', onclick: async () => { closePop(true); await api.signOut(); } }, 'Sign out'),
         h('button', { type: 'button', class: 'ac-btn ac-btn--danger', onclick: async () => {
-          const ok = await confirmDialog({ title: 'Delete your account?', text: 'This removes your name, email address, avatar link, synced progress and leaderboard scores from the server right away. Progress saved on this device stays here.', confirmLabel: 'Delete my account', cancelLabel: 'Keep it', danger: true });
+          const ok = await confirmDialog({ title: 'Delete your account?', text: 'This removes your account, synced progress and leaderboard scores. We keep your email until the unsubscribe is sent. Progress saved on this device stays here.', confirmLabel: 'Delete my account', cancelLabel: 'Keep it', danger: true });
           if (!ok) return;
           try { await api.deleteAccount(); closePop(false); } catch { bus.emit('toast', { text: 'The account could not be deleted right now. Try again shortly.', level: 'warn' }); }
         } }, 'Delete my account')));
@@ -306,10 +320,18 @@ export function createAccountUi(ctx, api) {
         return;
       }
       slot.hidden = false;
+      if (!st.user) marketingShown = false;
+      if (st.user?.marketingPromptPending && !marketingShown) {
+        marketingShown = true;
+        setTimeout(() => { if (api.state().user?.marketingPromptPending) openPop('marketing', marketingPanel); }, 0);
+      }
+      if (popKind === 'marketing' && st.user?.marketingPromptPending) return;
       const keep = pop && popKind === 'menu' && st.user ? pop : null;
       if (pop && !keep) closePop(false);
       if (keep) {
         keep._paintSync?.();
+        const check = keep.querySelector('.ac-check');
+        if (check && !check.disabled) check.checked = !!st.user.marketingOptIn;
         keep.querySelector('#ac-menu-title').textContent = st.user.name;
         keep.querySelector('.ac-me .ac-avatar').replaceWith(avatarEl(st.user, 44));
         trigger.title = st.user.name;
@@ -335,7 +357,7 @@ export function createAccountUi(ctx, api) {
       slot.append(trigger);
     }
     bus.on('account', render);
-    bus.on('route', () => { if (pop && popKind !== 'nudge') closePop(false); });
+    bus.on('route', () => { if (pop && popKind !== 'nudge' && popKind !== 'marketing') closePop(false); });
     render();
   }
 
