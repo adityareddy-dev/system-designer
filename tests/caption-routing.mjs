@@ -19,7 +19,11 @@ try {
   await page.setRequestInterception(true);
   page.on('request', request => {
     const file = new URL(request.url()).pathname;
-    if (file.endsWith('/render/nodes.js')) {
+    // These caption-ground and wrapped-lane checks exercise the retained classic renderer.
+    // Paper's inline headers and sticky notes are covered in paper-captions.mjs.
+    if (file.endsWith('/render/look.js')) {
+      request.respond({contentType:'text/javascript',body:"export const canvasLook = () => 'classic';"});
+    } else if (file.endsWith('/render/nodes.js')) {
       const source = fs.readFileSync(new URL('../render/nodes.js', import.meta.url), 'utf8')
         .replace('views.set(n.id, v);', 'views.set(n.id, v); window.__captionViews.set(n.id, v);');
       request.respond({ contentType: 'text/javascript', body: source });

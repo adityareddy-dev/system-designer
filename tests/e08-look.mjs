@@ -8,7 +8,7 @@ const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: true,
   args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 try {
-  for (const [id, look] of [['url-shortener', 'paper'], ['chat-app', 'classic']]) {
+  for (const [id, look] of [['url-shortener', 'paper'], ['chat-app', 'paper']]) {
     await test(`${id} uses ${look} canvas`, async () => {
       const page = await browser.newPage();
       const errors = [];
@@ -22,7 +22,7 @@ try {
         // Reusing the same Practice host must also change the look.
         const next = id === 'url-shortener' ? 'chat-app' : 'url-shortener';
         await page.evaluate(id => window.__game.loadProblem(id), next);
-        await page.waitForFunction(expected => document.querySelector('.pl-stage canvas')?.dataset.look === expected, {}, look === 'paper' ? 'classic' : 'paper');
+        await page.waitForFunction(expected => document.querySelector('.pl-stage canvas')?.dataset.look === expected, {}, 'paper');
         assert.deepEqual(errors, []);
       } finally { await page.close(); }
     });

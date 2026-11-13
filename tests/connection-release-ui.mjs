@@ -36,7 +36,8 @@ try {
         return { x: rect.left + node.x, y: rect.top + node.y };
       };
       const source = point('app');
-      const port = { x: source.x + 36 * view.zoom, y: source.y };
+      const face = view.diagram.parts.find(node => node.id === 'app');
+      const port = { x: source.x + face.width / 2 + 20, y: source.y };
       const send = (type, point) => canvas.dispatchEvent(new PointerEvent(type, {
         bubbles: true, pointerId: 42, pointerType, isPrimary: true, button: 0,
         buttons: type === 'pointerup' ? 0 : 1, clientX: point.x, clientY: point.y,

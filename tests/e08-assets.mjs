@@ -25,10 +25,10 @@ await test('e08 supplies every catalog part, category state and traffic kind', a
   for(const t of traffic)assert(fs.readFileSync(`assets/e08/traffic/${t.id}.svg`,'utf8').includes(t.color));
 });
 
-await test('canvas look includes the mode and only opts URL shortener Practice in', async () => {
+await test('canvas look selects paper across problems and modes', async () => {
   const {canvasLook}=await import('../render/look.js');
   assert.equal(canvasLook('practice',{id:'url-shortener'}),'paper');
-  for(const mode of ['challenge','sandbox','lesson','intro'])assert.equal(canvasLook(mode,{id:'url-shortener'}),'classic');
-  assert.equal(canvasLook('practice',{id:'chat-app'}),'classic');
-  assert.equal(canvasLook('practice',null),'classic');
+  for(const mode of ['challenge','sandbox','lesson','intro'])assert.equal(canvasLook(mode,{id:'url-shortener'}),'paper');
+  assert.equal(canvasLook('practice',{id:'chat-app'}),'paper');
+  assert.equal(canvasLook('practice',null),'paper');
 });
