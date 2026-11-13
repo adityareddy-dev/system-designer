@@ -1,4 +1,5 @@
 // Home view: hero, the four sections with live progress, today's challenge, suggested next problem.
+import { homeFaqs, readingLinks } from '../../content/site-reading.js';
 import { h, ico, problemOf, lessonOf, groupIdOf, diffBadge, DIFF_ORDER, GROUP_ICON } from './dom.js';
 import { iconInner, hasIcon } from '../../assets/icons/index.js';
 import { conceptStats, weakestConcept, totalResults } from './concepts.js';
@@ -173,13 +174,19 @@ export function renderHome(host, ctx) {
       h('h2', { class: 'sh-h2', text: 'Every corner of the industry' }),
       h('div', { class: 'sh-chip-wrap' }, groups.map((g) => h('a', { class: 'sh-chip', href: `#/practice?g=${g.id}` }, ico(GROUP_ICON[g.id] || 'ui.grid', 16), g.title)))) : null;
 
+    const reading = h('section', { class: 'sh-modes-sec site-prose', 'aria-label': 'Read and prepare' },
+      h('h2', { text: 'Read and prepare' }),
+      h('ul', null, readingLinks.map(([href, text]) => h('li', null, h('a', { href, text })))),
+      h('h2', { text: 'Common questions' }),
+      homeFaqs.map(([question, answer]) => h('section', null, h('h3', { text: question }), h('p', { text: answer }))));
+
     const foot = h('footer', { class: 'sh-footer' },
       h('p', null, 'System Designer is free and open source (MIT). Source on GitHub. Numbers shown are approximations for learning. Made by Aditya Reddy. Company names appear only as plain comparisons.'),
       h('div', { class: 'sh-foot-row' },
         h('a', { href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, 'GitHub'),
         h('a', { href: 'privacy.html' }, 'Privacy')));
 
-    return h('div', { class: 'sh-page sh-home-page' }, hero, cards, steps, member ? nextTracks() : null, extras, conceptStrip, strip, foot);
+    return h('div', { class: 'sh-page sh-home-page' }, hero, cards, steps, member ? nextTracks() : null, extras, conceptStrip, strip, reading, foot);
   }
 
   const paint = () => {
@@ -190,5 +197,5 @@ export function renderHome(host, ctx) {
   };
   paint();
   const offAccount = ctx.bus.on('account', (st) => { known = st && 'user' in st ? !!st.user : null; paint(); });
-  return { title: 'Home', destroy: offAccount };
+  return { title: 'System design practice game', destroy: offAccount };
 }

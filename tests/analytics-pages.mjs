@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // A missing entry point on any served page must fail this check.
-const roots = ['index.html', 'privacy.html', '404.html', 'd', 'p', 'learn', 'guides', 'problems'];
+const roots = ['index.html', 'privacy.html', '404.html', 'd', 'p', 'learn', 'guides', 'problems', 'interview'];
 let count = 0;
 function check(file) {
   if (fs.statSync(file).isDirectory()) { for (const name of fs.readdirSync(file)) check(path.join(file, name)); return; }
