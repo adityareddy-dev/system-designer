@@ -24,7 +24,7 @@ import { queueDrainAdvice } from './lesson-queue.js';
 import { createRouteTrace } from './route-trace.js';
 import { learningCredit } from './mastery.js';
 import { previewLimits } from './capacity-preview.js';
-import { renderCheckpointForm } from './correctness.js';
+import { renderCheckpointForm, checkpointCorrect } from './correctness.js';
 import { introPathHolds, repairInsertion } from './intro-path.js';
 import { showVictory } from './victory.js';
 import { carryRunIntoReport } from './run-transition.js';
@@ -1597,7 +1597,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         if (answer) S.correctnessAnswer = answer;
         S.checkpointReady = S.problem.id;
         // answering marks it seen; skipping does not, so the next run offers it again (it never blocks)
-        if (answer) gateSeen('checkpoint', true);
+        // only a right answer closes it: skipped or wrong, the next run offers it again
+        if (answer && checkpointCorrect(S.problem.correctness, answer)) gateSeen('checkpoint', true);
         if (answer) { try { const all = store.get('gates', {}) || {}; store.set('gates', { ...all, [S.problem.id]: { ...(all[S.problem.id] || {}), checkpointAnswer: answer } }); } catch { /* ignore */ } }
         modal.hidden = true;
         startTraffic();
@@ -1609,6 +1610,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     const wasHeld = S.hold;
     S.hold = false;
+    bus.emit('toast:clear');
     if (S.sim.phase !== 'build') { if (S.sim.phase === 'paused') resume(); return getState(); }
     if (stepped && S.step !== 'draw') go('draw');
     cancelModes();
@@ -1669,7 +1671,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     refreshChecks();
     refitForStep();
   }
-  function reset() { if (resetToDraw() !== false && stepped) go('draw'); }
+  function reset() { bus.emit('toast:clear'); if (resetToDraw() !== false && stepped) go('draw'); }
 
   function bestOf(x) {
     if (x == null) return null;

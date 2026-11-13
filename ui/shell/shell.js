@@ -1,7 +1,7 @@
 // App shell: top bar, section navigation, route to view switching, toasts, progress wiring.
 import { metrics } from '../../core/metrics.js';
 import { h, ico, clear, lessonOf } from './dom.js';
-import { setOverlayHost, toast, closeAllModals } from './overlay.js';
+import { setOverlayHost, toast, clearToasts, closeAllModals } from './overlay.js';
 import { transitionScreen } from './motion.js';
 import { completionState } from '../play/completion.js';
 import { isPlayRoute } from '../../account/config.js';
@@ -222,6 +222,7 @@ export function mountShell(rootEl, ctx) {
     if ((signedIn && view?.gate) || (!signedIn && view && !view.gate && viewId !== null)) show(r, { force: true, focus: false });
   }));
   offs.push(bus.on('toast', (t) => toast(t)));
+  offs.push(bus.on('toast:clear', () => clearToasts()));
   offs.push(bus.on('lesson:done', ({ lessonId }) => { if (lessonId) ctx.progress.lessonDone(lessonId); }));
   offs.push(bus.on('play:day-end', (e) => onDayEnd(e)));
 
