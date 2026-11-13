@@ -12,7 +12,7 @@ import { createGithub } from '../github.js';
 export const SITE = 'https://systemdesigner.io';
 export const NOW = Date.UTC(2026, 10, 3, 15, 0, 0);
 
-export async function startApp({ env = {}, github, google, now, replayer } = {}) {
+export async function startApp({ env = {}, github, google, now, replayer, marketingFetch, log } = {}) {
   const { config, errors } = loadConfig({ NODE_ENV: 'test', DEV: '1', AUTH_FAKE: '1', SESSION_SECRET: 's'.repeat(48), DB_PATH: ':memory:', ...env });
   if (errors.length) throw new Error(errors.join(' '));
   const db = openDb(':memory:');
@@ -20,7 +20,7 @@ export async function startApp({ env = {}, github, google, now, replayer } = {})
   const clock = { t: NOW };
   const rp = replayer || createReplayer({ timeoutMs: 20_000 });
   const app = createApp({
-    config, db, game, limiter: createLimiter({ now: () => (now ? now() : clock.t) }), replayer: rp,
+    config, db, game, marketingFetch, log, limiter: createLimiter({ now: () => (now ? now() : clock.t) }), replayer: rp,
     google: google || createGoogleVerifier({ clientId: config.google.clientId, fetchImpl: async () => { throw new Error('no network in tests'); } }),
     github: github || createGithub({ ...config.github, fetchImpl: async () => { throw new Error('no network in tests'); } }),
     now: now || (() => clock.t),

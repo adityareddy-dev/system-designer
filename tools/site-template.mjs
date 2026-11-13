@@ -48,6 +48,7 @@ export function page(file, opts) {
 <html lang="en" data-theme="light"><head>
 <meta charset="utf-8">
 ${themeHead}
+<script type="module" src="${relative(file, 'assets/analytics.js')}"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)} | System Designer</title>
 <meta name="description" content="${esc(opts.description)}">

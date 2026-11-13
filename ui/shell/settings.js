@@ -154,25 +154,26 @@ export function renderSettings(hostEl, ctx) {
   const privacy = card('Privacy and feedback',
     metrics.countsAvailable()
       ? toggleRow('Anonymous usage counts', 'Helps us see what gets played and where the game breaks. No cookies or player ids. Browser privacy signals turn this off too.', settings.get('anonymousCounts'), v => set('anonymousCounts', v), 'sh-s-counts')
-      : h('p', { class: 'sh-muted', text: 'Automatic usage counts and error reports are disabled.' }),
+      : h('p', { class: 'sh-muted', text: "The game's own usage counts and error reports are off. Google Analytics has a separate cookie choice." }),
     h('div', { class: 'sh-btn-row sh-privacy-actions' },
       h('a', { class: 'sh-btn', href: new URL('./privacy.html', document.baseURI).href, text: 'Read the privacy page' }),
       h('button', { type: 'button', class: 'sh-btn', 'data-feedback-general': '', text: 'Send feedback', onclick: event => {
         feedbackHost.replaceChildren(); mountFeedback(feedbackHost, ctx, 'general', null, true, event.currentTarget); feedbackHost.querySelector('input')?.focus();
-      } })), feedbackHost);
-  // Email and surveys: what we hold for a signed-in player, and the switch for survey emails.
+      } }),
+      h('button', { type: 'button', class: 'sh-btn', 'data-cookie-choices': '', text: 'Cookie choices' })), feedbackHost);
+  // Marketing email: what we hold for a signed-in player, and the switch for email updates.
   const emailCard = h('section', { class: 'sh-card sh-settings-card', id: 'sh-email-card', hidden: true });
   const paintEmail = (given) => {
     const u = given !== undefined ? given : ctx.account?.user?.();
     emailCard.hidden = !u || !ctx.account?.emailBlock;
     if (emailCard.hidden) return;
     emailCard.replaceChildren(h('h2', { class: 'sh-card-title', text: 'Email' }),
-      h('p', { class: 'sh-muted', text: 'We send occasional surveys and product updates.' }),
+      h('p', { class: 'sh-muted', text: 'Choose whether to receive email updates.' }),
       ctx.account.emailBlock(u));
   };
   paintEmail();
   // The account reports before it is on ctx, so the event carries the user and the card waits a tick for the account object.
-  const offEmail = ctx.bus.on('account', (st) => { const key = st?.user ? `u|${st.user.email || ''}` : ''; if (key !== emailCard.dataset.key) { emailCard.dataset.key = key; setTimeout(() => paintEmail(st?.user || null), 0); } });
+  const offEmail = ctx.bus.on('account', (st) => { const key = st?.user ? `u|${st.user.email || ''}|${st.user.marketingOptIn}|${st.user.marketingPromptPending}` : ''; if (key !== emailCard.dataset.key) { emailCard.dataset.key = key; setTimeout(() => paintEmail(st?.user || null), 0); } });
   append(page, [h('h1', { class: 'sh-h1', text: 'Settings' }), appearance, emailCard, privacy, motion, sound, shapesCard, profile, data, keysCard]);
   hostEl.append(page);
   const off0 = ctx.bus.on('settings', ({ key, value }) => {

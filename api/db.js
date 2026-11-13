@@ -2,6 +2,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { countryDefaults } from '../assets/consent-region.js';
 import { observationStore } from './observation-store.js';
 
 const SCHEMA = `
@@ -11,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   avatar TEXT,
   created_at INTEGER NOT NULL,
   email TEXT,
-  survey_optin INTEGER NOT NULL DEFAULT 1,
+  survey_optin INTEGER NOT NULL DEFAULT 0,
   survey_optin_at INTEGER
 );
 CREATE TABLE IF NOT EXISTS identities (
@@ -69,16 +70,35 @@ export function openDb(file) {
   if (!userCols.has('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
   if (!userCols.has('survey_optin')) db.exec('ALTER TABLE users ADD COLUMN survey_optin INTEGER NOT NULL DEFAULT 0');
   if (!userCols.has('survey_optin_at')) db.exec('ALTER TABLE users ADD COLUMN survey_optin_at INTEGER');
-  db.exec('PRAGMA user_version = 1;');
+  // Copy legacy choices once. Existing accounts have already seen the old product-update setting.
+  const migrateMarketing = !userCols.has('marketing_optin');
+  if (migrateMarketing) db.exec(`
+    BEGIN IMMEDIATE;
+    ALTER TABLE users ADD COLUMN marketing_optin INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN marketing_optin_at INTEGER;
+    ALTER TABLE users ADD COLUMN marketing_country TEXT NOT NULL DEFAULT 'XX';
+    ALTER TABLE users ADD COLUMN marketing_prompt_pending INTEGER NOT NULL DEFAULT 1;
+    UPDATE users SET marketing_optin = survey_optin, marketing_optin_at = CASE WHEN survey_optin = 1 THEN COALESCE(survey_optin_at, created_at) ELSE survey_optin_at END, marketing_prompt_pending = 0;
+  `);
+  db.exec(`CREATE TABLE IF NOT EXISTS marketing_queue (
+    email TEXT PRIMARY KEY, subscribed INTEGER NOT NULL, version INTEGER NOT NULL DEFAULT 1,
+    attempts INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL DEFAULT 0
+  );`);
+  if (migrateMarketing) db.exec(`INSERT OR IGNORE INTO marketing_queue (email, subscribed)
+    SELECT email, 1 FROM users WHERE marketing_optin = 1 AND email IS NOT NULL AND email != '';
+    COMMIT;`);
+  db.exec('PRAGMA user_version = 2;');
 
   const q = (sql) => db.prepare(sql);
   const st = {
     identity: q('SELECT user_id AS userId FROM identities WHERE provider = ? AND subject = ?'),
     addIdentity: q('INSERT INTO identities (provider, subject, user_id, created_at) VALUES (?, ?, ?, ?)'),
-    addUser: q('INSERT INTO users (name, avatar, created_at, email, survey_optin, survey_optin_at) VALUES (?, ?, ?, ?, ?, ?)'),
-    user: q('SELECT id, name, avatar, created_at AS createdAt, email, survey_optin AS surveyOptIn, survey_optin_at AS surveyOptInAt FROM users WHERE id = ?'),
+    addUser: q('INSERT INTO users (name, avatar, created_at, email, marketing_optin, marketing_country) VALUES (?, ?, ?, ?, ?, ?)'),
+    user: q('SELECT id, name, avatar, created_at AS createdAt, email, survey_optin AS surveyOptIn, survey_optin_at AS surveyOptInAt, marketing_optin AS marketingOptIn, marketing_optin_at AS marketingOptInAt, marketing_country AS marketingCountry, marketing_prompt_pending AS marketingPromptPending FROM users WHERE id = ?'),
     setEmail: q('UPDATE users SET email = ? WHERE id = ?'),
-    setSurvey: q('UPDATE users SET survey_optin = ?, survey_optin_at = ? WHERE id = ?'),
+    setMarketing: q('UPDATE users SET marketing_optin = ?, marketing_optin_at = ?, marketing_country = ?, marketing_prompt_pending = 0 WHERE id = ?'),
+    queueMarketing: q(`INSERT INTO marketing_queue (email, subscribed) VALUES (?, ?)
+      ON CONFLICT(email) DO UPDATE SET subscribed = excluded.subscribed, version = marketing_queue.version + 1, attempts = 0, next_attempt = 0`),
     providers: q('SELECT provider FROM identities WHERE user_id = ? ORDER BY created_at, provider'),
     setAvatar: q('UPDATE users SET avatar = ? WHERE id = ?'),
     setName: q('UPDATE users SET name = ? WHERE id = ?'),
@@ -103,7 +123,16 @@ export function openDb(file) {
     count: q('SELECT COUNT(*) AS n FROM scores WHERE board = ?'),
   };
 
-  function setSurvey(id, on, now) { st.setSurvey.run(on ? 1 : 0, on ? now : null, id); }
+  const enqueueMarketing = (email, on) => { if (email) st.queueMarketing.run(email, on ? 1 : 0); };
+  function keepEmail(id, email) {
+    if (!email) return;
+    const u = st.user.get(id);
+    if (u.email !== email && !u.marketingPromptPending) {
+      if (u.email) enqueueMarketing(u.email, false);
+      if (u.marketingOptIn) enqueueMarketing(email, true);
+    }
+    st.setEmail.run(email, id);
+  }
 
   function tx(fn) {
     db.exec('BEGIN IMMEDIATE');
@@ -117,9 +146,9 @@ export function openDb(file) {
     tx,
 
     // Finds the user behind a provider identity, links it to `currentUserId` when given, or creates a new user.
-    signIn({ provider, subject, name, avatar, email = '', currentUserId = null }, now) {
-      // An empty email leaves the stored one alone. Signing in never changes the survey choice of an existing account.
-      const keep = (id) => { if (email) st.setEmail.run(email, id); };
+    signIn({ provider, subject, name, avatar, email = '', country = 'XX', currentUserId = null }, now) {
+      // An empty email leaves the stored one alone. Signing in never changes the marketing choice of an existing account.
+      const keep = (id) => keepEmail(id, email);
       return tx(() => {
         const found = st.identity.get(provider, subject);
         if (found) {
@@ -140,7 +169,7 @@ export function openDb(file) {
           unique = Array.from(name).slice(0, 24 - tag.length).join('').trim() + tag;
           if (n > 50) break;
         }
-        const r = st.addUser.run(unique, avatar || null, now, email || null, 1, now);
+        const r = st.addUser.run(unique, avatar || null, now, email || null, countryDefaults(country).marketingDefault ? 1 : 0, countryDefaults(country).country);
         const userId = Number(r.lastInsertRowid);
         st.addIdentity.run(provider, subject, userId, now);
         return { userId, created: true };
@@ -150,14 +179,23 @@ export function openDb(file) {
       const u = st.user.get(id);
       if (!u) return null;
       return { id: Number(u.id), name: u.name, avatar: u.avatar || null, createdAt: Number(u.createdAt), providers: st.providers.all(id).map((r) => r.provider),
-        email: u.email || null, surveyOptIn: !!u.surveyOptIn, surveyOptInAt: u.surveyOptInAt == null ? null : Number(u.surveyOptInAt) };
+        email: u.email || null, surveyOptIn: !!u.surveyOptIn, surveyOptInAt: u.surveyOptInAt == null ? null : Number(u.surveyOptInAt),
+        marketingOptIn: !!u.marketingOptIn, marketingOptInAt: u.marketingOptInAt == null ? null : Number(u.marketingOptInAt),
+        marketingCountry: u.marketingCountry, marketingPromptPending: !!u.marketingPromptPending };
     },
     nameTaken: (name, exceptId = 0) => !!st.nameTaken.get(name, exceptId),
     setName: (id, name) => st.setName.run(name, id),
     setEmail: (id, email) => st.setEmail.run(email || null, id),
-    // Turning on records the time, turning off clears it.
-    setSurveyOptIn: (id, on, now) => setSurvey(id, !!on, now),
-    deleteUser: (id) => st.deleteUser.run(id),
+    setMarketingOptIn(id, on, now, country) {
+      st.setMarketing.run(on ? 1 : 0, now, countryDefaults(country).country, id);
+      enqueueMarketing(st.user.get(id)?.email, on);
+    },
+    marketingJobs(now, force = false) {
+      return q('SELECT * FROM marketing_queue WHERE next_attempt <= ? ORDER BY next_attempt, email LIMIT 25').all(force ? Number.MAX_SAFE_INTEGER : now);
+    },
+    finishMarketingJob: (email, version) => q('DELETE FROM marketing_queue WHERE email = ? AND version = ?').run(email, version),
+    failMarketingJob: (email, version, now) => q('UPDATE marketing_queue SET attempts = attempts + 1, next_attempt = ? WHERE email = ? AND version = ?').run(now + 60_000, email, version),
+    deleteUser(id) { return tx(() => { enqueueMarketing(st.user.get(id)?.email, false); return st.deleteUser.run(id); }); },
     report: (reporter, target, reason, now) => st.addReport.run(reporter, target, reason, now),
 
     addSession(hash, userId, now, ttlMs) {
