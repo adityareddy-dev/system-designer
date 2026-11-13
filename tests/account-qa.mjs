@@ -146,6 +146,7 @@ try {
   const { page: p1, log: log1 } = await openPage(ctx1, `${BASE}?api=${API_PORT}#/practice`, 'reachable-device1');
   await p1.waitForSelector('.ac-signin-btn', { visible: true, timeout: 10000 }).catch(() => {});
   check('sign-in button shows when the service is reachable', await visible(p1, '.ac-signin-btn'));
+  check('reachable: the account service is probed once', log1.requests.filter((u) => u === API + '/probe').length === 1, log1.requests);
   await shot(p1, '01-signed-out-header');
 
   // play a practice problem while signed out: local progress, and the single nudge
@@ -155,7 +156,8 @@ try {
   await p1.evaluate(() => window.__game.reset());
   const day1 = await buildAndPlay(p1, 'url-shortener');
   check('practice day finishes signed out', day1.phase === 'done' && day1.passed === true, day1);
-  await p1.waitForSelector('.ac-nudge', { visible: true, timeout: 6000 }).catch(() => {});
+  // The nudge opens after six seconds, so leave time for the next browser frame.
+  await p1.waitForSelector('.ac-nudge', { visible: true, timeout: 10000 }).catch(() => {});
   check('one gentle nudge after the first finished day', await visible(p1, '.ac-nudge'));
   await shot(p1, '02-nudge');
   await p1.evaluate(() => [...document.querySelectorAll('.ac-nudge button')].find((b) => /Not now/.test(b.textContent))?.click());
@@ -363,7 +365,7 @@ try {
     const hop = gh.href ? await fetch(gh.href, { redirect: 'manual' }) : null;
     const loc = hop ? new URL(hop.headers.get('location')) : null;
     check('GitHub set up: the button starts the flow at the service with this page as the return', !!gh.href && gh.href.startsWith(`http://127.0.0.1:${GITHUB_PORT}/auth/github/start?`) && new URL(gh.href).searchParams.get('return') === '#/challenge' && !gh.test, gh);
-    check('GitHub start redirects to GitHub with no scope and the fixed callback', loc && loc.origin === 'https://github.com' && loc.searchParams.get('redirect_uri') === 'https://api.systemdesigner.io/auth/github/callback' && !loc.searchParams.has('scope'), { status: hop?.status, location: loc?.href.replace(/state=[^&]+/, 'state=...') });
+    check('GitHub start redirects to GitHub with the email scope and the fixed callback', loc && loc.origin === 'https://github.com' && loc.searchParams.get('redirect_uri') === 'https://api.systemdesigner.io/auth/github/callback' && loc.searchParams.get('scope') === 'user:email', { status: hop?.status, location: loc?.href.replace(/state=[^&]+/, 'state=...') });
     await shot(p6, '11-github-button');
     check('github-configured: zero console errors and page errors', !log6.consoleErrors.length && !log6.pageErrors.length, log6);
     await ctx6.close();
