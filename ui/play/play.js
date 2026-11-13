@@ -926,6 +926,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   const touchWords = (t) => (isCoarse()
     ? String(t).replace(/\bDrag (?:the |a |an )?(.+?) (?:onto|to|into) the line\b/i, (m, part) => `Tap the ${part.toLowerCase()}, then tap the line`)
         .replace(/\bDrag (?:the |a |an )?(.+?) between\b/i, (m, part) => `Tap the ${part.toLowerCase()}, then tap the line between`)
+        .replace(/ \(or click it, then click the line\)/, '')
     : t);
   function showCaption(text, ms = 0, actions = []) {
     text = touchWords(text);

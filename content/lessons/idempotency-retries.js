@@ -132,7 +132,7 @@ export default {
         },
         {
           "label": "Key lookup",
-          "value": "≈ 1 ms",
+          "value": "≈ 2 ms",
           "how": "approx."
         },
         {

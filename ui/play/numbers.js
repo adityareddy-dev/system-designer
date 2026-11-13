@@ -60,14 +60,14 @@ export function renderNumbers(host, { problem, guesses, onNext, onBack, snd, pro
     } else {
       // Not a guess: shown up front as a worked example.
       card.append(h('div', { class: 'pl-nworked' }, h('span', { class: 'pl-muted', text: 'Worked example: ' }),
-        h('b', { text: fmtNum(row.value) + ' ' + (row.unit || '') }), ' ', approx('approx.'), h('div', { class: 'pl-muted', text: row.how || '' })));
+        h('b', { text: '≈ ' + (Math.abs(row.value) >= 1e12 ? fmtNum(row.value / 1e12).replace('T', '') + ' trillion' : fmtNum(row.value)) + ' ' + (row.unit || '') }), h('div', { class: 'pl-muted', text: row.how || '' })));
     }
     card.append(result);
     list.append(card);
     checks.push(() => {
       if (!row.ask) return;
       const worked = h('div', { class: 'pl-nworked' },
-        h('b', { text: fmtNum(row.value) + ' ' + (row.unit || '') }), ' ', approx('worked answer'),
+        h('b', { text: fmtNum(row.value) + ' ' + (row.unit || '') }), ' ', h('span', { class: 'pl-muted', text: '(worked answer)' }),
         h('div', { class: 'pl-muted', text: row.how || '' }));
       let verdict = null;
       if (row.ask && guesses[i] != null) {

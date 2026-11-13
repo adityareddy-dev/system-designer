@@ -123,12 +123,12 @@ export default {
       "rows": [
         {
           "label": "Async write",
-          "value": "≈ 5 ms",
+          "value": "≈ 2 ms",
           "how": "approx."
         },
         {
           "label": "Sync write to a second copy",
-          "value": "≈ 8 to 15 ms",
+          "value": "≈ 5 to 15 ms",
           "how": "adds a round trip, approx."
         },
         {

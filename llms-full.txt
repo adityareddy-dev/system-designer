@@ -455,13 +455,13 @@ Traffic concentrated in working hours. The clock covers 00:00 to 24:00 in the ho
 
 Bots try stolen passwords and scrape pages, adding unwanted traffic.
 
-Extra attack traffic is 1 times the configured peak. Duration: ≈ 7,200 seconds.
+Extra attack traffic is equal to the configured peak. Duration: ≈ 7,200 seconds.
 
 15:30 · Retry storm
 
 A brief failure causes clients to retry, adding load while the service recovers.
 
-Failed calls: 90%. Duration: ≈ 30 seconds. Duration: ≈ 1,200 seconds.
+Failed calls: 90%. The failure lasts ≈ 30 seconds. Retries keep adding load for ≈ 1,200 seconds.
 
 Play this problem. Keep one baseline, predict a change and compare the next full day. The in-game editorial has calibrated reference designs after you finish a traffic day.
 
@@ -776,7 +776,7 @@ Affected share: 3%. Duration: ≈ 3,600 seconds.
 
 An outside service fails calls during an outage.
 
-Failed calls: 100%. Duration: ≈ 1,200 seconds.
+Failed calls: 100%. The failure lasts ≈ 1,200 seconds.
 
 Play this problem. Keep one baseline, predict a change and compare the next full day. The in-game editorial has calibrated reference designs after you finish a traffic day.
 

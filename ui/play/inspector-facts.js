@@ -6,7 +6,8 @@ export function capacityText(el, node, tiers) {
   const units = el.units?.max === 1 ? 1 : (node.units ?? el.units?.default ?? 1);
   const unit = (el.capacity.unit || '').replace(/^.*?per second\s+/, '');
   const detail = el.units?.max === 1 ? unit : `${fmtNum(perUnit)} req/s ${unit.startsWith('per ') ? unit : 'per ' + (el.units?.label || 'unit')}`;
-  return `${fmtNum(perUnit * units)} req/s total, ${detail} at 100% busy`;
+  const writes = el.capacity.writeRps ? ` (about ${fmtNum(el.capacity.writeRps * (tiers[node.tier || 'M']?.capacity ?? 1) * units)} of them writes)` : '';
+  return `${fmtNum(perUnit * units)} req/s total${writes}, ${detail} at 100% busy`;
 }
 
 export function inspectorStatus(s) {

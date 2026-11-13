@@ -92,12 +92,12 @@ export default {
         },
         {
           "at": 0,
-          "caption": "Tap the servers to open their settings, then press + until you have 3 servers. The day waits for you.",
+          "caption": "Tap the servers to open their settings, then press + until you have 5 servers. Three would only just carry the midday peak, so 5 leaves room to spare. The day waits for you.",
           "highlight": "vm-fleet",
           "waitFor": {
             "action": "knob",
             "knob": "units",
-            "min": 3
+            "min": 5
           }
         },
         {
@@ -107,7 +107,7 @@ export default {
         },
         {
           "at": "after-previous",
-          "caption": "Drag the load balancer onto the line between the phone and the servers.",
+          "caption": "Drag the load balancer onto the line between the phone and the servers (or click it, then click the line).",
           "highlight": "regional-lb",
           "waitFor": {
             "action": "place",
@@ -122,7 +122,7 @@ export default {
         },
         {
           "at": "after-previous",
-          "caption": "Drag the cache onto the line between the servers and the database. A cache answer takes about 1 ms, a database about 5 ms (approx.).",
+          "caption": "Drag the cache onto the line between the servers and the database (or click it, then click the line). A cache answer takes about 0.5 ms, a database about 2 ms (approx.).",
           "highlight": "cache",
           "waitFor": {
             "action": "place",

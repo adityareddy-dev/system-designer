@@ -26,6 +26,32 @@ const briefs = {
  'ai-serving':'Generation capacity will be scarce at noon. Some incoming questions repeat earlier questions.',
 };
 export const predictionBrief = id => briefs[id];
+const questions = {
+ 'requests-and-latency':"Where does the wait come from: the app servers, the database, or the trip across the ocean? Which would you fix first, and about how many ms would that save?",
+ 'load-balancing':"About 3,000 requests a second arrive and one server handles about 1,000. How many app servers would you start with, and why that many?",
+ caching:"If an answer may be up to 60 seconds old, how much of the database's load do you think a cache can remove, and where would you put it?",
+ cdn:"Which of these requests could be answered without ever reaching your servers, and what would give out first without a CDN?",
+ autoscaling:"A viral spike arrives faster than new servers can start. What do you expect to fail first, and how much spare room would you keep?",
+ 'replication-lag':"If a person saves a change and reads it back at once from a copy, what do you expect to see, and why?",
+ sharding:"What would you split the data by, a user id or a country? Which choice leaves one shard doing most of the work?",
+ 'hot-keys':"Adding shards will not help if one item gets a third of the reads. Which part do you expect to overload, and what would take that load away?",
+ 'search-indexing':"Right after a record changes, what will a search show, and how long are you willing to wait for it to catch up?",
+ 'storage-tiers':"Which data can move to cheaper storage without anyone noticing, and what would people notice if you moved too much?",
+ 'queues-backpressure':"When the burst hits, what happens to the database with a queue and without one? What happens to a job that waits too long?",
+ fanout:"A celebrity post makes 25 times the writes. Which part runs out first, and how would you keep readers from waiting?",
+ 'realtime-connections':"Why would chat connections overwhelm app servers that cope fine with normal requests, and where would you move them?",
+ consistency:"After a person edits their profile, which copy should their next read come from, and what does that choice cost?",
+ 'idempotency-retries':"If the same payment arrives twice, what stops the second one from charging the customer, and where would that check live?",
+ 'rate-limiting':"How would you tell junk traffic from real people, and what limit per client would you try first?",
+ 'circuit-breakers':"While the map service is slow, what happens to requests that do not need maps, and what would stop the slowness spreading?",
+ 'multi-region':"When the home region goes down at noon, how do people reach the second region, and how many seconds of data might be lost?",
+ observability:"When the bad release goes out, how long until you notice, and how long until you are back on the old version?",
+ cost:"Which parts of the bill do you think are biggest, and which could you cut without users noticing?",
+ 'security-compliance':"What will the auditor ask to see first: who touched the data, how it is protected, or how you recover it?",
+ 'ai-serving':"When graphics cards run short, what should people see instead of an error, and which repeated questions could skip them?",
+};
+// One specific question per lesson for the "Predict before you try" box.
+export const predictionQuestion = id => questions[id] || 'Predict what will happen to people using the system after your first change, then try it and compare.';
 export function lessonVisualStyles(){
  if(document.querySelector('[data-lesson-visuals]'))return;
  const style=h('style',{'data-lesson-visuals':'',text:`

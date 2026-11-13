@@ -92,7 +92,7 @@ export default {
         "maxUtil": 0.75
       },
       "hint": "One server handles about 1,000 requests a second (approx.). Divide the peak by that capacity, then leave at least 25% spare for a slow server or a small burst.",
-      "estimate": "Peak is 9,000 requests/s. One app server has a measured ceiling of about 1,000 requests/s. Keep at least 25% of total app capacity spare. Record a first estimate before opening the workbench."
+      "estimate": "Peak is 9,000 requests/s. One app server has a measured ceiling of about 1,000 requests/s. Keep at least 25% of total app capacity spare. Record a first estimate before you try the demo."
     },
     {
       "kind": "numbers",
