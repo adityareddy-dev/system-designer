@@ -38,6 +38,9 @@ function placeToasts() {
   if (top < Infinity) toastBox.style.bottom = Math.max(base, innerHeight - top + 10) + 'px';
 }
 
+// r4-tests: result notes belong to the run that made them; Retry and a new run clear what is still showing
+export function clearToasts() { if (toastBox) [...toastBox.children].forEach((n) => n.remove()); }
+
 export function toast({ text, level = 'info', ms = Math.max(3200, Math.min(12000, text.length * 60)) }) {
   if (!toastBox) return;
   const iconId = { ok: 'ui.check', warn: 'ui.warn', bad: 'ui.error', info: 'ui.info' }[level] || 'ui.info';

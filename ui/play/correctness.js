@@ -6,6 +6,9 @@ export function checkpointComplete(checkpoint, answer) {
   return !!answer?.text?.trim() && (checkpoint.fields || []).every((field, i) => Number.isInteger(answer.choices?.[i]) && !!field.options[answer.choices[i]]);
 }
 
+// The checkpoint is not asked on Easy problems or the warm-up, so those owe no trace.
+export function checkpointOwed(problem) { return !!problem?.correctness && problem.difficulty !== 'Easy' && !problem.warmUp; }
+
 export function checkpointCorrect(checkpoint, answer) {
   return checkpointComplete(checkpoint, answer) && checkpoint.fields?.length >= 2 && checkpoint.fields.every((field, i) => answer.choices[i] === field.correct);
 }

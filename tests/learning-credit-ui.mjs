@@ -38,7 +38,8 @@ try {
   await page.waitForSelector('.pl-learning-status');
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /trace is still open/);
   assert.equal(await page.$('.pl-victory'), null);
-  assert.match(await page.$eval('.sh-toast', e => e.textContent), /Traffic passed.*trace is still open/);
+  // The debrief states the open trace in full; no second toast repeats it.
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('.sh-toast')].some(e => /trace/.test(e.textContent))), false);
   await click('Retry'); await click('Start day'); await gates();
   await page.evaluate(() => window.__game.step(86400000));
   assert.match(await page.$eval('.pl-learning-status',e => e.textContent), /responsibility trace passed/);

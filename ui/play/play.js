@@ -24,7 +24,7 @@ import { queueDrainAdvice } from './lesson-queue.js';
 import { createRouteTrace } from './route-trace.js';
 import { learningCredit } from './mastery.js';
 import { previewLimits } from './capacity-preview.js';
-import { renderCheckpointForm } from './correctness.js';
+import { renderCheckpointForm, checkpointCorrect } from './correctness.js';
 import { introPathHolds, repairInsertion } from './intro-path.js';
 import { showVictory } from './victory.js';
 import { carryRunIntoReport } from './run-transition.js';
@@ -1587,11 +1587,19 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function startTraffic(testHook = false) {
     if (interview && (interviewState.stage !== 'ready' || (interviewState.run && S.sim.phase === 'build'))) return getState();
+    // the checkpoint is asked once per problem, so a later run (a retry, a twist, another visit) reuses the answer given then
+    if (!testHook && mode === 'practice' && S.correctnessAnswer == null && S.problem?.correctness && gateSeen('checkpoint')) {
+      try { const kept = (store.get('gates', {}) || {})[S.problem.id]?.checkpointAnswer; if (kept) S.correctnessAnswer = kept; } catch { /* ignore */ }
+    }
     if (!testHook && !interview && mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id
       && S.problem.difficulty !== 'Easy' && !S.warm && !gateSeen('checkpoint')) {
       const begin = (answer) => {
         if (answer) S.correctnessAnswer = answer;
-        S.checkpointReady = S.problem.id; gateSeen('checkpoint', true);
+        S.checkpointReady = S.problem.id;
+        // answering marks it seen; skipping does not, so the next run offers it again (it never blocks)
+        // only a right answer closes it: skipped or wrong, the next run offers it again
+        if (answer && checkpointCorrect(S.problem.correctness, answer)) gateSeen('checkpoint', true);
+        if (answer) { try { const all = store.get('gates', {}) || {}; store.set('gates', { ...all, [S.problem.id]: { ...(all[S.problem.id] || {}), checkpointAnswer: answer } }); } catch { /* ignore */ } }
         modal.hidden = true;
         startTraffic();
       };
@@ -1602,6 +1610,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     }
     const wasHeld = S.hold;
     S.hold = false;
+    bus.emit('toast:clear');
     if (S.sim.phase !== 'build') { if (S.sim.phase === 'paused') resume(); return getState(); }
     if (stepped && S.step !== 'draw') go('draw');
     cancelModes();
@@ -1662,7 +1671,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     refreshChecks();
     refitForStep();
   }
-  function reset() { if (resetToDraw() !== false && stepped) go('draw'); }
+  function reset() { bus.emit('toast:clear'); if (resetToDraw() !== false && stepped) go('draw'); }
 
   function bestOf(x) {
     if (x == null) return null;

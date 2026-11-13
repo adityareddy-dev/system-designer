@@ -118,6 +118,7 @@ try {
     await page.$eval('.pl-play', button => button.click());
     await page.evaluate(test => {
       const form = document.querySelector('.pl-design-check');
+      if (!form) return; // optional and asked once per problem: later runs go straight on
       if (form.querySelector('input')) { form.querySelectorAll('.sh-choice')[test.answer].click(); form.querySelector('input').value = test.value; }
       form.querySelector('textarea').value = 'Check measured peak demand against surviving capacity and verify retry safety.'; form.requestSubmit();
     }, checkFor(problemById.get('shopping-cart')));
