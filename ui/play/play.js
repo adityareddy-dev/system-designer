@@ -1376,14 +1376,23 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       return list.charAt(0).toUpperCase() + list.slice(1) + g.rest;
     });
   }
+  // Each gate (the prediction, the checkpoint) is asked once per problem. Answering or skipping it counts as seen.
+  function gateSeen(kind, set) {
+    const id = S.problem?.id; if (!id) return false;
+    try {
+      const all = store.get('gates', {}) || {};
+      if (set) { store.set('gates', { ...all, [id]: { ...(all[id] || {}), [kind]: true } }); return true; }
+      return !!all[id]?.[kind];
+    } catch { return !!(S.gateMem ||= {})[id + kind] || (set && ((S.gateMem[id + kind] = true))); }
+  }
   // Start from the screen: a design where some request type has nowhere to go gets one question first.
   function startFromUi() {
-    if (!interview && mode === 'practice' && S.sim.phase === 'build' && !S.designChecked) {
+    if (!interview && mode === 'practice' && S.sim.phase === 'build' && !gateSeen('predict')) {
       modal.replaceChildren(renderDesignCheck(S.problem, answer => {
-        S.designChecked = true; S.prediction = answer.text; modal.hidden = true; startFromUi();
-      }, () => { modal.hidden = true; }));
+        gateSeen('predict', true); S.prediction = answer.text; modal.hidden = true; startFromUi();
+      }, () => { modal.hidden = true; }, () => { gateSeen('predict', true); modal.hidden = true; startFromUi(); }));
       modal.hidden = false;
-      modal.querySelector('button')?.focus();
+      modal.querySelector('.sh-choice, textarea, button')?.focus();
       return getState();
     }
     if (S.sim.phase === 'build' && stepped) {
@@ -1408,13 +1417,15 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function startTraffic(testHook = false) {
     if (interview && (interviewState.stage !== 'ready' || (interviewState.run && S.sim.phase === 'build'))) return getState();
-    if (!testHook && !interview && mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id) {
-      modal.replaceChildren(renderCheckpointForm(S.problem.correctness, S.correctnessAnswer, (answer) => {
-        S.correctnessAnswer = answer;
-        S.checkpointReady = S.problem.id;
+    if (!testHook && !interview && mode === 'practice' && S.sim.phase === 'build' && S.problem?.correctness && S.checkpointReady !== S.problem.id
+      && S.problem.difficulty !== 'Easy' && !S.warm && !gateSeen('checkpoint')) {
+      const begin = (answer) => {
+        if (answer) S.correctnessAnswer = answer;
+        S.checkpointReady = S.problem.id; gateSeen('checkpoint', true);
         modal.hidden = true;
         startTraffic();
-      }, () => { modal.hidden = true; }));
+      };
+      modal.replaceChildren(renderCheckpointForm(S.problem.correctness, S.correctnessAnswer, begin, () => { modal.hidden = true; }, () => begin(null)));
       modal.hidden = false;
       modal.querySelector('select, input')?.focus();
       return getState();
