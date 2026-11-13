@@ -1,7 +1,7 @@
 // The PixiJS scene: camera, nodes, edges, request particles, glows and effects. The only render file other modules import.
 
 import { resolvePalette, severityColor } from './theme.js';
-import { PAPER, paperPalette } from './paper.js';
+import { PAPER, paperPalette, paperPoint, paperGraph } from './paper.js';
 import { e08Palette } from './e08.js';
 import { createKit } from './textures.js';
 import { createCamera } from './camera.js';
@@ -10,7 +10,7 @@ import { createEdgeLayer, edgeCarries } from './edges.js';
 import { createParticles } from './particles.js';
 import { createFx } from './fx.js';
 import { createInput, PORT_R, DND_TYPE, DND_PREFIX } from './input.js';
-import { makeLut, edgeCurve, lutAt, HALF, niceCeil } from './geom.js';
+import { makeLut, edgeCurve, lutAt, HALF, niceCeil, snap } from './geom.js';
 import { createGrid } from './grid.js';
 import { inkPath, crossesRect, intersects } from './routing.js';
 import { pathsThrough } from './diagram.js';
@@ -85,6 +85,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const dpr = Math.max(1, Math.min(globalThis.devicePixelRatio || 1, 3));
   const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;
 
+  const displayPoint = (x, y) => look === 'paper' ? paperPoint(x, y) : { x, y };
+  const modelPoint = (x, y) => look === 'paper' ? paperPoint(x, y, true) : { x, y };
+  const displayGraph = g => look === 'paper' ? paperGraph(g) : g;
+  let sourceGraph = null;
   let failureLead = null;
   let captionArea = null;
   let reduced = !!reducedMotion;
@@ -317,7 +321,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const edge = graph?.edges.find(e => e.id === ev.id);
       const a = nodes.views.get(edge?.from), b = nodes.views.get(edge?.to);
       plan = insertionPreview?.(ghost.type, ev.id);
-      if (plan?.position) { ghost.x = plan.position.x; ghost.y = plan.position.y; }
+      if (plan?.position) { const p = displayPoint(plan.position.x, plan.position.y); ghost.x = p.x; ghost.y = p.y; }
       if (a && b && plan) {
         dropWires.moveTo(a.x, a.y).lineTo(ghost.x, ghost.y);
         if (plan.kind !== 'side') dropWires.lineTo(b.x, b.y);
@@ -357,7 +361,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   let connectCheck = null;
   const input = createInput(canvas, hostEl, {
     camera, nodes, edges, ui, ghost: ghostApi,
-    emit: (n, p) => emitter.emit(n, p),
+    snapPoint: (x, y) => { const p = modelPoint(x, y); return displayPoint(snap(p.x), snap(p.y)); },
+    emit: (n, p) => emitter.emit(n, ['node:dragend', 'canvas:tap', 'canvas:drop'].includes(n) ? { ...p, ...modelPoint(p.x, p.y) } : p),
     editable: () => editable,
     reduced: () => reduced,
     get connectCheck() { return connectCheck; },
@@ -372,7 +377,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     for (const m of overlayMinis) m.destroy({ children: true });
     overlayMinis = [];
     overlayEdges.clear();
-    const g = overlayGraph;
+    const g = displayGraph(overlayGraph);
     if (!g) return;
     const pos = new Map(g.nodes.map(n => [n.ref ?? n.id, n]));
     const lut = makeLut();
@@ -770,7 +775,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     setRegionGroups(on) { regionGroups = !!on; drawRegions(); },
     sync(g, fv) {
       wake();
-      graph = g || null;
+      sourceGraph = g || null;
+      graph = displayGraph(sourceGraph);
       if (fv !== undefined && fv !== flowVersion) { flowVersion = fv; map = null; }
       const a = nodes.sync(graph);
       const b = edges.sync(graph);
@@ -820,7 +826,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       ghost.type = type; ghost.preview = false;
       ghost.follow = !(Number.isFinite(x) && Number.isFinite(y));
       ghostView(type);
-      if (!ghost.follow) ghostMove(x, y);
+      if (!ghost.follow) { const p = displayPoint(x, y); ghostMove(p.x, p.y); }
       else if (input.hoverWorld) ghostMove(input.hoverWorld.x, input.hoverWorld.y);
       else if (ghost.view) ghost.view.visible = false;
     },
@@ -869,8 +875,12 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         app.renderer.background.color = P.canvas;
         grid.invalidate();
         nodes.applyKit(kit);
+        graph = displayGraph(sourceGraph);
+        nodes.sync(graph);
         nodes.setLabelScale(camera.zoom);
         edges.applyKit(kit);
+        edges.sync(graph);
+        edges.updateGeometry(nodes.views);
         particles.applyKit(kit);
         fx.applyKit(kit);
         if (ghost.view) { const t = ghost.type, f = ghost.follow, gx = ghost.x, gy = ghost.y; ghostView(null); ghostView(t); ghost.follow = f; ghostMove(gx, gy); }
@@ -911,17 +921,19 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     // opts: { minZ, maxZ } keep a fitted view readable: a big graph is panned rather than shrunk past minZ.
     fit(padding = 80, animate = true, opts = {}) {
       wake();
+      // A minimum chosen for saved coordinates must not crop the spread paper layout.
+      const fitOpts = look === 'paper' && opts.minZ ? { ...opts, minZ: opts.minZ / Math.max(PAPER.spread.x, PAPER.spread.y) } : opts;
       const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
       const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(opts.nodeIds ? { ...graph, nodes: graph.nodes.filter(n => opts.nodeIds.includes(n.id)) } : graph);
-      if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
-      camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, opts);
+      if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, fitOpts); return; }
+      camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, fitOpts);
       nodes.setLabelScale(camera.zoom);
     },
-    // World bounds of the diagram with the room its names need, or null when it is empty.
+    // Display bounds, including card and label space, for fitting around panels. Null when empty.
     bounds(nodeIds) { return nodes.bounds(nodeIds && graph ? { ...graph, nodes: graph.nodes.filter(n => nodeIds.includes(n.id)) } : graph); },
     // Glide just far enough that a world point sits inside the free part of the canvas (insets are panels, in screen px).
     reveal(x, y, insets = {}, margin = {}) {
-      const p = camera.worldToScreen(x, y), { w, h } = camera.size;
+      const d = displayPoint(x, y), p = camera.worldToScreen(d.x, d.y), { w, h } = camera.size;
       const l = (insets.l || 0) + (margin.l ?? 60), r = w - (insets.r || 0) - (margin.r ?? 60);
       const t = (insets.t || 0) + (margin.t ?? 60), b = h - (insets.b || 0) - (margin.b ?? 60);
       const dx = r > l ? (p.x < l ? l - p.x : p.x > r ? r - p.x : 0) : (l + r) / 2 - p.x;
@@ -933,10 +945,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     zoomBy(factor, cx, cy) { wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
     panBy(dx, dy) { wake(); camera.panBy(dx, dy); },
     stopCamera() { camera.stop(); },
-    screenToWorld(x, y) { return camera.screenToWorld(x, y); },
-    worldToScreen(x, y) { return camera.worldToScreen(x, y); },
+    screenToWorld(x, y) { const p = camera.screenToWorld(x, y); return modelPoint(p.x, p.y); },
+    worldToScreen(x, y) { const p = displayPoint(x, y); return camera.worldToScreen(p.x, p.y); },
     // Extra: the connection whose middle part lies under a world point, for drop-to-insert.
-    edgeAt(x, y) { const ev = edges.hitMiddle(x, y, dropTol()); return ev ? ev.id : null; },
+    edgeAt(x, y) { const p = displayPoint(x, y); const ev = edges.hitMiddle(p.x, p.y, dropTol()); return ev ? ev.id : null; },
     onFrame(fn) { frameFns.add(fn); return () => frameFns.delete(fn); },
     on(name, fn) { return emitter.on(name, fn); },
     // Extra: draw one frame right now (tests, step()).
@@ -982,7 +994,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     },
     async snapshot({ width = 600, height = 315, graph: g2 } = {}) {
       if (destroyed || app.renderer.context.isLost) throw new Error('The drawing surface is unavailable. Try again after it recovers.');
-      const g = g2 || graph;
+      const g = displayGraph(g2 || sourceGraph);
       const root = new PIXI.Container();
       const bg = new PIXI.Graphics().rect(0, 0, width, height).fill({ color: P.canvas });
       root.addChild(bg);
@@ -997,7 +1009,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         // A thumbnail is read at a fraction of the canvas size, so it is drawn as a schematic: the same parts in the same
         // order, moved closer together along each axis until the closest neighbours are about a part apart, then fitted
         // to the picture. Parts come out as large as the layout allows and the wires between them stay visible.
-        const N = HALF * 2;
+        const N = look === 'paper' ? PAPER.body.textureSize : HALF * 2;
         let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, nearX = Infinity, nearY = Infinity;
         for (let i = 0; i < gn.length; i++) {
           const a = gn[i];
@@ -1041,7 +1053,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
           const m = makeMini(PIXI, kit, env, n.type);
           const p = pos.get(n.ref ?? n.id);
           m.position.set(p.x, p.y);
-          m.__icon.width = m.__icon.height = 38;
+          m.__icon.width = m.__icon.height = look === 'paper' ? PAPER.icon.size : 38;
           inner.addChild(m);
         }
         inner.scale.set(sc);

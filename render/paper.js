@@ -14,9 +14,18 @@ export const PAPER = Object.freeze({
   title: { x: -72, y: -38, size: 16, width: 174 },
   status: { x: -100, y: 37, size: 11 },
   fit: { top: 125, bottom: 90 },
-  preview: { x: 1.8, y: 1.2, padX: 135, padY: 80, widthPad: 280, heightPad: 180, scale: .8 },
+  spread: { x: 3.5, y: 2.25 },
+  preview: { padX: 135, padY: 80, widthPad: 280, heightPad: 180, scale: .8 },
   icon: { x: -96, y: -38, size: 22 },
 });
+// Projection belongs to rendering: saved designs, placement and simulation retain their coordinates.
+export function paperPoint(x, y, inverse = false) {
+  return inverse ? { x: x / PAPER.spread.x, y: y / PAPER.spread.y }
+    : { x: x * PAPER.spread.x, y: y * PAPER.spread.y };
+}
+export function paperGraph(graph) {
+  return graph && { ...graph, nodes: graph.nodes.map(n => ({ ...n, ...paperPoint(n.x, n.y) })) };
+}
 export const cardLook = look => look === 'e08' || look === 'paper';
 export function paperPalette(base) {
   return { ...base, look: 'paper', ...Object.fromEntries(['card','paper','ink','blue','yellow','mint','tomato','bad'].map(k => [k,PAPER[k]])),

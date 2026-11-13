@@ -50,7 +50,8 @@ export function createInput(canvas, host, d) {
 
   // Grid snap plus alignment with other nodes (guides drawn while dragging or placing).
   function snapPos(x, y, excludeId) {
-    let sx = snap(x), sy = snap(y);
+    const grid = d.snapPoint ? d.snapPoint(x, y) : { x: snap(x), y: snap(y) };
+    let sx = grid.x, sy = grid.y;
     let gx = null, gy = null, bx = 10, by = 10;
     for (const v of nodes.list) {
       if (v.id === excludeId) continue;

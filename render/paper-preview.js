@@ -6,10 +6,10 @@ export function paperDesignDiagram(design,catalog) {
   const NS='http://www.w3.org/2000/svg',P=paperPalette(resolvePalette());
   const el=(tag,attrs={})=>{const e=document.createElementNS(NS,tag);for(const [k,v]of Object.entries(attrs))e.setAttribute(k,v);return e;};
   const nodes=design.graph.nodes,minX=Math.min(...nodes.map(n=>n.x)),maxX=Math.max(...nodes.map(n=>n.x)),minY=Math.min(...nodes.map(n=>n.y)),maxY=Math.max(...nodes.map(n=>n.y));
-  const width=(maxX-minX)*PAPER.preview.x+PAPER.preview.widthPad,height=(maxY-minY)*PAPER.preview.y+PAPER.preview.heightPad,ink=hexStr(P.ink),id='paper-grid-'+ ++uid;
+  const width=(maxX-minX)*PAPER.spread.x+PAPER.preview.widthPad,height=(maxY-minY)*PAPER.spread.y+PAPER.preview.heightPad,ink=hexStr(P.ink),id='paper-grid-'+ ++uid;
   const svg=el('svg',{viewBox:`0 0 ${width} ${height}`,role:'img','aria-label':`Diagram of ${design.name}`,'data-look':'paper',style:`width:${width*PAPER.preview.scale}px;display:block;background:${hexStr(P.card)}`});
   const defs=el('defs'),pattern=el('pattern',{id,width:20,height:20,patternUnits:'userSpaceOnUse'});pattern.append(el('circle',{cx:1,cy:1,r:1,fill:ink,opacity:.2}));defs.append(pattern);svg.append(defs,el('rect',{width:'100%',height:'100%',fill:`url(#${id})`}));
-  const pos=new Map(nodes.map(n=>[n.ref,{x:(n.x-minX)*PAPER.preview.x+PAPER.preview.padX,y:(n.y-minY)*PAPER.preview.y+PAPER.preview.padY,n}]));
+  const pos=new Map(nodes.map(n=>[n.ref,{x:(n.x-minX)*PAPER.spread.x+PAPER.preview.padX,y:(n.y-minY)*PAPER.spread.y+PAPER.preview.padY,n}]));
   for(const[from,to]of design.graph.edges){
     const a=pos.get(from),b=pos.get(to);if(!a||!b)continue;
     const sign=b.x>=a.x?1:-1,x=a.x+sign*PAPER.wire.port,end=b.x-sign*PAPER.wire.port,h=Math.max(30,Math.abs(end-x)*.5);
