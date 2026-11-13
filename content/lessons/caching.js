@@ -110,8 +110,8 @@ export default {
         },
         {
           "label": "Database read",
-          "value": "≈ 5 ms",
-          "how": "approx."
+          "value": "≈ 2 ms",
+          "how": "typical, up to 15 ms when slow, approx."
         },
         {
           "label": "Typical hit rate",

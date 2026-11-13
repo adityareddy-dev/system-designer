@@ -27,6 +27,7 @@ export function iconEl(id, size = 18, cls = 'pl-ic') {
 export function fmtNum(n) {
   if (n == null || Number.isNaN(n)) return '–';
   const a = Math.abs(n);
+  if (a >= 1e12) return trim(n / 1e12) + 'T';
   if (a >= 1e9) return trim(n / 1e9) + 'B';
   if (a >= 1e6) return trim(n / 1e6) + 'M';
   if (a >= 1e4) return Math.round(n / 1e3) + 'k';

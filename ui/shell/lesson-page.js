@@ -9,7 +9,7 @@ import { sceneMarkup } from '../../assets/scenes/index.js';
 import { lessonScene } from '../../assets/scenes/workloads.js';
 import { mountAllocation } from './allocation.js';
 import { drawDefend } from './defend.js';
-import { lessonVisualStyles, readingDiagram, predictionBrief } from './lesson-visuals.js';
+import { lessonVisualStyles, readingDiagram, predictionBrief, predictionQuestion } from './lesson-visuals.js';
 import { predictionGate } from './prediction.js';
 
 function notFoundLesson() {
@@ -304,7 +304,7 @@ export function renderLesson(host, ctx, route) {
         // Measure the visible stage for its opening camera, after the prediction form leaves the layout.
         openWorkbench();
         play.ready.then(() => { if (stage.isConnected && !stage.hidden) stage.scrollIntoView({ block: 'nearest' }); });
-      }},h('h2',{class:'sh-h2',text:step.estimate?'Make your first estimate':'Predict before you try'}),h('p',{class:'sh-lp-text',text:step.estimate||'Name the first limit you would measure. Predict what will happen to the user outcome after your first change, then test it in the workbench.'}),h('label',null,h('span',{text:step.estimate?'How many app servers would you start with?':'What do you expect, and why?'}),input),h('button',{class:'sh-btn sh-btn--primary',type:'submit',text:step.estimate?'Commit my estimate':'Commit my prediction'}));
+      }},h('h2',{class:'sh-h2',text:step.estimate?'Make your first estimate':'Predict before you try'}),h('p',{class:'sh-lp-text',text:step.estimate||predictionQuestion(lesson.id)}),h('label',null,h('span',{text:step.estimate?'How many app servers would you start with?':'What do you expect, and why?'}),input),h('button',{class:'sh-btn sh-btn--primary',type:'submit',text:step.estimate?'Commit my estimate':'Commit my prediction'}));
       // The documented loadLesson testing hook opens a demo without inventing a prediction.
       prepareDemo=()=>{
         stage.hidden=false;guidance.hidden=false;form.hidden=true;

@@ -23,7 +23,7 @@ export function mountPlayHost(parent, ctx, opts) {
   const host = h('div', { class: 'sh-play-host' });
   // Tells index.html's preload script that the first screen is up, so it can fetch the workbench code now.
   try { document.dispatchEvent(new Event('sd:play')); } catch { /* optional */ }
-  const status = h('div', { class: 'sh-play-status', role: 'status' }, opts.placeholder || null, h('span', { text: 'Loading the workbench' }));
+  const status = h('div', { class: 'sh-play-status', role: 'status' }, opts.placeholder || null, h('span', { text: 'Loading the demo' }));
   host.append(status);
   parent.append(host);
   let controller = null;
@@ -43,9 +43,9 @@ export function mountPlayHost(parent, ctx, opts) {
       if (dead) return null;
       clear(host);
       host.append(h('div', { class: 'sh-play-status sh-play-status--bad', role: 'alert' },
-        h('strong', { text: 'The workbench could not start.' }),
+        h('strong', { text: 'The demo could not start.' }),
         h('span', { text: String(err && err.message ? err.message : err) })));
-      ctx.bus.emit('toast', { text: 'Could not start the workbench.', level: 'bad' });
+      ctx.bus.emit('toast', { text: 'Could not start the demo.', level: 'bad' });
       return null;
     }
   })();

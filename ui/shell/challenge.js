@@ -53,6 +53,7 @@ function poolCard(compete, date, isToday) {
   return h('section', { class: 'sh-card sh-pool-card', 'aria-label': 'Daily problem rounds' },
     h('p', null, h('strong', { text: name + '.' }), ' ', isToday ? `Today is problem ${st.positionInRound} of ${st.poolSize} in this round.` : `This day was problem ${st.positionInRound} of ${st.poolSize} in its round.`),
     h('progress', { max: String(st.poolSize), value: String(st.doneInRound), 'aria-label': name }),
+    st.totalProblems > st.poolSize ? h('p', { class: 'sh-fine', text: `The daily round uses ${st.poolSize} of the ${st.totalProblems} problems. The rest cannot be solved in one day, so they only appear in Practice.` }) : null,
     again ? h('p', null, again) : null,
     h('p', { class: 'sh-fine', text: twist }));
 }
