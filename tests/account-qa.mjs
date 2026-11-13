@@ -59,7 +59,12 @@ const buildAndPlay = (page, problemId, design = null) => page.evaluate(async (pi
   window.__game.startTraffic();
   st = window.__game.step(86400000);
   return { mode: st.mode, problemId: st.problemId, phase: st.phase, step: st.step, score: st.score?.total ?? null, passed: st.score?.passed ?? null };
-}, problemId, design);
+}, problemId, design).then(async (result) => {
+  // The simulation finishes before the report's screen transition does.
+  await page.waitForSelector('.pl-overlay--debrief .pl-debrief', { visible: true, timeout: 10000 });
+  await page.waitForFunction(() => document.documentElement.dataset.transitioning !== 'true', { timeout: 10000 });
+  return result;
+});
 
 // A design of the player's own for a problem, checked with the service's own copy test (api/similar.js): the editorial with
 // parts swapped for others that do the same job, monitoring left out or sizes changed, or else a small design from scratch.
