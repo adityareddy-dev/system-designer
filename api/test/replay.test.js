@@ -4,18 +4,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createReplayer } from '../replay.js';
 
-const workerUrl = new URL('./fixtures/slow-worker.js', import.meta.url);
+const workerUrl = new URL('../fixtures/slow-worker.js', import.meta.url);
 const codeOf = (p) => p.then(() => 'ok', (e) => e.code);
 
 test('worker startup does not consume the replay time limit', async () => {
-  const delayed = new URL('./fixtures/delayed-worker.js', import.meta.url);
+  const delayed = new URL('../fixtures/delayed-worker.js', import.meta.url);
   const r = createReplayer({ workers: 1, timeoutMs: 400, workerUrl: delayed });
   try { assert.equal(await codeOf(r.run('work:10')), 'ok'); }
   finally { await r.close(); }
 });
 
 test('a worker that cannot start promptly returns busy and releases its job', async () => {
-  const delayed = new URL('./fixtures/delayed-worker.js', import.meta.url);
+  const delayed = new URL('../fixtures/delayed-worker.js', import.meta.url);
   const r = createReplayer({ workers: 1, startupTimeoutMs: 100, workerUrl: delayed });
   try {
     assert.equal(await codeOf(r.run('work:10')), 'busy');
