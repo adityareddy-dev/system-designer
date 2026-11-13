@@ -27,7 +27,7 @@ function recoveryCase(result, ns, placed, node, el, catalog) {
     : region ? 'Requests can move outside the failed region; recheck recovery delay and data guarantees'
     : incident ? 'Shorter detection and repair can reduce the interruption; remeasure the recovery interval'
     : 'The diagnosed event may cause fewer failures; remeasure its impact and downstream limits';
-  const measured = placed ? `${name}: ${placed.zones || 1} zone${placed.zones > 1 ? 's' : ''}, ≈ ${Math.round((node?.peakUtil || 0) * 100)}% peak busy and ≈ ${fmtInt(node?.failed || 0)} failed operations.` : '';
+  const measured = placed ? `${name}: ${placed.zones || 1} zone${placed.zones > 1 ? 's' : ''}, ${node?.peakUtil > 5 ? 'over 500%' : '≈ ' + Math.round((node?.peakUtil || 0) * 100) + '%'} peak busy and ≈ ${fmtInt(node?.failed || 0)} failed operations.` : '';
   return {
     kind: 'recovery',
     choices: [plan, 'Add capacity in the same failure boundary without changing recovery', 'Retry failures immediately'],

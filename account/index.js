@@ -110,7 +110,7 @@ export function createAccount(ctx) {
     S.sync = 'idle';
     emit();
     if (S.user) {
-      if (how !== 'quiet') toast(`Signed in as ${S.user.name}. Your progress now follows you.`, 'ok', 3600);
+      if (how !== 'quiet') toast(`Signed in as ${S.user.name}. Your progress now follows you.`, 'ok', 3000);
       await syncNow(true);
     }
   }

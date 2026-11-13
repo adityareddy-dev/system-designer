@@ -117,6 +117,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     phase = p;
     if (p === 'build') ran = false;
     root.dataset.phase = p;
+    if (p === 'build') buildMeters(null);
     const lab = playBtn.querySelector('.pl-play-l');
     const ico = playBtn.querySelector('.pl-ic');
     const set = (id, text, aria) => { ico.innerHTML = iconEl(id, 20).innerHTML; lab.textContent = text; playBtn.setAttribute('aria-label', aria); };
@@ -305,8 +306,29 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
     }
     return risky.length === 1 ? `${el?.name || 'One part'} may not hold at the normal peak` : `${risky.length} parts may not hold at the normal peak`;
   }
+  // Before the day runs the meters show dashes, the targets, and the projected bill, so the bar looks the way it will while the day runs.
+  function buildMeters(cost, targets) {
+    const t = targets || {};
+    const dash = { text: '—', frac: 0, status: 'ok' };
+    if (sandbox) {
+      meterSet('avail', { ...dash, sub: 'starts when the day runs' });
+      meterSet('lat', { ...dash, sub: 'for 99 of 100 requests' });
+      meterSet('busy', { ...dash, sub: 'starts when the day runs' });
+      if (cost == null) meterSet('cost', { text: '—', sub: 'approx. per month', frac: 0, status: 'ok' });
+    } else {
+      const lt = t.latencyP99Ms?.default;
+      meterSet('avail', { ...dash, sub: t.availability != null ? `target ${fmtPct(t.availability)}` : 'starts when the day runs', tick: t.availability ?? null });
+      meterSet('lat', { ...dash, sub: lt != null ? `target ${fmtMs(lt)}` : 'starts when the day runs' });
+      meterSet('safe', { ...dash, sub: 'starts when the day runs' });
+      if (cost == null) meterSet('cost', { text: '—', sub: t.budgetPerMonth != null ? `budget ${fmtUsd(t.budgetPerMonth)}` : 'approx. per month', frac: 0, status: 'ok' });
+    }
+    if (cost != null) {
+      const bud = t.budgetPerMonth;
+      meterSet('cost', { text: fmtUsd(cost), sub: sandbox || !bud ? 'projected, before usage' : `projected · budget ${fmtUsd(bud)}`, frac: sandbox || !bud ? Math.log10(1 + cost) / 7 : cost / bud / 2, tick: sandbox || !bud ? null : 0.5, status: 'ok' });
+    }
+  }
   // Build-step status: a green "holds" only for a design that serves every request type at peak with no open warnings.
-  function setBuild(est, issues, sizes, { advice = true, limits = 'Rough capacity check. Deadlines, retries and event recovery are unchecked.' } = {}) {
+  function setBuild(est, issues, sizes, { advice = true, limits = 'Rough capacity check. Deadlines, retries and event recovery are unchecked.', targets = null } = {}) {
     buildNote.replaceChildren();
     const list = issues || [];
     lastIssues = list;
@@ -316,6 +338,7 @@ export function createHud(host, { catalog, mode, onStart, onPause, onResume, onS
       const arr = Array.isArray(est.nodes) ? est.nodes : [];
       const built = arr.some((n) => catalog.elementById.get(n.type)?.kind !== 'source');
       const cost = est.perMonth ?? est.cost?.perMonth ?? est.costPerMonth;
+      if (phase === 'build') buildMeters(built && cost != null ? cost : null, targets);
       if (built && cost != null) buildNote.append(h('span', { class: 'pl-chip pl-chip--cost', title: 'Fixed monthly cost of the parts; pay-per-use charges are added as the day runs (approx.)' }, iconEl('ui.cost', 14), 'Projected ', approx(fmtUsd(cost) + '/mo'), ' + usage'));
       const risky = arr.filter((n) => n.holds === false || n.ok === false || (n.util ?? n.peakUtil ?? 0) > 1);
       const share = est.successAtPeak ?? 1;

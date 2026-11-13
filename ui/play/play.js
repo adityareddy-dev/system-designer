@@ -239,7 +239,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     S.nodeStates = S.sim.state().nodes;
     try { scene.setValidation(issues); } catch { /* render optional */ }
     let sizes = []; try { sizes = riskyIssues().filter((i) => i.fix); } catch { /* optional */ }
-    hud.setBuild(est, diagnosticIssues(), interview ? [] : sizes, { advice: !interview && adviceReady(), limits: previewLimits(S.problem, graph(), est, catalog) });
+    hud.setBuild(est, diagnosticIssues(), interview ? [] : sizes, { advice: !interview && adviceReady(), limits: previewLimits(S.problem, graph(), est, catalog), targets: S.problem?.requirements });
     paintIssues();
     let overview = root.querySelector('.pl-overview');
     if (!overview) { overview = h('div', { class: 'pl-overview' }); root.append(overview); }
@@ -661,7 +661,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
   function syncLoose() {
     const n = mode === 'lesson' && !S.destroyed ? looseNode() : null;
-    if (!n) { if (!looseNote.hidden) { looseNote.hidden = true; refitForNote(); } looseKey = ''; S.looseAck = false; return; }
+    if (!n) {
+      if (!looseNote.hidden) { looseNote.hidden = true; refitForNote(); }
+      // the part is on the line now: the warning that it was not is out of date
+      if (S.looseAck) for (const t of document.querySelectorAll('.sh-toast')) if ((t.dataset.text || '').includes('so the day would run without it')) t.remove();
+      looseKey = ''; S.looseAck = false; return;
+    }
     const line = lineFor(n);
     const key = `${n.id}|${line ? line.id : ''}|${isCoarse()}`;
     if (key !== looseKey) {
@@ -1378,7 +1383,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     goalChip.title = gap;
     goalChip.replaceChildren(iconEl(S.goalMs > 0 ? 'ui.check' : 'ui.hint', 16),
       h('span', { text: gap && !(mode === 'lesson' && gap === goal.between?.note) ? `${goalLabel()}. ${gap}` : ok ? goalPassed(goal, v, nameOf(goal.node) || 'The part') : goalLabel() }),
-      ...(need ? [h('span', { class: 'pl-goal-bar' }, h('i', { style: { width: clamp(S.goalMs / need, 0, 1) * 100 + '%' } }))] : []));
+      ...(need && S.goalMs > 0 ? [h('span', { class: 'pl-goal-bar' }, h('i', { style: { width: clamp(S.goalMs / need, 0, 1) * 100 + '%' } }))] : []));
     if (ok && S.goalMs >= need) {
       S.goalMet = true;
       if (opts.lesson?.id === 'replication-lag') hideCaption();
@@ -2236,12 +2241,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       // measured in place, between two frames: the bar as it would be with the live meters and their detail lines showing
       const was = el.dataset.phase, blanks = [...el.querySelectorAll('.pl-m-sub')].filter((x) => !x.textContent);
       el.style.minHeight = '';
+      const own = el.offsetHeight;
       el.dataset.phase = 'running';
       for (const x of blanks) x.textContent = '\u00a0';
       const run = el.offsetHeight;
       for (const x of blanks) x.textContent = '';
       el.dataset.phase = was;
-      hudRunH = Math.max(hudRunH, run);
+      hudRunH = Math.max(hudRunH, run, own);
     } else hudRunH = Math.max(hudRunH, el.offsetHeight);
     const want = hudRunH ? hudRunH + 'px' : '';
     if (el.style.minHeight !== want) el.style.minHeight = want;

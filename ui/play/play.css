@@ -242,7 +242,11 @@
 .pl-sparks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .pl-spark-l { font-size: 11.5px; color: var(--text-3); }
 .pl-spark { display: block; width: 100%; height: 28px; } /* r4-phone: a little lower, so the bar stays near the height it has before the day runs */
-.pl-hud[data-phase="build"] .pl-sparks, .pl-hud[data-phase="build"] .pl-meters { display: none; }
+/* r4-follow: before the day starts, the bar shows the same four meters as while it runs (with dashes and projected values), so pressing Run changes numbers, not the shape of the bar. Phones keep the short bar. */
+.pl-hud[data-phase="build"] .pl-sparks { display: none; }
+@media (max-width: 719px) { .pl-hud[data-phase="build"] .pl-meters { display: none; } }
+.pl-hud[data-phase="build"] .pl-m-v { color: var(--text-2); }
+.pl-hud[data-phase="build"] .pl-buildnote { min-height: 28px; }
 .pl-hud:not([data-phase="build"]) .pl-buildnote { display: none; }
 .pl-buildnote { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 28px; }
 .pl-buildnote:empty::after { content: "Drag parts from the left, then connect them. Press Start day when ready."; color: var(--text-3); font-size: 13px; }
