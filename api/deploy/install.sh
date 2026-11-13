@@ -22,6 +22,8 @@ trap 'rm -rf "$STAGE"' EXIT
 for d in api account sim catalog content compete; do cp -R "$SRC/$d" "$STAGE/$d"; done
 mkdir "$STAGE/core"
 cp "$SRC/core/countries.js" "$SRC/core/feedback-contract.js" "$STAGE/core/"
+mkdir "$STAGE/assets"
+cp "$SRC/assets/consent-region.js" "$STAGE/assets/"
 rm -rf "$STAGE/api/test" "$STAGE/api/data"
 printf '{ "private": true, "type": "module" }\n' > "$STAGE/package.json"
 install -d -m 755 "$DEST"
