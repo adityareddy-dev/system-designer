@@ -8,7 +8,7 @@ export function paperDesignDiagram(design,catalog) {
   const nodes=design.graph.nodes,minX=Math.min(...nodes.map(n=>n.x)),maxX=Math.max(...nodes.map(n=>n.x)),minY=Math.min(...nodes.map(n=>n.y)),maxY=Math.max(...nodes.map(n=>n.y));
   const spread=paperSpread(design.graph);
   const width=(maxX-minX)*spread.x+PAPER.preview.widthPad,height=(maxY-minY)*spread.y+PAPER.preview.heightPad,ink=hexStr(P.ink),id='paper-grid-'+ ++uid;
-  const svg=el('svg',{viewBox:`0 0 ${width} ${height}`,role:'img','aria-label':`Diagram of ${design.name}`,'data-look':'paper',style:`width:${width*PAPER.preview.scale}px;display:block;background:${hexStr(P.card)}`});
+  const svg=el('svg',{class:'pl-dg',viewBox:`0 0 ${width} ${height}`,role:'img','aria-label':`Diagram of ${design.name}`,'data-look':'paper',style:`width:${width*PAPER.preview.scale}px;display:block;background:${hexStr(P.card)}`});
   const defs=el('defs'),pattern=el('pattern',{id,width:20,height:20,patternUnits:'userSpaceOnUse'});pattern.append(el('circle',{cx:1,cy:1,r:1,fill:ink,opacity:.2}));defs.append(pattern);svg.append(defs,el('rect',{width:'100%',height:'100%',fill:`url(#${id})`}));
   const pos=new Map(nodes.map(n=>[n.ref,{x:(n.x-minX)*spread.x+PAPER.preview.padX,y:(n.y-minY)*spread.y+PAPER.preview.padY,n}]));
   for(const[from,to]of design.graph.edges){
