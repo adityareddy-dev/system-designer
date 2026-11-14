@@ -2149,6 +2149,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (mod || ev.altKey) return;
     if (k === '/') { ev.preventDefault(); toolbar.focusSearch(); }
     else if (k === 'f' || k === 'F') fitAll();
+    else if (k === '+' || k === '=') { ev.preventDefault(); scene.zoomBy(1.25); }
+    else if (k === '-' || k === '_') { ev.preventDefault(); scene.zoomBy(1 / 1.25); }
     else if (k === 'Delete' || k === 'Backspace') { if (S.selected) { ev.preventDefault(); removeNode(S.selected); } }
     else if (k === 'Enter') { if (S.sim.phase === 'build' && t === document.body) { ev.preventDefault(); hud.markRan(); startFromUi(); } }
     else if (k === ' ') { ev.preventDefault(); if (S.sim.phase === 'running') pause(); else if (S.sim.phase === 'paused') { hud.markRan(); resume(); } }

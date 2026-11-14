@@ -365,7 +365,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     camera, nodes, edges, ui, ghost: ghostApi,
     snapPoint: (x, y) => { const p = modelPoint(x, y); return displayPoint(snap(p.x), snap(p.y)); },
     emit: (n, p) => {
-      if (n === 'view:manual') { paperFit = null; paperWindow = false; }
+      if (n === 'view:manual') { paperFit = null; if (!p?.zoom) paperWindow = false; }
       emitter.emit(n, ['node:dragend', 'canvas:tap', 'canvas:drop'].includes(n) ? { ...p, ...modelPoint(p.x, p.y) } : p);
     },
     editable: () => editable,
@@ -807,6 +807,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       graph = displayGraph(sourceGraph);
       if (fv !== undefined && fv !== flowVersion) { flowVersion = fv; map = null; }
       const a = nodes.sync(graph);
+      camera.setMinZoom(look === 'paper' ? nodes.minimumPaperZoom() : 0);
       const b = edges.sync(graph);
       if (a || b) { syncVersion++; map = null; }
       nodes.setValidation(validation);
@@ -906,6 +907,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         nodes.applyKit(kit);
         graph = displayGraph(sourceGraph);
         nodes.sync(graph);
+        camera.setMinZoom(look === 'paper' ? nodes.minimumPaperZoom() : 0);
         nodes.setLabelScale(camera.zoom);
         edges.applyKit(kit);
         edges.sync(graph);
@@ -983,7 +985,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       camera.glideBy(dx, dy);
       return true;
     },
-    zoomBy(factor, cx, cy) { paperFit = null; paperWindow = false; wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
+    zoomBy(factor, cx, cy) { paperFit = null; wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
     panBy(dx, dy) { paperFit = null; paperWindow = false; wake(); camera.panBy(dx, dy); },
     stopCamera() { paperFit = null; paperWindow = false; camera.stop(); },
     screenToWorld(x, y) { const p = camera.screenToWorld(x, y); return modelPoint(p.x, p.y); },

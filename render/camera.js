@@ -9,12 +9,13 @@ export function createCamera(world) {
   let w = 1, h = 1;
   let cx = 0, cy = 0, z = 1;
   let reduced = false;
+  let minZoom = 0;
   let vx = 0, vy = 0;                     // fling velocity, screen px per ms
   let zoomTarget = null;                  // { z, sx, sy }
   let tween = null;                       // { from, to, t, dur }
   let dirty = true;
   let lastZoomChange = 0;
-  const clampZ = v => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v));
+  const clampZ = v => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, minZoom, v));
 
   function apply() {
     world.position.set(w / 2 - cx * z, h / 2 - cy * z);
@@ -39,6 +40,12 @@ export function createCamera(world) {
     get moving() { return !!(tween || zoomTarget || vx || vy); },
     takeDirty() { const d = dirty; dirty = false; return d; },
     setReducedMotion(b) { reduced = b; if (b) { vx = vy = 0; } },
+    // Fit and every manual input share the current graph's separation floor.
+    setMinZoom(value) {
+      minZoom = Math.min(ZOOM_MAX, Math.max(0, value));
+      if (zoomTarget) zoomTarget.z = clampZ(zoomTarget.z);
+      if (tween) { tween.from.z = Math.max(minZoom, tween.from.z); tween.to.z = Math.max(minZoom, tween.to.z); }
+    },
     resize(nw, nh) { w = Math.max(1, nw); h = Math.max(1, nh); apply(); },
     screenToWorld(sx, sy) { return { x: (sx - w / 2) / z + cx, y: (sy - h / 2) / z + cy }; },
     worldToScreen(x, y) { return { x: (x - cx) * z + w / 2, y: (y - cy) * z + h / 2 }; },
@@ -75,7 +82,7 @@ export function createCamera(world) {
       const bw = Math.max(1, maxX - minX), bh = Math.max(1, maxY - minY);
       const pw = Math.max(40, w - P.l - P.r), ph = Math.max(40, h - P.t - P.b);
       // Explicit whole-graph fits can opt below the interactive zoom minimum.
-      const tz = Math.min(ZOOM_MAX, Math.max(opts.minZ ?? 0, Math.min(pw / bw, ph / bh, opts.maxZ ?? 1.25)));
+      const tz = Math.min(ZOOM_MAX, Math.max(minZoom, opts.minZ ?? 0, Math.min(pw / bw, ph / bh, opts.maxZ ?? 1.25)));
       // Overflow follows the requested focus, clamped to avoid blank space. Other callers keep the start (the users).
       const midX = bw * tz > pw ? Math.max(minX + pw / 2 / tz, Math.min(maxX - pw / 2 / tz, opts.center?.x ?? minX + pw / 2 / tz)) : (minX + maxX) / 2;
       const midY = bh * tz > ph ? Math.max(minY + ph / 2 / tz, Math.min(maxY - ph / 2 / tz, opts.center?.y ?? minY + ph / 2 / tz)) : (minY + maxY) / 2;
