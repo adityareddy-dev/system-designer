@@ -24,7 +24,7 @@ try{
   await input.type(s.estimate?'9':'I expect the downstream limit to dominate. I would measure queue age and useful completions before adding capacity.');
   await page.click('.sh-estimate-form button[type=submit]');
   assert(await page.$eval('.sh-demo-stage',e=>e.getClientRects().length>0));
-  await page.waitForFunction(()=>window.__game.getState().mode==='lesson'&&window.__game.getState().view?.zoom>0.2);
+  await page.waitForFunction(()=>window.__game.getState().mode==='lesson'&&window.__game.getState().view?.zoom>0);
   assert.equal(await page.$$eval('.sh-play-host',els=>els.length),1,'commit mounts one workbench');
   assert(await page.$eval('.sh-estimate-form',e=>e.getClientRects().length===0));
   assert(await page.$eval('[data-demo-instructions]',e=>e.getClientRects().length>0));

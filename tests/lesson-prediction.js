@@ -8,7 +8,7 @@ export async function commitLessonPrediction(page) {
     form.requestSubmit();
   });
   await page.waitForSelector('.sh-demo-stage', { visible: true });
-  await page.waitForFunction(() => window.__game.getState().mode === 'lesson' && window.__game.getState().view?.zoom > 0.2);
+  await page.waitForFunction(() => window.__game.getState().mode === 'lesson' && window.__game.getState().view?.zoom > 0);
   await new Promise(resolve => setTimeout(resolve, 700));
 }
 

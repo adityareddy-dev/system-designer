@@ -56,7 +56,8 @@ try{
   const data=await p.evaluate(()=>{const s=__game.getState(),r=document.querySelector('.pl-stage').getBoundingClientRect();return {s,r:{x:r.x,y:r.y}};});
   const app=data.s.nodes.find(n=>n.id==='app'),target=data.s.nodes.find(n=>n.type==='cache');
   const point=id=>{const n=data.s.view.screen.find(n=>n.id===id);return{x:n.x+data.r.x,y:n.y+data.r.y};};
-  const a=point(app.id),b=point(target.id),port={x:a.x+36*data.s.view.zoom,y:a.y};
+  const face=data.s.view.diagram.parts.find(n=>n.id===app.id);
+  const a=point(app.id),b=point(target.id),port={x:a.x+face.width/2+20,y:a.y};
   if(touch){const c=await p.createCDPSession();await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[port]});await c.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[b]});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
   else {await p.mouse.move(port.x,port.y);await p.mouse.down();await p.mouse.move(b.x,b.y,{steps:12});await p.mouse.up();}
   await sleep(350);let state=await p.evaluate(()=>__game.getState());assert(state.edges.some(e=>e.from===app.id&&e.to===target.id),`dragging the visible ${touch?'touch':'mouse'} output port connects`);assert.equal(state.nodes.find(n=>n.id===app.id).x,app.x,'connecting never moves the source');

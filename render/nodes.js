@@ -1,5 +1,7 @@
 // Node views: cream card with a hard shadow, icon, label, load bar, status glyphs, chips; spring placement.
 
+import { PAPER, cardLook, drawPaperLoad, layoutPaperLabels } from './paper.js';
+import { drawE08Load, e08IconSize } from './e08.js';
 import { poolCells } from './pool.js';
 import { outline, HALF } from './geom.js';
 import { barColor, severityColor } from './theme.js';
@@ -49,22 +51,27 @@ export function makeMini(PIXI, kit, env, type, { faint = false } = {}) {
   const shape = env.shapeOf(cat);
   const c = new PIXI.Container();
   let body;
-  if (faint) body = new PIXI.Graphics(kit.faint[cat]);
-  else { body = new PIXI.Sprite(kit.bodyTex[cat]); body.anchor.set(0.5); body.width = body.height = BODY_BOX; }
+  if (faint && kit.look !== 'paper') body = new PIXI.Graphics(kit.faint[cat]);
+  else { body = new PIXI.Sprite(kit.bodyTex[cat]); body.anchor.set(0.5); body.width = body.height = kit.look==='paper'?PAPER.body.textureSize:BODY_BOX; }
+  if (faint && kit.look === 'paper') body.alpha = .45;
   c.addChild(body);
   const tex = kit.icons.get('el.' + type, kit.P.ink);
   const icon = new PIXI.Sprite(tex || PIXI.Texture.EMPTY);
-  icon.anchor.set(0.5); icon.width = icon.height = 28; icon.y = iconOffset(shape);
+  icon.anchor.set(0.5); icon.width = icon.height = kit.look === 'paper' ? PAPER.icon.size : cardLook(kit.look) ? e08IconSize : 28; icon.y = cardLook(kit.look) ? 0 : iconOffset(shape);
+  icon.tint = cardLook(kit.look) ? kit.P.ink : 0xffffff;
+  if(kit.look==='paper'){body.texture=kit.bodyFor(cat,0,type);icon.position.set(PAPER.icon.x,PAPER.icon.y);icon.tint=type.endsWith('-lb')?kit.P.ink:kit.P.card;}
   c.addChild(icon);
-  c.__icon = icon; c.__type = type; c.__cat = cat; c.__shape = shape; c.__body = body; c.__faint = faint;
+  c.__icon = icon; c.__type = type; c.__cat = cat; c.__shape = shape; c.__body = body; c.__faint = faint && kit.look !== 'paper';
   return c;
 }
 
 export function refreshMini(kit, c) {
   if (c.__faint) c.__body.context = kit.faint[c.__cat];
-  else { c.__body.texture = kit.bodyTex[c.__cat]; c.__body.width = c.__body.height = BODY_BOX; }
+  else { c.__body.texture = kit.bodyTex[c.__cat]; c.__body.width = c.__body.height = kit.look==='paper'?PAPER.body.textureSize:BODY_BOX; }
   const tex = kit.icons.get('el.' + c.__type, kit.P.ink);
   if (tex) c.__icon.texture = tex;
+  c.__icon.tint = cardLook(kit.look) ? kit.P.ink : 0xffffff;
+  if(kit.look==='paper'){c.__body.texture=kit.bodyFor(c.__cat,0,c.__type);c.__icon.position.set(PAPER.icon.x,PAPER.icon.y);c.__icon.tint=c.__type.endsWith('-lb')?kit.P.ink:kit.P.card;}
 }
 
 export function createNodeLayer(PIXI, parent, env) {
@@ -75,7 +82,7 @@ export function createNodeLayer(PIXI, parent, env) {
   let compact = false;
   let detailZoom = true;
   let tiny = false;
-  const showLabel = (v) => { v.labelT.visible = true; v.labelT.text = compact ? shortName(v) : v.label; };
+  const showLabel = (v) => { v.labelT.visible = env.kit().look !== 'paper'; v.labelT.text = compact ? shortName(v) : v.label; };
   const shortName = v => SHORT[v.type] || firstWord(v.label) || v.type;
   let labelK = 1; // label scale that keeps names readable when zoomed out
   let multiRegion = false;
@@ -114,10 +121,11 @@ export function createNodeLayer(PIXI, parent, env) {
     v.c = c;
     v.pulse = new PIXI.Sprite(kit.fx.ring); v.pulse.anchor.set(0.5); v.pulse.visible = false;
     v.lead = new PIXI.Sprite(kit.leadTex[shape]); v.lead.anchor.set(0.5); v.lead.width = v.lead.height = BODY_BOX; v.lead.visible = false;
-    v.body = new PIXI.Sprite(kit.bodyTex[cat]); v.body.anchor.set(0.5); v.body.width = v.body.height = BODY_BOX;
+    v.body = new PIXI.Sprite(kit.bodyTex[cat]); v.body.anchor.set(0.5); v.body.width = v.body.height = kit.look==='paper'?PAPER.body.textureSize:BODY_BOX;
     v.select = new PIXI.Sprite(kit.selectTex[shape]); v.select.anchor.set(0.5); v.select.width = v.select.height = BODY_BOX; v.select.visible = false;
     v.icon = new PIXI.Sprite(kit.icons.get('el.' + n.type, P.ink) || PIXI.Texture.EMPTY);
-    v.icon.anchor.set(0.5); v.icon.width = v.icon.height = 28; v.icon.y = iconOffset(shape);
+    v.icon.anchor.set(0.5); v.icon.width = v.icon.height = cardLook(kit.look) ? e08IconSize : 28; v.icon.y = cardLook(kit.look) ? 0 : iconOffset(shape);
+    v.icon.tint = cardLook(kit.look) ? kit.P.ink : 0xffffff;
     v.busy = new PIXI.Graphics();
     v.pool = new PIXI.Graphics();
     v.poolT = makeText('', 10.5, P.text2, true); v.poolT.anchor.set(.5); v.poolT.y = 15;
@@ -130,17 +138,31 @@ export function createNodeLayer(PIXI, parent, env) {
     });
     v.qbar = new PIXI.Graphics(); v.qbar.visible = false;
     v.retryG = new PIXI.Graphics();
-    v.statusG = new PIXI.Graphics(kit.glyphs.status[0]); v.statusG.position.set(-HALF + 7, -HALF + 7); v.statusG.visible = false;
+    v.statusG = new PIXI.Graphics(cardLook(kit.look) ? undefined : kit.glyphs.status[0]); v.statusG.position.set(-HALF + 7, -HALF + 7); v.statusG.visible = false;
     v.valid = new PIXI.Graphics(kit.glyphs.valid.warn); v.valid.position.set(HALF - 7, -HALF + 7); v.valid.visible = false;
     v.lock = new PIXI.Graphics(kit.glyphs.lock); v.lock.position.set(-HALF + 9, -HALF + 20); v.lock.visible = false;
     v.chip = new PIXI.Container(); v.chip.position.set(HALF - 10, -HALF - 8); v.chip.visible = false;
     v.chipBg = new PIXI.Graphics(); v.chip.addChild(v.chipBg);
     v.chipText = null;
     v.zonesG = new PIXI.Graphics(); v.chip.addChild(v.zonesG); // r4-follow: the zone dots live inside the ×N chip
-    v.labelT = makeText('', 12, P.ink, false, '600', 72); // narrow lines, so neighbours' names do not touch when zoomed out
+    v.labelT = makeText('', 12, cardLook(kit.look) ? P.text : P.ink, false, '600', 72); // narrow lines, so neighbours' names do not touch when zoomed out
     v.labelT.anchor.set(0.5, 0); v.labelT.y = HALF + 10; v.labelT.scale.set(labelK); v.labelT.visible = !tiny;
     v.evidenceT = makeText('', 12, P.bad, true); v.evidenceT.anchor.set(.5, 1); v.evidenceT.y = -HALF - 6; v.evidenceT.visible = false;
-    v.evidenceT.style.wordWrap = true; v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = 'left';
+    v.evidenceT.style.wordWrap = !cardLook(kit.look); v.evidenceT.style.wordWrapWidth = 108; v.evidenceT.style.align = cardLook(kit.look) ? 'center' : 'left';
+    v.evidenceT.style.fontWeight = cardLook(kit.look) ? '600' : '500';
+    v.rejected = new PIXI.Container(); v.rejected.position.set(0,-HALF-14); v.rejected.visible = false;
+    v.rejectedG = new PIXI.Graphics();
+    v.rejectedT = makeText('', 13, 0xffc9c9, true, '800'); v.rejectedT.anchor.set(.5);
+    v.rejected.addChild(v.rejectedG,v.rejectedT);
+    if (cardLook(kit.look)) { v.labelT.style.fontFamily = kit.look === 'paper' ? PAPER.type.label : 'system-ui, sans-serif'; v.labelT.style.fontSize = 14; v.labelT.style.fontWeight = '700'; v.labelT.style.wordWrapWidth = 140; }
+    v.paperTitle = makeText('', PAPER.title.size, P.ink, false, PAPER.type.weight, PAPER.title.width); v.paperTitle.anchor.set(.5, 0); v.paperTitle.position.set(PAPER.title.x, PAPER.title.y); v.paperTitle.style.fontFamily = PAPER.type.label; v.paperTitle.visible = false;
+    v.paperStatus = makeText('', PAPER.status.size, P.text2, true, PAPER.type.weight); v.paperStatus.anchor.set(.5); v.paperStatus.position.set(PAPER.status.x, PAPER.status.y); v.paperStatus.style.fontFamily = PAPER.type.mono; v.paperStatus.visible = false;
+    v.paperUnits = makeText('', PAPER.units.size, P.ink, true, PAPER.type.weight); v.paperUnits.visible = false;
+    v.paperUnitsBg = new PIXI.Graphics(); v.paperUnitsBg.visible = false;
+    v.paperReading = makeText('', PAPER.status.size, P.ink, true, PAPER.type.weight);
+    v.paperOutline = new PIXI.Graphics();
+    v.paperCard = new PIXI.Graphics();
+    v.paperWaiting = makeText('', 11, P.ink, true, PAPER.type.weight);v.paperWaiting.anchor.set(0,.5);
     v.leader = new PIXI.Graphics();
     v.captionC = new PIXI.Container();
     v.captionC.addChild(v.leader, v.labelBg, v.labelT, v.evidenceBg, v.evidenceT);
@@ -151,14 +173,15 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeBg = new PIXI.Graphics(); v.badge.addChild(v.badgeBg);
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
-    c.addChild(v.pulse, v.body, v.lead, v.select, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
-      v.chip, v.regionC, v.badge, v.captionC);
+    c.addChild(v.pulse, v.body, v.lead, v.select, v.paperCard, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
+      v.chip, v.regionC, v.badge, v.captionC, v.rejected, v.paperTitle, v.paperUnitsBg, v.paperUnits, v.paperStatus, v.paperReading, v.paperOutline, v.paperWaiting);
     c.alpha = 0;
     c.scale.set(v.s);
     v.captionC.scale.set(1 / v.s);
     parent.addChild(c);
     views.set(n.id, v);
     update(v, n, true);
+    if(kit.look==='paper')paintPaper(v);
     return v;
   }
 
@@ -176,7 +199,7 @@ export function createNodeLayer(PIXI, parent, env) {
       const dw = dots ? dots * 5 + 3 : 0;
       const w = Math.max(18, v.chipText.width + 8) + dw;
       v.chipText.x = dw / 2;
-      v.chipBg.clear().roundRect(-w / 2 + 1.5, -6, w, 15, 3).fill({ color: P.ink }).roundRect(-w / 2, -7.5, w, 15, 3).fill({ color: P.yellow }).stroke({ width: 1.5, color: P.ink });
+      v.chipBg.clear().roundRect(-w / 2 + 1.5, -6, w, 15, 3).fill({ color: P.ink }).roundRect(-w / 2, -7.5, w, 15, 3).fill({ color: cardLook(env.kit().look) ? P.surfaceSolid : P.yellow }).stroke({ width: 1.5, color: P.ink });
       v.zonesG.clear();
       for (let i = 0; i < dots; i++) v.zonesG.circle(-w / 2 + 6 + i * 5, 0, 1.8).fill({ color: P.mint }).stroke({ width: 0.8, color: P.ink });
     }
@@ -220,7 +243,15 @@ export function createNodeLayer(PIXI, parent, env) {
     if (hovered === v.id) hovered = null;
   }
 
+  function paintPaper(v) {
+    v.paperShortName=shortName(v);v.paperZoom=env.zoom?.()||1;
+    v.paperCompact=v.paperZoom*Math.abs(v.c.scale.x||1)<PAPER.detail.fullZoom;
+    v.paperSelected=selected===v.id;drawPaperLoad(v,env.kit());v.select.visible=false;
+  }
+
   function drawBusy(v, P) {
+    if (env.kit().look === 'paper') return drawPaperLoad(v, env.kit());
+    if (cardLook(env.kit().look)) return drawE08Load(v, env.kit(), 0, true);
     const g = v.busy;
     const u = Math.min(1, Math.max(0, v.du));
     const color = barColor(P, v.status, v.down);
@@ -244,7 +275,7 @@ export function createNodeLayer(PIXI, parent, env) {
   }
 
   function drawRetries(v,P,time,reduced) {
-    const rate=v.telemetry?.retryRps||0,g=v.retryG;g.clear();
+    const rate=v.telemetry?.retryRps||0,g=v.retryG;g.clear();if(env.kit().look==='paper')return;
     if(!v.live||rate<.5)return;
     g.moveTo(38,6).bezierCurveTo(64,-54,-64,-54,-38,6).stroke({width:2.5,color:P.bad});
     g.poly([-38,6,-46,1,-38,-3]).fill({color:P.bad});
@@ -258,6 +289,7 @@ export function createNodeLayer(PIXI, parent, env) {
   }
 
   function drawPool(v, P, now, reduced, time) {
+    if (cardLook(env.kit().look)) { v.pool.visible = v.poolT.visible = false; v.icon.visible = true; return; }
     const show = detailZoom && v.kind === 'compute' && (v.units > 1 || v.fleetUnits > 1) &&
       (selected === v.id || v.live || now < (v.recoverUntil || 0));
     v.pool.visible = v.poolT.visible = show;
@@ -330,7 +362,7 @@ export function createNodeLayer(PIXI, parent, env) {
         const k = 0.5 + 0.5 * Math.sin(time * 0.001 * Math.PI * 2 * 1.2);
         v.busy.alpha = 1;
       } else v.busy.alpha = 1;
-      if (v.kind === 'queue') drawQueue(v, P, dt, reduced);
+      if (v.kind === 'queue' && !cardLook(env.kit().look)) drawQueue(v, P, dt, reduced);
       // waiting pile at the input of an overloaded element
       const count = v.over > 0.01 ? Math.min(6, Math.ceil(v.over * 6)) : 0;
       v.pile.visible = count > 0;
@@ -345,11 +377,11 @@ export function createNodeLayer(PIXI, parent, env) {
     }
 
     drawPool(v, P, now, reduced, time);
-    if(v.live && v.kind==='queue') v.icon.visible=false;
+    if(v.live && v.kind==='queue' && !cardLook(env.kit().look)) v.icon.visible=false;
     drawRetries(v,P,time,reduced);
     // Flat markers only: an event gets a still ring in its colour, the first failing part a yellow frame with an ink edge.
     v.lead.visible = v.isLead && !isSelNow(v);
-    if (v.event) {
+    if (v.event && env.kit().look !== 'paper') {
       v.pulse.visible = true; v.pulse.tint = v.event.color; v.pulse.alpha = 1;
       v.pulse.width = v.pulse.height = 104;
     } else v.pulse.visible = false;
@@ -407,15 +439,18 @@ export function createNodeLayer(PIXI, parent, env) {
         const detail = detailZoom || selected === v.id;
         v.chip.visible = detail && v.units > 1;
         v.chip.scale.set(detailZoom ? 1 : labelK * 1.1);
-        v.busy.visible = detailZoom;
-        v.qbar.visible = v.live && v.kind === 'queue';
+        const e08 = cardLook(env.kit().look);
+        v.busy.visible = e08 || detailZoom;
+        v.qbar.visible = v.live && v.kind === 'queue' && !cardLook(env.kit().look);
         v.qbar.scale.set(Math.max(1,.85/(env.zoom?.()||1)));
         v.pile.visible = detailZoom && v.over > .01;
         v.lock.visible = detailZoom && v.locked;
         v.regionC.visible = detailZoom && multiRegion && v.region !== mainRegion && !v.event;
-        v.statusG.visible = v.live && v.status > 0;
-        if (!detailZoom) { v.statusG.context = env.kit().glyphs.status[v.status]; v.statusG.scale.set(Math.max(1, labelK * .7)); }
+        v.statusG.visible = e08 || (v.live && v.status > 0);
+        if (!e08 && !detailZoom) { v.statusG.context = env.kit().glyphs.status[v.status]; v.statusG.scale.set(Math.max(1, labelK * .7)); }
         else v.statusG.scale.set(1);
+        if (env.kit().look === 'paper') paintPaper(v);
+        else {v.paperReading.visible=v.paperWaiting.visible=false;v.paperOutline.clear();if (e08) drawE08Load(v, env.kit(), time, reduced);}
 
       }
       for (let i = dying.length - 1; i >= 0; i--) {
@@ -430,7 +465,8 @@ export function createNodeLayer(PIXI, parent, env) {
     },
     // Names and failure facts get separate, fixed-width lanes.
     layoutLabels(camera, area) {
-      const z = camera.zoom, P = env.kit().P;
+      if(env.kit().look==='paper')return layoutPaperLabels(list,camera,area,env.kit().P);
+      const z = camera.zoom, P = env.kit().P, e08 = cardLook(env.kit().look);
       const free = { x:area?.l||8,y:area?.t||8,width:camera.size.w-(area?.l||8)-(area?.r||8),height:camera.size.h-(area?.t||8)-(area?.b||8) };
       const visible=p=>p.x>=free.x && p.x<=free.x+free.width && p.y>=free.y && p.y<=free.y+free.height;
       // Corner panels (a folded card, a button) cover only their own rectangle, not a whole band of the canvas.
@@ -446,8 +482,14 @@ export function createNodeLayer(PIXI, parent, env) {
           v.evidenceBg.renderable=v.evidenceT.visible&&v.evidenceT.renderable;
         }
       };
+      // Node drawing precedes flows, so rejected pills can change a frame after the readings.
+      // Use the same bounds for cache invalidation and caption clearance.
+      const rejectedBounds = e08 ? list.filter(v => v.rejected.visible).map(v => {
+        const b = v.rejected.getLocalBounds();
+        return { x:v.x+v.rejected.x+b.x, y:v.y+v.rejected.y+b.y, width:b.width, height:b.height };
+      }) : [];
       // Retry missing captions when panning opens space, keeping reserved lanes fixed.
-      const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live}`)].join('/');
+      const key = [z, camera.size.w, camera.size.h, JSON.stringify(area), JSON.stringify(rejectedBounds), ...list.map(v=>`${v.id},${v.x},${v.y},${v.labelT.text},${v.evidenceT.visible},${v.live},${e08 ? v.evidenceT.text : ''}`)].join('/');
       const origin=camera.worldToScreen(0,0);
       const panned=origin.x!==this.captionOrigin?.x||origin.y!==this.captionOrigin?.y;
       this.captionOrigin=origin;
@@ -476,7 +518,12 @@ export function createNodeLayer(PIXI, parent, env) {
       const screenBox=(v,box)=>{const p=camera.worldToScreen(v.x,v.y);return box?{x:p.x+box.x*z,y:p.y+box.y*z,width:box.width*z,height:box.height*z}:null;};
       // The wide readings keep the fuller clearance around every part, so wires still find a way past them; only names pack tighter.
       const roomyParts = tight ? list.map(v=>{const p=camera.worldToScreen(v.x,v.y),half=v.renderHalf*z;return {x:p.x-half-8,y:p.y-half-1,width:half*2+16,height:half*2+2};}) : parts;
-      const occupied = [...roomyParts];
+      // The p10 rejected pill extends above the body. Keep captions out of its lane too.
+      const rejectedBoxes = rejectedBounds.map(b => {
+        const p = camera.worldToScreen(b.x, b.y);
+        return { x:p.x-3, y:p.y-3, width:b.width*z+6, height:b.height*z+6 };
+      });
+      const occupied = [...roomyParts, ...rejectedBoxes];
       if(preserve)for(const v of list)for(const box of [v.nameCaption,v.factCaption])if(box)occupied.push(screenBox(v,box));
       const ordered = [...list].sort((a,b)=>a.y-b.y||a.x-b.x);
       const clear=r=>!occupied.some(o=>intersects(r,o));
@@ -484,7 +531,7 @@ export function createNodeLayer(PIXI, parent, env) {
           // Reserve a local world-space slot for offscreen captions so panning can reveal them without rerouting.
           if(!visible(p))return clear(base)?base:null;
           const close=r=>Math.abs(r.x-base.x)+Math.abs(r.y-base.y)<=maxMove;
-          for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy?[1,-1]:[1])for(const dx of [0,-80,80,-160,160]){
+          for(let dy=0;dy<=free.height;dy+=18)for(const sy of dy && !e08?[1,-1]:[1])for(const dx of [0,-80,80,-160,160]){
             const r={...base,x:Math.max(free.x,Math.min(free.x+free.width-base.width,base.x+dx)),y:base.y+dy*sy};
             if(inside(r)&&clear(r)&&close(r)&&(!ok||ok(r)))return r;
           }
@@ -504,14 +551,15 @@ export function createNodeLayer(PIXI, parent, env) {
       const factsById=new Map();
       for(const v of ordered.filter(v=>v.evidenceT.visible).sort((a,b)=>Number(b.evidenceT.text.startsWith('First limit'))-Number(a.evidenceT.text.startsWith('First limit')))){
         const p=camera.worldToScreen(v.x,v.y);
-        const height = v.kind === 'queue' ? 112 : 76;
+        const height = e08 ? v.evidenceT.height*z+8 : v.kind === 'queue' ? 112 : 76;
+        const factWidth = e08 ? v.evidenceT.width*z+12 : 114;
         const reserved=preserve&&v.factCaption;
-        const half=v.renderHalf*z, above={x:p.x-57,y:p.y-half-height-8,width:114,height};
+        const half=v.renderHalf*z, above={x:p.x-factWidth/2,y:e08 ? nameSlot(v).y+nameSlot(v).height+4 : p.y-half-height-8,width:factWidth,height};
         // When the lane above is taken, the readings hug a corner of the part, clear of the ports on its left and right faces.
         const corners=[[-half-124,-14-height],[half+10,-14-height],[-half-124,14],[half+10,14]].map(([dx,dy])=>({...above,x:p.x+dx,y:p.y+dy}));
         // A corner slot must also leave the lanes beside neighbouring parts open, or their wires could not get past it.
         const own=list.indexOf(v), LANE=16, roomy=r=>!roomyParts.some((o,i)=>i!==own&&intersects(r,{x:o.x-LANE,y:o.y-LANE,width:o.width+LANE*2,height:o.height+LANE*2}));
-        const beside=visible(p)?[above,...corners].find((r,i)=>inside(r)&&clear(r)&&(!i||roomy(r))):null;
+        const beside=visible(p)?(e08 ? [above] : [above,...corners]).find((r,i)=>inside(r)&&clear(r)&&(!i||roomy(r))):null;
         // Zoomed far out, the readings box is large beside the parts: it stays near its own part or waits for a closer view.
         // The first limit of the day is always shown.
         const first=v.evidenceT.text.startsWith('First limit');
@@ -541,9 +589,10 @@ export function createNodeLayer(PIXI, parent, env) {
         const facts=factsById.get(v.id);
         v.evidenceT.renderable=!!facts;
         if(facts){
-          v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x)/z,(facts.y-p.y)/z);
-          v.evidenceBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,114/z,facts.height/z,3/z).fill({color:P.card}).stroke({width:1.5/z,color:P.ink});
-          lead(v,{x:facts.x,y:facts.y,width:Math.min(114,v.evidenceT.width*z+4),height:Math.min(facts.height,v.evidenceT.height*z+2)},p,z,P);
+          v.evidenceT.anchor.set(0,0);v.evidenceT.position.set((facts.x-p.x+(e08?6:0))/z,(facts.y-p.y+(e08?4:0))/z);
+          v.evidenceBg.roundRect((facts.x-p.x)/z,(facts.y-p.y)/z,facts.width/z,facts.height/z,3/z).fill({color:e08?P.canvas:P.card});
+          if (!e08) v.evidenceBg.stroke({width:1.5/z,color:P.ink});
+          lead(v,{x:facts.x,y:facts.y,width:e08?facts.width:Math.min(114,v.evidenceT.width*z+4),height:e08?facts.height:Math.min(facts.height,v.evidenceT.height*z+2)},p,z,P);
           boxes.push(facts);
         }
         v.captionBoxes=boxes.map(r=>({x:v.x+(r.x-p.x)/z-4/z,y:v.y+(r.y-p.y)/z-4/z,width:(r.width+8)/z,height:(r.height+8)/z}));
@@ -564,31 +613,32 @@ export function createNodeLayer(PIXI, parent, env) {
       if (recovering) v.recoverUntil = performance.now() + 1000;
       v.failRps = failRps;
       const recovered = performance.now() < (v.recoverUntil || 0);
-      v.evidenceT.visible = live && (failRps > .5 || queue > 1 || recovered || v.kind === 'queue' || v.telemetry?.retryRps > .5);
+      v.evidenceT.visible = live && ((!cardLook(env.kit().look) && failRps > .5) || queue > 1 || recovered || v.kind === 'queue' || v.telemetry?.retryRps > .5);
       v.evidenceT.text = failRps > .5 ? `× ${count(failRps)}/s rejected` : queue > 1 ? `${Math.round(queue).toLocaleString('en-US')} waiting` : recovered ? 'Requests recovered' : '';
       if (live && v.kind === 'queue' && v.telemetry) v.evidenceT.text = queuePressure(v.telemetry).text;
       else if (live && v.telemetry?.retryRps > .5) v.evidenceT.text += `\n↶ ${count(v.telemetry.retryRps)}/s retry`;
-      v.evidenceT.style.fill = (v.kind === 'queue' && queuePressure(v.telemetry).late) || failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
+      v.evidenceT.style.fill = cardLook(env.kit().look) ? env.kit().P.text2 : (v.kind === 'queue' && queuePressure(v.telemetry).late) || failRps > .5 ? env.kit().P.bad : recovered ? env.kit().P.ok : env.kit().P.warn;
       if (!live) {
         v.queue = v.over = 0; v.pileType = -1; v.down = false; v.status = 0; v.recoverUntil = 0; v.isLead = false;
         if (v.live) {
           v.live = false; v.busy.clear(); v.drawnU = -1; v.drawnColor = -1; v.statusG.visible = false;
-          v.pile.visible = false; v.qbar.visible = false; v.icon.alpha = 1; v.body.texture = env.kit().bodyTex[v.cat]; v.tu = v.du = 0;
+          v.pile.visible = false; v.qbar.visible = false; v.icon.alpha = 1; v.body.texture = env.kit().bodyTex[v.cat]; v.icon.tint = cardLook(env.kit().look) ? env.kit().P.ink : 0xffffff; v.rejected.visible = false; v.tu = v.du = 0;
         }
         return;
       }
-      if (!v.live) { v.live = true; v.qbar.visible = v.kind === 'queue'; v.drawnQ = -1; v.statusG.visible = status > 0; }
+      if (!v.live) { v.live = true; v.qbar.visible = v.kind === 'queue'; v.drawnQ = -1; v.statusG.visible = cardLook(env.kit().look) || status > 0; }
       v.tu = util;
       const down = status === 4;
       if (status !== v.status || down !== v.down) {
         v.status = status; v.down = down; v.statusAt = nowForStatus();
-        v.statusG.context = env.kit().glyphs.status[Math.min(4, status)];
+        if (!cardLook(env.kit().look)) v.statusG.context = env.kit().glyphs.status[Math.min(4, status)];
         v.icon.alpha = 1;
-        v.body.texture = down || status >= 3 ? env.kit().downTex : env.kit().bodyTex[v.cat];
+        v.body.texture = env.kit().bodyFor?.(v.cat, status) || (down || status >= 3 ? env.kit().downTex : env.kit().bodyTex[v.cat]);
+        v.icon.tint = cardLook(env.kit().look) ? (down ? env.kit().P.text3 : env.kit().P.ink) : 0xffffff;
         if (!down && status >= 3 || down) { v.shoveAt = performance.now(); v.shoveDir = -v.shoveDir; }
       }
-      v.statusG.visible = status > 0;
-      v.statusG.alpha = 1;
+      v.statusG.visible = cardLook(env.kit().look) || status > 0;
+      if (!cardLook(env.kit().look)) v.statusG.alpha = 1;
       v.queue = queue; v.over = over; v.pileType = pileType;
     },
     // The first failing part gets a yellow frame instead of the rest of the canvas being dimmed.
@@ -625,7 +675,7 @@ export function createNodeLayer(PIXI, parent, env) {
       for (const v of list) {
         if (!id || id === 'el.' + v.type) {
           const t = kit.icons.get('el.' + v.type, kit.P.ink);
-          if (t) { v.icon.texture = t; v.icon.width = v.icon.height = 28; }
+          if (t) { v.icon.texture = t; v.icon.width = v.icon.height = cardLook(kit.look) ? e08IconSize : 28; }
         }
         if (v.event && (!id || id === v.event.iconId)) {
           const t = kit.icons.get(v.event.iconId, v.event.color);
@@ -637,18 +687,35 @@ export function createNodeLayer(PIXI, parent, env) {
       this.captionKey = null;
       const P = kit.P;
       for (const v of [...list, ...dying]) {
+        v.paperCard.clear();v.body.visible=true;v.paperTitle.visible=false;v.paperUnits.visible=v.paperUnitsBg.visible=false;v.renderWidth=kit.look==='paper'?PAPER.body.width:null;v.renderHeight=kit.look==='paper'?PAPER.body.height:null;
+        v.valid.position.set(HALF-7,-HALF+7);v.lock.position.set(-HALF+9,-HALF+20);v.regionC.position.set(0,-HALF-12);
+        v.labelT.visible=kit.look!=='paper';
+        v.paperTitle.visible = v.paperStatus.visible = kit.look === 'paper';
+        v.icon.x = 0;
         v.pulse.texture = kit.fx.ring;
         v.lead.texture = kit.leadTex[v.shape]; v.lead.width = v.lead.height = BODY_BOX;
-        v.body.texture = v.down || v.status >= 3 ? kit.downTex : kit.bodyTex[v.cat]; v.body.width = v.body.height = BODY_BOX;
+        v.body.texture = kit.bodyFor?.(v.cat, v.status) || (v.down || v.status >= 3 ? kit.downTex : kit.bodyTex[v.cat]); v.body.width = v.body.height = kit.look==='paper'?PAPER.body.textureSize:BODY_BOX;
         v.select.texture = kit.selectTex[v.shape]; v.select.width = v.select.height = BODY_BOX;
         v.icon.texture = kit.icons.get('el.' + v.type, P.ink) || PIXI.Texture.EMPTY;
-        v.icon.width = v.icon.height = 28;
-        v.statusG.context = kit.glyphs.status[Math.min(4, v.status)];
+        v.icon.width = v.icon.height = cardLook(kit.look) ? e08IconSize : 28;
+        v.icon.y = cardLook(kit.look) ? 0 : iconOffset(v.shape);
+        v.icon.tint = cardLook(kit.look) ? (v.down ? kit.P.text3 : kit.P.ink) : 0xffffff;
+        v.labelT.style.fontFamily = kit.look === 'e08' ? 'system-ui, sans-serif' : FONT_UI;
+        v.labelT.style.fontSize = cardLook(kit.look) ? 14 : 12;
+        v.labelT.style.fontWeight = cardLook(kit.look) ? '700' : '600';
+        v.labelT.style.wordWrapWidth = cardLook(kit.look) ? 140 : 72;
+        v.rejected.visible = false;
+        v.evidenceT.style.wordWrap = !cardLook(kit.look);
+        v.evidenceT.style.align = cardLook(kit.look) ? 'center' : 'left';
+        v.evidenceT.style.fontWeight = cardLook(kit.look) ? '600' : '500';
+        v.evidenceT.style.fill = cardLook(kit.look) ? P.text2 : P.bad;
+        v.statusG.context = cardLook(kit.look) ? new PIXI.GraphicsContext() : kit.glyphs.status[Math.min(4, v.status)];
+        if (!cardLook(kit.look)) v.statusG.position.set(-HALF+7,-HALF+7);
         const lv = validation.get(v.id);
         v.valid.context = kit.glyphs.valid[lv || 'warn'];
         v.lock.context = kit.glyphs.lock;
         for (const s of v.pileSprites) { s.texture = kit.atlas.textures[Math.max(0, v.pileType)]; s.scale.set(8 / P_SHAPE); }
-        v.labelT.style.fill = P.ink;
+        v.labelT.style.fill = cardLook(kit.look) ? P.text : P.ink;
         v.poolT.style.fill = P.text2;
         drawChip(v); drawRegion(v);
         if (v.event) v.event.color = v.event.severity ? severityColor(P, v.event.severity) : v.event.color;
@@ -660,14 +727,14 @@ export function createNodeLayer(PIXI, parent, env) {
     redrawAll() { for (const v of list) { v.drawnU = -1; v.drawnColor = -1; } },
     // Hides nodes outside the world rectangle (cheap culling; their state keeps updating).
     cull(x0, y0, x1, y1) {
-      for (const v of list) v.c.visible = v.x + 90 > x0 && v.x - 90 < x1 && v.y + 90 > y0 && v.y - 90 < y1;
+      for (const v of list) v.c.visible = v.x + (env.kit().look==='paper'?(v.renderWidth||PAPER.body.width)/2:90) > x0 && v.x - (env.kit().look==='paper'?(v.renderWidth||PAPER.body.width)/2:90) < x1 && v.y + (env.kit().look==='paper'?(v.renderHeight||PAPER.body.height)/2+4:90) > y0 && v.y - (env.kit().look==='paper'?(v.renderHeight||PAPER.body.height)/2+4:90) < y1;
     },
     // Keep names readable through zoom and part entry motion.
     setLabelScale(z) {
       detailZoom = z >= 1.05;
-      for (const v of list) { v.icon.width = v.icon.height = detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z)); v.evidenceT.scale.set(1 / Math.max(.01, z)); }
+      for (const v of list) { v.icon.width = v.icon.height = cardLook(env.kit().look) ? e08IconSize : detailZoom ? 28 : Math.max(28, 16 / Math.max(.01, z)); v.evidenceT.scale.set(1 / Math.max(.01, z)); }
       const px = 13;
-      const k = Math.max(1, px / (12 * Math.max(0.01, z)));
+      const k = Math.max(1, px / ((cardLook(env.kit().look) ? 14 : 12) * Math.max(0.01, z)));
       if ((z < .65) !== compact) { compact = z < .65; for (const v of list) showLabel(v); }
       if ((z < 0.3) !== tiny) { tiny = z < 0.3; for (const v of list) showLabel(v); }
       if (Math.abs(k - labelK) < 0.0001) return;
@@ -687,9 +754,11 @@ export function createNodeLayer(PIXI, parent, env) {
       for (const v of list) { const s = v.labelT.text; v.labelT.text = s + ' '; v.labelT.text = s; }
     },
     hit(x, y, tol = 0) {
+      const paper = env.kit().look === 'paper';
       for (let i = list.length - 1; i >= 0; i--) {
         const v = list[i];
-        if (Math.abs(x - v.x) <= HALF + tol && Math.abs(y - v.y) <= HALF + tol) return v;
+        const hw=paper?(v.renderWidth||PAPER.body.width)/2:HALF,hh=paper?(v.renderHeight||PAPER.body.height)/2:HALF;
+        if (Math.abs(x - v.x) <= hw + tol && Math.abs(y - v.y) <= hh + tol) return v;
       }
       return null;
     },
@@ -709,11 +778,28 @@ export function createNodeLayer(PIXI, parent, env) {
       const v = views.get(id);
       if (v) { v.drag = null; v.dragUntil = 0; }
     },
+    minimumPaperZoom() {
+      if(env.kit().look!=='paper')return 0;
+      const sizes=list.map(v=>{
+        const t=makeText(shortName(v),PAPER.detail.namePx,0,false,'700');t.style.wordWrap=false;
+        const units=makeText(v.units>1?`×${v.units}`:'',PAPER.units.size,0,true,'700');
+        const extra=v.units>1?units.width+2*PAPER.units.pad+PAPER.units.gap:0;
+        const width=Math.max(PAPER.detail.minWidth,t.width+PAPER.detail.glyphPx+24+extra)+4.5;t.destroy();units.destroy();
+        return {v,width,height:PAPER.detail.height+4.5};
+      });
+      let min=0;
+      for(let i=0;i<sizes.length;i++)for(const b of sizes.slice(i+1)){
+        const a=sizes[i],dx=Math.abs(a.v.tx-b.v.tx),dy=Math.abs(a.v.ty-b.v.ty);
+        min=Math.max(min,Math.min(dx?((a.width+b.width)/2+PAPER.detail.gap)/dx:Infinity,dy?((a.height+b.height)/2+PAPER.detail.gap)/dy:Infinity));
+      }
+      return Number.isFinite(min)?min:0;
+    },
     bounds(graph) {
       const nodes = graph ? graph.nodes : list.map(v => ({ x: v.tx, y: v.ty }));
       if (!nodes || !nodes.length) return null;
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const n of nodes) {
+        if(env.kit().look==='paper'){minX=Math.min(minX,n.x-PAPER.body.textureSize/2);maxX=Math.max(maxX,n.x+PAPER.body.textureSize/2);minY=Math.min(minY,n.y-PAPER.fit.top);maxY=Math.max(maxY,n.y+PAPER.fit.bottom);continue;}
         minX = Math.min(minX, n.x - HALF); maxX = Math.max(maxX, n.x + HALF);
         minY = Math.min(minY, n.y - HALF - 14); maxY = Math.max(maxY, n.y + HALF + 30);
       }

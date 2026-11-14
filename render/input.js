@@ -39,6 +39,7 @@ export function createInput(canvas, host, d) {
     if (!v) return false;
     // The visible side port and the arrow share one finger-sized target.
     const px = (w.x - v.x) * camera.zoom, py = (w.y - v.y) * camera.zoom;
+    if(v.renderWidth)return px>=v.renderWidth/2*camera.zoom+4&&px<=v.renderWidth/2*camera.zoom+44&&Math.abs(py)<=22;
     if (px >= Math.max(HALF * camera.zoom - 12, HALF * camera.zoom * .6) &&
       px <= HALF * camera.zoom + 44 && Math.abs(py) <= 22) return true;
     const dd = Math.hypot(w.x - v.x, w.y - v.y);
@@ -49,7 +50,8 @@ export function createInput(canvas, host, d) {
 
   // Grid snap plus alignment with other nodes (guides drawn while dragging or placing).
   function snapPos(x, y, excludeId) {
-    let sx = snap(x), sy = snap(y);
+    const grid = d.snapPoint ? d.snapPoint(x, y) : { x: snap(x), y: snap(y) };
+    let sx = grid.x, sy = grid.y;
     let gx = null, gy = null, bx = 10, by = 10;
     for (const v of nodes.list) {
       if (v.id === excludeId) continue;
@@ -163,7 +165,7 @@ export function createInput(canvas, host, d) {
       const [a, b] = [...pointers.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
       const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-      emit('view:manual');
+      emit('view:manual', { zoom: true });
       camera.panBy(mx - pinch.mx, my - pinch.my);
       camera.zoomTo(pinch.z * (dist / pinch.dist), mx, my);
       pinch.mx = mx; pinch.my = my;
@@ -273,8 +275,8 @@ export function createInput(canvas, host, d) {
     const p = local(e);
     let dy = e.deltaY;
     if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= 100;
-    emit('view:manual');
-    if (!e.ctrlKey && Math.abs(e.deltaX) > Math.abs(dy) * 1.5) { camera.panBy(-e.deltaX, 0); return; }
+    if (!e.ctrlKey && Math.abs(e.deltaX) > Math.abs(dy) * 1.5) { emit('view:manual'); camera.panBy(-e.deltaX, 0); return; }
+    emit('view:manual', { zoom: true });
     const k = e.ctrlKey ? 0.01 : 0.0018;
     camera.zoomBy(Math.exp(-dy * k), p.x, p.y);
   }

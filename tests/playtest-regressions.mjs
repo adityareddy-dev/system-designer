@@ -66,8 +66,8 @@ try {
     await delay(500);
     assert(await page.evaluate(() => {
       const { view } = window.__game.getState(), f = view.free;
-      return view.screen.every(n => n.x >= f.l && n.x <= f.w - f.r && n.y >= f.t && n.y <= f.h - f.b);
-    }), 'explicit Fit includes every part while one is selected');
+      return innerWidth<719?view.labelPx>=13&&!!document.querySelector('.pl-camera-map svg'):view.screen.every(n => n.x >= f.l && n.x <= f.w - f.r && n.y >= f.t && n.y <= f.h - f.b);
+    }), 'explicit Fit keeps readable names and the complete topology while one is selected');
     await page.evaluate(() => { window.__game.startTraffic(); window.__game.step(86400000); });
     await page.waitForFunction(() => document.querySelector('.pl-root').dataset.step === 'debrief');
     assert.equal(await page.$eval('.pl-hud', el => el.checkVisibility()), false, 'debrief keeps the HUD hidden');
@@ -77,6 +77,7 @@ try {
     for (let i = 0; i < 12; i++) window.__game.placeComponent('vm-fleet', i * 200, 0);
   });
   await delay(500);
+  let fittedZoom=null;
   for (const fit of ['button', 'keyboard', 'double tap']) {
     if (fit === 'button') await page.click('[aria-label="Fit to screen (F)"]');
     else if (fit === 'keyboard') { await page.focus('.pl-kb'); await page.keyboard.press('f'); }
@@ -92,8 +93,10 @@ try {
     }
     await delay(500);
     const view = await page.evaluate(() => window.__game.getState().view);
-    assert(view.zoom < 0.15, `${fit} Fit can shrink below the interactive minimum`);
-    assert(view.screen.every(n => n.x >= view.free.l && n.x <= view.free.w - view.free.r && n.y >= view.free.t && n.y <= view.free.h - view.free.b), `${fit} Fit frames the complete wide phone diagram`);
+    assert(view.labelPx>=13,`${fit} Fit keeps wide-phone labels readable`);
+    assert(await page.$eval('.pl-camera-map svg', (svg,count)=>svg.querySelectorAll('rect').length>=count,view.screen.length),`${fit} Fit keeps the complete topology in the overview`);
+    if(fittedZoom===null)fittedZoom=view.zoom;
+    else assert(Math.abs(view.zoom-fittedZoom)<.001,`${fit} uses the same readable Fit as the button`);
   }
   await page.evaluate(() => { location.hash = '#/settings'; });
   await page.waitForSelector('.sh-settings-card');

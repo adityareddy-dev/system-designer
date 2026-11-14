@@ -1,14 +1,17 @@
 // The PixiJS scene: camera, nodes, edges, request particles, glows and effects. The only render file other modules import.
 
 import { resolvePalette, severityColor } from './theme.js';
+import { PAPER, paperPalette, paperPoint, paperGraph, paperSpread } from './paper.js';
+import { e08Palette } from './e08.js';
 import { createKit } from './textures.js';
 import { createCamera } from './camera.js';
+import { fitPaperWindow } from './fit.js';
 import { createNodeLayer, makeMini, refreshMini } from './nodes.js';
 import { createEdgeLayer, edgeCarries } from './edges.js';
 import { createParticles } from './particles.js';
 import { createFx } from './fx.js';
 import { createInput, PORT_R, DND_TYPE, DND_PREFIX } from './input.js';
-import { makeLut, edgeCurve, lutAt, HALF, niceCeil } from './geom.js';
+import { makeLut, edgeCurve, lutAt, HALF, niceCeil, snap } from './geom.js';
 import { createGrid } from './grid.js';
 import { inkPath, crossesRect, intersects } from './routing.js';
 import { pathsThrough } from './diagram.js';
@@ -75,7 +78,7 @@ function createEmitter() {
   };
 }
 
-export async function createScene(hostEl, { catalog, palette, theme = 'light', reducedMotion = false, quality = 'auto', dotsPerSec = MAX_DOTS_PER_SEC } = {}) {
+export async function createScene(hostEl, { catalog, palette, theme = 'light', reducedMotion = false, quality = 'auto', dotsPerSec = MAX_DOTS_PER_SEC, look = 'classic' } = {}) {
   const PIXI = globalThis.PIXI;
   if (!PIXI || !PIXI.Application) throw new Error('PixiJS is not loaded');
   const cat = normalizeCatalog(catalog);
@@ -83,6 +86,11 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const dpr = Math.max(1, Math.min(globalThis.devicePixelRatio || 1, 3));
   const coarse = !!globalThis.matchMedia?.('(pointer: coarse)').matches;
 
+  const displayPoint = (x, y) => look === 'paper' ? paperPoint(x, y, false, modelSpread) : { x, y };
+  const modelPoint = (x, y) => look === 'paper' ? paperPoint(x, y, true, modelSpread) : { x, y };
+  const displayGraph = g => look === 'paper' ? paperGraph(g) : g;
+  let sourceGraph = null;
+  let modelSpread = PAPER.spread;
   let failureLead = null;
   let captionArea = null;
   let reduced = !!reducedMotion;
@@ -98,7 +106,8 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   };
   const bakeRes = Math.min(dpr, coarse ? 3 : 2);
 
-  let P = resolvePalette(palette, theme);
+  const paletteFor = (p, t) => look === 'paper' ? paperPalette(resolvePalette(p, t)) : look === 'e08' ? e08Palette(resolvePalette(p, t)) : resolvePalette(p, t);
+  let P = paletteFor(palette, theme);
   let kit = null;
   let nodes = null;
   let overlayMinis = [];
@@ -108,6 +117,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     dotScale: () => dotScale,
     zoom: () => camera.zoom,
     reduced: () => reduced,
+    visualTime: () => visualTime,
     highContrast: () => highContrast,
     pathEdge: id => !!pathFocus?.edges.has(id),
     element: type => cat.elementById.get(type),
@@ -141,6 +151,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   canvas.style.webkitTouchCallout = 'none';
   canvas.setAttribute('aria-label', 'System design canvas');
   canvas.setAttribute('role', 'img');
+  canvas.dataset.look = look;
   hostEl.appendChild(canvas);
 
   // layers
@@ -215,6 +226,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     if (!ringNode) { portRing.visible = false; return; }
     portRing.visible = true;
     const k = Math.max(1, 1 / camera.zoom);
+    if(look==='paper'){const x=(ringNode?.renderWidth/2||PAPER.body.width/2)+22/camera.zoom;portRing.moveTo(ringNode?.renderWidth/2||PAPER.body.width/2,0).lineTo(x,0).stroke({width:2*k,color:P.ink});portRing.rect(x-6*k,-6*k,12*k,12*k).fill({color:P.card}).stroke({color:P.ink,width:2*k});return;}
     const n = 40;
     for (let i = 0; i < n; i += 2) {
       const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2;
@@ -245,6 +257,15 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       band.visible = true;
       band.clear();
       const color = ok ? P.blue : P.tomato;
+      if(look==='paper') {
+        const endX=to?to.x:x,endY=to?to.y:y,sign=endX>=from.x?1:-1;
+        const start=from.x+sign*(from.portHalf||PAPER.wire.port),end=endX-(to?sign*(to.portHalf||PAPER.wire.port):0),h=Math.max(30,Math.abs(end-start)*.5);
+        band.moveTo(start,from.y).bezierCurveTo(start+sign*h,from.y,end-sign*h,endY,end,endY).stroke({width:PAPER.wire.width,color:ok?P.ink:P.tomato});
+        target.visible=false;
+        if(to)band.roundRect(to.x-(to.renderWidth||PAPER.body.width)/2,to.y-(to.renderHeight||PAPER.body.height)/2,to.renderWidth||PAPER.body.width,to.renderHeight||PAPER.body.height,PAPER.body.radius).stroke({width:PAPER.body.stroke,color:ok?P.ink:P.tomato});
+        else band.rect(x-5,y-5,10,10).fill({color:P.card}).stroke({width:2,color:P.ink});
+        return;
+      }
       if (to) {
         edgeCurve(bandLut, from.x, from.y, to.x, to.y);
         band.moveTo(bandLut.p0x, bandLut.p0y).bezierCurveTo(bandLut.c1x, bandLut.c1y, bandLut.c2x, bandLut.c2y, bandLut.p3x, bandLut.p3y)
@@ -302,7 +323,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const edge = graph?.edges.find(e => e.id === ev.id);
       const a = nodes.views.get(edge?.from), b = nodes.views.get(edge?.to);
       plan = insertionPreview?.(ghost.type, ev.id);
-      if (plan?.position) { ghost.x = plan.position.x; ghost.y = plan.position.y; }
+      if (plan?.position) { const p = displayPoint(plan.position.x, plan.position.y); ghost.x = p.x; ghost.y = p.y; }
       if (a && b && plan) {
         dropWires.moveTo(a.x, a.y).lineTo(ghost.x, ghost.y);
         if (plan.kind !== 'side') dropWires.lineTo(b.x, b.y);
@@ -342,7 +363,11 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   let connectCheck = null;
   const input = createInput(canvas, hostEl, {
     camera, nodes, edges, ui, ghost: ghostApi,
-    emit: (n, p) => emitter.emit(n, p),
+    snapPoint: (x, y) => { const p = modelPoint(x, y); return displayPoint(snap(p.x), snap(p.y)); },
+    emit: (n, p) => {
+      if (n === 'view:manual') { paperFit = null; if (!p?.zoom) paperWindow = false; }
+      emitter.emit(n, ['node:dragend', 'canvas:tap', 'canvas:drop'].includes(n) ? { ...p, ...modelPoint(p.x, p.y) } : p);
+    },
     editable: () => editable,
     reduced: () => reduced,
     get connectCheck() { return connectCheck; },
@@ -357,7 +382,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     for (const m of overlayMinis) m.destroy({ children: true });
     overlayMinis = [];
     overlayEdges.clear();
-    const g = overlayGraph;
+    const g = displayGraph(overlayGraph);
     if (!g) return;
     const pos = new Map(g.nodes.map(n => [n.ref ?? n.id, n]));
     const lut = makeLut();
@@ -496,6 +521,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       if (!v || v.removing) continue;
       let fail = 0, inn = 0, pile = -1, pileR = 0;
       const b = i * T;
+      if(look==='paper')v.outRps=nodeOut.subarray(b,b+T).reduce((sum,r)=>sum+r,0);
       for (let t = 0; t < T; t++) {
         const f = nf[b + t] || 0;
         if (F.typeIds[t] !== 'attack') fail += f; inn += nodeIn[b + t];
@@ -599,9 +625,19 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const c = camera.center, { w, h } = camera.size, z = camera.zoom;
     const x0 = c.x - w / 2 / z, x1 = c.x + w / 2 / z, y0 = c.y - h / 2 / z, y1 = c.y + h / 2 / z;
     nodes.cull(x0, y0, x1, y1);
+    if (look === 'paper' && paperWindow && captionArea) {
+      const a = captionArea;
+      for (const v of nodes.list) {
+        const b = v.paperBox, p = camera.worldToScreen(v.x, v.y), k = z * Math.abs(v.c.scale.x);
+        const box = { x: p.x+b.x*k, y: p.y+b.y*k, width: b.width*k, height: b.height*k };
+        v.c.visible = box.x >= a.l && box.y >= a.t && box.x+box.width <= w-a.r && box.y+box.height <= h-a.b
+          && !(a.blocks || []).some(block => intersects(box, block));
+      }
+    }
     edges.cull(x0, y0, x1, y1);
   }
 
+  let paperFit = null, paperWindow = false;
   let visualTime = 0;
   function draw(dt, now, wallDt = dt) {
     if (!flow || speed > 0) visualTime += dt;
@@ -618,7 +654,19 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const captionsMoved = nodes.layoutLabels(camera, captionArea);
     if (captionsMoved) edges.invalidateGeometry();
     const geo = edges.updateGeometry(nodes.views);
-    if (viewChanged || geo) cull();
+    if (paperFit && !camera.moving && !nodes.moving) {
+      const boxes = nodes.list.map(v => {
+        const b = v.paperBox, p = camera.worldToScreen(v.x, v.y), z = camera.zoom * Math.abs(v.c.scale.x);
+        return { id: v.id, x: p.x + b.x * z, y: p.y + b.y * z, width: b.width * z, height: b.height * z };
+      });
+      const shift = fitPaperWindow(boxes, camera.size, { ...paperFit, padding: captionArea || paperFit.padding });
+      paperFit = null; paperWindow = true;
+      if (shift.x || shift.y) {
+        camera.panBy(shift.x, shift.y); updateGrid();
+        if (nodes.layoutLabels(camera, captionArea)) edges.invalidateGeometry();
+      }
+      cull();
+    } else if (viewChanged || geo || look === 'paper') cull();
     edges.update(dt);
     // Isolating paths only softens what is off the path; nothing is hidden, and a failing part never sits behind a dim.
     for (const v of nodes.list) v.c.alpha = pathFocus && !pathFocus.nodes.has(v.id) ? 0.6 : 1;
@@ -626,7 +674,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     particleLayer.visible = !pathFocus;
     glowLayer.visible = !pathFocus;
     fxLayer.visible = !pathFocus;
-    if (reduced) {
+    if (reduced || kit.look === 'paper') {
       if (particles.count) particles.clear();
     } else {
       particles.update(dt, {
@@ -665,7 +713,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       else portRing.position.set(ringNode.x, ringNode.y);
     }
     portHint.visible = !!ringNode && ringNode.id === selected && editable && !flow && input.mode !== 'connect';
-    if (portHint.visible) { portHint.position.set(ringNode.x, ringNode.y - PORT_R - 16 / camera.zoom); portHint.scale.set(1 / camera.zoom); portHint.style.fill = P.accent; }
+    if (portHint.visible) { portHint.position.set(ringNode.x, ringNode.y - (look==='paper'?PAPER.body.height/2:PORT_R) - 16 / camera.zoom); portHint.scale.set(1 / camera.zoom); portHint.style.fill = P.accent; }
     if (viewChanged && ringNode) drawPortRing();
     if (!editable && ringNode) ui.setPortRing(null);
     else if (editable && !ringNode && selected && input.mode === 'idle' && !nodes.hovered) {
@@ -754,9 +802,12 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     setRegionGroups(on) { regionGroups = !!on; drawRegions(); },
     sync(g, fv) {
       wake();
-      graph = g || null;
+      sourceGraph = g || null;
+      modelSpread = paperSpread(sourceGraph);
+      graph = displayGraph(sourceGraph);
       if (fv !== undefined && fv !== flowVersion) { flowVersion = fv; map = null; }
       const a = nodes.sync(graph);
+      camera.setMinZoom(look === 'paper' ? nodes.minimumPaperZoom() : 0);
       const b = edges.sync(graph);
       if (a || b) { syncVersion++; map = null; }
       nodes.setValidation(validation);
@@ -804,7 +855,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       ghost.type = type; ghost.preview = false;
       ghost.follow = !(Number.isFinite(x) && Number.isFinite(y));
       ghostView(type);
-      if (!ghost.follow) ghostMove(x, y);
+      if (!ghost.follow) { const p = displayPoint(x, y); ghostMove(p.x, p.y); }
       else if (input.hoverWorld) ghostMove(input.hoverWorld.x, input.hoverWorld.y);
       else if (ghost.view) ghost.view.visible = false;
     },
@@ -834,18 +885,33 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       });
       flashDirty = true;
     },
+    setLook(nextLook) {
+      const next = ['paper', 'e08'].includes(nextLook) ? nextLook : 'classic';
+      if (next === look) return Promise.resolve();
+      paperFit = null; paperWindow = false;
+      look = next;
+      return api.setTheme(palette, theme);
+    },
     setTheme(palette2, theme2) {
+      palette = palette2; theme = theme2;
       const token = ++themeToken;
       governor.settle(performance.now());
-      const nextP = resolvePalette(palette2, theme2);
+      const nextP = paletteFor(palette2, theme2);
       return createKit(PIXI, nextP, { categories: cat.categories, requests: cat.requests }, bakeRes, onIcon).then(nextKit => {
         if (destroyed || token !== themeToken) { nextKit.destroy(); return; }
         const old = kit;
         P = nextP; kit = nextKit;
+        canvas.dataset.look = kit.look || 'classic';
         app.renderer.background.color = P.canvas;
         grid.invalidate();
         nodes.applyKit(kit);
+        graph = displayGraph(sourceGraph);
+        nodes.sync(graph);
+        camera.setMinZoom(look === 'paper' ? nodes.minimumPaperZoom() : 0);
+        nodes.setLabelScale(camera.zoom);
         edges.applyKit(kit);
+        edges.sync(graph);
+        edges.updateGeometry(nodes.views);
         particles.applyKit(kit);
         fx.applyKit(kit);
         if (ghost.view) { const t = ghost.type, f = ghost.follow, gx = ghost.x, gy = ghost.y; ghostView(null); ghostView(t); ghost.follow = f; ghostMove(gx, gy); }
@@ -886,17 +952,31 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     // opts: { minZ, maxZ } keep a fitted view readable: a big graph is panned rather than shrunk past minZ.
     fit(padding = 80, animate = true, opts = {}) {
       wake();
+      // A minimum chosen for saved coordinates must not crop the spread paper layout.
+      let fitOpts = look === 'paper' && opts.minZ ? { ...opts, minZ: opts.minZ / Math.max(modelSpread.x, modelSpread.y) } : opts;
+      // Compact cards keep a fixed screen width, including when side panels narrow Fit.
+      if (look === 'paper') fitOpts = { ...fitOpts, minZ: Math.max(fitOpts.minZ || 0, nodes.minimumPaperZoom()) };
       const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
       const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(opts.nodeIds ? { ...graph, nodes: graph.nodes.filter(n => opts.nodeIds.includes(n.id)) } : graph);
-      if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, opts); return; }
-      camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, opts);
+      if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, fitOpts); return; }
+      if (look === 'paper') {
+        const busiest = [...edges.list].sort((a, b) => (b.rps || 0) - (a.rps || 0))[0];
+        const fitFocus = opts.focusId || selected || failureLead?.id;
+        const anchor = graph?.nodes.find(n => n.id === fitFocus)
+          || (busiest && graph?.nodes.find(n => n.id === busiest.from));
+        const end = !fitFocus && busiest && graph?.nodes.find(n => n.id === busiest.to);
+        if (anchor) fitOpts = { ...fitOpts, center: end ? { x: (anchor.x + end.x) / 2, y: (anchor.y + end.y) / 2 } : anchor };
+        paperFit = { padding, focusId: fitFocus };
+      }
+      camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, fitOpts);
       nodes.setLabelScale(camera.zoom);
     },
-    // World bounds of the diagram with the room its names need, or null when it is empty.
+    // Display bounds, including card and label space, for fitting around panels. Null when empty.
     bounds(nodeIds) { return nodes.bounds(nodeIds && graph ? { ...graph, nodes: graph.nodes.filter(n => nodeIds.includes(n.id)) } : graph); },
     // Glide just far enough that a world point sits inside the free part of the canvas (insets are panels, in screen px).
     reveal(x, y, insets = {}, margin = {}) {
-      const p = camera.worldToScreen(x, y), { w, h } = camera.size;
+      paperFit = null; paperWindow = false; wake();
+      const d = displayPoint(x, y), p = camera.worldToScreen(d.x, d.y), { w, h } = camera.size;
       const l = (insets.l || 0) + (margin.l ?? 60), r = w - (insets.r || 0) - (margin.r ?? 60);
       const t = (insets.t || 0) + (margin.t ?? 60), b = h - (insets.b || 0) - (margin.b ?? 60);
       const dx = r > l ? (p.x < l ? l - p.x : p.x > r ? r - p.x : 0) : (l + r) / 2 - p.x;
@@ -905,13 +985,13 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       camera.glideBy(dx, dy);
       return true;
     },
-    zoomBy(factor, cx, cy) { wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
-    panBy(dx, dy) { wake(); camera.panBy(dx, dy); },
-    stopCamera() { camera.stop(); },
-    screenToWorld(x, y) { return camera.screenToWorld(x, y); },
-    worldToScreen(x, y) { return camera.worldToScreen(x, y); },
+    zoomBy(factor, cx, cy) { paperFit = null; wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
+    panBy(dx, dy) { paperFit = null; paperWindow = false; wake(); camera.panBy(dx, dy); },
+    stopCamera() { paperFit = null; paperWindow = false; camera.stop(); },
+    screenToWorld(x, y) { const p = camera.screenToWorld(x, y); return modelPoint(p.x, p.y); },
+    worldToScreen(x, y) { const p = displayPoint(x, y); return camera.worldToScreen(p.x, p.y); },
     // Extra: the connection whose middle part lies under a world point, for drop-to-insert.
-    edgeAt(x, y) { const ev = edges.hitMiddle(x, y, dropTol()); return ev ? ev.id : null; },
+    edgeAt(x, y) { const p = displayPoint(x, y); const ev = edges.hitMiddle(p.x, p.y, dropTol()); return ev ? ev.id : null; },
     onFrame(fn) { frameFns.add(fn); return () => frameFns.delete(fn); },
     on(name, fn) { return emitter.on(name, fn); },
     // Extra: draw one frame right now (tests, step()).
@@ -928,7 +1008,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const labels = nodes.list.flatMap(v => [v.labelT, v.evidenceT].filter(t => t.visible && t.renderable && t.text && v.c.visible).map(t => {
         const b = t.getBounds(); return { id: v.id, kind: t === v.labelT ? 'name' : 'failure', text: t.text, x: b.x, y: b.y, width: b.width, height: b.height };
       }));
-      const parts = nodes.list.map(v => { const p = camera.worldToScreen(v.x, v.y); return { id: v.id, x: p.x - (v.renderHalf||36)*z, y: p.y - (v.renderHalf||36)*z, width: 2*(v.renderHalf||36)*z, height: 2*(v.renderHalf||36)*z }; });
+      const parts = nodes.list.map(v => { const p = camera.worldToScreen(v.x, v.y); return { id: v.id, visible: v.c.visible, x: p.x - (v.renderHalf||36)*z, y: p.y - (v.renderHeight/2||v.renderHalf||36)*z, width: (v.renderWidth||2*(v.renderHalf||36))*z, height: (v.renderHeight||2*(v.renderHalf||36))*z }; });
       const wires = edges.list.map(v => ({ id: v.id, from: v.from, to: v.to, points: Array.from({ length: (v.lut.segs || 24) + 1 }, (_, i) => camera.worldToScreen(v.lut.xs[i], v.lut.ys[i])) }));
       let labelOverlaps = 0, wirePartCrossings = 0, wireLabelCrossings = 0, labelPartOverlaps = 0, labelPanelOverlaps = 0;
       const area=captionArea||{l:0,t:0,r:0,b:0}, right=camera.size.w-area.r, bottom=camera.size.h-area.b;
@@ -952,12 +1032,12 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         particles: particles.count, renderMs: rsn ? sum / rsn : 0, renderMsLast: lastRenderMs,
         idle: isIdle, idleFrames, quality: level, qualitySetting, dotScale, effects: fx.count, nodes: nodes.list.length, edges: edges.list.length,
         zoom: camera.zoom, cameraMoving: camera.moving,
-        labelPx: Math.min(...nodes.list.map(v => v.labelT.style.fontSize * v.labelT.scale.x * v.captionC.scale.x * v.c.scale.x * camera.zoom)),
+        labelPx: Math.min(...nodes.list.map(v => look==='paper'?v.paperTitle.style.fontSize*v.paperTitle.scale.x*v.c.scale.x*camera.zoom:v.labelT.style.fontSize*v.labelT.scale.x*v.captionC.scale.x*v.c.scale.x*camera.zoom)),
       };
     },
     async snapshot({ width = 600, height = 315, graph: g2 } = {}) {
       if (destroyed || app.renderer.context.isLost) throw new Error('The drawing surface is unavailable. Try again after it recovers.');
-      const g = g2 || graph;
+      const g = displayGraph(g2 || sourceGraph);
       const root = new PIXI.Container();
       const bg = new PIXI.Graphics().rect(0, 0, width, height).fill({ color: P.canvas });
       root.addChild(bg);
@@ -972,7 +1052,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
         // A thumbnail is read at a fraction of the canvas size, so it is drawn as a schematic: the same parts in the same
         // order, moved closer together along each axis until the closest neighbours are about a part apart, then fitted
         // to the picture. Parts come out as large as the layout allows and the wires between them stay visible.
-        const N = HALF * 2;
+        const N = look === 'paper' ? PAPER.body.textureSize : HALF * 2;
         let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, nearX = Infinity, nearY = Infinity;
         for (let i = 0; i < gn.length; i++) {
           const a = gn[i];
@@ -1016,7 +1096,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
           const m = makeMini(PIXI, kit, env, n.type);
           const p = pos.get(n.ref ?? n.id);
           m.position.set(p.x, p.y);
-          m.__icon.width = m.__icon.height = 38;
+          m.__icon.width = m.__icon.height = look === 'paper' ? PAPER.icon.size : 38;
           inner.addChild(m);
         }
         inner.scale.set(sc);

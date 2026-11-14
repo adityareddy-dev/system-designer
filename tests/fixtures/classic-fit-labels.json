@@ -1,0 +1,567 @@
+{
+  "revision": "8c4746e1f64f152031589443f04bff3e0cfa4804",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "rows": [
+    {
+      "id": "photo-sharing",
+      "index": 0,
+      "name": "CDN, app servers, object storage",
+      "minNamePx": 13
+    },
+    {
+      "id": "photo-sharing",
+      "index": 1,
+      "name": "The same design with backups",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "podcast-hosting",
+      "index": 0,
+      "name": "CDN straight to object storage",
+      "minNamePx": 13.56350806451613
+    },
+    {
+      "id": "news-site",
+      "index": 0,
+      "name": "Short-lived CDN cache",
+      "minNamePx": 13
+    },
+    {
+      "id": "music-streaming",
+      "index": 0,
+      "name": "Audio on the CDN, accounts behind it",
+      "minNamePx": 13
+    },
+    {
+      "id": "video-on-demand",
+      "index": 0,
+      "name": "CDN with origin shield",
+      "minNamePx": 13
+    },
+    {
+      "id": "short-video-feed",
+      "index": 0,
+      "name": "CDN for clips, cached recommender for the feed",
+      "minNamePx": 13
+    },
+    {
+      "id": "video-upload-pipeline",
+      "index": 0,
+      "name": "Save first, convert later",
+      "minNamePx": 13
+    },
+    {
+      "id": "live-streaming",
+      "index": 0,
+      "name": "Two paths: picture on the CDN, chat on sockets",
+      "minNamePx": 13
+    },
+    {
+      "id": "comments-and-likes",
+      "index": 0,
+      "name": "Cache for reads, queue and batch for writes",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "chat-app",
+      "index": 0,
+      "name": "Sockets, idempotency and a message log",
+      "minNamePx": 13
+    },
+    {
+      "id": "stories",
+      "index": 0,
+      "name": "One-day storage, CDN, event queue",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "social-feed",
+      "index": 0,
+      "name": "Hybrid fanout: push for most, pull for celebrities",
+      "minNamePx": 13
+    },
+    {
+      "id": "group-chat-presence",
+      "index": 0,
+      "name": "Messages, presence and fanout kept apart",
+      "minNamePx": 13
+    },
+    {
+      "id": "invoicing-billing",
+      "index": 0,
+      "name": "Cache, queue and idempotency keys",
+      "minNamePx": 13
+    },
+    {
+      "id": "payroll-run",
+      "index": 0,
+      "name": "Queue the payments, key every one",
+      "minNamePx": 13
+    },
+    {
+      "id": "payments-checkout",
+      "index": 0,
+      "name": "Accept now, settle after",
+      "minNamePx": 13
+    },
+    {
+      "id": "payments-checkout",
+      "index": 1,
+      "name": "Pending payments with read replicas",
+      "minNamePx": 13
+    },
+    {
+      "id": "digital-wallet",
+      "index": 0,
+      "name": "One strict ledger, keyed transfers",
+      "minNamePx": 13
+    },
+    {
+      "id": "insurance-claims",
+      "index": 0,
+      "name": "Save first, process after",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "bnpl-credit",
+      "index": 0,
+      "name": "Score now, charge from a queue",
+      "minNamePx": 13
+    },
+    {
+      "id": "bank-ledger",
+      "index": 0,
+      "name": "Ledger shards with an active-active second region",
+      "minNamePx": 13
+    },
+    {
+      "id": "bank-ledger",
+      "index": 1,
+      "name": "Distributed SQL with an active second region",
+      "minNamePx": 13
+    },
+    {
+      "id": "stock-order-matching",
+      "index": 0,
+      "name": "Sequencer log, matching workers, consensus store",
+      "minNamePx": 13
+    },
+    {
+      "id": "fraud-detection",
+      "index": 0,
+      "name": "Fast checks, short timeouts, quick rollback",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "crypto-exchange",
+      "index": 0,
+      "name": "Edge first, ledger inside",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "appointment-booking",
+      "index": 0,
+      "name": "Cached browsing, queued reminders",
+      "minNamePx": 13
+    },
+    {
+      "id": "lab-results",
+      "index": 0,
+      "name": "Cached views, queue and a once-only notice",
+      "minNamePx": 13
+    },
+    {
+      "id": "benefits-portal",
+      "index": 0,
+      "name": "Small, safe, audit-ready",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "health-records",
+      "index": 0,
+      "name": "Proof built in, second region running hot",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "telehealth-video",
+      "index": 0,
+      "name": "Three zones, live gateway, queued notices",
+      "minNamePx": 13
+    },
+    {
+      "id": "pharmacy-stock",
+      "index": 0,
+      "name": "One truth, two copies",
+      "minNamePx": 13
+    },
+    {
+      "id": "course-enrollment-day",
+      "index": 0,
+      "name": "Copy the pages, queue the seats",
+      "minNamePx": 13
+    },
+    {
+      "id": "online-exam",
+      "index": 0,
+      "name": "Three fronts, one safe answer store",
+      "minNamePx": 13
+    },
+    {
+      "id": "vaccine-signup-surge",
+      "index": 0,
+      "name": "Limit, copy, scale, keep one truth",
+      "minNamePx": 13
+    },
+    {
+      "id": "tax-deadline-surge",
+      "index": 0,
+      "name": "Autoscaled front, queued back, once-only payments",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "package-tracking",
+      "index": 0,
+      "name": "Cached lookups, queued alerts",
+      "minNamePx": 13
+    },
+    {
+      "id": "package-tracking",
+      "index": 1,
+      "name": "Fully managed, pay for every call",
+      "minNamePx": 13
+    },
+    {
+      "id": "fleet-telemetry",
+      "index": 0,
+      "name": "Stream in front of a time-series store",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "food-delivery",
+      "index": 0,
+      "name": "Fused payments, cached menus, fast positions",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "ride-hailing-dispatch",
+      "index": 0,
+      "name": "Firehose, hot-cell cache, careful ride records",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "maps-routing",
+      "index": 0,
+      "name": "CDN first, two regions behind it",
+      "minNamePx": 13
+    },
+    {
+      "id": "hotel-booking",
+      "index": 0,
+      "name": "Fast copy for search, one truth for booking",
+      "minNamePx": 13
+    },
+    {
+      "id": "airline-booking",
+      "index": 0,
+      "name": "One strong database, approximate everything around it",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "airline-booking",
+      "index": 1,
+      "name": "Distributed SQL across two regions",
+      "minNamePx": 13
+    },
+    {
+      "id": "concert-ticket-drop",
+      "index": 0,
+      "name": "Waiting room in front of the seat database",
+      "minNamePx": 13
+    },
+    {
+      "id": "concert-ticket-drop",
+      "index": 1,
+      "name": "Over-provisioned, no waiting room",
+      "minNamePx": 13
+    },
+    {
+      "id": "smart-home-hub",
+      "index": 0,
+      "name": "Two regions, connection layer in front",
+      "minNamePx": 13
+    },
+    {
+      "id": "smart-home-hub",
+      "index": 1,
+      "name": "One serving region with active recovery",
+      "minNamePx": 13
+    },
+    {
+      "id": "smart-power-grid",
+      "index": 0,
+      "name": "Stream, hot database, cold archive",
+      "minNamePx": 13
+    },
+    {
+      "id": "url-shortener",
+      "index": 0,
+      "name": "Cached redirects at the edge",
+      "minNamePx": 13
+    },
+    {
+      "id": "url-shortener",
+      "index": 1,
+      "name": "Serverless at the edge",
+      "minNamePx": 16.799999999999997
+    },
+    {
+      "id": "url-shortener",
+      "index": 2,
+      "name": "Servers, cache and autoscaling",
+      "minNamePx": 13.76978417266187
+    },
+    {
+      "id": "leaderboards",
+      "index": 0,
+      "name": "Five-second edge copy",
+      "minNamePx": 13
+    },
+    {
+      "id": "rate-limiter-service",
+      "index": 0,
+      "name": "Limiter in front of the gateway",
+      "minNamePx": 13
+    },
+    {
+      "id": "rate-limiter-service",
+      "index": 1,
+      "name": "Limit at the gateway only",
+      "minNamePx": 16.799999999999997
+    },
+    {
+      "id": "search-autocomplete",
+      "index": 0,
+      "name": "Edge function and prefix cache",
+      "minNamePx": 13
+    },
+    {
+      "id": "search-autocomplete",
+      "index": 1,
+      "name": "Regional servers",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "notification-service",
+      "index": 0,
+      "name": "Queue, idempotent workers, push and email",
+      "minNamePx": 13
+    },
+    {
+      "id": "recommendations",
+      "index": 0,
+      "name": "Cache, breaker, fallback",
+      "minNamePx": 13
+    },
+    {
+      "id": "matchmaking",
+      "index": 0,
+      "name": "Three independent regions",
+      "minNamePx": 13
+    },
+    {
+      "id": "file-sync",
+      "index": 0,
+      "name": "Blocks in object storage, metadata sharded",
+      "minNamePx": 13
+    },
+    {
+      "id": "ci-cd-pipeline",
+      "index": 0,
+      "name": "Queue with autoscaling workers",
+      "minNamePx": 13
+    },
+    {
+      "id": "feature-flag-service",
+      "index": 0,
+      "name": "CDN-first with staged changes",
+      "minNamePx": 13
+    },
+    {
+      "id": "ad-serving",
+      "index": 0,
+      "name": "Cache, score, auction, then stream",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "ai-chatbot-serving",
+      "index": 0,
+      "name": "Gateway, cache, own GPUs, hosted overflow",
+      "minNamePx": 13
+    },
+    {
+      "id": "collaborative-docs",
+      "index": 0,
+      "name": "Owner per document with a durable log",
+      "minNamePx": 13
+    },
+    {
+      "id": "email-service",
+      "index": 0,
+      "name": "Queue, mailbox, search index on the side",
+      "minNamePx": 13
+    },
+    {
+      "id": "observability-platform",
+      "index": 0,
+      "name": "Buffered ingest, sharded store, cached queries",
+      "minNamePx": 13
+    },
+    {
+      "id": "restaurant-reservations",
+      "index": 0,
+      "name": "Cache for looking, one database for booking",
+      "minNamePx": 13.56350806451613
+    },
+    {
+      "id": "ev-charging-network",
+      "index": 0,
+      "name": "Status in a key-value store, sessions through a queue",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "calendar-invites",
+      "index": 0,
+      "name": "Queue the alerts, key every invite",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "status-page",
+      "index": 0,
+      "name": "Edge copy with a spread-out origin",
+      "minNamePx": 13.56350806451613
+    },
+    {
+      "id": "semantic-search",
+      "index": 0,
+      "name": "Remember repeated questions",
+      "minNamePx": 13
+    },
+    {
+      "id": "industrial-sensors",
+      "index": 0,
+      "name": "Stream, alarm processor and tiered storage",
+      "minNamePx": 13
+    },
+    {
+      "id": "game-patch-day",
+      "index": 0,
+      "name": "Long edge copies and an origin shield",
+      "minNamePx": 13.56350806451613
+    },
+    {
+      "id": "job-scheduler",
+      "index": 0,
+      "name": "Queue, workers and an idempotency store",
+      "minNamePx": 13
+    },
+    {
+      "id": "firmware-rollout",
+      "index": 0,
+      "name": "Edge pieces, rate-limited status calls",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "battle-royale",
+      "index": 0,
+      "name": "Socket gateway, pub/sub and a hot-item cache",
+      "minNamePx": 13.000000000000002
+    },
+    {
+      "id": "shopping-cart",
+      "index": 0,
+      "name": "Cache for products, key-value store for carts",
+      "minNamePx": 13.56350806451613
+    },
+    {
+      "id": "flash-sale-inventory",
+      "index": 0,
+      "name": "Queue in front of one safe stock counter",
+      "minNamePx": 13
+    },
+    {
+      "id": "login-sso",
+      "index": 0,
+      "name": "Fast sessions, guarded sign-in, audit trail",
+      "minNamePx": 13
+    },
+    {
+      "id": "clickstream-analytics",
+      "index": 0,
+      "name": "Stream in, summaries out, tiered storage",
+      "minNamePx": 13
+    },
+    {
+      "id": "otp-sms-delivery",
+      "index": 0,
+      "name": "Rate limit, queue, one send per code",
+      "minNamePx": 13
+    },
+    {
+      "id": "call-routing",
+      "index": 0,
+      "name": "Live gateways and a presence map",
+      "minNamePx": 13
+    },
+    {
+      "id": "object-storage",
+      "index": 0,
+      "name": "Metadata store, object storage, CDN and tiering",
+      "minNamePx": 13
+    },
+    {
+      "id": "black-friday-marketplace",
+      "index": 0,
+      "name": "Browse from cache, search from an index, pay through a queue",
+      "minNamePx": 13
+    },
+    {
+      "id": "bulk-sms-campaigns",
+      "index": 0,
+      "name": "Queue at the carrier pace, key and consent on every send",
+      "minNamePx": 13
+    },
+    {
+      "id": "logs-platform",
+      "index": 0,
+      "name": "Durable chunks and bounded label queries",
+      "minNamePx": 13
+    },
+    {
+      "id": "tracing-platform",
+      "index": 0,
+      "name": "Durable blocks with cached trace lookups",
+      "minNamePx": 13
+    },
+    {
+      "id": "tenant-metrics",
+      "index": 0,
+      "name": "Shared admission and a three-zone time-series fleet",
+      "minNamePx": 13
+    },
+    {
+      "id": "device-notes",
+      "index": 0,
+      "name": "Encrypted operations with a synchronous authority",
+      "minNamePx": 13
+    },
+    {
+      "id": "wearable-health",
+      "index": 0,
+      "name": "Device-owned readings and sparse encrypted summaries",
+      "minNamePx": 13
+    }
+  ]
+}

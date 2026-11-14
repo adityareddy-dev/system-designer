@@ -7,6 +7,7 @@ import { pathLayout } from '../../render/layout.js';
 import { fitInsets } from '../../render/fit.js';
 import { renderDesignCheck } from './design-check.js';
 import { createSim } from '../../sim/engine.js';
+import { canvasLook } from '../../render/look.js';
 import { createScene } from '../../render/scene.js';
 import { h, iconEl, clamp, clockLabel, snd as sndRaw, debounce, STATUS_NAMES, fmtMs, fmtPct } from './util.js';
 import { createSteps } from './steps.js';
@@ -119,7 +120,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   hostEl.append(root);
 
   // ---- scene
-  const scene = await createScene(stage, { catalog, palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
+  const scene = await createScene(stage, { catalog, look: canvasLook(mode, opts.problem), palette: ctx.palette(), theme: ctx.theme(), reducedMotion: ctx.reducedMotion(), quality: ctx.settings.get('quality') || 'auto' });
   const routeTrace = createRouteTrace(root, catalog, scene);
   let traceOptBtn = null;
   function refreshTrace() {
@@ -439,12 +440,16 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   // Whether a part, or the name under it, now sits under a panel.
   function diagramCovered() {
     try {
-      const a = freeArea(), o = scene.worldToScreen(0, 0), half = 36 * (scene.worldToScreen(1, 0).x - o.x);
-      const room = a.room();
-      return graph().nodes.some((n) => {
-        const p = scene.worldToScreen(n.x, n.y);
-        return p.x - half < a.l + 4 || p.x + half > a.w - a.r - 4 || p.y - half < room.t + 2 || p.y + half + 22 > a.h - room.b - 8
-          || a.blocks.some((k) => p.x + half > k.x && p.x - half < k.x + k.width && p.y + half > k.y && p.y - half < k.y + k.height);
+      const a = freeArea(), room = a.room(), drawing = scene.measureDiagram();
+      // A readable phone Fit may pan across a large drawing. Parts beyond the
+      // viewport do not mean the visible cards are covered by a panel.
+      return [...drawing.parts,...drawing.labels].some(p => {
+        if (p.visible === false) return false;
+        const cx=p.x+p.width/2,cy=p.y+p.height/2;
+        if(cx<a.l||cx>a.w-a.r||cy<room.t||cy>a.h-room.b)return false;
+        return (p.x<a.l+4)||(p.x+p.width>a.w-a.r-4)
+          ||p.y<room.t+2||p.y+p.height>a.h-room.b-8
+          ||a.blocks.some(k=>p.x+p.width>k.x&&p.x<k.x+k.width&&p.y+p.height>k.y&&p.y<k.y+k.height);
       });
     } catch { return false; }
   }
@@ -541,12 +546,12 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         const insets = { l: a.l, t: a.t, r: a.r, b: a.b };
         if (cover) { if (cover.x + cover.width / 2 > a.w / 2) insets.r = Math.max(insets.r, a.w - cover.x); else insets.l = Math.max(insets.l, cover.x + cover.width); }
         // room for the part, its connect handle and its name at the current zoom
-        const zoom = scene.worldToScreen(1, 0).x - scene.worldToScreen(0, 0).x, edge = 74 * zoom + 14;
+        const zoom = scene.stats().zoom, edge = 74 * zoom + 14;
         later(() => { if (!S.destroyed && !S.connectFrom) { try { scene.reveal(x, y, insets, { l: edge, r: edge, t: 36 * zoom + 44, b: 36 * zoom + 56 }); } catch { /* optional */ } } }, 60);
         return;
       }
       // the part, its name under it and a little air must sit clear of the sheet and the bars
-      const zoom = scene.worldToScreen(1, 0).x - scene.worldToScreen(0, 0).x, half = 36 * zoom;
+      const zoom = scene.stats().zoom, half = 36 * zoom;
       if (sp.x - half < a.l + 4 || sp.x + half > a.w - a.r - 4 || sp.y - half < a.t + 4 || sp.y + half + 28 > a.h - a.b - 6) later(() => {
         if (S.destroyed || S.connectFrom || performance.now() < (S.editUntil || 0)) return;
         if (S.selected) {
@@ -1793,7 +1798,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (!stepped || interview) return;
     if (!S.result && !(ctx.progress?.get?.(S.problem.id)?.attempts > 0)) { toast('The editorial unlocks after one finished traffic day.', 'info'); return; }
     renderEditorial(editorialWrap, {
-      problem: S.problem, catalog, passed: !!(S.result?.passed || ctx.progress?.get?.(S.problem.id)?.stars > 0),
+      problem: S.problem, catalog, look: canvasLook(mode, S.problem), passed: !!(S.result?.passed || ctx.progress?.get?.(S.problem.id)?.stars > 0),
       onClose: closeEditorial, onLoad: loadDesign, onShown: () => assist('you opened the editorial answer'),
     });
     editorialWrap.hidden = false; editorialWrap.scrollTop = 0;
@@ -1971,6 +1976,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     // a twist day plays the same problem on its other event list (content/problems/twists.js); it is practice only
     const base = S.twist && problem.twist ? twistProblem(problem) : problem;
     S.problem = withSource(spreadClients(warmUpOf(base)));
+    scene.setLook(canvasLook(mode, S.problem)).catch(e => toast('Could not load the canvas look: ' + e.message, 'bad'));
     S.result = null;
     S.pendingTransfer = null;
     S.undo.length = 0; S.redo.length = 0;
@@ -2143,6 +2149,8 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (mod || ev.altKey) return;
     if (k === '/') { ev.preventDefault(); toolbar.focusSearch(); }
     else if (k === 'f' || k === 'F') fitAll();
+    else if (k === '+' || k === '=') { ev.preventDefault(); scene.zoomBy(1.25); }
+    else if (k === '-' || k === '_') { ev.preventDefault(); scene.zoomBy(1 / 1.25); }
     else if (k === 'Delete' || k === 'Backspace') { if (S.selected) { ev.preventDefault(); removeNode(S.selected); } }
     else if (k === 'Enter') { if (S.sim.phase === 'build' && t === document.body) { ev.preventDefault(); hud.markRan(); startFromUi(); } }
     else if (k === ' ') { ev.preventDefault(); if (S.sim.phase === 'running') pause(); else if (S.sim.phase === 'paused') { hud.markRan(); resume(); } }

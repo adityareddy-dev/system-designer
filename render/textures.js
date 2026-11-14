@@ -2,6 +2,8 @@
 
 import { hexStr } from './theme.js';
 import { iconImage } from './icons.js';
+import { addPaperTextures } from './paper.js';
+import { addE08Textures } from './e08.js';
 
 export const P_CELL = 48;   // atlas cell, px
 export const P_SHAPE = 34;  // shape size inside a cell, px (particle scale = worldSize / P_SHAPE)
@@ -258,7 +260,7 @@ export async function createKit(PIXI, P, catalog, res, onIconLoad) {
   const glyphs = glyphContexts(PIXI, P);
   const icons = createIconCache(PIXI, P, res, onIconLoad);
   const typeIndex = new Map(types.map((t, i) => [t.id, i]));
-  return {
+  const kit = {
     P, res, atlas, fx, bodyTex, downTex, selectTex, leadTex, select, ghost, faint, glyphs, icons, typeIndex,
     destroy() {
       atlas.textures.forEach(t => t.destroy(false));
@@ -271,4 +273,5 @@ export async function createKit(PIXI, P, catalog, res, onIconLoad) {
       icons.destroy();
     },
   };
+  return P.look === 'paper' ? addPaperTextures(PIXI, kit) : P.look === 'e08' ? addE08Textures(PIXI, kit) : kit;
 }

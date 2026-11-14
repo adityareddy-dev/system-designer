@@ -6,6 +6,7 @@ import { serveGame } from './browser-server.js';
 const site = await serveGame();
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: 'new', args: ['--no-sandbox','--enable-unsafe-swiftshader'] });
 try {
+  for (const look of ['classic','paper']) {
   const page = await browser.newPage();
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem('hotpath.v1.seenIntro', 'true');
@@ -17,7 +18,9 @@ try {
   });
   await page.setRequestInterception(true);
   page.on('request', request => {
-    if (new URL(request.url()).pathname.endsWith('/render/edges.js')) {
+    if (new URL(request.url()).pathname.endsWith('/render/look.js')) {
+      request.respond({contentType:'text/javascript',body:`export const canvasLook = () => '${look}';`});
+    } else if (new URL(request.url()).pathname.endsWith('/render/edges.js')) {
       const source = fs.readFileSync(new URL('../render/edges.js', import.meta.url), 'utf8').replace('views.set(e.id, v);', 'views.set(e.id, v); window.__resetEdges.set(e.id, v);');
       request.respond({ contentType: 'text/javascript', body: source });
     } else if (new URL(request.url()).pathname.endsWith('/render/nodes.js')) {
@@ -34,7 +37,7 @@ try {
   await page.waitForFunction(() => [...window.__resetEdges.values()].some(e => e.quiet));
   await page.mouse.move(400,300); await page.mouse.wheel({deltaY:-2000});
   await page.waitForFunction(() => __game.getState().view.zoom > 1.05);
-  await page.waitForFunction(() => [...window.__resetNodes.values()].some(v => v.pile.visible));
+  await page.waitForFunction(look => [...window.__resetNodes.values()].some(v => look==='paper' ? v.paperReading.text.includes('rejected') : v.pile.visible),{},look);
   await page.evaluate(() => window.__resetScene.flashEvent('noisy-neighbor',['app'],3));
   await page.waitForFunction(() => window.__resetNodes.get('app').event);
   await page.evaluate(() => __game.reset());
@@ -44,13 +47,15 @@ try {
   assert(wires.every(e => !e.quiet && e.alpha === 1), JSON.stringify(wires));
   await page.mouse.wheel({deltaY:-2000});
   await page.waitForFunction(() => __game.getState().view.zoom > 1.05);
-  assert(await page.evaluate(() => [...window.__resetNodes.values()].every(v => !v.pile.visible)), 'overload piles stay cleared when zooming back in after reset');
+  assert(await page.evaluate(look => [...window.__resetNodes.values()].every(v => look==='paper' ? !v.paperWaiting.visible && v.paperStatus.text==='ready' : !v.pile.visible),look), 'overload readings stay cleared when zooming back in after reset');
   assert(await page.evaluate(() => [...window.__resetNodes.values()].every(v => !v.event)), 'event highlights clear without waiting for their minimum display time');
   assert(!await page.evaluate(() => __game.getState().view.diagram.labels.some(l => l.text.startsWith('First limit'))));
   await page.evaluate(() => { __game.placeComponent('queue',800,0); __game.startTraffic(); __game.pause(); __game.step(60000); });
-  await page.waitForFunction(() => [...window.__resetNodes.values()].some(v => v.kind === 'queue' && !v.icon.visible));
+  await page.waitForFunction(look => [...window.__resetNodes.values()].some(v => v.kind === 'queue' && (look==='paper' ? v.live && v.icon.visible : !v.icon.visible)),{},look);
   await page.evaluate(() => __game.reset());
   await new Promise(r => setTimeout(r,200));
   assert(await page.evaluate(() => [...window.__resetNodes.values()].filter(v => v.kind === 'queue').every(v => v.icon.visible && !v.qbar.visible)), 'reset restores queue icons after hiding the bounded fill');
-  console.log('Sandbox reset clears first-limit labels and every edge quiet flag and alpha.');
+  console.log(look+': sandbox reset clears overload readings, first-limit labels and every edge quiet flag and alpha.');
+  await page.close();
+  }
 } finally { await browser.close(); await site.close(); }

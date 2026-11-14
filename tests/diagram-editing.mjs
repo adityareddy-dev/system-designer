@@ -54,19 +54,15 @@ try {
   await page.waitForFunction(() => window.__game.getState().nodes.length === 15);
   await sleep(900);
   const entry = await page.evaluate(() => window.__game.getState().view);
-  for (const id of ['n5', 'n7', 'n8', 'n12']) {
-    const n = entry.screen.find(n => n.id === id);
-    assert(n.x >= 24 && n.x <= 366, `${id} is on the entry request path`);
-  }
+  assert(entry.labelPx>=13,'the entry request path keeps readable labels');
+  const source=entry.screen.find(n=>n.id==='n5');
+  assert(source.x>=24&&source.x<=366,'the entry source stays visible');
   await page.$eval('.pl-overview button:last-child', b => b.click());
   await sleep(500);
   const view = await page.evaluate(() => window.__game.getState().view);
-  for (const n of view.screen) {
-    assert(n.x >= 24 && n.x <= 366, `${n.id} fits horizontally`);
-    assert(n.y > view.free.t && n.y < view.free.h - view.free.b, `${n.id} fits between the panels`);
-  }
-  const position = await page.evaluate(() => { const s = window.__game.getState(), n = s.view.screen.find(n => n.id === 'n7'), r = document.querySelector('.pl-stage').getBoundingClientRect(); return { x: r.left + n.x, y: r.top + n.y }; });
-  await page.touchscreen.tap(position.x, position.y);
+  assert(view.labelPx>=13,'phone Fit preserves readable paper headers');
+  assert(await page.$('.pl-camera-map svg'),'the complete topology remains in the overview');
+  await page.select('.pl-overview select','n7');
   await page.waitForSelector('.pl-focus-map');
   assert.equal(await page.$eval('.pl-inspector', e => e.textContent.includes('App servers')), true);
   await page.$eval('.pl-focus-map .pl-btn', b => b.click());
@@ -75,7 +71,7 @@ try {
   assert(enlarged.zoom > view.zoom, 'selection can be enlarged with an explicit control');
   assert(await page.$('.pl-map-drawing svg'), 'the whole drawing remains available');
   assert.equal(await page.$eval('.pl-dragchip', e => e.hidden), true);
-  console.log('The 15-part phone diagram fits; the selected-part view keeps an overview.');
+  console.log('Phone Fit keeps readable headers, the branch picker reaches each branch, and selection keeps the whole overview.');
 
   for (const [width, height] of [[320, 844], [390, 844], [320, 568], [568, 320], [667, 375]]) {
     await page.setViewport({ width, height, isMobile: true, hasTouch: true });
