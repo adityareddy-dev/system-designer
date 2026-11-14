@@ -76,9 +76,9 @@ export function createCamera(world) {
       const pw = Math.max(40, w - P.l - P.r), ph = Math.max(40, h - P.t - P.b);
       // Explicit whole-graph fits can opt below the interactive zoom minimum.
       const tz = Math.min(ZOOM_MAX, Math.max(opts.minZ ?? 0, Math.min(pw / bw, ph / bh, opts.maxZ ?? 1.25)));
-      // when the graph is wider or taller than the free area at this zoom, show its start (the users) instead of its middle
-      const midX = bw * tz > pw ? minX + pw / 2 / tz : (minX + maxX) / 2;
-      const midY = bh * tz > ph ? minY + ph / 2 / tz : (minY + maxY) / 2;
+      // Overflow follows the requested focus, clamped to avoid blank space. Other callers keep the start (the users).
+      const midX = bw * tz > pw ? Math.max(minX + pw / 2 / tz, Math.min(maxX - pw / 2 / tz, opts.center?.x ?? minX + pw / 2 / tz)) : (minX + maxX) / 2;
+      const midY = bh * tz > ph ? Math.max(minY + ph / 2 / tz, Math.min(maxY - ph / 2 / tz, opts.center?.y ?? minY + ph / 2 / tz)) : (minY + maxY) / 2;
       const to = { x: midX - (P.l - P.r) / 2 / tz, y: midY - (P.t - P.b) / 2 / tz, z: tz };
       if (!animate || reduced) { cx = to.x; cy = to.y; z = to.z; tween = null; lastZoomChange = performance.now(); apply(); return; }
       tween = { from: { x: cx, y: cy, z }, to, t: 0, dur: 320 };

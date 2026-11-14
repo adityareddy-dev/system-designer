@@ -23,8 +23,8 @@ async function inspect(p){
 async function fit(p){await p.click('[aria-label="Fit to screen (F)"]');await sleep(450);}
 async function capture(p,key){await p.mouse.move(0,0);await sleep(120);const m=await p.evaluate(()=>{
  const vs=[...window.reviewNodes.views.values()],stage=document.querySelector('.pl-stage canvas').getBoundingClientRect(),box=t=>{const b=t.getBounds();return{x:b.x,y:b.y,width:b.width,height:b.height};},hit=(a,b)=>a.x<b.x+b.width-.1&&a.x+a.width>b.x+.1&&a.y<b.y+b.height-.1&&a.y+a.height>b.y+.1;
- const cards=vs.map(v=>{const r=v.paperBox,a=v.c.toGlobal({x:r.x,y:r.y}),b=v.c.toGlobal({x:r.x+r.width,y:r.y+r.height});return{id:v.id,x:a.x,y:a.y,width:b.x-a.x,height:b.y-a.y};});
- const texts=vs.flatMap(v=>['paperTitle','paperStatus','paperReading','paperWaiting','evidenceT'].filter(k=>v[k].visible&&v[k].renderable&&v[k].text).map(k=>({id:v.id,key:k,text:v[k].text,box:box(v[k]),px:v[k].style.fontSize*Math.abs(v[k].worldTransform.a)})));
+ const cards=vs.map(v=>{const r=v.paperBox,a=v.c.toGlobal({x:r.x,y:r.y}),b=v.c.toGlobal({x:r.x+r.width,y:r.y+r.height});return{id:v.id,shown:v.c.visible,x:a.x,y:a.y,width:b.x-a.x,height:b.y-a.y};});
+ const texts=vs.flatMap(v=>['paperTitle','paperStatus','paperReading','paperWaiting','evidenceT'].filter(k=>v.c.visible&&v[k].visible&&v[k].renderable&&v[k].text).map(k=>({id:v.id,key:k,text:v[k].text,box:box(v[k]),px:v[k].style.fontSize*Math.abs(v[k].worldTransform.a)})));
  const viewport={x:0,y:0,width:stage.width,height:stage.height};
  const ui=[...document.querySelectorAll('.pl-stepper,.pl-toptools,.pl-toolbar,.pl-hud,.pl-req-card,.pl-overview,.pl-add-btn,.pl-palette-toggle')].filter(e=>e.checkVisibility()).map(e=>{const b=e.getBoundingClientRect();return{selector:e.className,x:b.x-stage.x,y:b.y-stage.y,width:b.width,height:b.height};});
  const visibleTexts=texts.filter(t=>hit(t.box,viewport));
@@ -34,6 +34,19 @@ async function capture(p,key){await p.mouse.move(0,0);await sleep(120);const m=a
  });if(process.env.FIT_OUT)await p.screenshot({path:out+'/'+key+'.png'});save();console.log(key,'overlap',m.overlaps.length,'covered',m.covered.length,'clipped',m.clippedTexts.map(t=>t.text),'UI',m.uiCovered.map(t=>t.text));return{key,...m};}
 async function load(p,kind){return p.evaluate(async kind=>{const prob=(await import('./content/problems/index.js')).problemById.get('url-shortener');let d=prob.editorial.designs[0];if(kind==='spike')d={name:'Reviewer three-server evening spike',graph:{nodes:[...prob.starter.nodes,{ref:'lb',type:'regional-lb',x:-220,y:0,units:10,tier:'XL'},...[-180,0,180].map((y,i)=>({ref:'api'+i,type:'vm-fleet',x:20,y,units:1,tier:'S'})),{ref:'cache',type:'cache',x:300,y:-140,units:24,tier:'XL'},{ref:'db',type:'sql-primary',x:300,y:140,units:24,tier:'XL'}],edges:[['users','lb'],['app','lb'],...['api0','api1','api2'].flatMap(a=>[['lb',a],[a,'cache']]),['cache','db']]}};window.review.loadDesign(d);window.__game.startTraffic();window.__game.pause();window.__game.step(kind==='spike'?(19*60+40)*60000:14*3600000);return window.__game.getState();},kind);}
 try{
+ await test('closed-panel Fit keeps the bottom row clear of the status panel',async()=>{
+  const p=await page();try{
+   await p.evaluate(()=>window.__game.loadProblem('group-chat-presence'));
+   await p.evaluate(async()=>{window.review.loadDesign((await import('./content/problems/index.js')).problemById.get('group-chat-presence').editorial.designs[0]);window.__game.startTraffic();window.__game.pause();window.__game.step(21*60000);});
+   await fit(p);const m=await capture(p,'regression-closed-panel');log.scenes.push(m);save();assert.deepEqual(m.uiCovered,[]);
+   const reached=await p.evaluate(()=>{
+    const v=[...window.reviewNodes.views.values()].find(v=>v.id==='bk'),r=window.__game.getState().view.free;
+    const b=v.paperTitle.getBounds(),x=r.l+(r.w-r.l-r.r)/2,y=r.t+(r.h-r.t-r.b)/2;
+    window.review.scene.panBy(x-b.x-b.width/2,y-b.y-b.height/2);window.review.scene.renderNow(1000);
+    const t=v.paperTitle.getBounds();return v.c.visible&&t.x>=r.l&&t.y>=r.t&&t.x+t.width<=r.w-r.r&&t.y+t.height<=r.h-r.b;
+   });assert(reached,'panning reveals the complete bottom-row name');
+  }finally{await p.browserContext().close();}
+ });
  for(const id of ['bank-ledger','video-upload-pipeline'])await test(`desktop ${id} Fit with inspector keeps cards separate`,async()=>{
  const p=await page();try{
  await p.evaluate(id=>window.__game.loadProblem(id),id);
@@ -52,7 +65,7 @@ try{
   try{
    await load(p,kind);await fit(p);const m=await capture(p,'regression-phone-'+kind);log.scenes.push(m);save();assert.deepEqual(m.clippedTexts,[]);
    const hit=(a,b)=>a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
-   assert.deepEqual(m.cards.filter(c=>hit(c,m.viewport)&&(c.x<0||c.y<0||c.x+c.width>m.viewport.width||c.y+c.height>m.viewport.height)),[],'visible cards fully inside canvas');
+   assert.deepEqual(m.cards.filter(c=>c.shown&&hit(c,m.viewport)&&(c.x<0||c.y<0||c.x+c.width>m.viewport.width||c.y+c.height>m.viewport.height)),[],'visible cards fully inside canvas');
   }finally{await p.browserContext().close();}
  });
  assert.deepEqual(log.errors,[],'no console or page errors');

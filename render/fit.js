@@ -48,3 +48,24 @@ export function fitInsets(box, view, base, blocks = [], maxZ = Infinity, gap = {
   if (blocks.some(hits)) return best.insets;
   return { l: rect.x, t: rect.y, r: view.w - rect.x - w, b: view.h - rect.y - h };
 }
+
+// A readable Fit can show only part of the graph. Place its window between cards,
+// including their hard shadows, so the next column never leaves half a name at an edge.
+export function fitPaperWindow(cards, view, { padding = 0, focusId } = {}) {
+  const P = typeof padding === 'number' ? { l: padding, t: padding, r: padding, b: padding } : padding;
+  const inside = (b, x, y) => b.x+x >= 1 && b.y+y >= 1 && b.x+x+b.width <= view.w-1 && b.y+y+b.height <= view.h-1;
+  const hits = (b, x, y) => b.x+x < view.w && b.y+y < view.h && b.x+x+b.width > 0 && b.y+y+b.height > 0;
+  const clear = (b, x, y) => b.x+x >= (P.l||0) && b.y+y >= (P.t||0) && b.x+x+b.width <= view.w-(P.r||0) && b.y+y+b.height <= view.h-(P.b||0) && !(P.blocks || []).some(k => b.x+x < k.x+k.width && b.x+x+b.width > k.x && b.y+y < k.y+k.height && b.y+y+b.height > k.y);
+  if (cards.every(b => !hits(b, 0, 0) || (inside(b, 0, 0) && clear(b, 0, 0)))) return { x: 0, y: 0 };
+  const candidates = (axis, size, extent, low, high) => [...new Set([0, ...cards.flatMap(b => [1-b[axis], extent-1-b[axis]-b[size], -1-b[axis]-b[size], extent+1-b[axis], low-b[axis], high-b[axis]-b[size]])])];
+  const xs = candidates('x', 'width', view.w, P.l||1, view.w-(P.r||1)), ys = candidates('y', 'height', view.h, P.t||1, view.h-(P.b||1));
+  let best = null;
+  for (const x of xs) for (const y of ys) {
+    const visible = cards.filter(b => hits(b, x, y));
+    if (!visible.length || visible.some(b => !inside(b, x, y)) || (focusId && !visible.some(b => b.id === focusId && clear(b, x, y)))) continue;
+    const free = visible.filter(b => clear(b, x, y)).length;
+    const distance = Math.hypot(x, y);
+    if (!best || free > best.free || (free === best.free && distance < best.distance)) best = { x, y, free, distance };
+  }
+  return best || { x: 0, y: 0 };
+}

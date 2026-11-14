@@ -444,9 +444,10 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       // A readable phone Fit may pan across a large drawing. Parts beyond the
       // viewport do not mean the visible cards are covered by a panel.
       return [...drawing.parts,...drawing.labels].some(p => {
+        if (p.visible === false) return false;
         const cx=p.x+p.width/2,cy=p.y+p.height/2;
         if(cx<a.l||cx>a.w-a.r||cy<room.t||cy>a.h-room.b)return false;
-        return (a.l>0&&p.x<a.l+4)||(a.r>0&&p.x+p.width>a.w-a.r-4)
+        return (p.x<a.l+4)||(p.x+p.width>a.w-a.r-4)
           ||p.y<room.t+2||p.y+p.height>a.h-room.b-8
           ||a.blocks.some(k=>p.x+p.width>k.x&&p.x<k.x+k.width&&p.y+p.height>k.y&&p.y<k.y+k.height);
       });

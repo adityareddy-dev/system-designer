@@ -66,16 +66,30 @@ try {
     function canvasWidth(){return document.querySelector('.pl-stage canvas').getBoundingClientRect().width;}
     function canvasHeight(){return document.querySelector('.pl-stage canvas').getBoundingClientRect().height;}
     const chrome=[...document.querySelectorAll('.pl-stepper,.pl-toptools,.pl-toolbar,.pl-hud,.pl-req-card')].filter(e=>e.getClientRects().length).map(e=>rect(e.getBoundingClientRect()));
-    const canvas=document.querySelector('.pl-stage canvas').getBoundingClientRect(),offscreen=names.filter(n=>n.box.x<0||n.box.y<0||n.box.x+n.box.width>canvas.width||n.box.y+n.box.height>canvas.height).map(n=>n.id);
+    const canvas=document.querySelector('.pl-stage canvas').getBoundingClientRect(),offscreen=names.filter(n=>n.shown&&(n.box.x<0||n.box.y<0||n.box.x+n.box.width>canvas.width||n.box.y+n.box.height>canvas.height)).map(n=>n.id);
     return{textOverlaps,uiCovered,paintOrder,zoom:z,parts:vs.length,names,glyphs,minNamePx:Math.min(...names.map(n=>n.px)),minGlyphPx:Math.min(...glyphs.map(n=>n.px)),cards,overlaps,covered,headerOverflow,offscreen,gameErrors:window.__game.getState().errors,model:controller.state.sim.getGraph().nodes.map(n=>({id:n.id,type:n.type,x:n.x,y:n.y})),chrome};
    });
    const row={id:p.id,index:i,name:p.names[i],...m};rows.push(row);
    if(out){fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({revision:revision||'working',errors,rows},null,2));if(process.env.READABILITY_SHOTS)await page.screenshot({path:path.join(process.env.READABILITY_SHOTS,p.id+(i?`-${i+1}`:'')+'.png')});}
    console.log(p.id,i+1,p.names.length,'name',m.minNamePx.toFixed(2),'glyph',m.minGlyphPx.toFixed(2),'overlaps',m.overlaps.length,'covered',m.covered.length);
+   // The separation floor may require a window onto a tall drawing. Every part
+   // must still be reachable at the same readable scale through an ordinary pan.
+   if(!revision||process.env.READABILITY_ASSERT){
+    const reachable=await page.evaluate(()=>{
+     const {scene}=window.readability,free=window.__game.getState().view.free;
+     return [...window.readabilityNodes.views.values()].map(v=>{
+      const b=v.paperTitle.getBounds(),cx=free.l+(free.w-free.l-free.r)/2,cy=free.t+(free.h-free.t-free.b)/2;
+      scene.panBy(cx-b.x-b.width/2,cy-b.y-b.height/2);scene.renderNow(1000);
+      const t=v.paperTitle.getBounds();
+      return {id:v.id,reached:v.c.visible&&t.x>=free.l&&t.y>=free.t&&t.x+t.width<=free.w-free.r&&t.y+t.height<=free.h-free.b};
+     });
+    });
+    assert(reachable.every(n=>n.reached),`${p.id}/${i}: panning must reach every complete name`);
+   }
   }
  }
  assert.equal(rows.length,93);assert.deepEqual(errors,[]);
- if(!revision||process.env.READABILITY_ASSERT)for(const r of rows){assert(r.paintOrder,r.id+' text and glyph paint above card');const classic=baseline.rows.find(b=>b.id===r.id&&b.index===r.index);assert(r.minNamePx>=classic.minNamePx-.01,`${r.id}/${r.index}: paper ${r.minNamePx} < classic ${classic.minNamePx}`);assert(r.minNamePx>=12-.01,`${r.id}/${r.index}: name ${r.minNamePx}px`);assert(r.minGlyphPx>=14-.01,`${r.id}: glyph ${r.minGlyphPx}px`);assert(r.names.every(n=>n.shown),`${r.id}: hidden name`);assert.deepEqual(r.overlaps,[],r.id+' overlaps');assert.deepEqual(r.covered,[],r.id+' covered');assert.deepEqual(r.headerOverflow,[],r.id+' header overflow');assert.deepEqual(r.textOverlaps,[],r.id+' text overlap');assert.deepEqual(r.uiCovered,[],r.id+' UI covers text');assert.deepEqual(r.offscreen,[],r.id+' cropped');assert.deepEqual(r.gameErrors,[],r.id+' game errors');}
+ if(!revision||process.env.READABILITY_ASSERT)for(const r of rows){assert(r.paintOrder,r.id+' text and glyph paint above card');const classic=baseline.rows.find(b=>b.id===r.id&&b.index===r.index);assert(r.minNamePx>=classic.minNamePx-.01,`${r.id}/${r.index}: paper ${r.minNamePx} < classic ${classic.minNamePx}`);assert(r.minNamePx>=12-.01,`${r.id}/${r.index}: name ${r.minNamePx}px`);assert(r.minGlyphPx>=14-.01,`${r.id}: glyph ${r.minGlyphPx}px`);assert(r.names.some(n=>n.shown),`${r.id}: Fit must show complete cards`);assert.deepEqual(r.overlaps,[],r.id+' overlaps');assert.deepEqual(r.covered,[],r.id+' covered');assert.deepEqual(r.headerOverflow,[],r.id+' header overflow');assert.deepEqual(r.textOverlaps,[],r.id+' text overlap');assert.deepEqual(r.uiCovered,[],r.id+' UI covers text');assert.deepEqual(r.offscreen,[],r.id+' cropped');assert.deepEqual(r.gameErrors,[],r.id+' game errors');}
  if(!revision||process.env.READABILITY_ASSERT){
   await page.evaluate(id=>window.__game.loadProblem(id),'bank-ledger');
   const transition=await page.evaluate(async()=>{

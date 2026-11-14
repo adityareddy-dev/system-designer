@@ -5,6 +5,7 @@ import { PAPER, paperPalette, paperPoint, paperGraph, paperSpread } from './pape
 import { e08Palette } from './e08.js';
 import { createKit } from './textures.js';
 import { createCamera } from './camera.js';
+import { fitPaperWindow } from './fit.js';
 import { createNodeLayer, makeMini, refreshMini } from './nodes.js';
 import { createEdgeLayer, edgeCarries } from './edges.js';
 import { createParticles } from './particles.js';
@@ -363,7 +364,10 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
   const input = createInput(canvas, hostEl, {
     camera, nodes, edges, ui, ghost: ghostApi,
     snapPoint: (x, y) => { const p = modelPoint(x, y); return displayPoint(snap(p.x), snap(p.y)); },
-    emit: (n, p) => emitter.emit(n, ['node:dragend', 'canvas:tap', 'canvas:drop'].includes(n) ? { ...p, ...modelPoint(p.x, p.y) } : p),
+    emit: (n, p) => {
+      if (n === 'view:manual') { paperFit = null; paperWindow = false; }
+      emitter.emit(n, ['node:dragend', 'canvas:tap', 'canvas:drop'].includes(n) ? { ...p, ...modelPoint(p.x, p.y) } : p);
+    },
     editable: () => editable,
     reduced: () => reduced,
     get connectCheck() { return connectCheck; },
@@ -621,9 +625,19 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const c = camera.center, { w, h } = camera.size, z = camera.zoom;
     const x0 = c.x - w / 2 / z, x1 = c.x + w / 2 / z, y0 = c.y - h / 2 / z, y1 = c.y + h / 2 / z;
     nodes.cull(x0, y0, x1, y1);
+    if (look === 'paper' && paperWindow && captionArea) {
+      const a = captionArea;
+      for (const v of nodes.list) {
+        const b = v.paperBox, p = camera.worldToScreen(v.x, v.y), k = z * Math.abs(v.c.scale.x);
+        const box = { x: p.x+b.x*k, y: p.y+b.y*k, width: b.width*k, height: b.height*k };
+        v.c.visible = box.x >= a.l && box.y >= a.t && box.x+box.width <= w-a.r && box.y+box.height <= h-a.b
+          && !(a.blocks || []).some(block => intersects(box, block));
+      }
+    }
     edges.cull(x0, y0, x1, y1);
   }
 
+  let paperFit = null, paperWindow = false;
   let visualTime = 0;
   function draw(dt, now, wallDt = dt) {
     if (!flow || speed > 0) visualTime += dt;
@@ -640,7 +654,19 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     const captionsMoved = nodes.layoutLabels(camera, captionArea);
     if (captionsMoved) edges.invalidateGeometry();
     const geo = edges.updateGeometry(nodes.views);
-    if (viewChanged || geo) cull();
+    if (paperFit && !camera.moving && !nodes.moving) {
+      const boxes = nodes.list.map(v => {
+        const b = v.paperBox, p = camera.worldToScreen(v.x, v.y), z = camera.zoom * Math.abs(v.c.scale.x);
+        return { id: v.id, x: p.x + b.x * z, y: p.y + b.y * z, width: b.width * z, height: b.height * z };
+      });
+      const shift = fitPaperWindow(boxes, camera.size, { ...paperFit, padding: captionArea || paperFit.padding });
+      paperFit = null; paperWindow = true;
+      if (shift.x || shift.y) {
+        camera.panBy(shift.x, shift.y); updateGrid();
+        if (nodes.layoutLabels(camera, captionArea)) edges.invalidateGeometry();
+      }
+      cull();
+    } else if (viewChanged || geo || look === 'paper') cull();
     edges.update(dt);
     // Isolating paths only softens what is off the path; nothing is hidden, and a failing part never sits behind a dim.
     for (const v of nodes.list) v.c.alpha = pathFocus && !pathFocus.nodes.has(v.id) ? 0.6 : 1;
@@ -861,6 +887,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     setLook(nextLook) {
       const next = ['paper', 'e08'].includes(nextLook) ? nextLook : 'classic';
       if (next === look) return Promise.resolve();
+      paperFit = null; paperWindow = false;
       look = next;
       return api.setTheme(palette, theme);
     },
@@ -925,10 +952,20 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       wake();
       // A minimum chosen for saved coordinates must not crop the spread paper layout.
       let fitOpts = look === 'paper' && opts.minZ ? { ...opts, minZ: opts.minZ / Math.max(modelSpread.x, modelSpread.y) } : opts;
-      if(look==='paper'&&(opts.minZ>0||camera.size.w<600)&&!opts.focusId)fitOpts={...fitOpts,minZ:Math.max(fitOpts.minZ||0,nodes.minimumPaperZoom())};
+      // Compact cards keep a fixed screen width, including when side panels narrow Fit.
+      if (look === 'paper') fitOpts = { ...fitOpts, minZ: Math.max(fitOpts.minZ || 0, nodes.minimumPaperZoom()) };
       const focus = opts.focusId && graph?.nodes.find(n => n.id === opts.focusId);
       const b = focus ? { minX: focus.x - 60, minY: focus.y - 50, maxX: focus.x + 60, maxY: focus.y + 70 } : nodes.bounds(opts.nodeIds ? { ...graph, nodes: graph.nodes.filter(n => opts.nodeIds.includes(n.id)) } : graph);
       if (!b) { camera.fitBounds(-200, -150, 200, 150, padding, animate, fitOpts); return; }
+      if (look === 'paper') {
+        const busiest = [...edges.list].sort((a, b) => (b.rps || 0) - (a.rps || 0))[0];
+        const fitFocus = opts.focusId || selected || failureLead?.id;
+        const anchor = graph?.nodes.find(n => n.id === fitFocus)
+          || (busiest && graph?.nodes.find(n => n.id === busiest.from));
+        const end = !fitFocus && busiest && graph?.nodes.find(n => n.id === busiest.to);
+        if (anchor) fitOpts = { ...fitOpts, center: end ? { x: (anchor.x + end.x) / 2, y: (anchor.y + end.y) / 2 } : anchor };
+        paperFit = { padding, focusId: fitFocus };
+      }
       camera.fitBounds(b.minX, b.minY, b.maxX, b.maxY + (opts.reserveY || 0), padding, animate && !reduced, fitOpts);
       nodes.setLabelScale(camera.zoom);
     },
@@ -936,6 +973,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
     bounds(nodeIds) { return nodes.bounds(nodeIds && graph ? { ...graph, nodes: graph.nodes.filter(n => nodeIds.includes(n.id)) } : graph); },
     // Glide just far enough that a world point sits inside the free part of the canvas (insets are panels, in screen px).
     reveal(x, y, insets = {}, margin = {}) {
+      paperFit = null; paperWindow = false; wake();
       const d = displayPoint(x, y), p = camera.worldToScreen(d.x, d.y), { w, h } = camera.size;
       const l = (insets.l || 0) + (margin.l ?? 60), r = w - (insets.r || 0) - (margin.r ?? 60);
       const t = (insets.t || 0) + (margin.t ?? 60), b = h - (insets.b || 0) - (margin.b ?? 60);
@@ -945,9 +983,9 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       camera.glideBy(dx, dy);
       return true;
     },
-    zoomBy(factor, cx, cy) { wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
-    panBy(dx, dy) { wake(); camera.panBy(dx, dy); },
-    stopCamera() { camera.stop(); },
+    zoomBy(factor, cx, cy) { paperFit = null; paperWindow = false; wake(); const { w, h } = camera.size; camera.zoomBy(factor, cx ?? w / 2, cy ?? h / 2); nodes.setLabelScale(camera.zoom); },
+    panBy(dx, dy) { paperFit = null; paperWindow = false; wake(); camera.panBy(dx, dy); },
+    stopCamera() { paperFit = null; paperWindow = false; camera.stop(); },
     screenToWorld(x, y) { const p = camera.screenToWorld(x, y); return modelPoint(p.x, p.y); },
     worldToScreen(x, y) { const p = displayPoint(x, y); return camera.worldToScreen(p.x, p.y); },
     // Extra: the connection whose middle part lies under a world point, for drop-to-insert.
@@ -968,7 +1006,7 @@ export async function createScene(hostEl, { catalog, palette, theme = 'light', r
       const labels = nodes.list.flatMap(v => [v.labelT, v.evidenceT].filter(t => t.visible && t.renderable && t.text && v.c.visible).map(t => {
         const b = t.getBounds(); return { id: v.id, kind: t === v.labelT ? 'name' : 'failure', text: t.text, x: b.x, y: b.y, width: b.width, height: b.height };
       }));
-      const parts = nodes.list.map(v => { const p = camera.worldToScreen(v.x, v.y); return { id: v.id, x: p.x - (v.renderHalf||36)*z, y: p.y - (v.renderHeight/2||v.renderHalf||36)*z, width: (v.renderWidth||2*(v.renderHalf||36))*z, height: (v.renderHeight||2*(v.renderHalf||36))*z }; });
+      const parts = nodes.list.map(v => { const p = camera.worldToScreen(v.x, v.y); return { id: v.id, visible: v.c.visible, x: p.x - (v.renderHalf||36)*z, y: p.y - (v.renderHeight/2||v.renderHalf||36)*z, width: (v.renderWidth||2*(v.renderHalf||36))*z, height: (v.renderHeight||2*(v.renderHalf||36))*z }; });
       const wires = edges.list.map(v => ({ id: v.id, from: v.from, to: v.to, points: Array.from({ length: (v.lut.segs || 24) + 1 }, (_, i) => camera.worldToScreen(v.lut.xs[i], v.lut.ys[i])) }));
       let labelOverlaps = 0, wirePartCrossings = 0, wireLabelCrossings = 0, labelPartOverlaps = 0, labelPanelOverlaps = 0;
       const area=captionArea||{l:0,t:0,r:0,b:0}, right=camera.size.w-area.r, bottom=camera.size.h-area.b;
