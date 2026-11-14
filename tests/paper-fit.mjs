@@ -17,7 +17,7 @@ async function page(width=1440){
  await p.goto(site.base+'#/practice/url-shortener');await p.waitForFunction(()=>!!window.review);await p.evaluate(()=>document.fonts.ready);return p;
 }
 async function inspect(p){
- const pt=await p.evaluate(()=>{const v=window.reviewNodes.views.values().next().value,b=document.querySelector('.pl-stage canvas').getBoundingClientRect();return{x:v.c.worldTransform.tx+b.left,y:v.c.worldTransform.ty+b.top};});
+ const pt=await p.evaluate(()=>{const v=[...window.reviewNodes.views.values()].find(v=>v.c.visible),b=document.querySelector('.pl-stage canvas').getBoundingClientRect();if(!v)throw new Error('Fit must leave a visible card to inspect');return{x:v.c.worldTransform.tx+b.left,y:v.c.worldTransform.ty+b.top};});
  await p.mouse.click(pt.x,pt.y);await p.waitForSelector('.pl-inspector',{visible:true});await sleep(600);
 }
 async function fit(p){await p.click('[aria-label="Fit to screen (F)"]');await sleep(450);}

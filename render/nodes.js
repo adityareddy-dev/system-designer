@@ -157,6 +157,8 @@ export function createNodeLayer(PIXI, parent, env) {
     if (cardLook(kit.look)) { v.labelT.style.fontFamily = kit.look === 'paper' ? PAPER.type.label : 'system-ui, sans-serif'; v.labelT.style.fontSize = 14; v.labelT.style.fontWeight = '700'; v.labelT.style.wordWrapWidth = 140; }
     v.paperTitle = makeText('', PAPER.title.size, P.ink, false, PAPER.type.weight, PAPER.title.width); v.paperTitle.anchor.set(.5, 0); v.paperTitle.position.set(PAPER.title.x, PAPER.title.y); v.paperTitle.style.fontFamily = PAPER.type.label; v.paperTitle.visible = false;
     v.paperStatus = makeText('', PAPER.status.size, P.text2, true, PAPER.type.weight); v.paperStatus.anchor.set(.5); v.paperStatus.position.set(PAPER.status.x, PAPER.status.y); v.paperStatus.style.fontFamily = PAPER.type.mono; v.paperStatus.visible = false;
+    v.paperUnits = makeText('', PAPER.units.size, P.ink, true, PAPER.type.weight); v.paperUnits.visible = false;
+    v.paperUnitsBg = new PIXI.Graphics(); v.paperUnitsBg.visible = false;
     v.paperReading = makeText('', PAPER.status.size, P.ink, true, PAPER.type.weight);
     v.paperOutline = new PIXI.Graphics();
     v.paperCard = new PIXI.Graphics();
@@ -172,7 +174,7 @@ export function createNodeLayer(PIXI, parent, env) {
     v.badgeIcon = new PIXI.Sprite(PIXI.Texture.EMPTY); v.badgeIcon.anchor.set(0.5); v.badgeIcon.width = v.badgeIcon.height = 15;
     v.badge.addChild(v.badgeIcon);
     c.addChild(v.pulse, v.body, v.lead, v.select, v.paperCard, v.icon, v.busy, v.pool, v.poolT, v.qbar, v.retryG, v.pile, v.statusG, v.valid, v.lock,
-      v.chip, v.regionC, v.badge, v.captionC, v.rejected, v.paperTitle, v.paperStatus, v.paperReading, v.paperOutline, v.paperWaiting);
+      v.chip, v.regionC, v.badge, v.captionC, v.rejected, v.paperTitle, v.paperUnitsBg, v.paperUnits, v.paperStatus, v.paperReading, v.paperOutline, v.paperWaiting);
     c.alpha = 0;
     c.scale.set(v.s);
     v.captionC.scale.set(1 / v.s);
@@ -685,7 +687,7 @@ export function createNodeLayer(PIXI, parent, env) {
       this.captionKey = null;
       const P = kit.P;
       for (const v of [...list, ...dying]) {
-        v.paperCard.clear();v.body.visible=true;v.paperTitle.visible=false;v.renderWidth=kit.look==='paper'?PAPER.body.width:null;v.renderHeight=kit.look==='paper'?PAPER.body.height:null;
+        v.paperCard.clear();v.body.visible=true;v.paperTitle.visible=false;v.paperUnits.visible=v.paperUnitsBg.visible=false;v.renderWidth=kit.look==='paper'?PAPER.body.width:null;v.renderHeight=kit.look==='paper'?PAPER.body.height:null;
         v.valid.position.set(HALF-7,-HALF+7);v.lock.position.set(-HALF+9,-HALF+20);v.regionC.position.set(0,-HALF-12);
         v.labelT.visible=kit.look!=='paper';
         v.paperTitle.visible = v.paperStatus.visible = kit.look === 'paper';
@@ -780,7 +782,9 @@ export function createNodeLayer(PIXI, parent, env) {
       if(env.kit().look!=='paper')return 0;
       const sizes=list.map(v=>{
         const t=makeText(shortName(v),PAPER.detail.namePx,0,false,'700');t.style.wordWrap=false;
-        const width=Math.max(PAPER.detail.minWidth,t.width+PAPER.detail.glyphPx+24)+4.5;t.destroy();
+        const units=makeText(v.units>1?`×${v.units}`:'',PAPER.units.size,0,true,'700');
+        const extra=v.units>1?units.width+2*PAPER.units.pad+PAPER.units.gap:0;
+        const width=Math.max(PAPER.detail.minWidth,t.width+PAPER.detail.glyphPx+24+extra)+4.5;t.destroy();units.destroy();
         return {v,width,height:PAPER.detail.height+4.5};
       });
       let min=0;

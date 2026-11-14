@@ -12,6 +12,7 @@ export const PAPER = Object.freeze({
   wire: { width: 2.5, dash: 6, gap: 10, travel: 32, period: 1200, radius: 16, port: 117, arrowLength: 9, arrowHalf: 4.5 },
   type: { label: 'Space Grotesk, Arial, sans-serif', mono: 'Space Mono, monospace', weight: '700', captionSize: 14 },
   title: { x: -72, y: -38, size: 16, width: 174 },
+  units: { size: 11, pad: 6, gap: 8, height: 22, right: 104 },
   status: { x: -100, y: 37, size: 11 },
   fit: { top: 125, bottom: 90 },
   spread: { x: 1, y: 1 },
@@ -92,12 +93,29 @@ export async function addPaperTextures(PIXI,kit) {
     return kit;
   } catch(e) {owned.forEach(t=>t.destroy(true));kit.destroy();throw e;}
 }
+function preparePaperUnits(v, P, k = 1) {
+  const t=v.paperUnits,b=v.paperUnitsBg;
+  t.visible=b.visible=v.units>1;
+  b.clear();
+  if(!t.visible)return 0;
+  t.text=`×${v.units}`;t.anchor.set(1,.5);t.scale.set(k);t.style.fill=P.ink;
+  return t.width/k+2*PAPER.units.pad;
+}
+function drawPaperUnits(v, P, right, y, width, k = 1) {
+  if(!width)return;
+  const u=PAPER.units;
+  v.paperUnits.position.set((right-u.pad)*k,y*k);
+  v.paperUnitsBg.roundRect((right-width)*k,(y-u.height/2)*k,width*k,u.height*k,4*k)
+    .fill({color:P.card}).stroke({color:P.ink,width:1.5*k});
+}
 export function drawPaperLoad(v,kit) {
   const P=kit.P,b=PAPER.bar,g=v.busy,load=v.live&&!v.down?Math.max(0,Math.min(1,v.du)):0;
   const compact=v.paperCompact;
   if (compact) return drawPaperCompact(v, kit);
   for(const item of [v.busy,v.paperOutline,v.paperWaiting,v.paperStatus,v.valid,v.lock,v.regionC])item.scale.set(1);
   v.busy.position.set(0,0);v.paperOutline.position.set(0,0);
+  const unitsWidth=preparePaperUnits(v,P),titleWidth=PAPER.title.width-(unitsWidth?unitsWidth+PAPER.units.gap:0);
+  drawPaperUnits(v,P,PAPER.units.right,PAPER.title.y,unitsWidth);
   const headerInk=v.type.endsWith('-lb') ? P.ink : P.card;
   v.paperCard.clear();v.body.visible=true;
   v.body.width=v.body.height=PAPER.body.textureSize;v.body.texture=kit.bodyFor(v.cat,v.status,v.type);
@@ -113,14 +131,14 @@ export function drawPaperLoad(v,kit) {
   v.paperTitle.scale.set(1);v.paperTitle.style.wordWrap=!compact;
   v.paperTitle.text=compact?v.paperShortName:v.label;v.paperTitle.style.fill=headerInk;
   v.paperTitle.style.fontSize=compact?30:PAPER.title.size;v.paperTitle.style.lineHeight=compact?32:18;
-  v.paperTitle.style.wordWrapWidth=PAPER.title.width;
+  v.paperTitle.style.wordWrapWidth=titleWidth;
   if(v.paperTitle.height>38)v.paperTitle.text=v.paperShortName;
-  if(v.paperTitle.width>PAPER.title.width)v.paperTitle.scale.set(PAPER.title.width/v.paperTitle.width);else v.paperTitle.scale.set(1);
+  if(v.paperTitle.width>titleWidth)v.paperTitle.scale.set(titleWidth/v.paperTitle.width);else v.paperTitle.scale.set(1);
   v.paperStatus.anchor.set(0,.5);v.paperStatus.position.set(PAPER.status.x,PAPER.status.y);
   v.paperStatus.text=v.cat==='clients'&&v.live?'sending':v.type.endsWith('-lb')&&v.live&&!v.down&&v.du<=1?'routing':paperStatus(v.live,v.down,v.du);
   v.paperStatus.style.fill=v.down||v.du>1?P.bad:P.ink;
   v.paperReading.anchor.set(1,.5);v.paperReading.position.set(100,PAPER.status.y);
-  v.paperReading.text=v.down?'':v.live&&v.failRps>.5?`${Math.round(v.failRps).toLocaleString('en-US')}/s rejected`:v.cat==='clients'&&v.live?`${countRate(v.outRps||0)}/s`:v.units>1?`×${v.units}`:v.live?`${Math.max(0,Math.round((1-v.du)*100))}% headroom`:'';
+  v.paperReading.text=v.down?'':v.live&&v.failRps>.5?`${Math.round(v.failRps).toLocaleString('en-US')}/s rejected`:v.cat==='clients'&&v.live?`${countRate(v.outRps||0)}/s`:v.live?`${Math.max(0,Math.round((1-v.du)*100))}% headroom`:'';
   v.paperReading.scale.set(1);const room=192-v.paperStatus.width-8;v.paperReading.scale.set(Math.min(1,Math.max(0,room)/Math.max(1,v.paperReading.width)));
   v.paperReading.style.fill=P.ink;
   v.icon.position.set(PAPER.icon.x,PAPER.icon.y);v.icon.width=v.icon.height=PAPER.icon.size;v.icon.tint=headerInk;
@@ -140,19 +158,22 @@ function drawPaperCompact(v, kit) {
   for(const key of ['labelT','labelBg','leader','statusG','retryG','pile','pulse','lead','rejected','chip','badge','pool','poolT','paperStatus','paperReading','paperWaiting'])v[key].visible=false;
   v.busy.scale.set(1);v.busy.position.set(0,0);v.paperOutline.clear();v.body.visible=false;title.visible=true;title.text=v.paperShortName||v.label;
   title.anchor.set(0,.5);title.style.wordWrap=false;title.style.fontSize=d.namePx;title.style.lineHeight=18;title.style.fill=P.ink;title.scale.set(k);
-  const width=Math.max(d.minWidth,title.width/k+d.glyphPx+24),height=d.height,x=-width/2,y=-height/2;
+  const unitsWidth=preparePaperUnits(v,P,k);
+  const width=Math.max(d.minWidth,title.width/k+d.glyphPx+24+(unitsWidth?unitsWidth+PAPER.units.gap:0)),height=d.height,x=-width/2,y=-height/2;
   const band=v.type.endsWith('-lb')?P.yellow:P.cat[v.cat];
   g.clear().roundRect((x+3)*k,(y+3)*k,width*k,height*k,4*k).fill({color:P.ink})
     .roundRect(x*k,y*k,width*k,height*k,4*k).fill({color:v.down?PAPER.down:P.card})
     .rect((x+1)*k,(y+1)*k,(width-2)*k,4*k).fill({color:band})
     .roundRect(x*k,y*k,width*k,height*k,4*k).stroke({color:v.paperSelected?P.ink:v.status>=3?P.tomato:P.ink,width:1.5*k});
   title.position.set((x+8+d.glyphPx+6)*k,-1*k);
+  drawPaperUnits(v,P,width/2-6,-1,unitsWidth,k);
   v.icon.visible=true;v.icon.position.set((x+8+d.glyphPx/2)*k,-1*k);v.icon.width=v.icon.height=d.glyphPx*k;v.icon.tint=P.ink;
   const b=v.busy,load=v.live&&!v.down?Math.max(0,Math.min(1,v.du)):0;
   b.clear().rect((x+6)*k,(height/2-7)*k,(width-12)*k,3*k).fill({color:P.paper});
   if(load)b.rect((x+6)*k,(height/2-7)*k,(width-12)*load*k,3*k).fill({color:paperBarColor(v.du)});
   b.rect((x+6)*k,(height/2-7)*k,(width-12)*k,3*k).stroke({color:P.ink,width:.75*k});
-  if(v.down)b.moveTo((width/2-8)*k,-12*k).lineTo((width/2-3)*k,-7*k).moveTo((width/2-3)*k,-12*k).lineTo((width/2-8)*k,-7*k).stroke({color:P.bad,width:1.5*k});
+  const crossX=width/2-(unitsWidth?unitsWidth+16:8);
+  if(v.down)b.moveTo(crossX*k,-12*k).lineTo((crossX+5)*k,-7*k).moveTo((crossX+5)*k,-12*k).lineTo(crossX*k,-7*k).stroke({color:P.bad,width:1.5*k});
   v.paperBox={x:(x-.75)*k,y:(y-.75)*k,width:(width+4.5)*k,height:(height+4.5)*k};
   v.renderHalf=width*k/2;v.renderWidth=width*k;v.renderHeight=height*k;v.portHalf=(width/2+2)*k;
   v.valid.position.set((width/2+8)*k,0);v.lock.visible=v.regionC.visible=false;
