@@ -165,4 +165,4 @@ For backend engineers, students and interview candidates. Clarify requirements, 
 
 - [Full text](https://systemdesigner.io/llms-full.txt): Full guides and a compact catalogue of every problem and lesson.
 - [Sitemap](https://systemdesigner.io/sitemap.xml): Canonical pages and last modification dates.
-- [Privacy](https://systemdesigner.io/privacy.html): Sign-in, stored progress and data deletion.
+- [Privacy](https://systemdesigner.io/privacy): Sign-in, stored progress and data deletion.

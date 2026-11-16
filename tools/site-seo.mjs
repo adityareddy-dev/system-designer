@@ -12,7 +12,7 @@ export function seoTitle(value) {
   const branded = title + ' | System Designer';
   return branded.length < 60 ? branded : concise(title, 59);
 }
-export const canonical = file => new URL(file.replace(/index\.html$/, ''), SITE).href;
+export const canonical = file => new URL(file === 'privacy.html' ? 'privacy' : file.replace(/index\.html$/, ''), SITE).href;
 export function seoTags(file, opts) {
   const url = canonical(file);
   const title = seoTitle(opts.metaTitle || opts.title);
