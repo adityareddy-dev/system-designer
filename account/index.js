@@ -182,7 +182,10 @@ export function createAccount(ctx) {
     // The player chooses marketing emails. Saved at once.
     async setMarketingOptIn(on) {
       const marketingOptIn = !!on;
-      const r = preview ? { user: { ...S.user, marketingOptIn, marketingOptInAt: Date.now(), marketingPromptPending: false } } : await call('PATCH', '/me', { marketingOptIn });
+      let source = '';
+      try { source = sessionStorage.getItem('sd.reading.source.v1') || ''; } catch { /* attribution is optional */ }
+      if (!/^[a-zA-Z0-9_.~-]{0,100}$/.test(source)) source = '';
+      const r = preview ? { user: { ...S.user, marketingOptIn, marketingOptInAt: Date.now(), marketingPromptPending: false } } : await call('PATCH', '/me', { marketingOptIn, source });
       S.user = r.user;
       if (preview) { try { sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(S.user)); } catch { /* ignore */ } }
       emit();

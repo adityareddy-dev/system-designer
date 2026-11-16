@@ -40,7 +40,7 @@ try {
     await route.fulfill({ status, json, headers: { 'Access-Control-Allow-Origin': 'https://systemdesigner.io', 'Access-Control-Allow-Credentials': 'true' } });
   });
   const page = await context.newPage();
-  await page.goto('https://systemdesigner.io/#/settings');
+  await page.goto('https://systemdesigner.io/?utm_source=linkedin#/settings');
   await page.getByRole('button', { name: 'Sign in', exact: true }).first().click({ timeout: 45000 });
   await page.getByRole('button', { name: 'Use test Google account' }).click();
   const prompt = page.getByRole('dialog', { name: 'Email updates' });
@@ -58,6 +58,7 @@ try {
   assert.equal(await page.locator('.ac-me-btn').evaluate(button => button === document.activeElement), true, 'saving the choice returns focus to the account button');
   assert.equal(saved, 1);
   assert.equal(user.marketingOptIn, false);
+  assert.equal(user.source, 'linkedin', 'the account choice carries its landing source');
   await page.reload();
   await page.locator('#sh-email-card').waitFor();
   assert.equal(await prompt.count(), 0);

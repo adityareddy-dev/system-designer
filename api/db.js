@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { countryDefaults } from '../assets/consent-region.js';
 import { observationStore } from './observation-store.js';
+import { readingStore } from './email-capture.js';
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -70,7 +71,7 @@ export function openDb(file) {
   if (!userCols.has('email')) db.exec('ALTER TABLE users ADD COLUMN email TEXT');
   if (!userCols.has('survey_optin')) db.exec('ALTER TABLE users ADD COLUMN survey_optin INTEGER NOT NULL DEFAULT 0');
   if (!userCols.has('survey_optin_at')) db.exec('ALTER TABLE users ADD COLUMN survey_optin_at INTEGER');
-  // Copy legacy choices once. Existing accounts have already seen the old product-update setting.
+  // The old survey setting was preselected for everyone. It is not marketing consent.
   const migrateMarketing = !userCols.has('marketing_optin');
   if (migrateMarketing) db.exec(`
     BEGIN IMMEDIATE;
@@ -78,15 +79,13 @@ export function openDb(file) {
     ALTER TABLE users ADD COLUMN marketing_optin_at INTEGER;
     ALTER TABLE users ADD COLUMN marketing_country TEXT NOT NULL DEFAULT 'XX';
     ALTER TABLE users ADD COLUMN marketing_prompt_pending INTEGER NOT NULL DEFAULT 1;
-    UPDATE users SET marketing_optin = survey_optin, marketing_optin_at = CASE WHEN survey_optin = 1 THEN COALESCE(survey_optin_at, created_at) ELSE survey_optin_at END, marketing_prompt_pending = 0;
   `);
   db.exec(`CREATE TABLE IF NOT EXISTS marketing_queue (
     email TEXT PRIMARY KEY, subscribed INTEGER NOT NULL, version INTEGER NOT NULL DEFAULT 1,
     attempts INTEGER NOT NULL DEFAULT 0, next_attempt INTEGER NOT NULL DEFAULT 0
   );`);
-  if (migrateMarketing) db.exec(`INSERT OR IGNORE INTO marketing_queue (email, subscribed)
-    SELECT email, 1 FROM users WHERE marketing_optin = 1 AND email IS NOT NULL AND email != '';
-    COMMIT;`);
+  if (migrateMarketing) db.exec('COMMIT;');
+  if (!db.prepare('PRAGMA table_info(marketing_queue)').all().some(r => r.name === 'source')) db.exec("ALTER TABLE marketing_queue ADD COLUMN source TEXT NOT NULL DEFAULT ''");
   db.exec('PRAGMA user_version = 2;');
 
   const q = (sql) => db.prepare(sql);
@@ -97,8 +96,9 @@ export function openDb(file) {
     user: q('SELECT id, name, avatar, created_at AS createdAt, email, survey_optin AS surveyOptIn, survey_optin_at AS surveyOptInAt, marketing_optin AS marketingOptIn, marketing_optin_at AS marketingOptInAt, marketing_country AS marketingCountry, marketing_prompt_pending AS marketingPromptPending FROM users WHERE id = ?'),
     setEmail: q('UPDATE users SET email = ? WHERE id = ?'),
     setMarketing: q('UPDATE users SET marketing_optin = ?, marketing_optin_at = ?, marketing_country = ?, marketing_prompt_pending = 0 WHERE id = ?'),
-    queueMarketing: q(`INSERT INTO marketing_queue (email, subscribed) VALUES (?, ?)
-      ON CONFLICT(email) DO UPDATE SET subscribed = excluded.subscribed, version = marketing_queue.version + 1, attempts = 0, next_attempt = 0`),
+    queueMarketing: q(`INSERT INTO marketing_queue (email, subscribed, source) VALUES (?, ?, ?)
+      ON CONFLICT(email) DO UPDATE SET subscribed = excluded.subscribed, source = CASE WHEN excluded.source != '' THEN excluded.source ELSE marketing_queue.source END,
+      version = marketing_queue.version + 1, attempts = 0, next_attempt = 0`),
     providers: q('SELECT provider FROM identities WHERE user_id = ? ORDER BY created_at, provider'),
     setAvatar: q('UPDATE users SET avatar = ? WHERE id = ?'),
     setName: q('UPDATE users SET name = ? WHERE id = ?'),
@@ -123,13 +123,14 @@ export function openDb(file) {
     count: q('SELECT COUNT(*) AS n FROM scores WHERE board = ?'),
   };
 
-  const enqueueMarketing = (email, on) => { if (email) st.queueMarketing.run(email, on ? 1 : 0); };
+  const enqueueMarketing = (email, on, source = '') => { if (email) st.queueMarketing.run(email, on ? 1 : 0, source); };
   function keepEmail(id, email) {
     if (!email) return;
     const u = st.user.get(id);
     if (u.email !== email && !u.marketingPromptPending) {
       if (u.email) enqueueMarketing(u.email, false);
-      if (u.marketingOptIn) enqueueMarketing(email, true);
+      // A new address needs its own choice, even when the previous address subscribed.
+      q('UPDATE users SET marketing_optin = 0, marketing_optin_at = NULL, marketing_prompt_pending = 1 WHERE id = ?').run(id);
     }
     st.setEmail.run(email, id);
   }
@@ -141,6 +142,7 @@ export function openDb(file) {
 
   return {
     ...observationStore(db, tx),
+    ...readingStore(db, tx, enqueueMarketing),
     raw: db,
     close: () => db.close(),
     tx,
@@ -186,16 +188,22 @@ export function openDb(file) {
     nameTaken: (name, exceptId = 0) => !!st.nameTaken.get(name, exceptId),
     setName: (id, name) => st.setName.run(name, id),
     setEmail: (id, email) => st.setEmail.run(email || null, id),
-    setMarketingOptIn(id, on, now, country) {
+    setMarketingOptIn(id, on, now, country, source = '') {
       st.setMarketing.run(on ? 1 : 0, now, countryDefaults(country).country, id);
-      enqueueMarketing(st.user.get(id)?.email, on);
+      enqueueMarketing(st.user.get(id)?.email, on, source);
     },
     marketingJobs(now, force = false) {
       return q('SELECT * FROM marketing_queue WHERE next_attempt <= ? ORDER BY next_attempt, email LIMIT 25').all(force ? Number.MAX_SAFE_INTEGER : now);
     },
     finishMarketingJob: (email, version) => q('DELETE FROM marketing_queue WHERE email = ? AND version = ?').run(email, version),
+    currentMarketingJob: (email, version) => !!q('SELECT 1 FROM marketing_queue WHERE email = ? AND version = ?').get(email, version),
     failMarketingJob: (email, version, now) => q('UPDATE marketing_queue SET attempts = attempts + 1, next_attempt = ? WHERE email = ? AND version = ?').run(now + 60_000, email, version),
-    deleteUser(id) { return tx(() => { enqueueMarketing(st.user.get(id)?.email, false); return st.deleteUser.run(id); }); },
+    deleteUser(id) { return tx(() => {
+      const email = st.user.get(id)?.email;
+      enqueueMarketing(email, false);
+      if (email) q('DELETE FROM reading_contacts WHERE email = ?').run(email);
+      return st.deleteUser.run(id);
+    }); },
     report: (reporter, target, reason, now) => st.addReport.run(reporter, target, reason, now),
 
     addSession(hash, userId, now, ttlMs) {

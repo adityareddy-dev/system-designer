@@ -83,7 +83,7 @@ for (const file of files) {
   }
   if (/^guides\/[^/]+\//.test(file)) {
     const article = graph.find(d => d['@type'] === 'Article');
-    assert.ok(article && article.isAccessibleForFree === true, `${file}: free article`);
+    assert.ok(article && article.isAccessibleForFree === false && article.hasPart?.cssSelector === '.sd-gated', `${file}: labelled registration gate`);
   }
   if (file === 'index.html') {
     assert.ok(graph.some(d => d['@type'] === 'WebSite' && d.potentialAction?.['@type'] === 'SearchAction'));
