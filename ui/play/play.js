@@ -534,7 +534,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
   }
 
   // A part that lands under a panel (the brief, the inspector) is brought into the free part of the canvas.
-  function revealIfHidden(x, y) {
+  function revealIfHidden(x, y, id) {
     try {
       const sp = scene.worldToScreen ? scene.worldToScreen(x, y) : null;
       if (!sp) return;
@@ -545,9 +545,19 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         const cover = a.blocks.find(under);
         const insets = { l: a.l, t: a.t, r: a.r, b: a.b };
         if (cover) { if (cover.x + cover.width / 2 > a.w / 2) insets.r = Math.max(insets.r, a.w - cover.x); else insets.l = Math.max(insets.l, cover.x + cover.width); }
-        // room for the part, its connect handle and its name at the current zoom
+        // room for the part, its connect handle and its name at the current zoom: a paper card is far wider than the
+        // 72 px icon the base margins were sized for, so its own drawn size sets the margin when it is known
         const zoom = scene.stats().zoom, edge = 74 * zoom + 14;
-        later(() => { if (!S.destroyed && !S.connectFrom) { try { scene.reveal(x, y, insets, { l: edge, r: edge, t: 36 * zoom + 44, b: 36 * zoom + 56 }); } catch { /* optional */ } } }, 60);
+        const m = { l: edge, r: edge, t: 36 * zoom + 44, b: 36 * zoom + 56 };
+        try {
+          const bb = id && scene.bounds ? scene.bounds([id]) : null;
+          if (bb) {
+            const half = (bb.maxX - bb.minX) / 2 * zoom, cy = (bb.minY + bb.maxY) / 2;
+            m.l = Math.max(m.l, half + 14); m.r = Math.max(m.r, half + 34);
+            m.t = Math.max(m.t, (cy - bb.minY) * zoom + 12); m.b = Math.max(m.b, (bb.maxY - cy) * zoom + 12);
+          }
+        } catch { /* size unknown: keep the base margins */ }
+        later(() => { if (!S.destroyed && !S.connectFrom) { try { scene.reveal(x, y, insets, m); } catch { /* optional */ } } }, 60);
         return;
       }
       // the part, its name under it and a little air must sit clear of the sheet and the bars
@@ -597,7 +607,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       if (!edgeId && !opt.autoPlace && mode !== 'lesson') showCaption('Placed here. Select the part and use "Connect to…" to wire it. Drag it to leave room for its name.', 7000);
       if (opt.select !== false && mode !== 'lesson') { select(id); if (isLesson && isPhone()) setTimeout(() => { if (S.selected === id) select(null); }, 1400); }
       connectCoach(id, el);
-      revealIfHidden(at.x, at.y);
+      revealIfHidden(at.x, at.y, id);
       if (S.sim.phase !== 'build') {
         const c = el.cost || {};
         const n = graph().nodes.find((q) => q.id === id);
@@ -830,7 +840,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
     if (id) { inspector.show(id); inspector.update(S.sim.state().nodes.find(n => n.id === id)); toolbar.el.classList.remove('pl-toolbar--open'); try { reqCard?.toggle(false); } catch { /* not built yet */ } } else inspector.hide();
     // on small screens the sheet that opens must not cover the part it is about
     if (id) {
-      later(() => { const n = graph().nodes.find((q) => q.id === id); if (n && !S.destroyed && S.selected === id) revealIfHidden(n.x, n.y); }, 120);
+      later(() => { const n = graph().nodes.find((q) => q.id === id); if (n && !S.destroyed && S.selected === id) revealIfHidden(n.x, n.y, id); }, 120);
     }
     root.classList.toggle('pl-has-selection', !!id);
     if (id && canStructure() && !S.captionNext && caption.hidden && !store.get('seenConnectHandle', false)) {
