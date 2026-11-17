@@ -231,6 +231,8 @@
 .pl-try { border: var(--line); background: var(--accent-soft); box-shadow: 3px 3px 0 var(--ink); }
 .pl-try--near { background: var(--accent-soft); border-color: var(--ink); }
 .pl-verdict, .pl-day-seal, .pl-victory { border: var(--line); border-radius: var(--radius-3); box-shadow: var(--hard); background: var(--card); }
+/* The victory band became a card in the paper look: its text needs the inner padding the other cards have, and the score row under it needs room below the card's shadow. */
+.pl-victory { padding: 24px clamp(16px, 3vw, 28px); margin-bottom: 20px; }
 .pl-play { box-shadow: 4px 4px 0 var(--ink); }
 /* r4-visual: a warning is a card, not a pill: the text wraps inside a rounded rectangle */
 .pl-issue { border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); border-radius: var(--radius-1, 8px); box-shadow: 3px 3px 0 var(--ink); }
