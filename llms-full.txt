@@ -79,7 +79,7 @@ Interview mode on Medium and Hard problems adds a timed discussion and asks you 
 
 Follow the two-week interview practice plan or read the full practice loop.
 
-Playing on systemdesigner.io needs a free Google or GitHub account. These pages, the lessons and the guides can be read without one. Figures in the game are teaching approximations.
+Play and read for free without an account or email. Figures in the game are teaching approximations.
 
 More interview practice
 
@@ -216,7 +216,7 @@ Choose one scenario and write down the first bottleneck you expect. Build a base
 
 Follow the full system design practice loop or plan a sequence of interview practice sessions.
 
-Playing on systemdesigner.io needs a free Google or GitHub account. These pages, the lessons and the guides can be read without one. Figures in the game are teaching approximations.
+Play and read for free without an account or email. Figures in the game are teaching approximations.
 
 More interview practice
 
@@ -287,7 +287,7 @@ One app server handles about 1,000 requests a second (approx.).
 
 Play the url shortener problem or read the full problem and clarification answers.
 
-Playing on systemdesigner.io needs a free Google or GitHub account. These pages, the lessons and the guides can be read without one. Figures in the game are teaching approximations.
+Play and read for free without an account or email. Figures in the game are teaching approximations.
 
 Study the decisions
 
@@ -366,7 +366,7 @@ Typical limit: 5,000 requests an hour per key, bursts allowed (approx.).
 
 Play the rate limiter for a public api problem or read the full problem and clarification answers.
 
-Playing on systemdesigner.io needs a free Google or GitHub account. These pages, the lessons and the guides can be read without one. Figures in the game are teaching approximations.
+Play and read for free without an account or email. Figures in the game are teaching approximations.
 
 Study the decisions
 
@@ -451,7 +451,7 @@ Notification speed measures provider acceptance. Device receipt is outside this 
 
 Play the one-to-one chat problem or read the full problem and clarification answers.
 
-Playing on systemdesigner.io needs a free Google or GitHub account. These pages, the lessons and the guides can be read without one. Figures in the game are teaching approximations.
+Play and read for free without an account or email. Figures in the game are teaching approximations.
 
 Study the decisions
 
@@ -534,7 +534,7 @@ Notification speed measures provider acceptance. Device receipt is outside this 
 
 Play the notification service problem or read the full problem and clarification answers.
 
-Playing on systemdesigner.io needs a free Google or GitHub account. These pages, the lessons and the guides can be read without one. Figures in the game are teaching approximations.
+Play and read for free without an account or email. Figures in the game are teaching approximations.
 
 Study the decisions
 
@@ -599,11 +599,11 @@ Try Notification service when you want to separate accepting work from finishing
 
 Sandbox leaves the score behind and lets you try a traffic pattern or event just to understand it.
 
-Free, with a free account
+Free to play
 
-Play in the browser. There is no download and no subscription. Playing on systemdesigner.io needs a free Google or GitHub account. Reading the problems, lessons and guides does not.
+Play in the browser for free without an account or email.
 
-Your account keeps progress across devices. The code is open source under the MIT license, so you can also run your own copy with no account at all.
+Optional sign-in keeps progress across devices. The code is open source under the MIT license.
 
 Prices, capacities and timings are rounded teaching approximations. A simulation cannot certify a production system, but it can make a useful question concrete: what did this choice protect, what did it cost, and what would make you change it?
 

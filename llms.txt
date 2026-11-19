@@ -2,7 +2,7 @@
 
 > A free browser game for learning and practising system design, with 82 problems, 41 lessons and a simulated traffic day.
 
-For backend engineers, students and interview candidates. Clarify requirements, estimate scale, draw a system and test spikes, outages and retries. Compare reliability, speed, data safety and monthly cost. Playing on systemdesigner.io needs a free Google or GitHub account, and the problems, lessons and guides can be read without one. The code is open source (MIT) and runs with no account. Figures are teaching approximations. Traffic measurements and protocol correctness checks are distinct.
+For backend engineers, students and interview candidates. Clarify requirements, estimate scale, draw a system and test spikes, outages and retries. Compare reliability, speed, data safety and monthly cost. Play all lessons, problems, challenges and the sandbox for free without signing up. The source code is released under the MIT license. Figures are teaching approximations. Traffic measurements and protocol correctness checks are distinct.
 
 ## Start here
 

@@ -53,7 +53,7 @@ export function makeInterviewPages({ problems, catalog }) {
     const to = (target, text) => link(relative(file, target), text);
     const scenario = scenarios[id];
     const related = `<section><h2>More interview practice</h2>${listLinks(interviewTopics.filter(([key]) => key !== id).map(([key, name]) => [relative(file, `interview/${key}/index.html`), name]))}</section>`;
-    const account = para('Playing on systemdesigner.io needs a free Google or GitHub account. These pages, the lessons and the guides can be read without one. Figures in the game are teaching approximations.');
+    const account = para('Play and read for free without an account or email. Figures in the game are teaching approximations.');
     if (scenario) {
       const p = byId.get(scenario.problem);
       return { id, file, title, description: scenario.description, problemId: p.id,

@@ -47,9 +47,8 @@ const script = `  <script>
     var M = ${JSON.stringify(routes)};
     var hs = location.hash.slice(1); if (hs.charAt(0) === '/') hs = hs.slice(1);
     var parts = hs.split('?')[0].split('/');
-    var a = parts[0], b = parts[1], seen = false, use = [], data = [], play = false;
-    try { seen = localStorage.getItem('hotpath.v1.seenIntro') === 'true'; } catch (e) {}
-    if (a === 'intro' || (!a && !seen)) { use = M.lesson; data = ['content/data/l/intro.json']; play = true; }
+    var a = parts[0], b = parts[1], use = [], data = [], play = false;
+    if (a === 'intro') { use = M.lesson; data = ['content/data/l/intro.json']; play = true; }
     else if (!a) use = M.home;
     else if (a === 'learn') { if (b) { use = M.lesson; data = ['content/data/l/' + b + '.json']; play = true; } else use = M.learn; }
     else if (a === 'practice') { if (b) { use = M.problem; data = ['content/data/p/' + b + '.json']; play = true; } else use = M.practice; }
