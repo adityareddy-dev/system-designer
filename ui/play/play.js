@@ -1744,6 +1744,13 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
       bus.emit('play:day-end', { mode, problemId: S.problem.id, seed: S.seed, result: S.result, hintsUsed: hints.used() });
     }
   }
+  // A finished Practice design goes to Sandbox with the traffic it just ran, so the player can change it there unscored.
+  function openInSandbox() {
+    const req = S.problem.requirements || {};
+    const traffic = { peakRps: req.peakRps, mix: { ...(req.mix || {}) }, userRegions: { ...(req.userRegions || { us: 1 }) }, curve: S.problem.traffic?.curve || 'flat' };
+    store.set('sandbox.handoff', { problemId: S.problem.id, title: S.problem.title, graph: graph(), traffic, savedAt: Date.now() });
+    ctx.router.go('#/sandbox?from=practice');
+  }
   function creditForVictory() { return S.result.learning?.traceChecked && !S.result.learning?.assisted; }
   function showDebrief() {
     if (!S.result) return;
@@ -1771,6 +1778,7 @@ export async function mountPlay(hostEl, ctx, opts = {}) {
         onEditorial: () => openEditorial(),
         onShare: () => openShare(),
         onNext: () => { const n = list[idx + 1]; if (n) ctx.router.go('#/practice/' + n.id); },
+        onTryTraffic: mode === 'practice' && ctx.router ? () => openInSandbox() : null,
         onTwist: mode === 'practice' && S.problem.twist ? () => transitionScreen(() => {
           const p = ctx.content?.problemById?.get(S.problem.id);
           if (!p?.twist) return;

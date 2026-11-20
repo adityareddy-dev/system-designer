@@ -46,6 +46,14 @@ export function renderSandbox(host, ctx, route0) {
       h('button', { type: 'button', class: 'sh-btn sh-btn--ghost', onclick: shareLink }, ico('ui.share', 18), h('span', { class: 'sh-hide-sm', text: 'Share' })));
     wrap = h('div', { class: 'sh-problem' }, bar);
     host.append(wrap);
+    // A finished Practice day hands its design and traffic over once, through local storage.
+    const handoff = !slot && r.query && r.query.from === 'practice' ? ctx.store.get('sandbox.handoff', null) : null;
+    if (handoff) ctx.store.remove('sandbox.handoff');
+    if (handoff && handoff.graph && handoff.traffic) {
+      titleEl.textContent = `Sandbox: ${handoff.title || 'your design'}`;
+      play = mountPlayHost(wrap, ctx, { mode: 'sandbox', seed: 'sandbox', graph: handoff.graph, traffic: handoff.traffic });
+      return;
+    }
     const shared = r.query && r.query.d;
     if (shared && !slot) {
       // A shared sandbox design travels in the link as ?d=<payload>.
