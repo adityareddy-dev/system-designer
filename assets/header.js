@@ -10,7 +10,6 @@
   var link = document.querySelector('.sd-signin');
   if (!link) return;
   var app = link.getAttribute('data-app') || './';
-  var tab = document.querySelector('.sh-tab[data-tab="challenge"]');
 
   // ---- sound: the same setting the game uses (soundMuted in its saved settings)
   var SETTINGS = 'hotpath.v1.settings';
@@ -45,7 +44,6 @@
     me.title = user.name;
     me.textContent = String(user.name || '?').trim().charAt(0).toUpperCase() || '?';
     link.parentNode.replaceChild(me, link);
-    if (tab) tab.hidden = false;
   }
   function plain() {
     try {
@@ -106,13 +104,11 @@
               var slot = document.createElement('div');
               slot.className = 'sh-account';
               link.parentNode.replaceChild(slot, link);
-              bus.on('account', function (st) { if (tab) tab.hidden = !st.user; });
               // the account button keeps the class the plain avatar had
               var tag = function () { var b = slot.querySelector('.ac-me-btn'); if (b) b.classList.add('sd-me'); };
               new MutationObserver(tag).observe(slot, { childList: true });
               account.mountHeader(slot);
               tag();
-              if (tab) tab.hidden = !account.state().user;
             });
           });
         });

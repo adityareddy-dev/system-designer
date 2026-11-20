@@ -4,7 +4,7 @@
 
 System Designer is a free, open-source browser game for practising system design. You read a real problem (a URL shortener, a bank ledger, a concert ticket drop), draw an architecture from 99 building blocks, then fast-forward through a full day of traffic with viral spikes, outages and retry storms. Every request flows through your design as moving light. At the end a plain-words debrief scores uptime, speed, data safety and monthly cost, and explains each trade-off.
 
-It is for everyone: students meeting a load balancer for the first time, interview candidates, junior and senior engineers, product people, and friends who want to beat each other's designs. On https://systemdesigner.io you sign in with a free Google or GitHub account to play, which keeps your progress on every device and puts your scores on the Challenge leaderboards. Problem briefs are public. Guides and lessons show an introduction, then ask for an email to read the rest. Weekly updates are a separate choice. This code is MIT licensed: run your own copy and it plays and reads with no account at all.
+It is for everyone: students meeting a load balancer for the first time, interview candidates, junior and senior engineers, product people, and friends who want to beat each other's designs. Everything at https://systemdesigner.io is free to play without an account or email. Sign-in is optional for syncing progress across devices or posting a score to a Challenge leaderboard. Problem briefs are public. The reading pages for guides and lessons show an introduction, then ask for an email to read the rest. Weekly updates are a separate choice. The source is MIT licensed.
 
 ## How to play
 

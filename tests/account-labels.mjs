@@ -1,8 +1,7 @@
-// Account events refresh the home line and identity inside the open profile menu.
+// Account events refresh the identity inside the open profile menu.
 import assert from 'node:assert/strict';
 import { createBus } from '../core/bus.js';
 import { createAccountUi } from '../account/ui.js';
-import { renderHome } from '../ui/shell/home.js';
 class Element {
   children = [];
   listeners = {};
@@ -19,18 +18,6 @@ class Element {
   get firstChild() { return this.children[0]; }
   removeChild(c) { this.children = this.children.filter((x) => x !== c); }
   focus() {}
-  // the real home hero is written as HTML text: this stand-in turns each class in it into a child element
-  set innerHTML(html) {
-    const section = Object.assign(new Element(), { tag: 'section' });
-    let into = section;
-    for (const m of String(html).matchAll(/class="([^"]+)"/g)) {
-      const el = Object.assign(new Element(), { className: m[1] });
-      into.append(el);
-      if (m[1] === 'sh-bench') into = el; // the bench holds the elements written after it
-    }
-    this.children = [section];
-    section.parent = this;
-  }
   get firstElementChild() { return this.children[0]; }
   getBoundingClientRect() { return { bottom: 50, right: 100 }; }
   all() { return [this, ...this.children.flatMap((c) => c instanceof Element ? c.all() : [])]; }
@@ -62,15 +49,8 @@ const api = {
   isSignedIn: () => !!user, displayName: () => user?.name || '',
   async rename(name) { user = { ...user, name }; bus.emit('account'); },
 };
-const ctx = { bus, account: api, reducedMotion: () => true, content: { problems: [], lessons: [], groups: [] },
-  progress: { stats: () => ({ solved: 0, stars: 0, lessonsDone: 0 }), all: () => ({}) }, store: { get: () => false } };
-const home = new Element();
-const view = renderHome(home, ctx);
-const note = () => home.querySelector('.sh-gate-note');
-assert.match(note().textContent, /stays in this browser/);
+const ctx = { bus, account: api };
 user = { name: 'Test player', providers: ['fake'] };
-bus.emit('account');
-assert.match(note().textContent, /across devices/);
 const slot = new Element();
 createAccountUi(ctx, api).mountHeader(slot);
 slot.children[0].listeners.click();
@@ -86,8 +66,7 @@ assert.equal(slot.querySelector('.ac-avatar-letter').textContent, 'A');
 assert.equal(slot.children[0]['aria-label'], 'Your account: Adi R');
 user = null;
 bus.emit('account');
-assert.match(note().textContent, /stays in this browser/);
-view.destroy();
+assert.equal(slot.querySelector('.ac-signin-label').textContent, 'Sign in');
 
 // Email block: the toggle is on for a subscribed account, off for one that turned it off, and says what it does.
 const words = (e) => e instanceof Element ? [e.textContent || '', ...e.children.map(words)].join(' ') : String(e);
@@ -107,4 +86,4 @@ assert.equal(card.querySelector('.ac-stored'), null);
 assert.match(cardText, /By continuing you agree to the/);
 assert.match(cardText, /Privacy policy/);
 for (const bad of [/we store/i, /never sold/i, /nothing is sold/i, /no ads/i, /surveys/i]) assert.doesNotMatch(cardText, bad, String(bad));
-console.log('Home sign-in wording, open-menu rename, email toggle and sign-in card passed.');
+console.log('Open-menu rename, sign-out, email toggle and sign-in card passed.');

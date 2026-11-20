@@ -28,9 +28,9 @@ ${para('The debrief is written in plain words. It tells you which event hurt, wh
 ${para(`There are ${lessons.length} lessons and ${problems.length} problems across ${new Set(problems.map(p=>p.group)).size} industries. Lessons focus on one mechanism. Problems put several mechanisms together, from small services to systems where an outage, an unfair customer or a late queue changes the answer.`)}
 <p>Try ${p('notification-service')} when you want to separate accepting work from finishing it. Try ${p('chat-app')} when bad connections and repeated messages matter. Use ${l('lead-interview')} before a timed attempt. Interview mode on Medium and Hard problems asks you to lead the discussion and defend choices with evidence.</p>
 ${para('Sandbox leaves the score behind and lets you try a traffic pattern or event just to understand it.')}
-<h2>Free, with a free account</h2>
-${para('Play in the browser. There is no download and no subscription. Playing on systemdesigner.io needs a free Google or GitHub account. Reading the problems, lessons and guides does not.')}
-${accountLive ? para('Your account keeps progress across devices. The code is open source under the MIT license, so you can also run your own copy with no account at all.'):''}
+<h2>Free to play</h2>
+${para('Play in the browser for free without an account or email.')}
+${accountLive ? para('Optional sign-in keeps progress across devices. The code is open source under the MIT license.'):''}
 ${para('Prices, capacities and timings are rounded teaching approximations. A simulation cannot certify a production system, but it can make a useful question concrete: what did this choice protect, what did it cost, and what would make you change it?')}
 <p>Start with ${l('intro')}, then build the ${p('url-shortener')}. Predict the first bottleneck before you press Start.</p>`),
     make('how-to-practise-system-design','How to practise system design',
