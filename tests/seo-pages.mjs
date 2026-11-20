@@ -30,7 +30,7 @@ for (const file of files) {
   assert.ok(!titles.has(title), `${file}: duplicate title`);
   assert.ok(!descriptions.has(description), `${file}: duplicate description`);
   titles.add(title); descriptions.add(description);
-  const url = 'https://systemdesigner.io/' + file.replace(/index\.html$/, '');
+  const url = 'https://systemdesigner.io/' + (file === 'privacy.html' ? 'privacy' : file.replace(/index\.html$/, ''));
   assert.ok(html.includes(`<link rel="canonical" href="${url}">`), `${file}: canonical`);
   for (const [key, value] of [['og:title', title], ['og:description', description], ['og:url', url], ['twitter:title', title], ['twitter:description', description], ['twitter:card', 'summary_large_image']]) {
     assert.equal(meta(html, key), value, `${file}: ${key}`);
