@@ -36,7 +36,8 @@ if (location.origin !== SITE) {
     const form = box.querySelector('form'), fields = form.querySelector('fieldset');
     const check = form.elements.marketingOptIn, email = form.elements.email;
     const status = box.querySelector('[data-capture-status]');
-    defaults.then(on => { check.checked = on; fields.disabled = false; status.textContent = ''; });
+    // The site never hears about an unsubscribe from an email link, so the reading gate starts unticked.
+    defaults.then(on => { check.checked = !guide && on; fields.disabled = false; status.textContent = ''; });
     form.addEventListener('submit', async event => {
       event.preventDefault();
       if (fields.disabled || !form.reportValidity()) return;

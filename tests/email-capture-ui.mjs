@@ -37,7 +37,7 @@ try {
     await page.goto('https://systemdesigner.io/guides/notification-service-walkthrough/');
     const form = page.locator('[data-email-capture]');
     await form.locator('fieldset:not([disabled])').waitFor();
-    assert.equal(await form.getByRole('checkbox').isChecked(), checked, country);
+    assert.equal(await form.getByRole('checkbox').isChecked(), false, `${country} guide box starts unticked`);
     assert.equal(await page.locator('.sd-gated').isVisible(), false);
     const decline = page.getByRole('button', { name: 'Decline', exact: true });
     if (await decline.isVisible()) await decline.click();
@@ -57,6 +57,7 @@ try {
     await page.locator('.sd-gated:not([hidden])').waitFor();
     await page.goto('https://systemdesigner.io/p/news-site/');
     await page.locator('[data-email-capture] fieldset:not([disabled])').waitFor();
+    assert.equal(await page.getByRole('checkbox').isChecked(), checked, `${country} weekly box default`);
     await page.getByRole('textbox', { name: 'Email address' }).fill(`weekly-${country.toLowerCase()}@example.com`);
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Save my email choice' }).click();
@@ -76,5 +77,5 @@ try {
   await fork.locator('.sd-gated:not([hidden])').waitFor();
   assert.equal(await fork.locator('[data-email-capture]').isVisible(), false);
   await fork.close();
-  console.log('Real capture service: US/DE/CA/unknown defaults, optional guide consent, errors, unlock persistence, attribution, mobile and forks passed.');
+  console.log('Real capture service: US/DE/CA/unknown weekly defaults, unticked guide consent, errors, unlock persistence, attribution, mobile and forks passed.');
 } finally { await browser.close(); await app.close(); await site.close(); }
