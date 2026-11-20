@@ -9,7 +9,8 @@ import { createCatalog } from '../sim/catalog.js';
 import { dailyFor } from '../compete/daily.js';
 import { API_LIVE } from '../account/config.js';
 import { SITE, REPO, navigation, esc, para, link, relative, json, page, bodyShell, breadcrumb, textOf, themeHead } from './site-template.mjs';
-import { problemBody, lessonBody, problemCards, relatedProblems, listLinks } from './site-content.mjs';
+import { problemBody, lessonBody, lessonIntro, problemCards, relatedProblems, listLinks } from './site-content.mjs';
+import { captureBox, gateReading, gateData } from './site-capture.mjs';
 import { makeInterviewPages } from './site-interview.mjs';
 import { homeFaqs, readingLinks } from '../content/site-reading.js';
 import { canonical, replaceSeoTags, faqData, articleData } from './site-seo.mjs';
@@ -53,7 +54,7 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
         ...(guides.some(g=>g.id===p.id+'-walkthrough') ? [[relative(file,`guides/${p.id}-walkthrough/index.html`),'Walk through this design']] : []),
         [relative(file,'guides/how-to-practise-system-design/index.html'),'Practise a design with predictions and measurements'],
         [relative(file,'guides/two-week-system-design-plan/index.html'),'Follow the two-week interview plan']
-      ])}</section>`,
+      ])}</section>`+captureBox(file),
       data:[faqData((p.clarify || []).map(c=>[c.q,c.a])),{'@type':'LearningResource',learningResourceType:'Practice problem',educationalLevel:p.difficulty,description,teaches:p.concepts.map(id=>lessonById.get(id)?.title || id),about:groups.find(g=>g.id===p.group).title,isPartOf:{'@type':'WebApplication',name:'System Designer',url:SITE}}]
     }));
   }
@@ -65,8 +66,8 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
       crumbs:[rootCrumb,['Learn','learn/index.html'],[l.title,file]],
       preview:exists(`learn/${l.id}/preview.jpg`)?`learn/${l.id}/preview.jpg`:undefined,
       action:action(file,l.id==='intro'?'intro':'learn/'+l.id,'Open this lesson'),
-      body:lessonBody(l,problems,file)+`<p>${link(relative(file,'learn/index.html'),'Continue through the lesson tracks')}</p>`,
-      data:[{'@type':'LearningResource',learningResourceType:'Lesson',timeRequired:`PT${l.minutes}M`,description:l.summary,teaches:l.takeaway,isPartOf:{'@type':'Course',name:l.track,provider:{'@type':'Organization',name:'System Designer'}}}]
+      body:gateReading(file,lessonIntro(l),lessonBody(l,problems,file,{skipFirstRead:true})+`<p>${link(relative(file,'learn/index.html'),'Continue through the lesson tracks')}</p>`),
+      data:[{'@type':'LearningResource',...gateData,learningResourceType:'Lesson',timeRequired:`PT${l.minutes}M`,description:l.summary,teaches:l.takeaway,isPartOf:{'@type':'Course',name:l.track,provider:{'@type':'Organization',name:'System Designer'}}},{'@type':'WebPage',...gateData}]
     }));
   }
   const pIndex = 'problems/index.html';
@@ -90,12 +91,17 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
     crumbs:[rootCrumb,['Guides',gIndex]],data:[collection],
     body:`<ul class="site-grid">${guides.map(g=>`<li><span class="site-tag">By System Designer</span><h2>${link(relative(gIndex,g.file),g.title)}</h2>${para(g.description)}</li>`).join('')}</ul>`
   }));
-  for (const g of guides) add(g.file,page(g.file,{
+  for (const g of guides) {
+    const at = g.body.indexOf('<h2>');
+    const intro = at < 0 ? '' : g.body.slice(0,at);
+    const rest = at < 0 ? g.body : g.body.slice(at);
+    add(g.file,page(g.file,{
     title:g.title,description:g.description,article:true,preview:'assets/share/guides.png',kicker:'A System Designer guide',
     crumbs:[rootCrumb,['Guides',gIndex],[g.title,g.file]],
-    body:`<div class="site-prose site-cols"><p class="site-byline">By System Designer · <time datetime="2026-11-07">7 November 2026</time></p>${g.body}<h2>Keep practising</h2>${listLinks(guides.filter(q=>q!==g).slice(0,3).map(q=>[relative(g.file,q.file),q.title]))}</div>`,
-    data:[articleData(g)]
+    body:gateReading(g.file,`<div class="site-prose"><p class="site-byline">By System Designer · <time datetime="2026-11-07">7 November 2026</time></p>${intro}</div>`,`<div class="site-prose site-cols">${rest}<h2>Keep practising</h2>${listLinks(guides.filter(q=>q!==g).slice(0,3).map(q=>[relative(g.file,q.file),q.title]))}</div>`),
+    data:[articleData({...g,gatedSelector:'.sd-gated'})]
   }));
+  }
   for (const entry of interviews) add(entry.file,page(entry.file,{
     title:entry.title,description:entry.description,preview:'assets/share/interview.png',
     kicker:'System design interview preparation',
@@ -126,13 +132,14 @@ export function buildSitePages(root = process.cwd(), {dailyDates = []} = {}) {
   };
   const homeData = {'@context':'https://schema.org','@graph':[
     {'@type':'WebSite','@id':SITE+'#website',name:'System Designer',url:SITE,potentialAction:{'@type':'SearchAction',target:{'@type':'EntryPoint',urlTemplate:SITE+'#/practice?q={search_term_string}'},'query-input':'required name=search_term_string'}},
-    {'@type':'SoftwareApplication','@id':SITE+'#app',name:'System Designer',url:SITE,description:homeOpts.description,applicationCategory:'EducationalApplication',operatingSystem:'Any modern browser',browserRequirements:'JavaScript is required to play; lessons and guides can be read without it.',isAccessibleForFree:true,offers:{'@type':'Offer',price:'0',priceCurrency:'USD'}},
+    {'@type':'SoftwareApplication','@id':SITE+'#app',name:'System Designer',url:SITE,description:homeOpts.description,applicationCategory:'EducationalApplication',operatingSystem:'Any modern browser',browserRequirements:'JavaScript is required to play and unlock guides and lessons.',isAccessibleForFree:true,offers:{'@type':'Offer',price:'0',priceCurrency:'USD'}},
     {'@type':'LearningResource',name:'System Designer learning library',url:SITE,learningResourceType:'Interactive system design practice',isAccessibleForFree:true,educationalLevel:'Beginner to advanced',hasPart:[{ '@type':'CollectionPage',url:SITE+'problems/'},{'@type':'CollectionPage',url:SITE+'learn/'},{'@type':'CollectionPage',url:SITE+'guides/'}]},
     breadcrumb([rootCrumb]),faqData(faqs)
   ]};
   const headBlock = `  <!-- site:head:start -->\n  <link rel="stylesheet" href="assets/site.css">\n  <!-- site:head:end -->\n`;
   const earlyTheme = html => html.replace(/<!-- theme:start -->[\s\S]*?<!-- theme:end -->|<script src="assets\/theme.js"><\/script>/, () => themeHead).replace('</head>', html.includes('assets/analytics.js') ? '</head>' : '<script type="module" src="assets/analytics.js"></script>\n</head>');
   let home = earlyTheme(read('index.html'));
+  if (!home.includes('assets/email-capture.js')) home = home.replace('</head>', '<script type="module" src="assets/email-capture.js"></script>\n</head>');
   home = HOME_HEAD.test(home) ? home.replace(HOME_HEAD,()=>headBlock) : home.replace('  <meta name="theme-color"',headBlock+'  <meta name="theme-color"');
   // The first screen is the game's own hero (same markup as ui/shell/home.js), inside the same frame the game draws, so the game
   // takes over without a change. The readable page (description, links, questions) follows it for readers without scripts and for search.

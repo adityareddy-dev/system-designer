@@ -10,6 +10,7 @@ import { sanitizeProgress, mergeProgress, emptyProgress } from '../account/merge
 import { countryDefaults } from '../assets/consent-region.js';
 import { createMarketingSync } from './marketing.js';
 import { createObservation } from './observation.js';
+import { captureInput } from './email-capture.js';
 
 export const SESSION_COOKIE = 'sd_session';
 export const SESSION_TTL_MS = 30 * 24 * 3600 * 1000;
@@ -260,6 +261,15 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       return [200, { ok: true }, { 'Set-Cookie': endSessionCookie() }];
     },
 
+    'GET /email-capture': async ({ req }) => [200, { consent: countryDefaults(req.headers['cf-ipcountry']) }],
+    'POST /email-capture': async ({ req, ip }) => {
+      limit('capture', ip);
+      const input = captureInput(await readJson(req, BODY.small));
+      db.captureEmail(input, countryDefaults(req.headers['cf-ipcountry']).country, now());
+      if (input.marketingOptIn) void marketing.flush(true);
+      return [200, { ok: true }];
+    },
+
     'GET /me': async ({ req, sess }) => [200, { user: sess ? publicUser(sess.userId) : null, consent: countryDefaults(req.headers['cf-ipcountry']) }],
 
     'PATCH /me': async ({ req, ip, sess }) => {
@@ -269,6 +279,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       const hasName = body.name !== undefined, hasMarketing = body.marketingOptIn !== undefined;
       if (!hasName && !hasMarketing) throw new HttpError(400, 'bad-input', 'Send { name } or { marketingOptIn }.');
       if (hasMarketing && typeof body.marketingOptIn !== 'boolean') throw new HttpError(400, 'bad-input', 'marketingOptIn must be true or false.');
+      if (body.source !== undefined && (typeof body.source !== 'string' || !/^[a-zA-Z0-9_.~-]{0,100}$/.test(body.source))) throw new HttpError(400, 'bad-input', 'Invalid source tag.');
       let name = null;
       if (hasName) {
         if (typeof body.name === 'string' && /[<>]/.test(body.name)) throw new HttpError(400, 'bad-name', 'Names cannot contain < or >.');
@@ -281,7 +292,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
       }
       db.tx(() => {
         if (hasName) db.setName(userId, name);
-        if (hasMarketing) db.setMarketingOptIn(userId, body.marketingOptIn, now(), req.headers['cf-ipcountry']);
+        if (hasMarketing) db.setMarketingOptIn(userId, body.marketingOptIn, now(), req.headers['cf-ipcountry'], body.source || '');
       });
       if (hasMarketing) void marketing.flush(true);
       return [200, { user: publicUser(userId) }];
@@ -415,7 +426,7 @@ export function createApp({ config, db, google, github, replayer, game, limiter,
         const any = Object.keys(routes).some((k) => k.endsWith(' ' + url.pathname));
         throw new HttpError(any ? 405 : 404, any ? 'method' : 'not-found', any ? 'Method not allowed.' : 'Not found.');
       }
-      const anonymous = url.pathname === '/e' || url.pathname === '/feedback';
+      const anonymous = url.pathname === '/e' || url.pathname === '/feedback' || url.pathname === '/email-capture';
       const sess = anonymous ? null : sessionOf(req);
       const out = await route({ req, res, url, ip, sess });
       if (Array.isArray(out) && !res.headersSent) sendJson(res, out[0], out[1], out[2] || {});

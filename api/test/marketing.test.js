@@ -41,7 +41,7 @@ test('country defaults reach signed-out pages and new accounts, then choices sur
   } finally { await app.close(); }
 });
 
-test('migration copies old choices once and leaves the legacy columns readable', () => {
+test('migration leaves legacy survey defaults unconsented and asks for a fresh choice', () => {
   const file = path.resolve('.task-tmp/marketing-migration.db');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.rmSync(file, { force: true });
@@ -51,11 +51,11 @@ test('migration copies old choices once and leaves the legacy columns readable',
   old.close();
   let db = openDb(file);
   try {
-    assert.equal(db.user(1).marketingOptIn, true);
-    assert.equal(db.user(1).marketingOptInAt, 20);
-    assert.equal(db.user(1).marketingPromptPending, false);
+    assert.equal(db.user(1).marketingOptIn, false);
+    assert.equal(db.user(1).marketingOptInAt, null);
+    assert.equal(db.user(1).marketingPromptPending, true);
     assert.equal(db.user(2).marketingOptIn, false);
-    assert.equal(db.marketingJobs(NOW, true).length, 1);
+    assert.equal(db.marketingJobs(NOW, true).length, 0);
     db.setMarketingOptIn(1, false, 30, 'CA');
     assert.equal(db.user(1).surveyOptIn, true);
     db.close(); db = openDb(file);
@@ -77,10 +77,23 @@ test('subscription changes persist across restarts, email changes and account de
     assert.equal(db.user(userId).marketingPromptPending, false);
     db.signIn({ ...profile, email: 'new@example.com', country: 'DE' }, NOW + 1);
     const jobs = Object.fromEntries(db.marketingJobs(NOW, true).map(job => [job.email, job.subscribed]));
-    assert.deepEqual(jobs, { 'new@example.com': 1, 'old@example.com': 0 });
+    assert.deepEqual(jobs, { 'old@example.com': 0 });
+    assert.equal(db.user(userId).marketingPromptPending, true);
+    assert.equal(db.user(userId).marketingOptIn, false);
     assert.equal(db.user(userId).marketingCountry, 'US');
     db.deleteUser(userId);
     assert.equal(db.user(userId), null);
     assert.ok(db.marketingJobs(NOW, true).every(job => job.subscribed === 0));
   } finally { db.close(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a saved account choice carries a source tag and rejects malformed attribution', async () => {
+  const app = await startApp();
+  try {
+    const c = client(app.base);
+    await c.req('POST', '/auth/fake', { body: { id: 'source-account', email: 'source-account@example.com' } });
+    assert.equal((await c.req('PATCH', '/me', { body: { marketingOptIn: true, source: 'linkedin' } })).status, 200);
+    assert.equal(app.db.marketingJobs(NOW, true)[0].source, 'linkedin');
+    assert.equal((await c.req('PATCH', '/me', { body: { marketingOptIn: true, source: '<bad>' } })).status, 400);
+  } finally { await app.close(); }
 });

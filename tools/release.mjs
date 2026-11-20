@@ -48,10 +48,10 @@ copy(path.join(root, 'assets'), path.join(dist, 'assets'), (f) => /\.(js|css)$/.
 copy(path.join(root, 'assets/fonts.css'), path.join(dist, 'assets/fonts.css'));
 copy(path.join(root, 'assets/site.css'), path.join(dist, 'assets/site.css'));
 copy(path.join(root, 'assets/header.js'), path.join(dist, 'assets/header.js'));
-for (const file of ['analytics.js', 'analytics.css', 'consent-region.js']) copy(path.join(root, 'assets', file), path.join(dist, 'assets', file));
+for (const file of ['analytics.js', 'analytics.css', 'consent-region.js', 'email-capture.js']) copy(path.join(root, 'assets', file), path.join(dist, 'assets', file));
 copy(path.join(root, '_headers'), path.join(dist, '_headers'));
 copy(path.join(root, 'assets/palette.css'), path.join(dist, 'assets/palette.css'));
-for (const f of ['privacy.html', '404.html', 'd', 'p', 'problems', 'learn', 'guides', 'interview', 'sitemap.xml', 'robots.txt', 'llms.txt', 'llms-full.txt', 'LICENSE', 'CNAME', '.nojekyll']) if (fs.existsSync(path.join(root, f))) copy(path.join(root, f), path.join(dist, f));
+for (const f of ['favicon.ico', 'apple-touch-icon.png', 'manifest.webmanifest', 'privacy.html', '404.html', 'd', 'p', 'problems', 'learn', 'guides', 'interview', 'sitemap.xml', 'robots.txt', 'llms.txt', 'llms-full.txt', 'LICENSE', 'CNAME', '.nojekyll']) if (fs.existsSync(path.join(root, f))) copy(path.join(root, f), path.join(dist, f));
 
 // All icons in one file (id → svg markup) so the workbench does not fetch them one by one.
 const iconIndex = JSON.parse(fs.readFileSync(path.join(root, 'assets/icons/index.json'), 'utf8'));
@@ -92,6 +92,8 @@ function readIndexScript(map) {
 
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 html = html.replace(/  <link rel="stylesheet" href="assets\/palette\.css">[\s\S]*?<link rel="stylesheet" href="ui\/shell\/layout\.css">/, '  <link rel="stylesheet" href="app.css">');
+// These styles are already in app.css. Keep the release page from requesting source-only files.
+html = html.replace(/\s*<link rel="stylesheet" href="assets\/(?:neo|header)\.css">/g, '');
 html = html.replace(/  <!-- preload:start[\s\S]*?<!-- preload:end -->/, () => [
   ...first.map((k) => `  <link rel="modulepreload" href="${rel(k)}">`),
   ...['elements', 'requests', 'events', 'world'].map((n) => `  <link rel="preload" as="fetch" href="catalog/${n}.json" crossorigin>`),

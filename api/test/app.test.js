@@ -548,7 +548,7 @@ test('an old database gains the new user columns on start and keeps its rows', (
     try {
       const cols = db.raw.prepare('PRAGMA table_info(users)').all().map((r) => r.name);
       for (const c of ['email', 'survey_optin', 'survey_optin_at']) assert.ok(cols.includes(c), c);
-      assert.deepEqual(db.user(1), { id: 1, name: 'Veteran', avatar: null, createdAt: 1234, providers: [], email: null, surveyOptIn: false, surveyOptInAt: null, marketingOptIn: false, marketingOptInAt: null, marketingCountry: 'XX', marketingPromptPending: false });
+      assert.deepEqual(db.user(1), { id: 1, name: 'Veteran', avatar: null, createdAt: 1234, providers: [], email: null, surveyOptIn: false, surveyOptInAt: null, marketingOptIn: false, marketingOptInAt: null, marketingCountry: 'XX', marketingPromptPending: true });
       db.setEmail(1, 'v@example.com');
       db.setMarketingOptIn(1, true, 99, 'US');
       assert.equal(db.user(1).email, 'v@example.com');

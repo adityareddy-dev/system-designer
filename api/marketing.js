@@ -9,11 +9,21 @@ export function createMarketingSync({ db, keyFile, fetchImpl = fetch, now = Date
       try {
         const key = (await readFile(keyFile, 'utf8')).trim();
         if (!key || /\s/.test(key)) throw new Error('key unavailable');
+        const headers = { Authorization: `Klaviyo-API-Key ${key}`, revision: '2026-10-15', 'Content-Type': 'application/vnd.api+json', Accept: 'application/vnd.api+json' };
+        if (!db.currentMarketingJob(job.email, job.version)) continue;
+        if (job.subscribed && job.source) {
+          const profile = await fetchImpl('https://a.klaviyo.com/api/profile-import/', {
+            method: 'POST', signal: AbortSignal.timeout(8000), headers,
+            body: JSON.stringify({ data: { type: 'profile', attributes: { email: job.email, properties: { utm_source: job.source } } } }),
+          });
+          if (!profile.ok) throw new Error('profile update failed');
+          if (!db.currentMarketingJob(job.email, job.version)) continue;
+        }
         const action = job.subscribed ? 'create' : 'delete';
         const attributes = { email: job.email, subscriptions: { email: { marketing: { consent: job.subscribed ? 'SUBSCRIBED' : 'UNSUBSCRIBED' } } } };
         const res = await fetchImpl(`https://a.klaviyo.com/api/profile-subscription-bulk-${action}-jobs/`, {
           method: 'POST', signal: AbortSignal.timeout(8000),
-          headers: { Authorization: `Klaviyo-API-Key ${key}`, revision: '2026-10-15', 'Content-Type': 'application/vnd.api+json', Accept: 'application/vnd.api+json' },
+          headers,
           body: JSON.stringify({ data: {
             type: `profile-subscription-bulk-${action}-job`,
             attributes: { profiles: { data: [{ type: 'profile', attributes }] } },

@@ -83,3 +83,47 @@ test('settings and sign-in succeed while the delivery service fails', async () =
     assert.equal((await c.req('GET', '/me')).json.user.marketingOptIn, true);
   } finally { await app.close(); }
 });
+
+test('public source tags use profile properties without subscribing guide-only contacts', async () => {
+  const db = openDb(':memory:');
+  const calls = [];
+  const sync = createMarketingSync({ db, keyFile, fetchImpl: async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return { ok: true, status: url.includes('profile-import') ? 200 : 202 };
+  } });
+  try {
+    const input = { email: 'source@example.com', marketingOptIn: false, page: '/guides/two-week-system-design-plan/', source: 'linkedin' };
+    db.captureEmail(input, 'US', NOW);
+    await sync.flush();
+    assert.equal(calls.length, 0);
+    db.captureEmail({ ...input, marketingOptIn: true }, 'US', NOW);
+    await sync.flush();
+    assert.equal(calls.length, 2);
+    assert.match(calls[0].url, /\/api\/profile-import\/$/);
+    assert.deepEqual(calls[0].body.data.attributes.properties, { utm_source: 'linkedin' });
+    assert.equal(calls[0].body.data.attributes.subscriptions, undefined);
+    assert.match(calls[1].url, /bulk-create-jobs/);
+    assert.equal(db.marketingJobs(NOW, true).length, 0);
+  } finally { db.close(); }
+});
+
+test('a newer opt-out during a profile update prevents the stale subscribe request', async () => {
+  const db = openDb(':memory:');
+  let finish;
+  const calls = [];
+  const sync = createMarketingSync({ db, keyFile, fetchImpl: (url) => {
+    calls.push(url);
+    return new Promise(resolve => { finish = () => resolve({ ok: true, status: 200 }); });
+  } });
+  try {
+    const { userId } = db.signIn({ provider: 'fake', subject: 'source-race', name: 'Race', email: 'source-race@example.com' }, NOW);
+    db.captureEmail({ email: 'source-race@example.com', marketingOptIn: true, page: '/p/news-site/', source: 'linkedin' }, 'US', NOW);
+    const running = sync.flush();
+    while (!finish) await new Promise(resolve => setImmediate(resolve));
+    db.setMarketingOptIn(userId, false, NOW + 1, 'US');
+    finish(); await running;
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /profile-import/);
+    assert.equal(db.marketingJobs(NOW, true)[0].subscribed, 0);
+  } finally { db.close(); }
+});

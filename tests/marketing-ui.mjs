@@ -44,6 +44,7 @@ try {
   await panel.getByRole('button', { name: 'Save choice', exact: true }).click();
   await panel.waitFor({ state: 'detached' });
   await page.locator('#sh-email-card').waitFor();
+  await page.waitForFunction(() => document.querySelector('#sh-email-card input[type=checkbox]')?.checked === true);
   assert.equal(await page.locator('#sh-email-card input[type=checkbox]').isChecked(), true);
   await page.screenshot({ animations: 'disabled', path: path.join(out, 'settings.png') });
   await page.locator('#sh-email-card input[type=checkbox]').uncheck();

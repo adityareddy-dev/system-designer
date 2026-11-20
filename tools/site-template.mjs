@@ -44,7 +44,7 @@ export function page(file, opts) {
 <html lang="en" data-theme="light"><head>
 <meta charset="utf-8">
 ${themeHead}
-<script type="module" src="${relative(file, 'assets/analytics.js')}"></script>
+<script type="module" src="${relative(file, 'assets/analytics.js')}"></script>${opts.body?.includes('data-email-capture') ? `\n<script type="module" src="${relative(file, 'assets/email-capture.js')}"></script>` : ''}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${seoTags(file,opts)}
 <link rel="icon" href="${relative(file,'assets/favicon.svg')}" type="image/svg+xml">

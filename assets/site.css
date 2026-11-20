@@ -336,3 +336,12 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; margin: 0; }
 .site-prose li > a, .site-panel li > a, .site-facts a, .site-toc a { display: inline-flex; align-items: center; min-height: 44px; }
 .site-prose li, .site-panel li { margin: 2px 0; }
 .site-prose p a, .site-panel p a { padding-block: 11px; }
+.sd-gated[hidden], .sd-capture[hidden], .sd-capture form[hidden] { display: none !important; }
+.sd-capture { max-width: 48rem; margin-block: 2rem; }
+.sd-capture fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 12px; }
+.sd-capture input[type=email] { box-sizing: border-box; width: 100%; max-width: 32rem; min-height: 44px; padding: 10px; border: 2px solid var(--ink, #202020); border-radius: 4px; font: inherit; background: var(--paper, #fff); color: inherit; }
+.sd-capture .sd-capture-choice { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.sd-capture input[type=checkbox] { width: 22px; height: 22px; flex: 0 0 22px; margin-top: 2px; }
+.sd-capture button { justify-self: start; cursor: pointer; font: inherit; }
+.sd-capture :focus-visible { outline: 3px solid #2d5bff; outline-offset: 3px; }
+.sd-capture [data-capture-status]:empty { display: none; }

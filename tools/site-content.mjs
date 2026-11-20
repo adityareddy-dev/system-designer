@@ -104,8 +104,10 @@ export const listLinks = rows => `<ul>${rows.map(([href,text])=>`<li>${link(href
 export function problemCards(problems,file) {
   return `<ul class="site-grid">${problems.map(p=>`<li><span class="site-tag">${esc(p.difficulty)}</span><h3>${link(relative(file,`p/${p.id}/index.html`),p.title)}</h3>${para(p.brief)}</li>`).join('')}</ul>`;
 }
-export function lessonBody(l,problems,file) {
-  const reads = l.steps.filter(s=>s.kind==='read'||s.kind==='figure').map(s=>`<section><h2>${esc(s.title || 'The idea')}</h2>${para(s.text)}${s.diagram ? `<h3>${esc(s.diagram.label)}</h3>${list(s.diagram.parts.map(([label,text])=>label+': '+text))}`:''}</section>`).join('');
+const readSection = s => `<section><h2>${esc(s.title || 'The idea')}</h2>${para(s.text)}${s.diagram ? `<h3>${esc(s.diagram.label)}</h3>${list(s.diagram.parts.map(([label,text])=>label+': '+text))}`:''}</section>`;
+export const lessonIntro = l => l.steps.filter(s=>s.kind==='read'||s.kind==='figure').slice(0,1).map(readSection).join('');
+export function lessonBody(l,problems,file,{skipFirstRead=false}={}) {
+  const reads = l.steps.filter(s=>s.kind==='read'||s.kind==='figure').slice(skipFirstRead?1:0).map(readSection).join('');
   const captions = l.steps.filter(s=>s.kind==='script').flatMap(s=>s.beats).map(b=>b.caption).filter(t=>t && !t.includes('{'));
   const demos = l.steps.filter(s=>s.kind==='demo');
   const numbers = l.steps.filter(s=>s.kind==='numbers').flatMap(s=>s.rows);
