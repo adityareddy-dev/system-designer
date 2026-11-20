@@ -10,6 +10,7 @@ For backend engineers, students and interview candidates. Clarify requirements, 
 - [Problems](https://systemdesigner.io/problems/): Every scenario grouped by industry and difficulty.
 - [Lessons](https://systemdesigner.io/learn/): Every lesson in track order.
 - [Guides](https://systemdesigner.io/guides/): Practice advice, a day-by-day plan and classic walkthroughs.
+- [About](https://systemdesigner.io/about/): Who makes System Designer (Aditya Reddy), what it covers and how the site is updated.
 
 ## Interview preparation
 

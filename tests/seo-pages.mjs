@@ -14,7 +14,7 @@ function walk(dir) {
     else if (entry.name.endsWith('.html')) files.push(file);
   }
 }
-for (const dir of ['p', 'd', 'learn', 'guides', 'problems']) walk(dir);
+for (const dir of ['p', 'd', 'learn', 'guides', 'problems', 'about']) walk(dir);
 if (fs.existsSync(path.join(root, 'interview'))) walk('interview');
 const decode = value => value.replace(/&(amp|quot|#39|lt|gt);/g, (_, key) => ({ amp: '&', quot: '"', '#39': "'", lt: '<', gt: '>' }[key]));
 const meta = (html, name) => decode(html.match(new RegExp(`<meta (?:name|property)="${name}" content="([^"]*)"`))?.[1] || '');

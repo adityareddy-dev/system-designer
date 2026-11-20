@@ -562,7 +562,7 @@ Design a chat system
 
 # Build the system. Survive the day. See why it held.
 
-By System Designer
+By Aditya Reddy
 https://systemdesigner.io/guides/introducing-system-designer/
 
 Meet System Designer: a free browser game with 82 system design problems, 41 lessons and a traffic day that puts your decisions to work.
@@ -611,7 +611,7 @@ Start with Your first system, then build the URL shortener. Predict the first bo
 
 # How to practise system design
 
-By System Designer
+By Aditya Reddy
 https://systemdesigner.io/guides/how-to-practise-system-design/
 
 A practical loop for turning a diagram into a design you can explain: clarify, estimate, predict a failure, test it and revise one decision.
@@ -668,7 +668,7 @@ When ordinary Practice feels comfortable, use Interview mode on a Medium or Hard
 
 # A two-week system design interview plan
 
-By System Designer
+By Aditya Reddy
 https://systemdesigner.io/guides/two-week-system-design-plan/
 
 Fourteen days of lessons, traffic experiments and design explanations, with Interview mode in the second week. Every task links to a real lesson or problem.
@@ -835,7 +835,7 @@ A report is a record of one attempt. Revisit a different problem using the same 
 
 # URL shortener walkthrough
 
-By System Designer
+By Aditya Reddy
 https://systemdesigner.io/guides/url-shortener-walkthrough/
 
 Separate durable link storage from fast redirects, estimate the read path and test what happens when a popular link outgrows its cache.
@@ -930,7 +930,7 @@ Play this problem. Keep one baseline, predict a change and compare the next full
 
 # Rate limiter walkthrough
 
-By System Designer
+By Aditya Reddy
 https://systemdesigner.io/guides/rate-limiter-service-walkthrough/
 
 Build fair admission for a public API: estimate counters, choose a sharing policy and explain what happens when the limiter cannot answer.
@@ -1023,7 +1023,7 @@ Play this problem. Keep one baseline, predict a change and compare the next full
 
 # Chat system walkthrough
 
-By System Designer
+By Aditya Reddy
 https://systemdesigner.io/guides/chat-app-walkthrough/
 
 Design message identity, durable acknowledgement and reconnect behavior before treating chat as a socket-count problem.
@@ -1128,7 +1128,7 @@ Play this problem. Keep one baseline, predict a change and compare the next full
 
 # News feed walkthrough
 
-By System Designer
+By Aditya Reddy
 https://systemdesigner.io/guides/social-feed-walkthrough/
 
 Estimate fanout work, keep posts authoritative and choose where to assemble feeds for ordinary accounts and celebrities.
@@ -1233,7 +1233,7 @@ Play this problem. Keep one baseline, predict a change and compare the next full
 
 # Notification service walkthrough
 
-By System Designer
+By Aditya Reddy
 https://systemdesigner.io/guides/notification-service-walkthrough/
 
 Separate acceptance from sending, respect provider quotas and reason about expiry and unknown outcomes before claiming delivery once.
@@ -1338,7 +1338,7 @@ Play this problem. Keep one baseline, predict a change and compare the next full
 
 # Caching, load balancing and queues, explained by breaking things
 
-By System Designer
+By Aditya Reddy
 https://systemdesigner.io/guides/caching-load-balancing-queues/
 
 Three small experiments show what caching, load balancing and queues protect, what they cost and how each can fail.

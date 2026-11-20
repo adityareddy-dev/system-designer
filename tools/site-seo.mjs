@@ -51,10 +51,12 @@ export function replaceSeoTags(html, file, opts, data) {
 export function faqData(rows) {
   return { '@type': 'FAQPage', mainEntity: rows.map(([name, text]) => ({ '@type': 'Question', name: clean(name), acceptedAnswer: { '@type': 'Answer', text: clean(text) } })) };
 }
+// The person who makes the game, named on the About page and as the guides' author.
+export const AUTHOR = { '@type': 'Person', '@id': SITE + 'about/#aditya-reddy', name: 'Aditya Reddy', url: 'https://adityareddy.dev', sameAs: ['https://www.linkedin.com/in/adityareddy-dev', 'https://github.com/adityareddy-dev'] };
 export function articleData(guide) {
   return {
     '@type': 'Article', headline: guide.title, description: guide.description,
-    author: { '@type': 'Organization', name: 'System Designer', url: SITE },
+    author: AUTHOR,
     publisher: { '@type': 'Organization', name: 'System Designer', url: SITE },
     image: SITE + 'assets/share/guides.png', datePublished: '2026-11-07',
     dateModified: '__SITE_LASTMOD__', mainEntityOfPage: canonical(guide.file),
