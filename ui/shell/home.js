@@ -1,39 +1,12 @@
 // Home view: hero, the four sections with live progress, today's challenge, suggested next problem.
 import { homeFaqs, readingLinks } from '../../content/site-reading.js';
-import { h, ico, problemOf, lessonOf, groupIdOf, diffBadge, DIFF_ORDER, GROUP_ICON } from './dom.js';
-import { iconInner, hasIcon } from '../../assets/icons/index.js';
+import { h, ico, problemOf, groupIdOf, diffBadge, DIFF_ORDER, GROUP_ICON } from './dom.js';
 import { conceptStats, weakestConcept, totalResults } from './concepts.js';
 import { nextTracks } from './next-tracks.js';
-import { ARROW, PHASES, barWidth, barFill, heroHtml } from './hero-markup.js';
+import { heroHtml } from './hero-markup.js';
+import { mountTrafficLab } from './traffic-lab.js';
 
-const arrow = () => { const s = document.createElement('span'); s.className = 'sh-arr-wrap'; s.innerHTML = ARROW; return s.firstChild; };
-
-// The bench: a load balancer sharing steady traffic across three replicas. Three buttons change the picture.
-// The markup comes from hero-markup.js (the same text is written into index.html); this adds the behaviour.
-function wireBench(el) {
-  const readout = el.querySelector('.sh-bench-rate');
-  const caption = el.querySelector('.sh-bench-caption');
-  const chips = el.querySelector('.sh-bench-chips');
-  const svg = el.querySelector('.sh-bench-svg');
-  function show(phase) {
-    el.dataset.state = phase.down != null ? 'failure' : phase.bars[0] > 100 ? 'overload' : 'steady';
-    readout.textContent = phase.rate;
-    caption.textContent = phase.text;
-    phase.bars.forEach((v, i) => {
-      const bar = svg.querySelector(`[data-bar="${i}"]`);
-      if (!bar) return;
-      bar.setAttribute('width', String(barWidth(v)));
-      bar.setAttribute('fill', barFill(v));
-      const spare = svg.querySelector(`[data-spare="${i}"]`);
-      if (spare) spare.textContent = phase.spare[i];
-      svg.querySelector(`[data-x="${i}"]`)?.setAttribute('opacity', phase.down === i ? '1' : '0');
-      svg.querySelector(`[data-replica="${i}"] .sh-rep-box`)?.setAttribute('fill', phase.down === i ? '#FFD9D0' : '#FFFCF4');
-    });
-    [...chips.children].forEach((b, i) => { const on = PHASES[i] === phase; b.setAttribute('aria-pressed', String(on)); b.className = 'sh-bench-chip' + (on ? ' is-on' : ''); });
-  }
-  [...chips.children].forEach((b, i) => b.addEventListener('click', () => show(PHASES[i])));
-  show(PHASES[0]);
-}
+const arrow = () => h('span', { 'aria-hidden': 'true', text: '→' });
 
 // A mode card: a coloured strip with its icon, a big number, a plain line and a link.
 function modeCard({ href, iconId, label, big, title, text, extra, link, color }) {
@@ -80,53 +53,30 @@ export function nextProblem(ctx, afterId) {
 }
 
 export function renderHome(host, ctx) {
-  const gated = !!ctx.gate?.required;
-  let signedKey = null;
-  let known = null; // set from the account event: the account object is not on ctx yet when it first reports
-  const isIn = () => (known !== null ? known : !!ctx.account?.isSignedIn?.());
+  const wrap = document.createElement('div');
+  wrap.innerHTML = heroHtml();
+  const hero = wrap.firstElementChild;
+  const stopLab = mountTrafficLab(hero, ctx);
 
   function build() {
     const stats = ctx.progress.stats();
     const total = (ctx.content.problems || []).length;
     const lessonsTotal = (ctx.content.lessons || []).length;
     const groupsTotal = (ctx.content.groups || []).length;
-    const seenIntro = ctx.store.get('introTaken', false) === true || ctx.progress.isLessonDone?.('intro') === true;
-    // On the hosted site a signed-out visitor sees the public page: sign in to play, no daily challenge.
-    const member = !gated || isIn();
+    let daily = null;
+    try { daily = problemOf(ctx, ctx.compete.daily.dailyFor().problemId); } catch { /* challenge needs compete */ }
     let streak = 0;
     try { const s = ctx.compete.bests.streak('challenge'); streak = typeof s === 'number' ? s : s?.current || 0; } catch { /* ignore */ }
 
-    const cta = [];
-    if (!member) {
-      cta.push(h('button', { type: 'button', class: 'sh-btn sh-btn--primary sh-btn--lg', 'aria-haspopup': 'dialog', onclick: () => ctx.account?.openSignIn?.() }, 'Sign in to play, free', arrow()));
-    } else {
-      if (lessonOf(ctx, 'intro')) cta.push(h('a', { class: 'sh-btn sh-btn--primary sh-btn--lg', href: '#/intro' }, ico('ui.play', 20), seenIntro ? 'Replay the 3-minute intro' : 'Take the 3-minute intro'));
-      cta.push(h('a', { class: 'sh-btn sh-btn--lg', href: '#/drill' }, ico('ui.speed', 20), 'Quick drill'));
-      cta.push(h('a', { class: 'sh-btn sh-btn--lg' + (lessonOf(ctx, 'intro') ? '' : ' sh-btn--primary'), href: '#/practice' }, 'Browse problems'));
-    }
-    const note = !member ? 'Playing here needs a free Google or GitHub account.'
-      : isIn() ? 'Signed in. Your progress follows you across devices.'
-      : 'No sign-up. Your progress stays in this browser.';
-    const wrap = document.createElement('div');
-    wrap.innerHTML = heroHtml({ note: '', gated, moving: !ctx.reducedMotion() });
-    const hero = wrap.firstElementChild;
-    hero.querySelector('.sh-gate-note').textContent = note;
-    hero.querySelector('.sh-cta-row').append(...cta);
-    wireBench(hero.querySelector('.sh-bench'));
-
-    let daily = null;
-    if (member) {
-      try { const d = ctx.compete.daily.dailyFor(); daily = problemOf(ctx, d.problemId); } catch { /* challenge needs compete */ }
-    }
     const modes = [
       modeCard({ href: '#/learn', iconId: 'ui.learn', label: 'Learn', big: String(lessonsTotal || 41), title: 'lessons in nine tracks', text: 'Live demos and worked examples. Learn the building blocks, then go deeper and defend your choices.', extra: `${stats.lessonsDone} of ${lessonsTotal || 41} done`, link: 'Browse the lessons', color: 'var(--yellow)' }),
       modeCard({ href: '#/practice', iconId: 'ui.practice', label: 'Practice', big: String(total || 82), title: `problems from ${groupsTotal || 15} industries`, text: 'A bank of real problems across the whole industry. Build, survive the day, read the debrief.', extra: `${stats.solved} of ${total || 82} solved, ${stats.stars} stars`, link: 'Pick a problem', color: 'var(--mint)' }),
     ];
-    if (member) modes.push(modeCard({ href: '#/challenge', iconId: 'ui.challenge', label: 'Challenge', big: '1', title: 'new scenario every day', text: 'Beat your best, then send a friend a link to beat your design.', extra: daily ? `Today: ${daily.title}${daily.difficulty ? '. ' + daily.difficulty + '.' : ''}` : (streak ? `${streak}-day streak` : ''), link: 'Start today\u2019s challenge', color: 'var(--tomato)' }));
+    modes.push(modeCard({ href: '#/challenge', iconId: 'ui.challenge', label: 'Challenge', big: '1', title: 'new scenario every day', text: 'Beat your best, then send a friend a link to beat your design.', extra: daily ? `Today: ${daily.title}${daily.difficulty ? '. ' + daily.difficulty + '.' : ''}` : (streak ? `${streak}-day streak` : ''), link: 'Start today\u2019s challenge', color: 'var(--tomato)' }));
     modes.push(modeCard({ href: '#/sandbox', iconId: 'ui.sandbox', label: 'Sandbox', big: 'No game over', title: 'every component, any traffic', text: 'Break things on purpose. Nothing is graded.', link: 'Open the sandbox', color: '#9DB4FF' }));
     const cards = h('section', { class: 'sh-modes-sec', 'aria-labelledby': 'sh-modes-h' },
-      h('div', { class: 'sh-sec-head' }, h('h2', { id: 'sh-modes-h', text: modes.length === 4 ? 'Four ways to play' : 'Three ways to play' }),
-        h('p', { text: member ? 'Learn the parts, practice on real problems, take the daily challenge, or build anything in the sandbox.' : 'Learn the parts, practice on real problems, or build anything in the sandbox.' })),
+      h('div', { class: 'sh-sec-head' }, h('h2', { id: 'sh-modes-h', text: 'Four ways to play' }),
+        h('p', { text: 'Learn the parts, practice on real problems, take the daily challenge, or build anything in the sandbox.' })),
       h('div', { class: 'sh-modes', 'data-count': String(modes.length) }, modes));
 
     const steps = h('section', { class: 'sh-modes-sec', 'aria-labelledby': 'sh-how-h' },
@@ -136,28 +86,26 @@ export function renderHome(host, ctx) {
           .map(([n, t, d]) => h('li', { class: 'sh-step-card' }, h('span', { class: 'sh-step-n', text: n }), h('h3', { text: t }), h('p', { text: d })))));
 
     const extras = h('div', { class: 'sh-home-extras' });
-    if (member) {
       // Today's challenge teaser
-      if (daily) {
-        extras.append(h('a', { class: 'sh-card sh-card--link sh-teaser', href: '#/challenge' },
-          h('span', { class: 'sh-eyebrow', text: "Today's challenge" }),
-          h('span', { class: 'sh-teaser-title', text: daily.title }),
-          h('span', { class: 'sh-muted', text: daily.like || '' }),
-          h('span', { class: 'sh-teaser-meta' }, diffBadge(daily.difficulty))));
-      }
-      // Suggested next problem
-      const np = nextProblem(ctx);
-      if (np) {
-        extras.append(h('a', { class: 'sh-card sh-card--link sh-teaser', href: '#/practice/' + np.id },
-          h('span', { class: 'sh-eyebrow', text: np.weakConcept ? `Practice: ${np.weakConcept}` : stats.solved ? 'Up next' : 'Good first problem' }),
-          h('span', { class: 'sh-teaser-title', text: np.title }),
-          h('span', { class: 'sh-muted', text: np.like || '' }),
-          h('span', { class: 'sh-teaser-meta' }, diffBadge(np.difficulty))));
-      }
+    if (daily) {
+      extras.append(h('a', { class: 'sh-card sh-card--link sh-teaser', href: '#/challenge' },
+        h('span', { class: 'sh-eyebrow', text: "Today's challenge" }),
+        h('span', { class: 'sh-teaser-title', text: daily.title }),
+        h('span', { class: 'sh-muted', text: daily.like || '' }),
+        h('span', { class: 'sh-teaser-meta' }, diffBadge(daily.difficulty))));
+    }
+    // Suggested next problem
+    const np = nextProblem(ctx);
+    if (np) {
+      extras.append(h('a', { class: 'sh-card sh-card--link sh-teaser', href: '#/practice/' + np.id },
+        h('span', { class: 'sh-eyebrow', text: np.weakConcept ? `Practice: ${np.weakConcept}` : stats.solved ? 'Up next' : 'Good first problem' }),
+        h('span', { class: 'sh-teaser-title', text: np.title }),
+        h('span', { class: 'sh-muted', text: np.like || '' }),
+        h('span', { class: 'sh-teaser-meta' }, diffBadge(np.difficulty))));
     }
 
     // Your concepts: tries and best result per idea, weakest first
-    const rows = member ? conceptStats(ctx) : [];
+    const rows = conceptStats(ctx);
     const weakId = weakestConcept(ctx)?.id;
     const conceptStrip = rows.length ? h('section', { class: 'sh-concepts', 'aria-label': 'Your concepts' },
       h('h2', { class: 'sh-h2', text: 'Your concepts' }),
@@ -186,16 +134,12 @@ export function renderHome(host, ctx) {
         h('a', { href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, 'GitHub'),
         h('a', { href: 'privacy.html' }, 'Privacy')));
 
-    return h('div', { class: 'sh-page sh-home-page' }, hero, cards, steps, member ? nextTracks() : null, extras, conceptStrip, strip, reading, foot);
+    return [cards, steps, nextTracks(), extras, conceptStrip, strip, reading, foot].filter(Boolean);
   }
 
-  const paint = () => {
-    const key = String(isIn());
-    if (key === signedKey) return;
-    signedKey = key;
-    host.replaceChildren(build());
-  };
-  paint();
-  const offAccount = ctx.bus.on('account', (st) => { known = st && 'user' in st ? !!st.user : null; paint(); });
-  return { title: 'System design practice game', destroy: offAccount };
+  const below = h('div', { class: 'sh-page sh-home-page' }, build());
+  host.append(hero, below);
+  const refresh = () => below.replaceChildren(...build());
+  const offAccount = ctx.bus.on('progress:updated', refresh);
+  return { title: 'System design simulator', destroy() { stopLab(); offAccount(); } };
 }

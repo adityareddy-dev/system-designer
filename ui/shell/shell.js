@@ -3,7 +3,6 @@ import { metrics } from '../../core/metrics.js';
 import { h, ico, clear, lessonOf } from './dom.js';
 import { setOverlayHost, toast, clearToasts, closeAllModals } from './overlay.js';
 import { transitionScreen } from './motion.js';
-import { isPlayRoute } from '../../account/config.js';
 
 const TABS = [
   { id: 'learn', label: 'Learn', icon: 'ui.learn', href: '#/learn' },
@@ -33,17 +32,9 @@ export function mountShell(rootEl, ctx) {
   const settingsLink = h('a', { class: 'sh-icon-btn', href: '#/settings', 'aria-label': 'Settings', title: 'Settings' }, ico('ui.settings', 20));
   const nav = h('nav', { class: 'sh-nav', 'aria-label': 'Sections' },
     TABS.map((t) => h('a', { class: 'sh-tab', href: t.href, dataset: { tab: t.id } }, ico(t.icon, 20), h('span', { class: 'sh-tab-label', text: t.label }))));
-  // The daily challenge is for signed-in players: a signed-out visitor on the hosted site does not see it in the bar.
-  let signedIn = false;
-  const syncChallengeTab = (st) => {
-    if (st && typeof st === 'object') signedIn = !!st.user;
-    const tab = nav.querySelector('[data-tab="challenge"]');
-    if (tab) tab.hidden = !!(ctx.gate?.required && !signedIn);
-  };
   const brand = h('a', { class: 'sh-brand', href: '#/', 'aria-label': 'System Designer home' }, h('span', { class: 'sh-brand-mark', html: LOGO }), h('span', { class: 'sh-brand-name', text: 'System Designer' }));
   // Optional account button; stays empty and hidden when sign-in is not available.
-  // On the hosted site the Sign in button is on the page before the game starts: it stays until the account code takes the slot over.
-  const accountSlot = ctx.gate?.required ? h('div', { class: 'sh-account' }, h('a', { class: 'sd-signin', href: '#/signin' }, 'Sign in')) : h('div', { class: 'sh-account', hidden: true });
+  const accountSlot = h('div', { class: 'sh-account', hidden: true });
   const bar = h('header', { class: 'sh-topbar' }, brand, h('div', { class: 'sh-actions' }, accountSlot, soundBtn, settingsLink));
   const attachAccount = () => { try { ctx.account?.mountHeader?.(accountSlot); } catch { /* the game works without accounts */ }
     if (ctx.account) { try { ctx.bus?.emit('account:attached'); } catch { /* ignore */ } }
@@ -155,16 +146,7 @@ export function mountShell(rootEl, ctx) {
       return;
     }
     const route = routes[r.parts[0] || ''];
-    let spec = route?.(r);
-    // On the hosted site a play page needs a signed-in player: wait for the account check, then show the real page or the sign-in page.
-    if (spec && ctx.gate?.required && isPlayRoute(r.parts)) {
-      const real = spec;
-      spec = {
-        load: () => Promise.all([real.load(), import('../../account/gate.js')]),
-        prep: async () => { await ctx.accountReady; if (ctx.account?.isSignedIn()) await real.prep?.(); },
-        make: ([m, g], host, rr) => (ctx.account?.isSignedIn() ? real.make(m, host, rr) : g.renderGate(host, ctx, rr)),
-      };
-    }
+    const spec = route?.(r);
     const previous = viewId;
     const trailIndex = routeTrail.lastIndexOf(key);
     const returning = trailIndex >= 0 && trailIndex < routeTrail.length - 1;
@@ -212,16 +194,6 @@ export function mountShell(rootEl, ctx) {
   const offs = [];
   offs.push(bus.on('route', (r) => show(r)));
   offs.push(bus.on('settings', refreshButtons));
-  offs.push(bus.on('account', syncChallengeTab));
-  syncChallengeTab();
-  // Signing in on a sign-in page opens the page that was asked for; signing out of a play page goes back to the sign-in page.
-  offs.push(bus.on('account', (st) => {
-    if (!ctx.gate?.required) return;
-    const r = router.current();
-    if (!isPlayRoute(r.parts)) return;
-    const signedIn = !!st?.user;
-    if ((signedIn && view?.gate) || (!signedIn && view && !view.gate && viewId !== null)) show(r, { force: true, focus: false });
-  }));
   offs.push(bus.on('toast', (t) => toast(t)));
   offs.push(bus.on('toast:clear', () => clearToasts()));
   offs.push(bus.on('lesson:done', ({ lessonId }) => { if (lessonId) ctx.progress.lessonDone(lessonId); }));
@@ -243,7 +215,7 @@ export function mountShell(rootEl, ctx) {
 
   // Start. First visit goes to the intro unless the integrator turned that off.
   const first = router.current();
-  if (ctx.autoIntro !== false && !ctx.gate?.required && (!first.parts || !first.parts.length) && ctx.store.get('seenIntro', false) !== true && lessonOf(ctx, 'intro')) {
+  if (ctx.autoIntro !== false && (!first.parts || !first.parts.length) && ctx.store.get('seenIntro', false) !== true && lessonOf(ctx, 'intro')) {
     router.replace('#/intro');
   }
   show(router.current());

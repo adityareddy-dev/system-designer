@@ -26,7 +26,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export function createAccount(ctx) {
   const { bus, store } = ctx;
   const base = apiBase();
-  // A stand-in for the service, only for ?preview=hosted on a page with no service: it signs in locally so the gate can be seen and passed.
+  // A stand-in for the service, only for ?preview=hosted on a page with no service: it signs in locally to preview optional account features.
   const preview = !base && previewHosted();
   const PREVIEW_KEY = 'sd.preview.user';
   const S = { status: base ? 'checking' : preview ? 'ready' : 'off', config: preview ? { google: null, github: true, fake: false, preview: true } : null, user: null, sync: 'idle', syncedAt: 0, lastJson: '', lastResult: null };

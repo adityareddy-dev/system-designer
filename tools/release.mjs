@@ -30,7 +30,7 @@ const res = await esbuild.build({
 });
 
 // Styles in one file, in the order index.html loads them.
-const css = ['assets/palette.css', 'ui/shell/shell.css', 'ui/play/play.css', 'compete/compete.css', 'compete/pool.css', 'account/account.css', 'ui/shell/layout.css', 'assets/neo.css', 'assets/header.css']
+const css = ['assets/palette.css', 'ui/shell/shell.css', 'ui/play/play.css', 'compete/compete.css', 'compete/pool.css', 'account/account.css', 'ui/shell/layout.css', 'ui/shell/traffic-lab.css', 'assets/neo.css', 'assets/header.css']
   .map((f) => fs.readFileSync(path.join(root, f), 'utf8')).join('\n');
 fs.writeFileSync(path.join(dist, 'app.css'), (await esbuild.transform(css, { loader: 'css', minify: true })).code);
 
@@ -91,7 +91,7 @@ function readIndexScript(map) {
 }
 
 let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-html = html.replace(/  <link rel="stylesheet" href="assets\/palette\.css">[\s\S]*?<link rel="stylesheet" href="ui\/shell\/layout\.css">/, '  <link rel="stylesheet" href="app.css">');
+html = html.replace(/  <link rel="stylesheet" href="assets\/palette\.css">[\s\S]*?<link rel="stylesheet" href="ui\/shell\/traffic-lab\.css">/, '  <link rel="stylesheet" href="app.css">');
 // These styles are already in app.css. Keep the release page from requesting source-only files.
 html = html.replace(/\s*<link rel="stylesheet" href="assets\/(?:neo|header)\.css">/g, '');
 html = html.replace(/  <!-- preload:start[\s\S]*?<!-- preload:end -->/, () => [

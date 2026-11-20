@@ -1,7 +1,6 @@
 // Account UI: the quiet "Sign in" button in the top bar, its small panel, the profile menu, the single nudge and the Challenge leaderboard card.
 import { h, ico, clear } from '../ui/shell/dom.js';
 import { confirmDialog } from '../ui/shell/overlay.js';
-import { accountRequired } from './config.js';
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const PERSON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.75" fill="currentColor" fill-opacity=".18"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>';
@@ -138,7 +137,7 @@ export function createAccountUi(ctx, api) {
 
   // ---- sign-in card: one card for the dialog and for the gate page. Google and GitHub, nothing else to fill in.
   // The first sign-in makes the account, so there is no separate sign-up form.
-  function signInCard({ onDone, headingId, heading = 'Sign in or create an account', lead = accountRequired() ? 'Free. Use your Google or GitHub account. The first time you sign in, your account is made for you.' : 'Optional. Signing in keeps your progress on every device and puts your scores on the Challenge leaderboards. The first time, your account is made for you.', showClose } = {}) {
+  function signInCard({ onDone, headingId, heading = 'Sign in or create an account', lead = 'Optional. Signing in keeps your progress on every device and puts your scores on the Challenge leaderboards. The first time, your account is made for you.', showClose } = {}) {
     const st = api.state();
     const done = () => { try { onDone?.(); } catch { /* ignore */ } };
     const err = h('p', { class: 'ac-err', role: 'status', 'aria-live': 'polite' });
