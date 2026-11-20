@@ -1,1058 +1,1062 @@
 {
+  "about/index.html": {
+    "sha": "2a376ee4c3086c0be271d0d5996c31e57ca8f58438af73814f4977605816449b",
+    "lastmod": "2026-11-20"
+  },
   "d/2026-10-31/index.html": {
-    "sha": "384bc3f51865d4740a8d2fa8d04e084b6db5ea8eb1cc622761280b07c3875b84",
+    "sha": "d4a692a0b280b979a70892c4baf4b9d143a89fb4a5cd9f5ff495443bdbf2ccca",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-01/index.html": {
-    "sha": "36dad7c5c987eb4015daa132c147a288d14d77082ba2d1ba9f7748091c5dd6a2",
+    "sha": "5333eb08095ddbf7893ed500265221b9b7e0d614357cb851b39851b8f4ecaa05",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-02/index.html": {
-    "sha": "e7c31c9acfdf85cf5963186a4a7599784ccb3809a27245522b55d44a72228930",
+    "sha": "e907b8a4645b0a39681e0555763e371d2df6ea9ce0d595e618b43089e1bf1615",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-03/index.html": {
-    "sha": "99689b1a60081b55880d4ad7c236463b30d8f72bd1d36c709bc08a751103ebcc",
+    "sha": "d8cf4c4c308e5f699088794280b7ec5eaa50566dfdf942fd1ac004e222de112d",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-04/index.html": {
-    "sha": "fd02ec3c5a732ed74fcedfcba92fe09be4352022c0057ee33f85820ff18f4b00",
+    "sha": "1dc1cebfdbc3abc9d0695f25cd3ccca7daddef61e37fb0e61fd6f9393352ac8b",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-05/index.html": {
-    "sha": "3604b527e0bac449ab233c4c9865263ae1a3b43c965637ef35ee1e09e0ef88ad",
+    "sha": "b13d51b525432489b2bd180f9d559e8ccbe213ead77c436b392b16dbdfbb12fc",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-06/index.html": {
-    "sha": "aa8eba26ff7aed863f889995137d06326c39c049aa0137ffdc334c399712f256",
+    "sha": "bf3dd9471e74c9fe685b939a3cd02851b6194fe9ebd438214b458f18f0b4b624",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-07/index.html": {
-    "sha": "22706d3845e0caa62f3eb3473a951b3d4f1d2902433aab3e3c43051adae3bdad",
+    "sha": "77b448b375ada3cd55c36d464da8ba7bfbf8a7d6a9b3eb9455c61c0c4fcf23bb",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-08/index.html": {
-    "sha": "4f2a2c97a2c5497e0a1e8857af2495d04de3aa22097fcc810b0aad10201aaaca",
+    "sha": "083563e4505854cbfe53c6d4332cf10e0b9d50fa040ae6d00d069c0d7a698c93",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-09/index.html": {
-    "sha": "8d5e263b27af73bddfe20ead1104965b77b780165f80abbeb0c889f6a3d11e2c",
+    "sha": "e608ab953cee6104be8caebf26f836de233d7d7987f21d9b30b16d0df28f317a",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-10/index.html": {
-    "sha": "a3b533020ebe9004ec57173aadacc174e48c755b5799e4afbb279930cf622711",
+    "sha": "d72a6a78842a3298d3acd535b76b1ef4fc2e0d588b8476927947cfb03ea297e7",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-11/index.html": {
-    "sha": "7474a65bff20548410a4582a1addd1b77d1f1464cf7fcc0c21589260cb24a444",
+    "sha": "4407e80cd8350c3c474626841e5a381519928594d3fa23f752b8a17f03f81d57",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-12/index.html": {
-    "sha": "fd472e14bd405ff7d419c663d26ee7ecf3bec3dd96ebcd2c5980d9d1870c5170",
+    "sha": "c6098ffcb434073363e3a8d5761548d756696a546e436bec95bb311ae22520a4",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-13/index.html": {
-    "sha": "11c834a1d13b07d7885cf0e6c866ab77ac230a4516d0e9f0d5e85d776e408cde",
+    "sha": "10ab603be3b39ae9d8640b5bfe582b07f67ffebca5a7a4678180481ca8fa1c15",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-14/index.html": {
-    "sha": "604476c3defdb2def7dc71a90486ea65dba2c27c3bfbd1255ef2007f4ad2e387",
+    "sha": "9c1a269c7eb6a7894239ba9a61ac152f28dcac3c018ef083028051e7c1a0897c",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-15/index.html": {
-    "sha": "c4523b456f473e236186a2db43114cb64785447c49226b1cd0cda6750f72f092",
+    "sha": "8fcd745c755562f4555039ca12bfacec77ebf4ca3cc33890e5cc30de3ddd13ed",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-16/index.html": {
-    "sha": "858676653a59c6d0f7851357bfc2eb680ada4ab415ce888b4fdb10d9af0c48c3",
+    "sha": "0eb06a2929056314ed467820ae0f399d690fc04fe1b4115eb6135ae14251ae21",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-17/index.html": {
-    "sha": "83191309d91a76e60b6387eb3215770243170795b7060ef667a6f4292ef48953",
+    "sha": "4c022e8abe84daddacb8f51d0f1261de39a2c2733f777e197a3c01f4cba29569",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-18/index.html": {
-    "sha": "085ee4eb097db6f0942d3d18cd663fcc2e77082fef2ec70126171e12b34b900c",
+    "sha": "107c618130625c710b5bf41cd5244b3f41fa18ddd86062a3c9843a2fbd457408",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-19/index.html": {
-    "sha": "528c595cbbac7484847d4da75ab792a48fa92bc8196f668f54350c0d2f44485f",
+    "sha": "cc04bfe5fb2c4c111e120930295f9c30ee4d8dd837a054d75e68cc280ba56892",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-20/index.html": {
-    "sha": "9bfdb04130709717a16260820e2f6c45d2257288d816a1198f8b7289b6614247",
+    "sha": "b7cb87fd0ee87c1501dbc3ea3127646eda0cfe47231224c0cc6a4d5beb0a16d6",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-21/index.html": {
-    "sha": "9ce3df7a130f3eed56dead1f71ca83ca1deae1cff8cccc4d530f46627fdb2b38",
+    "sha": "c727da7cea3389fe14a52c4fd94e0c66509c9803412c06929a9fd24e7d163b18",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-22/index.html": {
-    "sha": "8cd2e638b45cef62ee668ea551c9337441ea741909b596a12aec37d16829b44c",
+    "sha": "86bb6ed2a3f59e96820cfad060ac36802879a18973039eff8be5e443f293de70",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-23/index.html": {
-    "sha": "4306c30d16c1dba534c56786d96a82c99a3d3191c9c72a51403795abb1a9affb",
+    "sha": "83a71a7cf2788d5e9340f08e7cac6b4a335978317bfc4649ed25957a8a178ddb",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-24/index.html": {
-    "sha": "6e5686a00a427668282e2d02fc39cee0cef40e968b4ade9b6cc1755efe28b859",
+    "sha": "062a0d126ec3422db88c22c9f531ff905f6fd5263b76032347c2fd8cfc29acfb",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-25/index.html": {
-    "sha": "3835e626785f21ca9f06012721cad2f70923d138f208c5212fd5066412a96b4e",
+    "sha": "02f875639c69d85e0f91edda53f4fa6efe9c035d3d7b83a60c0cf55d76ed14ef",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-26/index.html": {
-    "sha": "c1a0c57c995bbb993082114bde73e8abc5bcb2a34d68897ac134b7dbfe758d47",
+    "sha": "af2cffc6f1217bc136e41d2fc2f0c360a5c9f501610ce53b85b05eb98b19b285",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-27/index.html": {
-    "sha": "ed45dd040686340c47bd58e4b0edb609cd7191b39dff94f110116f0cab7b4fd8",
+    "sha": "b71490bedc8941f7ba4ca0c8fa0cb480cbae1b73e4f909dd52dad535c839b6f1",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-28/index.html": {
-    "sha": "1266cd6d6ea43ac977dbbe5a8c74da33b3481a60432d3a948a0ace463e5287d6",
+    "sha": "88c8c1cb96ecda8a5f83c1528f0b14fabc4476de36e19339963f76525b752132",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-29/index.html": {
-    "sha": "91b280644bc77ddef632cd33ccf23a9d673aa52cf54efa22c2d2997d79656696",
+    "sha": "da6152a46b3d09eedc87cf7ad46bc798dfd156301c8bbfc572cc83f33916fbdd",
     "lastmod": "2026-11-20"
   },
   "d/2026-11-30/index.html": {
-    "sha": "697c845a140a1205866186e205e6c6dd93a70883134fbecb36555397f6dc690f",
+    "sha": "e28731db48d4802c5d6422b5f387ffd4032bd3ef11b105bdb894ce72d922cd7a",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-01/index.html": {
-    "sha": "ad215bae023e185ae06fac859cb26fa8aa9d38d39f0a1b9674812a205aaae168",
+    "sha": "dbfebd45e184337187a6280b74a00bc7f4ac968057c37d67ea482164ea2a02fb",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-02/index.html": {
-    "sha": "1fad6170e1d6e7cab0d80ec03c6c564230f99f9ad7b10a207a57c898dd8adbfb",
+    "sha": "f37f22e6c13db10fe33ad1470308f5d5b08c2852212e590ddda156b9e6b720f7",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-03/index.html": {
-    "sha": "7f79ffbe2de351be4d7b75f5bd3e3a72730b571ae87848de0aee54fafe2224a9",
+    "sha": "42d0e141afca4d46552932572e059e32eba14f0a6b2fa7519f24758993d6a69e",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-04/index.html": {
-    "sha": "2611cdea362d1813e0c21fd6b304f0a3869ddfd1098e912dcb519ce96c954b9c",
+    "sha": "6ef236082c1ce87821e7eac791ce22f6ebf0e80b58d6edfb4ca31563d4b0b968",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-05/index.html": {
-    "sha": "f08917b1d80191b33f5e47fa3b3cb7340a95505d1867123441f9febf0cb7ef4d",
+    "sha": "a26b2e2db470e46996f8dd9036e9fb6ed64c895f4d1da45264e3969c3959cdcb",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-06/index.html": {
-    "sha": "2351d6e0eb41a19c6f08cbc639a54e7e51b921019dbb3e83b5e743265468c6a9",
+    "sha": "c8dfe3d57c780c7a2e52403c0739ec54928e91945ec6a5c7d3d39ef0f9efbb5d",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-07/index.html": {
-    "sha": "1fd285141d7ffb01ccfa50fd5fa8a466b6dd4c80387c117e4ee05afa1f1f8ea3",
+    "sha": "1780b866f35a38df3ff01cf91915d5a5bdb9637f66626911eeb242b01d8e2065",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-08/index.html": {
-    "sha": "4087e47e7eb4260cbb7d7e515d1d6c450beada3dc97be88a4a6a9cddb9c91b28",
+    "sha": "576c367808ac35f2b94d253c2068a85c4642f5174193641bcc3b4e067f7fade0",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-09/index.html": {
-    "sha": "9640578c8018b9181dffc07cbe47c569b69c32a6718dd097b848970d7f2ea5be",
+    "sha": "bffd7232a976f065583707eea47db19f62c13e128489ad101acb12b7cd394a63",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-10/index.html": {
-    "sha": "1d304f7b8b187b2f4bcb2dbf158024144268a7b4af8efebfb593138f96d67faf",
+    "sha": "98f6768657ad0b736c576cd0707d04e738dd3ed202f45f7b9486357f237fa09b",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-11/index.html": {
-    "sha": "8aa8920b4539e110c147e5eb452f51fdfa3038ff0c32b1a5894bce404b1a83f3",
+    "sha": "f0f7d909cafd526dfe1c20d11f7b6f2b2f9b055390745f8a723eeb6ebda2d270",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-12/index.html": {
-    "sha": "784e8faaf1297a09a632c648b1bd1a463659caeb2e1705d77c455e51637bc805",
+    "sha": "f406be263c47988cc1a8263494f96990d83baa4a45e45cc31ddc66aac135d763",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-13/index.html": {
-    "sha": "d697e0d240414bae88d03bfb75c3f90de8db2df915ea9014c478cde9e44f8a62",
+    "sha": "532f7234087387ec5c55cdacce8139ae9df24fed49285e7e6d9fb73b5159f401",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-14/index.html": {
-    "sha": "c409b7944ee600facef543145c704d04a48823f340822a88a67889fec0e6c033",
+    "sha": "2601b9bfe306d4f477f0b179e8104fffd37b3c670284248d1b806c9809791bf6",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-15/index.html": {
-    "sha": "587f4fa74aa74ad958b9437643a4517a29017a7bf39f82115b29ed53b799202f",
+    "sha": "2ef5ba34d610e67e70f800f94d9754788fb9f0a5a88de75c4078e9956566a7a9",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-16/index.html": {
-    "sha": "8a09ca1a5361442da8bf49552d49129313d563e4a9b99c853c62c64bc6dee6d8",
+    "sha": "713662cae435c6655c49a241bad8e95020193b76b00e32ba0464469b6361a252",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-17/index.html": {
-    "sha": "cef9017c4b800f157629bf842c73be640b1a1e5cd01dcb2dc9ecce9f0de3b9b8",
+    "sha": "61342b4ef651ec55a33ef55e26097bd9dbfcba5e622e949280b79613d7082d56",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-18/index.html": {
-    "sha": "aa04a90e1c4d7ad2f89557426fb4650004c24c107b255a4806933f25014d09a6",
+    "sha": "c097c22e77eb0e900a5d98609b1d4cfe11f4de1021bfb870dd069ade5c9fef2a",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-19/index.html": {
-    "sha": "d0a48dbd45d581c1823e4511503b45c32ecc60539fdac901d128f4b69011d482",
+    "sha": "130dd4d1c1d0d3b74ce47e3f43b7c66d366bc53e48d2bb8095b3155d1fd01ad1",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-20/index.html": {
-    "sha": "1b5ba39b0a0442db836bad6bbfc2ff5d4ca3178f4b7f3531041239cbe83e8b56",
+    "sha": "dd119a25e369e4f352d0fd5028f3d6a5dbc28b36c97c5743899ad0c5117c07a4",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-21/index.html": {
-    "sha": "a1d306ee44e1e368815bc04407e4d68d2eeb56f71145fbb3dd9281a9386a52bc",
+    "sha": "98da20a0414c50f9139e3d01dc5e78549b6319734b16a8f3547e4f9f6edd8e9f",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-22/index.html": {
-    "sha": "4dc69363cf4ba1a22d21eb7cac258045580013e37ca4e14efa50b9524874ef03",
+    "sha": "4ee6355377d43b476c148254e9f3b3f7b38630b18ecfd7d378c926fc0ca9162b",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-23/index.html": {
-    "sha": "a197ae808848d28c5371343612db9f9e3b5f0207e715d1084f8c313a3a98c509",
+    "sha": "f8b4b7b1652899da8c979d07661388d84744ed50a2af7268a4502d77fe8bfa87",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-24/index.html": {
-    "sha": "1ec574c9ffc99ec2758db76548207b0e09727d0671bb6694570a4e559244d99b",
+    "sha": "4bbc97e2e9ec2cf9984b1a677c98440386f2bc11544a43f099f72ab652d77f78",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-25/index.html": {
-    "sha": "e3fb528b6e58ab1992892755708a1e785c52a21ed428877a173a7a5c4bd2c593",
+    "sha": "a9fd6ef81fc34248e27fa7d0b11ec12ab5529e9ffdd4f430d935f8069b2df6cb",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-26/index.html": {
-    "sha": "48f7c22e7b5a7efeac16631e01ffa39e9a9bda937480eada17d1344cc038f3d3",
+    "sha": "dd59e23a8ac5bc2d7e83238172a1ff457ad662bb8f99bc5c4d3f89b27bd6763f",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-27/index.html": {
-    "sha": "9b6093ea6f14c4c768b6d803b0b0608aa1644632f101914db1b372738c63fd7d",
+    "sha": "694301d46575f057ac1439e72500283232183b8b9dc5aee100ef93cfea6f5061",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-28/index.html": {
-    "sha": "249f5ebd3996f356383fd9c28e1a67438ebd7ed7106fcc3127dfea198f51d36d",
+    "sha": "0c6898c617d7ed572beb0475d322db4fd518ff0f1a2527da3f71ed224b210cf1",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-29/index.html": {
-    "sha": "aba2dbcc149b96cec0eee93b58873ba493933f790d6ab90b38df72f4ec7b1a97",
+    "sha": "d4bb8d60e444f0b47785adc5042bf7b8fbe668535cf826af151c902156ad25d6",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-30/index.html": {
-    "sha": "9a1a8062ba32d70b9bfca11323c94c717dd72aa35079369ebb1270d679ed0f68",
+    "sha": "16e89bdfaec51c99e63a273f9a2948d2acabe13b8c35d88f04546752a2b7ac67",
     "lastmod": "2026-11-20"
   },
   "d/2026-12-31/index.html": {
-    "sha": "dd47f1078bea20c8ee6cc78cd28e6fd628af5492540aa20818844f9f17e4930e",
+    "sha": "f8fc00fc641012e7ce7699800c253dbef95139cc3191d21060cc722d02b86355",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-01/index.html": {
-    "sha": "d68143378891e8ade8df6c8f7d716c7092ff053b9e75aba2a3e7886ae04de03a",
+    "sha": "66bd7df22933d1ea8f44faaf1e13dd2a7ccf107bc342811c766ccc47151b3780",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-02/index.html": {
-    "sha": "da904754a920aa7d22cacd37ba73d0e23ca236990de4b1c2ecc2b1be111db9f8",
+    "sha": "30e21c7b43e19c55c7221879fda1786129b1a1d39ccfbfa9aea0e7fef437f191",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-03/index.html": {
-    "sha": "5238883ed758eeeb2e0fec339b72c315907ce28e8f11603eff4af56e4d7ee404",
+    "sha": "ebc5a9a2906678e3673b087c47c4be885a08f1f9144b2eec961fe6e15d6bf100",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-04/index.html": {
-    "sha": "3c2602a7a00cfc5b7b455a4f757f4368ffebb2fe7456042c86238e2e4f3d5539",
+    "sha": "8e9e109c7e2678d6c84a4e116c4aa7cf7774b49c85dff45e4b29377914eb9774",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-05/index.html": {
-    "sha": "8f5e3bc24952cc78cce9d5e0d7ff149fa3e7e1f8b597877047cfebc4da48ae11",
+    "sha": "060658c8a37da783764ebb9a14ec9815e1634776ff450ec8461c6a3bb0921b8a",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-06/index.html": {
-    "sha": "9e50ab9c3769fd1b00d20da5ef453376b322544e05b808aa5182885c7df704b4",
+    "sha": "ff16ffaaa089e00c770f86065655a09596e8d9fc8fb92d3353cc0607438ad27e",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-07/index.html": {
-    "sha": "f94297902ec5a21d0eff266a2e97215edcac6a6c4e22dbb5fdc19b455c0bf2e9",
+    "sha": "d3feea1991f72c7e059cbff50d9f80d4a5e9ca91937de11242b4a89241ed2c1d",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-08/index.html": {
-    "sha": "f0de75ff81e595fe94abf199bd4e9fa529cd0f853dc377c75de2da9d0ea3522f",
+    "sha": "ac38cb4f56fa801a9969bfe8d038198c46ecc4a5e8fdb4df8bcd58ea354adb6a",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-09/index.html": {
-    "sha": "b09cd1d827b6f474e3bb04112728468a512a1fdb9bebb7e7aac1e2e7ee5a0c3c",
+    "sha": "e936b24d9264555b41273192a2808587f9bd958c6bcaec639265877f9db091c7",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-10/index.html": {
-    "sha": "cbee9d6512cdb11f66f43959eca40b7c3584245c2f63421b60d8013c77f2bb54",
+    "sha": "43f358c1cfe9f56aee460fc8af5fb31571be79ed6b86c3d7cab467e8a24d0f20",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-11/index.html": {
-    "sha": "a5a4ea382a7086043d336b07f49007160e44cadbda736b525a77aab85fdbca0c",
+    "sha": "4e523a12f7aa95e6ba5944a8be96ddcf5f6eaa191352abb69ed8097ae24fd579",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-12/index.html": {
-    "sha": "a64815bf866dcc2b41e79a4d1ac8746fe3f7813c724e337faa6c9747e4181bcd",
+    "sha": "67483cf589fa5c2d5f8146add408891ab5ef80f0941e5d190089eb18fa112577",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-13/index.html": {
-    "sha": "05cb5290db46b77bae7f370d68d697c050275abe4ec424dee515d0a1c681b59f",
+    "sha": "4124093171232be98b9931eeee3cc259b9d8bd9fa2b908911c826ab6e477b18e",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-14/index.html": {
-    "sha": "f2a015edadd0669203fb578bc9c6b2059fbda74711b8cabb06f1596fb4395fab",
+    "sha": "4724d74814076a66b7ac9e8403563fcb6b9a24ebed1c0b269547ae954362f200",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-15/index.html": {
-    "sha": "d99bf5c4901c15ed8b5c22651913339fb8122f662b4918faed0630d74dd123ac",
+    "sha": "b43de55efc144d5874b13177859399eb2d67d335f97c55ff818c94e2281a0e3a",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-16/index.html": {
-    "sha": "90b8dea82b67d38cca3fe3a6d5cbc44aa9c2896f3a75f1aac0a71c96bd07be77",
+    "sha": "ff0b345d0e06b008ce4e6f93f1cbbc9bf3260b17831b17b9f516910dcfe1e320",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-17/index.html": {
-    "sha": "c6696fa5e3929a497a6faa5a819135531bf8bbe957fbf9edfbc8950e2d5a43d5",
+    "sha": "1666b621cba667e42914d23f0e9106744327183c9339d01e20dcd9e90bbed999",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-18/index.html": {
-    "sha": "c5e9bde90ba09e388e2268a9242006cdb2744dd0530535242dcf88623f2bff4e",
+    "sha": "1f9828bb517604620fe161b4121933bd663f0b3ada5ad752b4c92fe0e13cedd2",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-19/index.html": {
-    "sha": "329622fc79e4a004f2fa6547f8a9a3cf278252b16551bee54d27459edaa75bfe",
+    "sha": "3161d22b638d088a69c06d3bfeb587db6e6da7339ade686dc657bc640fa9285a",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-20/index.html": {
-    "sha": "1f03d018279366eaf8961679b411279ea17113308292210543325ee7aa243f9f",
+    "sha": "d663a7df1f7bf518cce9249f7c792696a2037329eec0e75758f40c473def7ed4",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-21/index.html": {
-    "sha": "8e910953e64ca6d0483be41046302228ba4a419d1234291e42749e853942660f",
+    "sha": "9c5390b9ab370570eb0b55952b2f1bae10a58c0b50ce7e48fb995e07d4fc90ef",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-22/index.html": {
-    "sha": "fa9b210fc549b87cb0d9de65fbc5763727718e1ee783907cfb87cab0a4d2076c",
+    "sha": "e451e2e9eb689641f0206cb9e64ef2db3c87e5e1ef3b50da93349feeea71c1cc",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-23/index.html": {
-    "sha": "80748a7f5c4bdd618a5acd0aa00abc2dd8535c5c368278b3d1312754f90f16d6",
+    "sha": "1d812deac78888337b68d16ab0a3e6e65da29bd160f724aff15600dd97dd3290",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-24/index.html": {
-    "sha": "4aff4844cd751fafe4faf11a294c0225b7b65e02077e22aab0687ffd7d7ffff2",
+    "sha": "5f9d53b81a37d22dd65dc8c3f845e4b013c98168bbc0ace66fe55dd2597a0b45",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-25/index.html": {
-    "sha": "6b719845b05e312a47f5df58ba65cbcf5cd37a7de139a72782783c51e5f873bf",
+    "sha": "89d0bde9a364351c0339fce0021530c59714a58c929f49ce691d5138a38bb378",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-26/index.html": {
-    "sha": "e029a9571ba0be135f7e630b735fddb024d863443a177d49eb812e51d90d23ec",
+    "sha": "80b209502bb7a8c9de8b81455b2929fddf397f8295e518334b3ec5da72d5b1fa",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-27/index.html": {
-    "sha": "5b7e9cadf7241473562c33111e0aadde812e5c7858d262bbde1debd8618dab29",
+    "sha": "2a6ea7b329e6524665da8aee8cf6559897b4b7ad0f9fd3d33e8840edbffc5208",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-28/index.html": {
-    "sha": "7a3f46c90e6a2a64fa4c031e49f8ce8d692c9bc8a9c234b751eec60dccea0470",
+    "sha": "a49efe3b5bd31dc18f2cad7caf27bf23986bf5db3555197a0bda8f1e76981c78",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-29/index.html": {
-    "sha": "e8cf53e9f6161f3cad0e5fbbd0dd5ba07364fa6bc7aa7bd7597ef852c0fd780f",
+    "sha": "7d8953b0b0412adcd450bd12eb7cefbfa133494bca818809348ccd59f1fa630f",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-30/index.html": {
-    "sha": "fc65081aeafc973ca86b6cbb6f4b986dbb549d7d656c53a5da21a3a19115b7b8",
+    "sha": "d7a0a438b3c39c7705daac5b21f1e159543825e176de9819a4a201daebe85444",
     "lastmod": "2026-11-20"
   },
   "d/2027-01-31/index.html": {
-    "sha": "06eb0de5698e6135928931fef9c6b32376efd092dfef8aba917fcd5602d3d740",
+    "sha": "20f801b4259e3172452bbdcf55b9df870deb85d39e0264883fc68e97bee32ea7",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-01/index.html": {
-    "sha": "5b34f98cb787a593f0a363271f8df4aac92d9c3e5256c5b5e38b8967bc1a4e64",
+    "sha": "0d2ae5be28f416bc3a78c249d3692b3ee03cd2d4cc1bd8674bddf074a2f9ff8f",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-02/index.html": {
-    "sha": "a8b49d1921ed45a07f22a306da20641a20ea85fbf2eed3b0ce79cd82925f464f",
+    "sha": "b4918db05b66b0212d7a20a1307e00e39d4cc79b80a3721c2513a208995afa32",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-03/index.html": {
-    "sha": "739c4a557f641724f6b429ded460a75a6cf9d42ae1ad0fdeaead0a9aafd471a2",
+    "sha": "8d2c3eb6a957e691985166b3f42ee78f484a0313ad942156bd9c5a16f79d2337",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-04/index.html": {
-    "sha": "592eefa7a5c1b52fb369e6bb663916b1e4bf614a596c2c6c41d57da2c2433710",
+    "sha": "b8cc166ee06e70afae8213d94f0399c82d73316de5fad42a33f43696c6571a72",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-05/index.html": {
-    "sha": "0bd82f5f5e6b3e128900f7c79605f584b2ee85f59209b34ae24b5c6fddd06fa0",
+    "sha": "337c95ff2e5d451d85ca977ba3edf4013179259c07f267fa0b22dbde45b32bed",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-06/index.html": {
-    "sha": "fa4fdb175540d6c47d255eaf293825ee1edbcbe716b0922f2bce89f8cb40cb98",
+    "sha": "95470edd73805211a45ab35f717b945e8d95049a397c5c846a99781537f161f8",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-07/index.html": {
-    "sha": "0a540c3f495fb6900ec9a7ac0603fa7a4cbecd641c15877f6e2e6d4f4568dfd7",
+    "sha": "53e3cd7120da03080bd39f7792061f6919fa28315336974821b833d3fa047879",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-08/index.html": {
-    "sha": "66eaf9af1cc1880bd13829522788cf0023871c9a0b38d49e184b66e402789e6b",
+    "sha": "85417238cc81aae06acd7e602a87a7fc6083daf51106f8af53b659898f204d90",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-09/index.html": {
-    "sha": "b1160d1930be7a941e9c487bc8a214bea569c809c6f71e7c976812d7858bc1b1",
+    "sha": "0e08fa6a9133391f40fc99e6f37e86e0275300965a63b25552ed1844d71938c1",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-10/index.html": {
-    "sha": "b9c423a30d43e9e887b18110bb8d22ba50988438c48ba0c7c02dedce68f2f146",
+    "sha": "cc20ead6ab6ece2e367821801c1fa456ec5a6415881934461e5be60dcba3e546",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-11/index.html": {
-    "sha": "e9afbad3d84528f29a3984cb2543ee925cca00d58ad69e7ec7d883d7efea10dc",
+    "sha": "1656f0afcfab5ed7c2d51365fc5853758ab10059855f0caf8df7e767c167e19f",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-12/index.html": {
-    "sha": "78d803bd22b426462db0ed6d1898bef5143267cecb1f0ffea158329b93dff764",
+    "sha": "748cdc96df011dc778865f4bd839b36658d14f618b13e7042098e35be16d910e",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-13/index.html": {
-    "sha": "4a77d401d521d9e1a3764367cbaa0f2cea809b06de6586f92ffc2803066c6b6e",
+    "sha": "c131f6e3b2f13b159c3e1d065f096804b6b14fa9eea7715473bae3888b011397",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-14/index.html": {
-    "sha": "6c4e55626ae798fc0e3f65b469184ae20fdaa4218dcfe542313531a95beb7e73",
+    "sha": "ac8cbf04578e367ce96bd8b7dcd1d026569240efc3e79f31eefd9cfe06eb7fa4",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-15/index.html": {
-    "sha": "8ae2f4ce0eecf43de1311d8390587ab1b0f73d198d07706767b81f03cf8ffa5e",
+    "sha": "08b770592c976fb863740cc59912b21fb64f50611e6ae5339bf8fb911942eda8",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-16/index.html": {
-    "sha": "134689801492259db92ab91de810df9664ac09599adc0dcb369c2d126d39e1f4",
+    "sha": "eb2a5b43f315dacee09751ecd128a2094980556b7fb2255703f892aa8d4c3583",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-17/index.html": {
-    "sha": "95866aa5480d06da219f964d01386324e3fecdc4b05f4b58d5067bae5413bf09",
+    "sha": "286739380699d2cb990d5cc33c39886ed22cb149c7234dd630206e73470eb319",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-18/index.html": {
-    "sha": "541191867429ee31760c4b34645c68f5e4aed7f7b3cffbb9cdae0ecc7b6a4606",
+    "sha": "82d568b6633d92de9092053a6444909718b8ee7a4b5b5c0f73a962541c4cc56b",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-19/index.html": {
-    "sha": "4f994f461d9526ff21945f3c6d04f24610ec27edd31faf77dc06e6f309623646",
+    "sha": "f82287029f51cecf1a8b38bc33f42d04bb427584e8726da938e187f9d3cfff63",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-20/index.html": {
-    "sha": "609740f218097fdeef5c20539cd69ce7d196943f1abd897870b7fea92284bbf1",
+    "sha": "d4bef555f2282b279af928ffcd176410c73fa35ec1aa9d8ceac7fa6c9161bbdf",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-21/index.html": {
-    "sha": "80c10935c4a5dc1bf12be0b1651e845a52fe652fcdeab5531880d8b1c046e58d",
+    "sha": "fb6a831981a6ebe273a421349ca5b89112b816a0a54e317fc2c20c58ac629d6e",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-22/index.html": {
-    "sha": "9ee97127b28cde2f78272db061975adaf546f5cd224c8b609fbb201f5e279096",
+    "sha": "5aef082d4b0d3ebaa4f077b149d49f6a3142098fe281889a525984d4cfe58f3b",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-23/index.html": {
-    "sha": "f4109f4024b682fcabbd74466145185b95dd95ece716151d430c951eeb37705f",
+    "sha": "41275c8311a2c1ff6ee4c3d0c40c0e0b2fa896722aa54ce4a1cd3ea6e3d72d3d",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-24/index.html": {
-    "sha": "0ce0fc8f3c486ce19d1163199a0894ee0f241090e4f1b79a1fbc5dd776c34194",
+    "sha": "45f1a3c337097800bad8e77896d1a706d0947a908187f7e236463401d63909b1",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-25/index.html": {
-    "sha": "0eb52759671a6c262d9490daf39012e6d38e323e0cc6782afd563a8977b0686b",
+    "sha": "03bb68aa4c8a6c776b51979a443ef96a00636663a8e8d98c545616d52ef96d5a",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-26/index.html": {
-    "sha": "66df92f499baac9345bd3700967730c16bc5a4512ab9607676a486aff3897e1f",
+    "sha": "0a365af49094a3bee0c67bb7825605bb2cca1394e2c6e648097bbdcd157df3cc",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-27/index.html": {
-    "sha": "929fbbf78aa23948743c6cb2d2b9faea8193c58498c938e565fe17b4416305c2",
+    "sha": "fd6b6899cb374fc2d2cf5060c8940897d52b83fbf1821b2c917f2c846ce7ca4b",
     "lastmod": "2026-11-20"
   },
   "d/2027-02-28/index.html": {
-    "sha": "6c5e54c0fac0afe720bbd7493abb43b5d88a9ac927cbb9bdb5d5d4b79cf70c5a",
+    "sha": "fb1ec287bb0d127ffe554996fc30f5b8cffe12cf24ac9d758022830dca5a3e81",
     "lastmod": "2026-11-20"
   },
   "d/2027-03-01/index.html": {
-    "sha": "196705fbcfd8e8f9540ee81ab9482401a821eacdf7ae11703c79f7e39ae13e1f",
+    "sha": "c823cea6180027715eb72cc29c9ae2e0376ca39bb73977f28d000e8ea4644bf5",
     "lastmod": "2026-11-20"
   },
   "d/2027-03-02/index.html": {
-    "sha": "db47ab41a4e0b087814761741db294761bc97ade2910e504851626493c48b470",
+    "sha": "976022408e5b13c9e27e40610fe13a22a54bd20d1b6c7d2ceb3b3f5e0d4c2818",
     "lastmod": "2026-11-20"
   },
   "guides/caching-load-balancing-queues/index.html": {
-    "sha": "922982b3626c41fba44b62f3f966853462d03a40b16fb30910917917a84932d8",
+    "sha": "0282ed838baaf2ee15f359dad14d37aa6de39661a4c4b0faf32de3c6e7fbcb94",
     "lastmod": "2026-11-20"
   },
   "guides/chat-app-walkthrough/index.html": {
-    "sha": "e9eb5833c0cbe304d9a4228d67f54dbc411f59022837d5453e98550d4796f821",
+    "sha": "c8310cebbd10bef54109a2684a7ac551988c4c3d25feb74ef74e1d62007b9169",
     "lastmod": "2026-11-20"
   },
   "guides/how-to-practise-system-design/index.html": {
-    "sha": "4fd20df37d544e29bd8a2f59f28aeb3577dc0e391e73d8e48c61e8e3be700a9f",
+    "sha": "492254e1db74b7dc654db688ff50f78d9f335a0678008b2425447b93873450b6",
     "lastmod": "2026-11-20"
   },
   "guides/index.html": {
-    "sha": "f369248486f88c2956b55ae46ae5557264f5e70f0cc4dc2f0f0c2c756ea08675",
+    "sha": "f949e300cf2d7835152059f224993e5fbe92d9100d3f0fc3583f758babfc498e",
     "lastmod": "2026-11-20"
   },
   "guides/introducing-system-designer/index.html": {
-    "sha": "4bb65f7e7caef6f426be59be86a35775b9a9b30d138c517de4f16ae73add3c8b",
+    "sha": "00ecec225f5363d4cce5ff84845ec7d98b89ea285094f178ac33930ec706425d",
     "lastmod": "2026-11-20"
   },
   "guides/notification-service-walkthrough/index.html": {
-    "sha": "a2ec48221527cf7b2aed9c1892c8e4df8e43d60915e8e90c8b9d3e2a9e4a34b3",
+    "sha": "3c1b878503391e72ca48a11aa882fefda782651df3209b0114a068f99d0f07e5",
     "lastmod": "2026-11-20"
   },
   "guides/rate-limiter-service-walkthrough/index.html": {
-    "sha": "eb573de9797d36cefb914aa1c9834c6c0f4a9f1d49916d5c152b84383728e152",
+    "sha": "f794bdee5c243435a7dba72c2a2aac54d36b92daec7584249a4d97e29b6166cd",
     "lastmod": "2026-11-20"
   },
   "guides/social-feed-walkthrough/index.html": {
-    "sha": "78b7bba7ae8726778baed343ca60f9e92f5f97cf296b533a20e9d03a31a4e230",
+    "sha": "8f54ec6e3f65592864d7889799df8b74c7e04b472b18570b8c2ab4fa76c55c89",
     "lastmod": "2026-11-20"
   },
   "guides/two-week-system-design-plan/index.html": {
-    "sha": "058c13179d4bdcfad5ec871a3d529f14d4bb79fe0644daf1bbd169c89865a07d",
+    "sha": "3d4d31ecd7183f94dbd007e698a84b0b1830451c40cfa22e1bbe090392c7699b",
     "lastmod": "2026-11-20"
   },
   "guides/url-shortener-walkthrough/index.html": {
-    "sha": "754e5328a874a503a2d9903b470acddfad6b6938700ae0122eafd14ef85cf9e3",
+    "sha": "b69995137c2e38a1e892b698669b0a455f7642e2c08ca8f035794b317feaba94",
     "lastmod": "2026-11-20"
   },
   "index.html": {
-    "sha": "afafdf5a39128cb94f4bf7e619e67e5b4fc5fceb94835324026ca1f6c2b3cf46",
+    "sha": "d734a438f040211dbdb42f8083d451cffbe1ef5b3b51ee3027436002cceaa33f",
     "lastmod": "2026-11-20"
   },
   "interview/design-a-chat-system/index.html": {
-    "sha": "e2f2dee3d313126e47f30e7b7c642640b196e99ba0e985954efcfa7c520a53dd",
+    "sha": "eae1499df25694fdd2aa6d4594dcd4f91a79685096983e7cc62682d0e69544c8",
     "lastmod": "2026-11-20"
   },
   "interview/design-a-notification-system/index.html": {
-    "sha": "42721d3bc248e7e75a36317530f5a173d3dbeddeb124ecdd94ef4a7374414a15",
+    "sha": "2c7139bc3330913d4cb9f6000658f7552da054e3c4d56c67743f4990a683541f",
     "lastmod": "2026-11-20"
   },
   "interview/design-a-rate-limiter/index.html": {
-    "sha": "4c10a9c7cca515d3298557c11bd55dacf61ed39c560c3d40185531b4db56a0b8",
+    "sha": "66fde3bfaae42eec00321b7a15a621a408e986668a8fd8925ddf78568468f2d9",
     "lastmod": "2026-11-20"
   },
   "interview/design-a-url-shortener/index.html": {
-    "sha": "e133149ab2968573fe755fe1cccc32b34819f7edbb08e5f8062e629372cc7b77",
+    "sha": "541a785e6abb19328b6e601db8faea5cd4909f3a9d500df64f39be4fca9f0828",
     "lastmod": "2026-11-20"
   },
   "interview/system-design-interview-practice/index.html": {
-    "sha": "25d9269d9cf7548aea7647a05caf3324198fc60642a48214cda11bb7f7350420",
+    "sha": "e23bdca722c51ea37afdea769b5403e1b927d0c5f3ff75681a27fdd689e20742",
     "lastmod": "2026-11-20"
   },
   "interview/system-design-interview-questions/index.html": {
-    "sha": "752be8fc7b3d42a0129733b5148026f807fc655030edfff6fe4d67d68da6e442",
+    "sha": "821f0284c3339dd111c02ad04846047e1931de9af96e0d4db453d2fc7a13cf21",
     "lastmod": "2026-11-20"
   },
   "learn/ai-serving/index.html": {
-    "sha": "3a0523dee67d825d479b4c0559c0a6190daf5e42f009faca30bfd0d4b7a2b218",
+    "sha": "eb48e2a361eb058a608029374618100952d493573233e7aacaace7872852c19c",
     "lastmod": "2026-11-20"
   },
   "learn/autoscaling/index.html": {
-    "sha": "628490ba6ab279441c75c582257ae882364af5ce316d7935ae1fe662d4aaf566",
+    "sha": "bf4b56a74620d8155138451ec9fc17864e8fec1a6f4474fd16c37a2e83478c15",
     "lastmod": "2026-11-20"
   },
   "learn/back-of-envelope/index.html": {
-    "sha": "b7c9b0a3d5f94f9cffe6d49f33a3310bf1835efb18997ac8acc991abaaf1aa5d",
+    "sha": "ed5ee7d42e1786d3777902c84224ce80d7293bea669d240393cd955572a79c8a",
     "lastmod": "2026-11-20"
   },
   "learn/caching/index.html": {
-    "sha": "8c0d26c1d514816d098d9967b871f83d2480cafbc9446fd210c71299f21287be",
+    "sha": "9bc8be06b6cdbb3266e62db500143f79b72577b4aa4626992cfe8de6a35c58ef",
     "lastmod": "2026-11-20"
   },
   "learn/cdn/index.html": {
-    "sha": "dcc99490be57c8c35c4785f4f468ac8cdc4766438b794e75743508d008bbfdaa",
+    "sha": "9d7deca45a0b7570ea8e2c137d4cba23f0e92425c05d4f2cbcd0fc36c901c79f",
     "lastmod": "2026-11-20"
   },
   "learn/circuit-breakers/index.html": {
-    "sha": "0e7cb943b60a48f88558a2cd65239314cc8d15c6c10a5539e7e8b84358d24647",
+    "sha": "6c9c8b02aa6946eb651ee63024a8f482b1753d0275b27cb39e446d6f3c0b036f",
     "lastmod": "2026-11-20"
   },
   "learn/consistency-models/index.html": {
-    "sha": "6d02a11277f4ca228aff48cc2f8e10d91fe0a3737646676695ad810ed1467ffe",
+    "sha": "86be8344ac7cf96ddb7f62989105464b8fea2779dd37569c4d00253c02ee9936",
     "lastmod": "2026-11-20"
   },
   "learn/consistency/index.html": {
-    "sha": "a415783de2b3a9e19e15061048776ff48f60758d32c85bdab1e9a46448faabf4",
+    "sha": "6d1cfd1d944da46d388b75f3f2411b2788f9db5bc69bf301fcf28b0bb8277cdf",
     "lastmod": "2026-11-20"
   },
   "learn/consistent-hashing/index.html": {
-    "sha": "1506205f1bd93a566faf7fb8c0fed13105259ca488eb078554513bcb4b4d853d",
+    "sha": "82a4ccd4d169b537cbf115f4448e2853ea87a20c59c64a9b2226217661aac323",
     "lastmod": "2026-11-20"
   },
   "learn/copies-quorums/index.html": {
-    "sha": "d466d403fee27b933c73630ddae4df357c02272b9f722c601af5e8065db023b8",
+    "sha": "cad061a098cd7b21f21aca49eff310739f590394210ae2e13705c03fcd72ac1a",
     "lastmod": "2026-11-20"
   },
   "learn/cost/index.html": {
-    "sha": "ce997934983adceeb6247791a569d406913afa0fdc00da753fcb9d9606f9ad60",
+    "sha": "ea4b27a1e32be9c32c9bc612f3427991abee8e8d61de8e3750f8c51c34979851",
     "lastmod": "2026-11-20"
   },
   "learn/device-sync/index.html": {
-    "sha": "137368483a2c06b92109fada821cd485ae85279662c75f62e773af2cf8326336",
+    "sha": "ac0fc24e3aaac86fc0a706c8f6add03d4f03eda8bea6d031a824cd6ee6771931",
     "lastmod": "2026-11-20"
   },
   "learn/fanout/index.html": {
-    "sha": "0e3ef386eb2bae56c2a359df66736b0dce548c29b774d674c8cf85205e7d8e15",
+    "sha": "188e91a81c34cca94778c9d9a729482b62930d1827e97c9a6d67f0bd664b394f",
     "lastmod": "2026-11-20"
   },
   "learn/hot-keys/index.html": {
-    "sha": "5a74d467d8bf9b243dd6f29cd1448c8e9b04bb6f10d6e3c13d9be4fc9b58f4fa",
+    "sha": "b7ef9d0fe712b7c307b9990a365f5af9ddb9fe4463d89e9313f3c63d228d7567",
     "lastmod": "2026-11-20"
   },
   "learn/idempotency-retries/index.html": {
-    "sha": "c784ed4b3e0a7fd32bf6b1c667b6272f693c74b2a4c94892f854736aec288387",
+    "sha": "797f27516981e933ef36a847f95df9cd41145b76b23c8bed9612436fd9e27b91",
     "lastmod": "2026-11-20"
   },
   "learn/index.html": {
-    "sha": "56a12de4b922304536086ed19449be1ba86602469ce4ff775834f6ec6234a2f3",
+    "sha": "9e272e70fe9653783819ae6f73416871a6a00a2e33d6e492f8cb90ad4e154f65",
     "lastmod": "2026-11-20"
   },
   "learn/intro/index.html": {
-    "sha": "759d6382ebb3ea93695d669be0e1990dde3575c9b6044e3a66b0ebf16100fc2d",
+    "sha": "3122aca795f078e2bd22132498708c107bec721384174965390d0e08f7fc3a56",
     "lastmod": "2026-11-20"
   },
   "learn/lead-interview/index.html": {
-    "sha": "c3cc56273b0adfdf44bdfaefe64ae1bcc7c164b13a2b7987cd70792e14314bb1",
+    "sha": "bbc8f66a58f5b461caa191c5f9d89d527f88a274bf3eeb871c760396fefa432a",
     "lastmod": "2026-11-20"
   },
   "learn/leader-consensus/index.html": {
-    "sha": "8f4ae9f8e1a9c9b35482485b9a69e6b0bbda1791e1a210051e95ac970bcf60c6",
+    "sha": "2d904e6c64699686ebb767c788c94d01eacaa9a60eee2c21f7580a75b648f138",
     "lastmod": "2026-11-20"
   },
   "learn/load-balancing/index.html": {
-    "sha": "21ab0a1edf0df2d951ca4232a8c18ecbc4f515ec248a86a18f36dc85f2b4758c",
+    "sha": "b90581a5bfa015db7f1b04fbad102b2faff5fc773926ec9b01bc49efa94a8567",
     "lastmod": "2026-11-20"
   },
   "learn/logs-traces/index.html": {
-    "sha": "b673a7a8549fe85bcb9bba0e07e725674fe36c58a253f618a807728234fedeb4",
+    "sha": "3b34529bf2aca8712f21f6918a91a4ab21f02ee98b376747817f9099f689e3ab",
     "lastmod": "2026-11-20"
   },
   "learn/metrics-systems/index.html": {
-    "sha": "0263d510e4e2912228d7b7811d90b37529b5cf2a60bd55504c245ae43c6630c4",
+    "sha": "fdc97f4f0286d94d5a8c22f20ffae40d03d430beaad344e58215add27668ebe8",
     "lastmod": "2026-11-20"
   },
   "learn/multi-region/index.html": {
-    "sha": "a3b99e1e6184b3e2e0ad0f2368fa588d0ace0503e09424484c8f2b3147c17bf0",
+    "sha": "cf00e4cd6b5578a3f81514c2734e30bdbd9934470ce66f04dd920be92bd16102",
     "lastmod": "2026-11-20"
   },
   "learn/multi-tenancy/index.html": {
-    "sha": "8f92bfe59d1dbcc1f1a3647928b30e52466b2c4628143a93002ccf435f8a480f",
+    "sha": "fd97bdcee3b2005ada277461c09b12b08a583a638d03a6ce061f677e3e64d995",
     "lastmod": "2026-11-20"
   },
   "learn/observability/index.html": {
-    "sha": "26ef15d5800f30c7aeb2dcc89d9922942ef25cc3694838f8476bd91182c485fd",
+    "sha": "b7d172a216e22b255ca6de8590d6ea7badb4d7e63e6881a586ac9c7fb969de27",
     "lastmod": "2026-11-20"
   },
   "learn/ordering-time/index.html": {
-    "sha": "c1291458b56dfc6b99962b230538c1f9a67a1ebec3dbbc42eedab3a86af494a6",
+    "sha": "001841f18e56d46ba8bd911ce23e1df355c2f4e51e77f0779bce6209a6ab9822",
     "lastmod": "2026-11-20"
   },
   "learn/privacy-design/index.html": {
-    "sha": "f87f8cb23f9c1245797c75a058f4b488a2f27f7ee5329e5b6088f0943772c059",
+    "sha": "29a2f3519eb3588271da8e4ad9a0cde25b7ee1008c9a956924d362127e555929",
     "lastmod": "2026-11-20"
   },
   "learn/queues-backpressure/index.html": {
-    "sha": "28f87535325990efb70b6ad2d2d72fc6c8e5a36511d6ba25c3acbcd91d96699e",
+    "sha": "59bb6d87ac4124fa6dc5891b64f27b0681ab0a04fd0f2dc548a831389f074a81",
     "lastmod": "2026-11-20"
   },
   "learn/rate-limiting/index.html": {
-    "sha": "2a2403c56fcae82e044d037101d56b741a15e68c461240921f1370dbe9aa9db0",
+    "sha": "fc3d04dcc30f2efc5f53c25a53ed3ace1a4468f3572d513a1089f306d33b34fd",
     "lastmod": "2026-11-20"
   },
   "learn/realtime-connections/index.html": {
-    "sha": "e54e5a1675892a9b2821f779c253b38579720bc173028405a2af046604988b79",
+    "sha": "cf9be43d0b01704c20d9d04b5c0918bce45b1deae6334e1ff1546184ad7ef476",
     "lastmod": "2026-11-20"
   },
   "learn/replication-lag/index.html": {
-    "sha": "1ff0308a1d544983d3bba9632dce09e6362716f4d566bfb661dc7b8c100bd28b",
+    "sha": "77d1f1f2a27be9ad2b96f6f4115f855808af6745b4d029bf0e349f387b018ff8",
     "lastmod": "2026-11-20"
   },
   "learn/requests-and-latency/index.html": {
-    "sha": "e5285b312f9cbaf562fa953e14d106584311f28fe20cda2e7d108c9753b4009a",
+    "sha": "637b5e59a93f4bef979d33a090a6d70a5f6ee41bcee8d9331ab4d379af21554c",
     "lastmod": "2026-11-20"
   },
   "learn/running-migrations/index.html": {
-    "sha": "ab32bc73ef6955f96713941d47f88c7403dfbde8b767b84fd1772bd66291fd0e",
+    "sha": "d6b483dc3d45a524f25dc3d6b5d868356f5fe69318bb50c6ef4e78966c6030c9",
     "lastmod": "2026-11-20"
   },
   "learn/search-indexing/index.html": {
-    "sha": "9d4fb38f5b32c6012d34764b008da379d76c970aa70612a3a94b66940784b0d7",
+    "sha": "9b9bebba0551a1df00768eb6606b93f8437aeb73aa50519034f6e3012bf8de8f",
     "lastmod": "2026-11-20"
   },
   "learn/security-compliance/index.html": {
-    "sha": "fc0d92c494cd3049d9dddea0b1f2e90353223190d75d7964f9d944cec9510ded",
+    "sha": "33659a200502b3775ae4838822f0f4cd9d2cef985d30b6b5a2fa02f7e3e91ae3",
     "lastmod": "2026-11-20"
   },
   "learn/sharding/index.html": {
-    "sha": "49921cc69c80c5b749010d915cffb2c85146cff5aea68b5d928f162b59058be9",
+    "sha": "7adf16daa21d34a19807ab72fd267a8b0a00a7a98be36309a87c1a8589ca3f12",
     "lastmod": "2026-11-20"
   },
   "learn/simplest-design/index.html": {
-    "sha": "495d3efb8aa5314c6562d8c25fb22f42e59a646be93c6b63409edf8f87bf49be",
+    "sha": "a5490b6b6ec8ea10e721f67d07e1ee98085ce92d3211977f52cc4666dc6011b4",
     "lastmod": "2026-11-20"
   },
   "learn/slos-error-budgets/index.html": {
-    "sha": "0a21578d0b1197a25f14068f3b4e16467075f6a6e67035dc58c1e152dd82cb1a",
+    "sha": "579124fbb45a2f2fa382bc090b96696a64cc2e0d9f4f874546dabf1063b2dc71",
     "lastmod": "2026-11-20"
   },
   "learn/storage-engine/index.html": {
-    "sha": "e1e28817a4fa7890594add40b7d1e2a499830b763db72d1cfebdc9e69031bfe5",
+    "sha": "746d152713918680cfc7609d77869a0b55ed13744d39320f3b718bc71c9d3ec1",
     "lastmod": "2026-11-20"
   },
   "learn/storage-tiers/index.html": {
-    "sha": "a59202e717959f263c394a2765313ad63f71340b2e872255e2e0f1e62768bba3",
+    "sha": "787f91646c56eaf00bcd30bae52f80f0f509dc7bbd560eedd06233777763e753",
     "lastmod": "2026-11-20"
   },
   "learn/team-boundaries/index.html": {
-    "sha": "3fe4aa3c8b9f68526ce601734304a4d9d08b09c4f9d0e51c2e6d53d902eff5e1",
+    "sha": "55ae0c5e50896ef0bc43e5d7b2c4b365e224dbb23beafa78196e5ea6af14365b",
     "lastmod": "2026-11-20"
   },
   "learn/work-across-services/index.html": {
-    "sha": "dc5f88f3e5beac7da8d5ff7382d09469b36f0ae044ae96299c8e8868a7c36475",
+    "sha": "445ba772588ee13a459c2dc938edc3efe36fd6324a2ae9503f3db2dbada5323a",
     "lastmod": "2026-11-20"
   },
   "p/ad-serving/index.html": {
-    "sha": "f4ce78b41d66cae93cb13734d69e965bd64be557f3df2b7e8c0b65630c9d07a9",
+    "sha": "03b88a590c4ef3afa7bc68d948e938bc940c792d49a4346e80791ca5c48effc2",
     "lastmod": "2026-11-20"
   },
   "p/ai-chatbot-serving/index.html": {
-    "sha": "7999420b92d5b2a68706a41f26b0d10ab7ab7e4c2904a1f1cf524873c845d377",
+    "sha": "de14a20b155188ee0f46ac316d6af29c69942bac498d9612138668544013c2a3",
     "lastmod": "2026-11-20"
   },
   "p/airline-booking/index.html": {
-    "sha": "b3ce02d558a1f33af049aa287a81021477b6ab4d3c61c4f77a6a8afeaadd5db4",
+    "sha": "a572faa72438b8574ea67e941308155bfdf03d2503c1982a362bce1ab0dab90f",
     "lastmod": "2026-11-20"
   },
   "p/appointment-booking/index.html": {
-    "sha": "564796b39226c401960e1d38308c00d90ba2369b0e2c0bb45705d64b92e17872",
+    "sha": "0323ac30b5a0f5d755cc4b3b554308ed7987ba08b42a0837ac87d214f9fe67f4",
     "lastmod": "2026-11-20"
   },
   "p/bank-ledger/index.html": {
-    "sha": "2bb88fb32b5ca45b60e409db83debb56053b6864bbc65aa713cf8712bc10551c",
+    "sha": "ba9a970f8f1bf2130e390f8636ba8af035e4744e789ca110f3b2a10f0e75e43a",
     "lastmod": "2026-11-20"
   },
   "p/battle-royale/index.html": {
-    "sha": "a9cd583308811ec19eb3cb1199891877932f30578fd18b5a941a3e4f6f00b79c",
+    "sha": "cc2322ea80b45b37e3ae8e1d4489f4675bfa2e4a5efa2ba1b686586a5dabc3f2",
     "lastmod": "2026-11-20"
   },
   "p/benefits-portal/index.html": {
-    "sha": "512dd2297ab7ff76b2924735333b8199c7bcadbc7fe49019a5072cada6d78842",
+    "sha": "bfeb5cd5749b63f50d06bcd26a8a572e226f8b28fa6d79eee9a80342ed518889",
     "lastmod": "2026-11-20"
   },
   "p/black-friday-marketplace/index.html": {
-    "sha": "dfafe7c0eab67bc742181e7519e4d5cf739a57c5290848532e496ffa9097e429",
+    "sha": "825e654c3e417974c48cdc484892973667a308e5e4dd71ff711740fd01242d4f",
     "lastmod": "2026-11-20"
   },
   "p/bnpl-credit/index.html": {
-    "sha": "0a1fdb3ef3bf00d5ad6297950be9c98997ccf904832e773f7d90fd2b92d8c106",
+    "sha": "fe20a9781656be789df948463df2e474ae7bf21ac7edc51d52f4e0456316a2ea",
     "lastmod": "2026-11-20"
   },
   "p/bulk-sms-campaigns/index.html": {
-    "sha": "9827c2d83b58f26da2af1b408463ff4cfe181edc27b01a85c449cd7224ae945c",
+    "sha": "bf4ed951f392ef55b7a25e039ea0d379cbd0b33d55da58b841be013ac51f9e61",
     "lastmod": "2026-11-20"
   },
   "p/calendar-invites/index.html": {
-    "sha": "4a1570562c80fe3661fb1da34b7ebf0fd1b22bb6169307b0c197d5ad0f80f9e9",
+    "sha": "7125cdd0425c165c81e418e4611478552c20f113cb1a954622b087ee860250d7",
     "lastmod": "2026-11-20"
   },
   "p/call-routing/index.html": {
-    "sha": "4af9dbb058c02c4a446028cdece8f14c35eab0488d09190c962aa66f2fa84d66",
+    "sha": "559227a5371ff1d912c405e71323de3971f1f4142cb7e536a2981e15bfe8f224",
     "lastmod": "2026-11-20"
   },
   "p/chat-app/index.html": {
-    "sha": "635a46ac852c37426073851e1c07d80da0328db4485ee54159900fad5439e040",
+    "sha": "b49164dcf666ddeb81f180144b743a4763c693bcd607d03ceee33ad8f6b60b6f",
     "lastmod": "2026-11-20"
   },
   "p/ci-cd-pipeline/index.html": {
-    "sha": "6dc493ce29bf1e18f6cad1c3d5cb465e131ee733062e25ad677bb17df9d40631",
+    "sha": "e4572c590fce31eff85e1ffe05844f281a92319dd36105735240ac40d3252d65",
     "lastmod": "2026-11-20"
   },
   "p/clickstream-analytics/index.html": {
-    "sha": "63ef99b0ec2cb5cd0e23fa946f0dbebbe128b239042e5104fb93e84a17ba7c54",
+    "sha": "88003d485a409c3b25d522fb78eff0f4b4b55f524dca18b7922f445855e13bc2",
     "lastmod": "2026-11-20"
   },
   "p/collaborative-docs/index.html": {
-    "sha": "7a4f748cf10f1cf5fcf15e7cde496d3268b7b64da7700ed3600fc8df5c6ba0c2",
+    "sha": "5fcf49185c93a531a552e73d3438b6531d3c51c64bdc4b42d001fea71e4973b2",
     "lastmod": "2026-11-20"
   },
   "p/comments-and-likes/index.html": {
-    "sha": "13e3d8eb352718d553c879666c543623271a08bcf5fe07d150c09c56f2bb77c8",
+    "sha": "cb707a1327359d8dc8383f573d8d3142b0ad0980edf3e886f8898f73385a4124",
     "lastmod": "2026-11-20"
   },
   "p/concert-ticket-drop/index.html": {
-    "sha": "046b2bc21c938a9a5ad7c736fedc7ac426e66ad3d3dc392a27e6d5fd675bc156",
+    "sha": "d0dd7526fd642491df96e44d9a220feebd86cc1e5089055d5f9b0f94dd511a57",
     "lastmod": "2026-11-20"
   },
   "p/course-enrollment-day/index.html": {
-    "sha": "39f4c9dba7c4f75046df7ce2c079fcb8a79382193ae66a6d83d4139fe11aa43a",
+    "sha": "837629e80f5e3111be5fd24819b13f31fe00cec9d76f7c9a237c38c59af1bf23",
     "lastmod": "2026-11-20"
   },
   "p/crypto-exchange/index.html": {
-    "sha": "99f5f5ba8497b7ca6e14b70107580d17b4e67b31a58b7fadeb1958cab05abc9f",
+    "sha": "5644db6f0d3829811a152a50af7cb929d19936564b734b0a2f7327cc75520e2f",
     "lastmod": "2026-11-20"
   },
   "p/device-notes/index.html": {
-    "sha": "f83e15311e22039cfe34fc380048cd1ed489378995cf0c3c35f2cb3e6453ee19",
+    "sha": "1a5c54d36f7321c305ee5346d0067ee4490a5e26ebb9cd8f345d9cdbe95f7a04",
     "lastmod": "2026-11-20"
   },
   "p/digital-wallet/index.html": {
-    "sha": "ae24ef8830f15f5210928ed7a2a1ec4520a635fac19a2d3469b541bb9256cb73",
+    "sha": "20dcf033f7e1424003bc24021d51aff7258891a333433d3233739b1c421ec17f",
     "lastmod": "2026-11-20"
   },
   "p/email-service/index.html": {
-    "sha": "8720d6e6a43fdb76df7b282c9a28d13294a69fc1f6617f64680bff825862d07b",
+    "sha": "cd101cb487e88d8cf5b6a84d61bff531c7998353e79e5afa0a06e55f603e4a42",
     "lastmod": "2026-11-20"
   },
   "p/ev-charging-network/index.html": {
-    "sha": "85150497ba94a7e3e6bfc19bd0d2fd8a4b5bbf681fbc3c95cc4e7b1402de07b6",
+    "sha": "640fe57b463428e4cfc551683978a2aba3f0f45fee755ec2b52d6e3b4d59272b",
     "lastmod": "2026-11-20"
   },
   "p/feature-flag-service/index.html": {
-    "sha": "4245eb07864ffc8a530e406b76ebfaee97b986ab703702e2f7d4ff475e1556f4",
+    "sha": "ce7d2809547bcc6f1d236c3c5ea9e256c3c55b34e95a39f30d6c792ce33ffd6d",
     "lastmod": "2026-11-20"
   },
   "p/file-sync/index.html": {
-    "sha": "dd9eb4091cc468c82f9ffaec269f2d94c7bf3c25260ab964af519a1e41bc05d3",
+    "sha": "810b5662224f792c884c056c4d7dac3d39759bbac0fc805342ca16901fb3420f",
     "lastmod": "2026-11-20"
   },
   "p/firmware-rollout/index.html": {
-    "sha": "435e8e5b833979f3c1527df0bec7f1024de246f360e865c9e727a90dc787d302",
+    "sha": "b8b9a7e1faa077e3ff3922a9ebe53503f79c5eeaa90cbb04f6b4921208d3c57e",
     "lastmod": "2026-11-20"
   },
   "p/flash-sale-inventory/index.html": {
-    "sha": "068b40e22a2b99288b0dde7b0a14a8db62c72a7414313fbe45b3170af03d2b5f",
+    "sha": "2874caf7467d2b4efede2c03e40332cbea4fbcf961d6c7d742c03335f60a6aa3",
     "lastmod": "2026-11-20"
   },
   "p/fleet-telemetry/index.html": {
-    "sha": "0f6f7525ced130152bc7af64e4fac04491453622d93825470f4fced6257e1ea3",
+    "sha": "a94af2e0cc97be499e92a8551ec21c30ad5a671f09969ca946aca53acfc3fdf4",
     "lastmod": "2026-11-20"
   },
   "p/food-delivery/index.html": {
-    "sha": "37633e03b10072361aa81d53dda94ef5b521ced6f3d94433fa3c54b1fdd1364b",
+    "sha": "b6e125061351901b9f80d238105be27e00f7216ced777180e36ce6f659984c58",
     "lastmod": "2026-11-20"
   },
   "p/fraud-detection/index.html": {
-    "sha": "f8a6dfb72e797ab4d0df2a1b61843319be9bf8cc01ecc33c9c6942d405833698",
+    "sha": "08b9b6f42b67efd2382ede4674c92f0d937b1aa5d9b53fa66935cacb6f0c5985",
     "lastmod": "2026-11-20"
   },
   "p/game-patch-day/index.html": {
-    "sha": "9738901920154ed86d95c4716e04ac0068a68dc1f6787b584df1586fd804c803",
+    "sha": "eaad9c12fa021d24ff058293cf4f5a6f7d7cd8fe30f6e5751851caa6c6e5a1fe",
     "lastmod": "2026-11-20"
   },
   "p/group-chat-presence/index.html": {
-    "sha": "38f6d6cc6f1acd76311c3d193a240d687be186d9159379951fd44098943507f1",
+    "sha": "1159e6cf863252213dd0aedd2964b5b5806b3b44e3af915a5a192d3d037d7c86",
     "lastmod": "2026-11-20"
   },
   "p/health-records/index.html": {
-    "sha": "fbee8fd1e00a6a9c8141058248842d9468672d45b72b65aa4fbb21d3c2f805d6",
+    "sha": "800263999a7badf44f8d7805b389bd9ddf2cc31317f1245cbfca54772ac9ffb1",
     "lastmod": "2026-11-20"
   },
   "p/hotel-booking/index.html": {
-    "sha": "04f34cb7c575e8f7608363dac1bb75b7b0eb751a837fda1c99959158881fc3d2",
+    "sha": "677416cc74483aa596cbad7ee267c901309d899c374c2b4b01ef35a842bbb4f1",
     "lastmod": "2026-11-20"
   },
   "p/industrial-sensors/index.html": {
-    "sha": "4394444e987d9aafb1fd35de4339bf7936bb1e1ec69d3f206e4426bca21ecf11",
+    "sha": "c9c8614c0cae8441307976ecf8b87f7f4ce70c52fa9179db01a97928d4a3d743",
     "lastmod": "2026-11-20"
   },
   "p/insurance-claims/index.html": {
-    "sha": "10392f19c6ffae54860dd6e94e4d21b8e35f4f240031090d24a5f1dade421011",
+    "sha": "b379b961304b59d01b2ef793a83d8a15afb202c6d9942935b35e098b61ccfc5c",
     "lastmod": "2026-11-20"
   },
   "p/invoicing-billing/index.html": {
-    "sha": "a6c76713d8f227566996a3b3ea8f59cf0d074e3d7fc624e4f7e00bbf8ad8ea60",
+    "sha": "e35e8a5ac6115469997d937b22a1804049a55b97d2e721d5b008b19218f5a209",
     "lastmod": "2026-11-20"
   },
   "p/job-scheduler/index.html": {
-    "sha": "4364d3fab4f4c25abfe00829566c2b3542a785922265ca8290796f5cc8ddf35a",
+    "sha": "b5d3246cee3379f65ec90b2331ca39409fa3bd8b72dc02c88b40d0105f3e4d9d",
     "lastmod": "2026-11-20"
   },
   "p/lab-results/index.html": {
-    "sha": "637da99312969dc5c5ce31732716b6ae49b8cd599ed3b915b1b1f8ffc2f4f288",
+    "sha": "b239fe17fbac771ed7708efdce820e8c13b2e9cf27e96f6f1d0ce3b634abf23d",
     "lastmod": "2026-11-20"
   },
   "p/leaderboards/index.html": {
-    "sha": "467e34c54deba813a513cadd328f3643ed6ca444c9ef9f7ea837990fb176511e",
+    "sha": "f7ec7294683a687fc89c06f77bf7047c64638748b21292c265770cb09d3bb976",
     "lastmod": "2026-11-20"
   },
   "p/live-streaming/index.html": {
-    "sha": "2127f60a96320d8db8c0495284dbccb6879c1334ea57e0d02ae9d409698a39d5",
+    "sha": "68e0623281ad9455c31625aabbe6b384435730e84fa028823862f00218b3f28f",
     "lastmod": "2026-11-20"
   },
   "p/login-sso/index.html": {
-    "sha": "f8017aa2bb786cf662ff455260ba5ee39d59f06cab06c556b8e776400fb70be6",
+    "sha": "053d688004a47eb7c86ef020b775ecc80abc87b1504cde158d10334dc3e7d245",
     "lastmod": "2026-11-20"
   },
   "p/logs-platform/index.html": {
-    "sha": "4b9a5cb06074640801c9a21a50442339358db73a800f591045d9c4a1f287bca8",
+    "sha": "2b12c02bbd027646f9a0c59e329096327242e12f01e80986c0e17cd35887a079",
     "lastmod": "2026-11-20"
   },
   "p/maps-routing/index.html": {
-    "sha": "aa2bc3daa4f0f56d60b56ad367249edc3e12bd0518547f388eec8e901363bea7",
+    "sha": "ad8124d124c6bca0adbe20e04ff921106ed9f783cce34ded3562f533aee68961",
     "lastmod": "2026-11-20"
   },
   "p/matchmaking/index.html": {
-    "sha": "f802c8e59124a24f907aa988816e0051b021586f5e368013914b4073792d297d",
+    "sha": "527f6eb7fceaf87c0e23eadbd966c8b85110ed85e55bef46d48f0b176ed5868c",
     "lastmod": "2026-11-20"
   },
   "p/music-streaming/index.html": {
-    "sha": "4a57c3cdf44a7970b0b3c103a5b3c3ce1bafac56dca6262e49b551a5eead41ec",
+    "sha": "e5779675be7032dccb384b6a38a5884a1141d3c9d98bb810bf33ae1b58bed179",
     "lastmod": "2026-11-20"
   },
   "p/news-site/index.html": {
-    "sha": "39b1d474804d861ed74345d758dd58d70aa23f7a81d5241b1501eac9ed518afd",
+    "sha": "577b123690ff61db294efe6aec68173dbe4179ddfa331ebd59792ec3d49282f2",
     "lastmod": "2026-11-20"
   },
   "p/notification-service/index.html": {
-    "sha": "42bab71d906bcf7cbcb2cb2783fb749f16da35f784921b0f5819d0bf7d7284de",
+    "sha": "dcf2a7ed1367abcae12b03315350d6f07c32707ad8c3e46302f76e69e7cf1b9f",
     "lastmod": "2026-11-20"
   },
   "p/object-storage/index.html": {
-    "sha": "3f465f7c9709a3331cf9dbdd1e46d9fdfd827dcba6d3b9d0f144e922dba755e5",
+    "sha": "62722835c124bf41d773adda2e5e30ff5225cf5a10f65ff58396a2723b0b28d0",
     "lastmod": "2026-11-20"
   },
   "p/observability-platform/index.html": {
-    "sha": "e90a7bf6f17eb6f043bdbbea7b4ec26b20c37c8dff6accc53016fcf1aff9d095",
+    "sha": "bb6b66203e11b8a882ab17696ac3e4331eac75841acd7058486bd697de618a51",
     "lastmod": "2026-11-20"
   },
   "p/online-exam/index.html": {
-    "sha": "b3c0b82087e31dbf90390a25d574f99ee812ab39dac3a2a721336646dc47f75b",
+    "sha": "f4dc36b1edc4e2b1291f9ad11c50db57e206f457f04c0a720955e268700467f5",
     "lastmod": "2026-11-20"
   },
   "p/otp-sms-delivery/index.html": {
-    "sha": "c55d989b6942dd911d8f5948d57d8870f592305f100f06a1dba53086034b0c9d",
+    "sha": "200b94d16c3bb2d045fd0d774850b40fe522945ad6ecf95e4754ddb9ea901be4",
     "lastmod": "2026-11-20"
   },
   "p/package-tracking/index.html": {
-    "sha": "de206513254b3fae9c318aa660ce307c76d558c9d0b516f4179a8a4bc02223ae",
+    "sha": "ad2cd960a1c8547aa7a633f404e8654d673a042d0f0d04c69dcca563e451ee05",
     "lastmod": "2026-11-20"
   },
   "p/payments-checkout/index.html": {
-    "sha": "9b649f1ff41d6641db3fbfb8fbb78c27c090feaf37954f2a28bd0beb8e342a0f",
+    "sha": "f4a6949a52903456f535f222603e41a36ff6c66165a20ce6b718404756ac9c7e",
     "lastmod": "2026-11-20"
   },
   "p/payroll-run/index.html": {
-    "sha": "1653437a84655c05b3f1cb4cb836fdf85860679ad596ebe8f745fd6795ae2cdd",
+    "sha": "b90b8d286c5ece63b0553758905a6a91d413869ca73084437368259c634c0e90",
     "lastmod": "2026-11-20"
   },
   "p/pharmacy-stock/index.html": {
-    "sha": "6c17ba0dd51f3760261d0187b5aceb0d2c190e82a78f039927e83e4b225ca729",
+    "sha": "f6cf44be0832e0aa44cdee8b2e30fd8b1f18b0140235673c623fa75d0f80a587",
     "lastmod": "2026-11-20"
   },
   "p/photo-sharing/index.html": {
-    "sha": "1ce2fbe9bfc2ad3c054da66650e748c8214759d6775ded4fd4fd46061404dba1",
+    "sha": "150c6ee6865c52a168155502a883b64ce90a71342a17293f2c5afadf00a1c78b",
     "lastmod": "2026-11-20"
   },
   "p/podcast-hosting/index.html": {
-    "sha": "270d02db2c85aca7be0151c8e7a5e3c294a734e517854e920e201ab7576de86a",
+    "sha": "002d8c818c23c71252b4190c92a8913c8d0aaed1e4bad077a5d8a469d1c24ffa",
     "lastmod": "2026-11-20"
   },
   "p/rate-limiter-service/index.html": {
-    "sha": "6de3c15fcbd1b5463e12f9a1f8621923f33f4a1310f6737342dc1f6be2dccd2d",
+    "sha": "313a9f973fdb15a59afba6dbbb586e91b0499d994781b9cab0e8a4ad005cc5e2",
     "lastmod": "2026-11-20"
   },
   "p/recommendations/index.html": {
-    "sha": "4448f5af679bb272e088c05882829c76b14652c5f266acd72b203ad152401dd5",
+    "sha": "aafd01ea2b277a15926d76b05d5ca2835716e5c86ac7b09990a0166f33bea27e",
     "lastmod": "2026-11-20"
   },
   "p/restaurant-reservations/index.html": {
-    "sha": "ba68ca91b818d487e29d1b377f6bbb74df9508229fd9c13949e5db2bf9c26b75",
+    "sha": "3968599b82946065f131e4b5fc4ac11d81326976e3dcce179d2b52d3fc036da2",
     "lastmod": "2026-11-20"
   },
   "p/ride-hailing-dispatch/index.html": {
-    "sha": "86a66765c87fd50a866072b3fb8bf51886ac03be7c1887ce24f809657e1ef724",
+    "sha": "fc895ce2d12716ebafeaccffd80417da77f684920b02c1b9b1b7af3c9d69f152",
     "lastmod": "2026-11-20"
   },
   "p/search-autocomplete/index.html": {
-    "sha": "e8ebdbfa8790135a1ffa15e37d3dd5f6f37541d5c72bcfd60cbda8deae67de26",
+    "sha": "20c54301694d38ba72142af7c4da20d89dfbf6e68ee88d61f705f2aaa72188a7",
     "lastmod": "2026-11-20"
   },
   "p/semantic-search/index.html": {
-    "sha": "1882067f875265bf95cc1b8eb916b0ffbfca93c7af65155f8f5ddbf6b96be910",
+    "sha": "e489510fa4377048c0c8a0ad1652cec40feaeac1a2f06b83c479992eef939f04",
     "lastmod": "2026-11-20"
   },
   "p/shopping-cart/index.html": {
-    "sha": "dc84eddca99ed7978da832c004c6e8dedaf87b472aa05ea944857f91ba3b1b57",
+    "sha": "05c702b393a4557ed9ec26c9fa26821f15ddbebbd351e10e517ad5e69e53cb46",
     "lastmod": "2026-11-20"
   },
   "p/short-video-feed/index.html": {
-    "sha": "aafcb0ae3b77504a2b74350820d4081af63a127f6357aa61633d46009a533aa4",
+    "sha": "5bd63281c2fa3ead84587a71d616682cb2e1bbdb020bc6cbfcd85820c174788c",
     "lastmod": "2026-11-20"
   },
   "p/smart-home-hub/index.html": {
-    "sha": "88f49d3fd17e651040f827e0daca6174542bad31efdc8df6e4cc651ab3c2f5dd",
+    "sha": "61fa7a98ae6fec23e6231299b13b2ae04b0a27ee6cbe095d8b34a0ca4f8323db",
     "lastmod": "2026-11-20"
   },
   "p/smart-power-grid/index.html": {
-    "sha": "f7062eecd2dfa9e56d8c0aa798cb5c2476a2650dc3472e21a8765ae2a48dc528",
+    "sha": "1e492a6f621bd9e3c9bc55a8beb4b5aca661b5982755d18c3a104f325b4b1de5",
     "lastmod": "2026-11-20"
   },
   "p/social-feed/index.html": {
-    "sha": "c4d7cd30d5232966d2ffb55215209c253cce86ab3261142a88c8c5253f664187",
+    "sha": "20a47c862c400cf56988d03850906c8471ffd19ea6591180681e11ab68c58efe",
     "lastmod": "2026-11-20"
   },
   "p/status-page/index.html": {
-    "sha": "9381717a0b9866bfa65a9f05339ecc0b0f70eedd256a0d72b46c9bebdfe69bd0",
+    "sha": "1452e6c5dbc866b8365c33e9e8e9d1955f895030e578a1fb832dfe1b60b7f8a9",
     "lastmod": "2026-11-20"
   },
   "p/stock-order-matching/index.html": {
-    "sha": "eef3433c34552a76373b07fdcbb419d7cf3b82d70cb32c94b4ae42257a904986",
+    "sha": "d8a4f98cf7673fc99d849eb61bc2d177f7f2c4b9a544246319a195313d503a28",
     "lastmod": "2026-11-20"
   },
   "p/stories/index.html": {
-    "sha": "93137da3d9f7124eeedecd871c3d8d66006f26a39772cfb0789b966832cf6a09",
+    "sha": "d513770cb74178239486e9d422304ef65741282532685899d9c627ab9c87e554",
     "lastmod": "2026-11-20"
   },
   "p/tax-deadline-surge/index.html": {
-    "sha": "374237997541066741e02f105d6ad6ebcbee47de38af8b255693e25714555255",
+    "sha": "1fccb485ee53d6a930c26254be141e6152d119350a072d8c42e41d22df97e00e",
     "lastmod": "2026-11-20"
   },
   "p/telehealth-video/index.html": {
-    "sha": "52e12766924256174345e9b141eb2c697a06f201c824fc174027b2fd11790e95",
+    "sha": "be25a45c701b6bfa115d413acdaa5f23b984a54dece3d8985ee6fe003df22715",
     "lastmod": "2026-11-20"
   },
   "p/tenant-metrics/index.html": {
-    "sha": "cccfd8cf90d380b1b4bd55b86d7585c87d6ab2304afc9abad874463dccf54132",
+    "sha": "5917c975bce8d059e8c2d284a3493ea80ce567fb865a99857c18d8bd106facc3",
     "lastmod": "2026-11-20"
   },
   "p/tracing-platform/index.html": {
-    "sha": "956665ec00512da843e80f5ef2c92673e85e91b23f8daf90fd353e4b39e6df66",
+    "sha": "480847dbb898a6a3c695bcbebc44ba7e60df1c4f377af488d635ccd5ba54d8c6",
     "lastmod": "2026-11-20"
   },
   "p/url-shortener/index.html": {
-    "sha": "c9fe8eb61e222e68e7fdfe1bca8600c4e6b75306626df61c810f002c85d304c3",
+    "sha": "bf02f9cbffae611903eb69c5131141851c79e9f08c2929295a243e1603a5e032",
     "lastmod": "2026-11-20"
   },
   "p/vaccine-signup-surge/index.html": {
-    "sha": "4b9e6a4fda234908cb0ed844ca1bd4974297f94a55f12da4f704f9ac7f879a95",
+    "sha": "f340b7cc60f6708f94df273fb664c700d7f5f9710871d5af1310ae0e651fcd99",
     "lastmod": "2026-11-20"
   },
   "p/video-on-demand/index.html": {
-    "sha": "caa2df9103fe2dd409b4c156c08a5e621a41f9f8a7c89c52d6e142152490ee89",
+    "sha": "50077512c856263ca83d076943fa17a97f7adf14016eab2e93f770ca401e56ea",
     "lastmod": "2026-11-20"
   },
   "p/video-upload-pipeline/index.html": {
-    "sha": "502c48334d62dbfaa5e447b0e54fcf247e57890afbf65532381a2ceab4b6940e",
+    "sha": "e480ca1cde851c942e971bdf83cb228a7b571c906aed6a7e22be97441a809966",
     "lastmod": "2026-11-20"
   },
   "p/wearable-health/index.html": {
-    "sha": "efd1c598c058e04b082c8cd8b118266c1ee633298a075b4b8f73eced91526796",
+    "sha": "f4bcc779154442dd7e540f9175f97dac8fb1402190619c6babc245bb619c2c8a",
     "lastmod": "2026-11-20"
   },
   "privacy.html": {
@@ -1060,7 +1064,7 @@
     "lastmod": "2026-11-20"
   },
   "problems/index.html": {
-    "sha": "812b155e521ad6e67458aa3f482f9dd67301d252d96abaecaeaf90932fe69879",
+    "sha": "14d9c2b8cb1952308b5db7da9a27e2ab0e687e54777a2a472b325fe2602f9185",
     "lastmod": "2026-11-20"
   }
 }

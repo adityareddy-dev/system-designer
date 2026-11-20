@@ -49,7 +49,7 @@ const toFile = url => {
 };
 const titles = new Set();
 const urls = new Set(locations);
-for (const f of ['index.html', 'problems/index.html', 'learn/index.html', 'guides/index.html', ...problems.map(p=>`p/${p.id}/index.html`), ...lessons.map(l=>`learn/${l.id}/index.html`)]) {
+for (const f of ['index.html', 'about/index.html', 'problems/index.html', 'learn/index.html', 'guides/index.html', ...problems.map(p=>`p/${p.id}/index.html`), ...lessons.map(l=>`learn/${l.id}/index.html`)]) {
   assert.ok(urls.has('https://systemdesigner.io/' + f.replace(/index\.html$/, '')), `missing from sitemap: ${f}`);
 }
 for (const url of locations) {
@@ -68,7 +68,22 @@ for (const url of locations) {
   });
   assert.ok(data.some(d=>d['@type']==='BreadcrumbList'), `breadcrumb: ${file}`);
   if (/^(p|learn)\/[^/]+\//.test(file)) assert.ok(data.some(d=>d['@type']==='LearningResource'), file);
-  if (/^guides\/[^/]+\//.test(file)) assert.ok(data.some(d=>d['@type']==='Article' && d.author.name==='System Designer'), file);
+  if (/^guides\/[^/]+\//.test(file)) {
+    assert.ok(data.some(d=>d['@type']==='Article' && d.author['@type']==='Person' && d.author.name==='Aditya Reddy'), `guide author: ${file}`);
+    assert.match(html, /<p class="site-byline">By <a href="\.\.\/\.\.\/about\/">Aditya Reddy<\/a>/, `guide byline: ${file}`);
+  }
+  if (file === 'about/index.html') {
+    const about = data.find(d=>d['@type']==='AboutPage');
+    assert.equal(about?.about?.creator?.name, 'Aditya Reddy', 'about page names the maker');
+    for (const href of ['https://adityareddy.dev', 'https://www.linkedin.com/in/adityareddy-dev', 'https://github.com/adityareddy-dev']) {
+      assert.ok(html.includes(`href="${href}"`), `about page links ${href}`);
+      assert.ok(about.about.creator.url === href || about.about.creator.sameAs.includes(href), `about data names ${href}`);
+    }
+  }
+  if (html.includes('class="site-footer"')) {
+    const about = /<a href="([^"]+)">About<\/a>/.exec(html.split('class="site-footer"')[1])?.[1];
+    assert.equal(about && new URL(about, url).href, 'https://systemdesigner.io/about/', `footer links About: ${file}`);
+  }
   assert.doesNotMatch(html, /\u2014/, `no em dash: ${file}`);
   for (const m of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
     const target = new URL(m[1].replace(/&amp;/g, '&'), url);
@@ -97,6 +112,7 @@ for (const url of locations) {
     }
   }
 }
+assert.ok(read('llms.txt').includes('(https://systemdesigner.io/about/)'), 'llms.txt lists About');
 for (const m of read('llms.txt').matchAll(/\]\((https:\/\/systemdesigner\.io\/[^)]*)\)/g)) assert.ok(exists(toFile(m[1])), `llms link: ${m[1]}`);
 assert.ok(read('llms-full.txt').includes('How to practise system design'));
 assert.match(read('robots.txt'), /User-agent: GPTBot\s+Allow: \//);

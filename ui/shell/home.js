@@ -132,6 +132,7 @@ export function renderHome(host, ctx) {
       h('p', null, 'System Designer is free and open source (MIT). Source on GitHub. Numbers shown are approximations for learning. Made by Aditya Reddy. Company names appear only as plain comparisons.'),
       h('div', { class: 'sh-foot-row' },
         h('a', { href: 'https://github.com/adityareddy-dev/system-designer', rel: 'noopener' }, 'GitHub'),
+        h('a', { href: 'about/' }, 'About'),
         h('a', { href: 'privacy.html' }, 'Privacy')));
 
     return [cards, steps, nextTracks(), extras, conceptStrip, strip, reading, foot].filter(Boolean);
