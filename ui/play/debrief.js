@@ -535,6 +535,7 @@ export function renderDebrief(host, { result, problem, catalog, ctx, hintsUsed =
     result.warmUp ? null : h('button', { class: 'pl-btn', type: 'button', onClick: () => handlers.onShare?.() }, iconEl('ui.share', 16), 'Share'),
     handlers.onTwist ? h('button', { class: 'pl-btn', type: 'button', 'data-act': 'twist', title: problem?.twistDay ? 'Play the original day again' : twistTip(problem, catalog), onClick: () => handlers.onTwist() }, iconEl('ui.restart', 16), problem?.twistDay ? 'Original day' : 'New twist') : null,
     hasNext ? h('button', { class: 'pl-btn', type: 'button', onClick: () => handlers.onNext?.() }, 'Next problem', iconEl('ui.chevron-right', 16)) : null,
+    handlers.onTryTraffic ? h('button', { class: 'pl-btn', type: 'button', 'data-act': 'try-traffic', title: 'Open this design in Sandbox with the same traffic, then change it. Nothing there is scored.', onClick: () => handlers.onTryTraffic() }, iconEl('ui.sandbox', 16), 'Try other traffic') : null,
     h('button', { class: 'pl-btn pl-btn--ghost', type: 'button', onClick: () => handlers.onBack?.() }, iconEl('ui.back', 16), 'Back to my design')));
   gateTransfer(root, problem, result, catalog);
   host.append(root);
