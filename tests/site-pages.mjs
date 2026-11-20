@@ -44,6 +44,7 @@ assert.equal(new Set(locations).size, locations.length, 'unique sitemap location
 assert.equal([...sitemap.matchAll(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/g)].length, locations.length);
 const toFile = url => {
   const p = decodeURIComponent(new URL(url).pathname).replace(/^\//, '');
+  if (p === 'privacy') return 'privacy.html';
   return p.endsWith('/') || !p ? p + 'index.html' : p;
 };
 const titles = new Set();
